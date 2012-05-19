@@ -1,4 +1,7 @@
-$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+---
+layout: default
+---
+
 Translated by Vincent ISAMBART and Clifford Escobar CAOILE
 
 h1. Ruby Hacking Guide

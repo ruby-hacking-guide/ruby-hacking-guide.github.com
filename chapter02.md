@@ -1,4 +1,7 @@
-$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+---
+layout: default
+title: Objects - Structure of Ruby objects
+---
 Translated by Vincent ISAMBART
 
 h1. Chapter 2: Objects
@@ -48,7 +51,7 @@ this capability, even if some time ago there were quite a few of them.
 
 Several structures are available according to object classes:
 
-| `struct RObject`		| all things for which none of the following 
+| `struct RObject`		| all things for which none of the following
 						  applies |
 | `struct RClass`		| class object |
 | `struct RFloat`		| small numbers |
@@ -57,7 +60,7 @@ Several structures are available according to object classes:
 | `struct RRegexp`		| regular expression |
 | `struct RHash`		| hash table |
 | `struct RFile`		| `IO`, `File`, `Socket`, etc... |
-| `struct RData`		| all the classes defined at C level, except the 
+| `struct RData`		| all the classes defined at C level, except the
 						  ones mentioned above |
 | `struct RStruct`		| Ruby's `Struct` class |
 | `struct RBignum`		| big integers |
@@ -866,7 +869,7 @@ library, you can write `RSTRING(str)->ptr` or `RSTRING(str)->len`, and access
 
 # you have to check before if `str` really points to a `struct RString`
 # you can read the members, but you must not modify them
-# you can't store `RSTRING(str)->ptr` in something like a local variable and 
+# you can't store `RSTRING(str)->ptr` in something like a local variable and
 use it later
 
 Why is that? First, there is an important software engineering principle:

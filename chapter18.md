@@ -1,4 +1,8 @@
-$comment(-*- coding: utf-8 -*- vim: set encoding=utf-8:)$
+---
+layout: default
+title: Loading
+---
+
 Translated by Vincent ISAMBART
 
 h1. Chapter 18: Loading
@@ -461,7 +465,7 @@ part inside `rb_f_require()`'s `load_rb` loading Ruby programs.
 </pre>
 
 Here the `rb_load()` that is called is in fact the real form of the
-Ruby level load. 
+Ruby level load.
 
 さてここで呼んでいる`rb_load()`、これは実はRubyレベルの`load`の実体である。
 ということは探索がもう一回必要になるわけで、同じ作業をもう一回見るなん

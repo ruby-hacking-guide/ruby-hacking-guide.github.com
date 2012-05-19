@@ -1,4 +1,8 @@
-$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+---
+layout: default
+title: Security
+---
+
 Translated by Clifford Escobar CAOILE
 
 h1. Chapter 7: Security
@@ -81,7 +85,7 @@ but I will show an example here:
 # Raise the security level in a different thread
 p($SAFE)   # 0 is the default
 Thread.fork {    # Start a different thread
-    $SAFE = 4    # Raise the level 
+    $SAFE = 4    # Raise the level
     eval(str)    # Run the dangerous program
 }
 p($SAFE)   # Outside of the block, the level is still 0

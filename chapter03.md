@@ -1,4 +1,8 @@
-$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+---
+layout: default
+title: Names and Name Table
+---
+
 Translated by Clifford Escobar CAOILE
 
 h1. Chapter 3: Names and Name Table
@@ -80,7 +84,7 @@ For example, given the previous hash function "key % 64", keys 65 and 129
 will have a hash value of 1. This is called a hash value collision. There
 are many ways to resolve a collision.
 
-For example, if a collision occurs, then insert into the next element. 
+For example, if a collision occurs, then insert into the next element.
 This is called open addressing. (Figure 3).
 
 !images/ch_name_nexti.png(Open addressing)!
@@ -98,7 +102,7 @@ collisions. This type of function is called a "perfect hash function".
 Actually, there are tools which create a perfect hash function given a set
 of arbitrary strings. GNU gperf is one of those. `ruby`'s parser
 implementation uses GNU gperf but... this is not the time to discuss it.
-We'll discuss this in the second part of the book. 
+We'll discuss this in the second part of the book.
 
 h3. Data Structure
 
@@ -424,7 +428,7 @@ Since the name is all uppercase, we can anticipate that is a macro.
 
 The first `if` is an exception case so I will explain it afterwards.
 
-(A) Allocate and initialize a `st_table_entry`. 
+(A) Allocate and initialize a `st_table_entry`.
 
 (B) Insert the `entry` into the start of the list.
 This is the idiom for handling the list. In other words,
@@ -626,7 +630,7 @@ where the data structure's member is accessed.
 
 Let's read the code. First, `rb_raise()` is merely error handling so we ignore
 it for now. The `rb_intern()` we previously examined is here, and also ID2SYM
-is here. `ID2SYM()` is a macro that converts `ID` to `Symbol`. 
+is here. `ID2SYM()` is a macro that converts `ID` to `Symbol`.
 
 And the reverse operation is accomplished using `Symbol#to_s` and such.
 The implementation is in `sym_to_s`.

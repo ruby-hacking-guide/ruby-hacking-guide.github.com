@@ -1,4 +1,8 @@
-$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$ 
+---
+layout: default
+title: Classes and modules
+---
+
 Translated by Robert GRAVINA
 
 h1. Chapter 10: Parser
@@ -28,7 +32,7 @@ h3. Disecting `parse.y`
 Let's now look at `parse.y` in a bit more detail. The following figure presents
 a rough outline of the contents of `parse.y`.
 
-▼ parse.y 
+▼ parse.y
 <pre class="longlist">
 %{
 header
@@ -124,10 +128,10 @@ compstmt        : stmts opt_terms
 The output is quite long - over 450 lines of grammar rules - and as such I have
 only included the most important parts in this chapter.
 
-Which symbols, then, are the most important? Symbols such as `program`, `expr`, 
-`stmt`,`primary`, `arg` etc. represent the more general grammatical elements of 
-a programming language and it is to these which we shall focus our attention. 
-The following table outlines these general elements and the symbol names used 
+Which symbols, then, are the most important? Symbols such as `program`, `expr`,
+`stmt`,`primary`, `arg` etc. represent the more general grammatical elements of
+a programming language and it is to these which we shall focus our attention.
+The following table outlines these general elements and the symbol names used
 to represent them.
 
 |Syntax element|Relevant symbol names|
@@ -147,36 +151,36 @@ In general, programming lanaguages tend to have the following symbol heiarchy.
 
 |Program element|Properties|
 |Statement|Can not be combined with other symbols. A syntax tree trunk.|
-|Expression|Can be combined with itself or be part of other 
+|Expression|Can be combined with itself or be part of other
 expressions. A syntax tree interal node.|
-|Primary|An element which can not be further decomposed. A syntax tree leaf node.| 
+|Primary|An element which can not be further decomposed. A syntax tree leaf node.|
 
-C function definitions and Java class definitions are examples of statements in 
-other languages. An expression can be a procedure call, an arithmetic expression 
-etc. while a primary usually refers to a string literal or number. Some languages 
-do not contain all of these symbol types, however they generally contain some 
+C function definitions and Java class definitions are examples of statements in
+other languages. An expression can be a procedure call, an arithmetic expression
+etc. while a primary usually refers to a string literal or number. Some languages
+do not contain all of these symbol types, however they generally contain some
 kind of hierarchy of symbols such as `program`→`stmt`→`expr`→`primary`.
 
-It is often the case that symbol types lower in this heirarchy can be promoted 
-to higher levels and vice versa. For example, in C function calls are expressions 
+It is often the case that symbol types lower in this heirarchy can be promoted
+to higher levels and vice versa. For example, in C function calls are expressions
 yet can be may also be statements.
 
 Conversely, when surrounded in parenthesis expressions become primaries.
 
-Scoping rules differ considerably between programming languages. Consider 
-substitution. In C, the value of expressions can be used in substitutions 
+Scoping rules differ considerably between programming languages. Consider
+substitution. In C, the value of expressions can be used in substitutions
 whereas in Pascal substitution occurs only at the statement level. Also,
-function and class definitions are typically statements however in languages 
-such as Lisp and Scheme, since everything is an expression, they too are 
+function and class definitions are typically statements however in languages
+such as Lisp and Scheme, since everything is an expression, they too are
 expressions. Ruby follows Lisp's design in this regard.
 
 h3. Program structure
 
-Now let's turn our attention to the grammer rules of `ruby`. Firstly, 
-`yacc` will begin by examining the first rule defined in `parse.y`, and as 
-we can see from the following table, this is `program`. From here we can see 
-the ruby grammar unfold and the existance of the `program stmt expr primary` 
-heierarchy mentioned earlier. However there is an extra rule here for `arg`. 
+Now let's turn our attention to the grammer rules of `ruby`. Firstly,
+`yacc` will begin by examining the first rule defined in `parse.y`, and as
+we can see from the following table, this is `program`. From here we can see
+the ruby grammar unfold and the existance of the `program stmt expr primary`
+heierarchy mentioned earlier. However there is an extra rule here for `arg`.
 Let's now take a look at this.
 
 ▼ `ruby` grammar (outline)
@@ -222,9 +226,9 @@ primary         : literal
                 | kRETRY
 </pre>
 
-If you look at each of the final alternatives for each of the rules you should 
+If you look at each of the final alternatives for each of the rules you should
 be able to clearly make out a hierarchy of `program`→`stmt`→`expr`→`arg`→
-`primary`. 
+`primary`.
 
 I'd like to focus on the rule for `primary`.
 
@@ -235,11 +239,11 @@ primary         : literal
                 | tLPAREN_ARG expr  ')'      /* here */
 </pre>
 
-The name `tLPAREN_ARG` comes from `t` for terminal symbol, `L` for left and 
-`PAREN` for parentheses - it is the open parenthesis. Why this isn't `'('` 
-is covered in the next section "Context-dependent scanner". The purpose of this 
-rule is demote an `expr` to a `primary`, and is shown in Figure 2. This creates 
-a cycle which can the seen in Figure 2, and the arrow shows how this rule is 
+The name `tLPAREN_ARG` comes from `t` for terminal symbol, `L` for left and
+`PAREN` for parentheses - it is the open parenthesis. Why this isn't `'('`
+is covered in the next section "Context-dependent scanner". The purpose of this
+rule is demote an `expr` to a `primary`, and is shown in Figure 2. This creates
+a cycle which can the seen in Figure 2, and the arrow shows how this rule is
 reduced during parsing.
 
 !images/ch_parser_exprloop.png(`expr` demotion)!
@@ -253,14 +257,14 @@ primary         : literal
                 | tLPAREN compstmt ')'   /* here */
 </pre>
 
-A `compstmt`, which represents code for an entire program, can be demoted to 
+A `compstmt`, which represents code for an entire program, can be demoted to
 a `primary` with this rule. The next figure illustrates this rule in action.
 
 !images/ch_parser_progloop.png(`program`の縮退)!
 
-This means that for any syntax element in Ruby, if we surround it with 
-parenthesis it will become a `primary` and can be passed as an argument to a 
-function, be used as the right hand side of an expression etc. It helps to 
+This means that for any syntax element in Ruby, if we surround it with
+parenthesis it will become a `primary` and can be passed as an argument to a
+function, be used as the right hand side of an expression etc. It helps to
 see an example of this to grasp what this truly means.
 
 <pre class="emlist">
@@ -271,7 +275,7 @@ p((if true then nil else nil end))
 p((1 + 1 * 1 ** 1 - 1 / 1 ^ 1))
 </pre>
 
-If we invoke `ruby` with the `-c` option (syntax check), we get the following 
+If we invoke `ruby` with the `-c` option (syntax check), we get the following
 output.
 
 <pre class="screen">
@@ -281,11 +285,11 @@ Syntax OK
 
 Although it might look surprising at first, yes you really can do this in Ruby!
 
-The details of this are covered when we look at semantic analysis (in Chaper 12 
-"Syntax tree construction") however it is important to note there are exceptions 
-to this rule. For example passing a `return` statement as an argument to a 
-function will result in an error. For the most part, however, the "surrounding 
-anything in parenthesis means it can be passed as an argument to a function" 
+The details of this are covered when we look at semantic analysis (in Chaper 12
+"Syntax tree construction") however it is important to note there are exceptions
+to this rule. For example passing a `return` statement as an argument to a
+function will result in an error. For the most part, however, the "surrounding
+anything in parenthesis means it can be passed as an argument to a function"
 rule does hold.
 
 In the next section I will cover the most important grammar rules in some detail.
@@ -303,8 +307,8 @@ stmts           : none
                 | stmts terms stmt
 </pre>
 
-As mentioned earlier, `program` represents an entire program in the grammar. 
-For all intents and purposes `compstmts` is equivilent to `program`. 
+As mentioned earlier, `program` represents an entire program in the grammar.
+For all intents and purposes `compstmts` is equivilent to `program`.
 
 前述の通り`program`は文法全体、即ちプログラム全体を表している。その
 `program`は`compstmts`と同じであり、`compstmts`は`stmts`とほぼ同じである。

@@ -1,4 +1,8 @@
-$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+---
+layout: default
+title: Variables and constants
+---
+
 Translated by Vincent ISAMBART
 
 h1. Chapter 6: Variables and constants
@@ -483,7 +487,7 @@ Knowing that you can hook assignment of global variables, you should
 understand easily how this can be done. By the way, `$KCODE`'s K comes
 from "kanji" (the name of Chinese characters in Japanese).
 
-You might say that even with `alias` or hooks, 
+You might say that even with `alias` or hooks,
 global variables just aren't used much, so it's functionality that doesn't
 really mater. It's adequate not to talk much about unused
 functions, and I need some pages for the analysis of the parser and

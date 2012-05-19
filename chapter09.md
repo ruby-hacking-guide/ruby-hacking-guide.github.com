@@ -1,4 +1,8 @@
-$comment(-*- coding: utf-8 -*- vim: set encoding=utf-8:)$
+---
+layout: default
+title: YACC crash course
+---
+
 Translated by Vincent ISAMBART
 
 h1. Chapter 9: `yacc` crash course
