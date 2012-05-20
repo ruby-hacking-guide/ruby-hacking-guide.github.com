@@ -1,0 +1,2500 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第10章 パーサ</title></head>
+<body>
+
+<h1>第10章 パーサ</h1>
+
+<h2>指針</h2>
+
+<h3>パーサの構築</h3>
+
+<p>
+パーサのメインソースは<code>parse.y</code>である。<code>*.y</code>だから<code>yacc</code>の入力で、
+ここから<code>parse.c</code>が生成される。
+</p>
+
+<p>
+また他には<code>lex.c</code>という思わせぶりな名前のファイルがあるのだが、スキャナ
+が入っているわけではない。これは<code>gperf</code>というツールが生成したファイルで、
+予約語のハッシュテーブルが定義されている。その入力ファイルは<code>keywords</code>だ。
+<code>lex.c</code>は<code>parse.c</code>に<code>#include</code>して使われる。
+中身について説明するのはその場にならないと難しいので後にまわそう。
+</p>
+
+<p>
+まとめるとパーサの構築手順は図1のようになる。
+Windowsで生きている人のために説明すると<code>mv</code>はファイルを移動する
+コマンドである。<code>cc</code>はもちろん<code>C</code>コンパイラで<code>cpp</code>は
+Cのプリプロセッサだ。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_build.jpg" alt="(build)"><br>
+図1: パーサの構築手順
+</p>
+
+
+
+<h3><code>parse.y</code>の腑分け</h3>
+
+<p>
+続いて<code>parse.y</code>を眺めてみよう。
+おおざっぱに言うと<code>parse.y</code>は次のような形をしている。
+</p>
+
+<p class="caption">▼parse.y</p>
+<pre class="longlist">
+%{
+ヘッダ
+%}
+%union ....
+%token ....
+%type ....
+
+%%
+
+規則
+
+%%
+ユーザ定義コード部
+    パーサインターフェイス
+    スキャナ（文字列処理）
+    構文木の構築
+    意味解析
+    ローカル変数の管理
+    IDの実装
+</pre>
+
+
+<p>
+定義部・規則部に関しては既に述べたとおり。ここはまさにパーサの核心で
+あるので、真っ先に次の節から解説を始める。
+</p>
+
+<p>
+ユーザ定義コード部にはかなりたくさんの補助関数があるのだが、おおまかに
+言って上記の六つに分類できる。それぞれ以下のような割り振りで解説してい
+く。
+</p>
+
+<table>
+<tr><td>セクション<td><td>章<td><td>節<td></tr>
+<tr><td>パーサインターフェイス<td><td>本章<td><td>第三節「スキャナ」<td></tr>
+<tr><td>スキャナ関連<td><td>本章<td><td>第三節「スキャナ」<td></tr>
+<tr><td>構文木の構築<td><td>第12章『構文木の構築』<td><td>第二節「構文木の構築」<td></tr>
+<tr><td>意味解析<td><td>第12章『構文木の構築』<td><td>第三節「意味解析」<td></tr>
+<tr><td>ローカル変数の管理<td><td>第12章『構文木の構築』<td><td>第四節「ローカル変数」<td></tr>
+<tr><td><code>ID</code>の実装<td><td>第3章『名前と名前表』<td><td>第二節「<code>ID</code>とシンボル」<td></tr>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>文法規則総論</h2>
+
+<h3>コーディングルール</h3>
+
+<p>
+<code>ruby</code>の文法は一定のコーディングルールに則って書かれているので、
+それを知っておくと読みやすくなる。
+</p>
+
+<p>
+まず記号名について。非終端記号は全部小文字。終端記号はプリフィクス+大
+文字。プリフィクスは、予約語（keyword）が<code>k</code>。それ以外の終端記号
+（terminal）が<code>t</code>である。
+</p>
+
+<p class="caption">▼記号名の例</p>
+<table>
+<tr><td>単語<td><td>記号<td></tr>
+<tr><td>（非終端）<td><td><code>bodystmt</code><td></tr>
+<tr><td><code>if</code><td><td><code>kIF</code><td></tr>
+<tr><td><code>def</code><td><td><code>kDEF</code><td></tr>
+<tr><td><code>rescue</code><td><td><code>kRESCUE</code><td></tr>
+<tr><td><code>varname</code><td><td><code>tIDENTIFIER</code><td></tr>
+<tr><td><code>ConstName</code><td><td><code>tCONST</code><td></tr>
+<tr><td>1<td><td><code>tINTEGER</code><td></tr>
+</table>
+
+<p>
+このルールの例外は<code>klBEGIN</code>と<code>klEND</code>のみだ。それぞれ予約語の
+「<code>BEGIN</code>」「<code>END</code>」に対応する記号で、<code>l</code>は<code>large</code>の<code>l</code>だと思われる。
+予約語には小文字の<code>begin end</code>もあるのでこのような区別が付いている。
+</p>
+
+
+
+<h3>重要な記号</h3>
+
+<p>
+規則ファイルには文法とアクションが書いてあるのだった。しかしいまは規則
+にだけ注目したいので、アクションは必要ない。規則だけ取り出すには、
+<code>ruby</code>の<code>sample/</code>に入っている<code>exyacc.rb</code>などのツールが使える。他には
+<code>yacc -v</code>で出力される<code>y.output</code>というログファイルにも規則が出ているが、
+こちらは見ためがあまりよくない。本章では<code>exyacc.rb</code>を少し改造した
+もの\footnote{<code>exyacc.rb</code>改：添付CD-ROM<code>tools/exyacc2.rb</code>}を
+使って文法を見ていくことにしよう。
+</p>
+
+<p class="caption">▼<code>parse.y</code>（規則）</p>
+<pre class="longlist">
+program         : compstmt
+
+bodystmt        : compstmt
+                  opt_rescue
+                  opt_else
+                  opt_ensure
+
+compstmt        : stmts opt_terms
+                       ：
+                       ：
+</pre>
+
+
+<p>
+かなり長いリストが出力された。現在、規則は450以上ある。
+ここまで大きいとさすがにいきなり全体を並べて把握するなんてことは
+不可能だ。こういうものは重要なところだけ見ていくに限る。
+</p>
+
+<p>
+ではどの記号が重要だとわかるのだろうか。それには記号の名前に注目すれば
+よい。例えば<code>program</code>、<code>expr</code>、<code>stmt</code>、<code>primary</code>、<code>arg</code>などの名前は非
+常に重要である。なぜならそれはプログラム言語の文法要素の一般的な区分を
+表すからだ。一般にプログラムの構文で注目すべき要素を以下に一覧する。
+</p>
+
+<table>
+<tr><td>構文要素<td><td>予測される記号名<td></tr>
+<tr><td>プログラム全体<td><td><code>program prog file input stmts whole</code><td></tr>
+<tr><td>文<td><td><code>statement stmt</code><td></tr>
+<tr><td>式<td><td><code>expression expr exp</code><td></tr>
+<tr><td>最小要素<td><td><code>primary prim</code><td></tr>
+<tr><td>代入の左辺<td><td><code>lhs</code>（left hand side）<td></tr>
+<tr><td>代入の右辺<td><td><code>rhs</code>（right hand side）<td></tr>
+<tr><td>関数呼び出し<td><td><code>funcall function_call call function</code><td></tr>
+<tr><td>メソッド呼び出し<td><td><code>method method_call call</code><td></tr>
+<tr><td>引数<td><td><code>argument arg</code><td></tr>
+<tr><td>関数定義<td><td><code>defun definition function fndef</code><td></tr>
+<tr><td>宣言一般<td><td><code>declaration decl</code><td></tr>
+</table>
+
+<p>
+そして普通の言語なら次のような階層構造が存在する。
+</p>
+
+<table>
+<tr><td>プログラム全体<td><td>だいたいは文のリスト。<td></tr>
+<tr><td>文（statement）<td><td>組み合わせられないもの。構文木の幹。<td></tr>
+<tr><td>式（expression）<td><td>それ自体が組み合わせで、また他の式の一部になれるもの。構文木の枝。<td></tr>
+<tr><td>項（primary）<td><td>分割できないもの。構文木の葉。<td></tr>
+</table>
+
+<p>
+文はCの関数定義やJavaのクラス定義のようなもの。式は手続き呼び出しや数
+式など。文字列リテラルや数値はたいてい項である。いずれかの要素がないこ
+とはよくあるが、この上下関係、つまり<code>program</code>→<code>stmt</code>→<code>expr</code>→
+<code>primary</code>、が通用しない言語はまずない。
+</p>
+
+<p>
+ただし小さいレベルの構造は上の構造に入ることもできる。例えばCでは関数
+呼び出しは式だが単独で置ける。つまり式でありながら文にもなれる。
+</p>
+
+<p>
+またその逆に、式を括弧で囲むと項になったりもする。レベルの低い要素ほど
+優先順位が高くなるからだ。
+</p>
+
+<p>
+文の範囲は言語によってだいぶ違う。例えば代入を考えてみよう。Cだと式に
+入っているので代入式全体の値というものを使うことができる。しかし
+Pascalだと代入は文なのでそういうことはできない。また関数やクラスの定
+義は文に入るのが一般的だが、LispやSchemeだとあらゆるものが式なので文が
+なかったりする。Rubyもイメージはそちらに近い。
+</p>
+
+
+
+<h3>全体構造</h3>
+
+<p>
+それでは<code>ruby</code>の規則に移ろう。まず<code>yacc</code>では最初の規則の左辺が文法全体を表
+しているのだった。つまり現在は<code>program</code>である。ここからずっと辿りながら
+見ていくと定石通り<code>program stmt expr primary</code>の四つが見付かる。これに
+<code>arg</code>を加えた規則を見てみよう。
+</p>
+
+<p class="caption">▼<code>ruby</code>の文法（概要）</p>
+<pre class="longlist">
+program         : compstmt
+
+compstmt        : stmts opt_terms
+
+stmts           : none
+                | stmt
+                | stmts terms stmt
+
+stmt            : kALIAS fitem  fitem
+                | kALIAS tGVAR tGVAR
+                    ：
+                    ：
+                | expr
+
+expr            : kRETURN call_args
+                | kBREAK call_args
+                    ：
+                    ：
+                | '!' command_call
+                | arg
+
+arg             : lhs '=' arg
+                | var_lhs tOP_ASGN arg
+                | primary_value '[' aref_args ']' tOP_ASGN arg
+                    ：
+                    ：
+                | arg '?' arg ':' arg
+                | primary
+
+primary         : literal
+                | strings
+                    ：
+                    ：
+                | tLPAREN_ARG expr  ')'
+                | tLPAREN compstmt ')'
+                    ：
+                    ：
+                | kREDO
+                | kRETRY
+</pre>
+
+
+<p>
+それぞれの最後の規則に注目すると、非常にわかりやすく
+<code>program</code>→<code>stmt</code>→<code>expr</code>→<code>arg</code>→<code>primary</code>
+という上下関係が出ている。
+</p>
+
+<p>
+また<code>primary</code>のこの規則も注目したい。
+</p>
+
+<pre class="emlist">
+primary         : literal
+                    ：
+                    ：
+                | tLPAREN_ARG expr  ')'      /* これ */
+</pre>
+
+<p>
+<code>tLPAREN_ARG</code>は、終端記号を示す<code>t</code>、leftの<code>L</code>、parentheses（丸括弧）の
+<code>PAREN</code>から成る。つまり開き括弧のことだ。なぜ<code>'('</code>としないかは
+次章『状態付きスキャナ』で説明しよう。なんにしても、この規則が<code>expr</code>を
+<code>primary</code>に縮退させるための規則である。つまりここのところで
+図2のように規則が循環している。矢印は実際にパースするとき
+に還元される順だ。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_exprloop.jpg" alt="(exprloop)"><br>
+図2: <code>expr</code>の縮退
+</p>
+
+<p>
+そしてその次の規則はさらにすごい。
+</p>
+
+<pre class="emlist">
+primary         : literal
+                    ：
+                    ：
+                | tLPAREN compstmt ')'   /* これ */
+</pre>
+
+<p>
+なんと<code>compstmt</code>、つまりプログラム全体（<code>program</code>）と等しいものを
+<code>primary</code>に縮退させてしまおうというのだ。また図にすると図3の
+ようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_progloop.jpg" alt="(progloop)"><br>
+図3: <code>program</code>の縮退
+</p>
+
+<p>
+これが何を意味するかというと、Rubyに存在するあらゆる構文は括弧で囲むと
+<code>primary</code>になってしまう、即ちメソッドの引数にも代入の右辺にもできる
+ということである。これはとんでもない事実だ。実際に確かめてみよう。
+</p>
+
+<pre class="emlist">
+p((class C; end))
+p((def a() end))
+p((alias ali gets))
+p((if true then nil else nil end))
+p((1 + 1 * 1 ** 1 - 1 / 1 ^ 1))
+</pre>
+
+<p>
+このファイルを<code>-c</code>オプション付きで<code>ruby</code>にかける。
+<code>-c</code>は構文チェックをするオプションだ。
+</p>
+
+<pre class="screen">
+% ruby -c primprog.rb
+Syntax OK
+</pre>
+
+<p>
+実に信じ難いことだが、本当に通ってしまった。どうやら勘違いではないよう
+である。
+</p>
+
+<p>
+細かいことを言うと意味解析（第12章『構文木の構築』参照）で弾かれるものが
+あるので完璧に通用するわけではない。例えば<code>return</code>文を引数にするとエラー
+になる。だが少なくとも見ためレベルでは「括弧で囲むとなんでも引数にでき
+る」という法則は実際に成立する。
+</p>
+
+<p>
+次は重要要素の中身を順番に見ていこう。
+</p>
+
+
+
+<h3><code>program</code></h3>
+
+<p class="caption">▼<code>program</code></p>
+<pre class="longlist">
+program         : compstmt
+
+compstmt        : stmts opt_terms
+
+stmts           : none
+                | stmt
+                | stmts terms stmt
+</pre>
+
+
+<p>
+前述の通り<code>program</code>は文法全体、即ちプログラム全体を表している。その
+<code>program</code>は<code>compstmts</code>と同じであり、<code>compstmts</code>は<code>stmts</code>とほぼ同じである。
+その<code>stmts</code>は<code>terms</code>区切りの<code>stmt</code>のリストである。つまりプログラム全体は
+<code>terms</code>区切りの<code>stmt</code>のリストである。
+</p>
+
+<p>
+<code>terms</code>はもちろんterminatorsの略で、文を終端する記号、セミコロンだとか
+改行のことだ。<code>opt_terms</code>はOPTional <code>terms</code>（省略可能な<code>terms</code>）だろう。
+定義は次のようになっている。
+</p>
+
+<p class="caption">▼<code>opt_terms</code></p>
+<pre class="longlist">
+opt_terms       :
+                | terms
+
+terms           : term
+                | terms ';'
+
+term            : ';'
+                | '\n'
+</pre>
+
+
+<p>
+<code>terms</code>は<code>';'</code>か<code>'\n'</code>の後に任意の数だけ<code>';'</code>が続く並びなので、
+この規則だけから考えると二個以上の改行があるとまずいように
+思える。実際に試してみよう。
+</p>
+
+<pre class="emlist">
+1 + 1   # 改行一つめ
+        # 改行二つめ
+        # 改行三つめ
+1 + 1
+</pre>
+
+<p>
+再び<code>ruby -c</code>を使う。
+</p>
+
+<pre class="screen">
+% ruby -c optterms.rb
+Syntax OK
+</pre>
+
+<p>
+おかしい。通ってしまった。実を言うと、連続した改行はスキャナのレベルで
+捨てられてしまってパーサには最初の一つしか渡らないようになっているのだ。
+
+<p>
+ところで、<code>program</code>と<code>compstmt</code>は同じものだと言ったが、それならこの規則は
+何のために存在するのだろう。実はこれはアクションを実行するためだけにあ
+るのだ。例えば<code>program</code>ならプログラム全体について一度だけ必要な処理を実
+行するために用意されている。純粋に文法のことだけ考えるなら<code>program</code>は省
+略しても全く問題ない。
+</p>
+
+<p>
+これを一般化すると、規則には見ための解析のために必要なものと、アクショ
+ンを実行するために必要なものの二種類があるということになる。<code>stmts</code>のと
+ころにある<code>none</code>もアクションのために必要な規則の一つで、空リストに対して
+（<code>NODE*</code>型の）<code>NULL</code>ポインタを返すために用意されている。
+</p>
+
+
+
+<h3><code>stmt</code></h3>
+
+<p>
+次に文、<code>stmt</code>だ。<code>stmt</code>の規則はわりと量があるので、少しずつ見ていく
+ことにする。
+</p>
+
+<p class="caption">▼<code>stmt</code>（1）</p>
+<pre class="longlist">
+stmt            : kALIAS fitem  fitem
+                | kALIAS tGVAR tGVAR
+                | kALIAS tGVAR tBACK_REF
+                | kALIAS tGVAR tNTH_REF
+                | kUNDEF undef_list
+                | stmt kIF_MOD expr_value
+                | stmt kUNLESS_MOD expr_value
+                | stmt kWHILE_MOD expr_value
+                | stmt kUNTIL_MOD expr_value
+                | stmt kRESCUE_MOD stmt
+                | klBEGIN '{' compstmt '}'
+                | klEND '{' compstmt '}'
+</pre>
+
+
+<p>
+なんとなくわかる。最初にいくつかあるのは<code>alias</code>だし、
+次が<code>undef</code>、その後にいくつか並ぶ「なんたら<code>_MOD</code>」は
+modifier（修飾子）のことだろうから、後置系構文だと想像が付く。
+</p>
+
+<p>
+<code>expr_value</code>や<code>primary_value</code>はアクションのために用意されている規則である。
+例えば<code>expr_value</code>なら値（value）を持つ<code>expr</code>であることを示す。値
+を持たない<code>expr</code>とは<code>return</code>や<code>break</code>、あるいはそういうものを含む<code>if</code>文
+などのことだ。「値を持つ」の詳しい定義は
+第12章『構文木の構築』で見る。
+<code>primary_value</code>も同じく「値を持つ」<code>primary</code>である。
+</p>
+
+<p>
+<code>klBEGIN</code>と<code>klEND</code>は説明した通り<code>BEGIN</code>と<code>END</code>のこと。
+</p>
+
+<p class="caption">▼<code>stmt</code>（2）</p>
+<pre class="longlist">
+                | lhs '=' command_call
+                | mlhs '=' command_call
+                | var_lhs tOP_ASGN command_call
+                | primary_value '[' aref_args ']' tOP_ASGN command_call
+                | primary_value '.' tIDENTIFIER tOP_ASGN command_call
+                | primary_value '.' tCONSTANT tOP_ASGN command_call
+                | primary_value tCOLON2 tIDENTIFIER tOP_ASGN command_call
+                | backref tOP_ASGN command_call
+</pre>
+
+
+<p>
+この規則は全部くくって見るのが正しい。
+共通点は右辺に<code>command_call</code>が来る代入であることだ。
+<code>command_call</code>は引数括弧を省略したメソッド呼び出しである。
+新しく出てきた記号は以下に表を置いておくので対照しながら確かめてほしい。
+</p>
+
+<table>
+<tr><td><code>lhs</code><td><td>代入の左辺（Left Hand Side）<td></tr>
+<tr><td><code>mlhs</code><td><td>多重代入の左辺（Multiple Left Hand Side）<td></tr>
+<tr><td><code>var_lhs</code><td><td>代入の左辺、ただし変数系のみ（VARiable Left Hand Side）<td></tr>
+<tr><td><code>tOP_ASGN</code><td><td><code>+=</code>や<code>*=</code>など組み合わせ代入記号（OPerator ASsiGN）<td></tr>
+<tr><td><code>aref_args</code><td><td><code>[]</code>メソッド呼び出しの引数に使える表現（Array REFerence）<td></tr>
+<tr><td><code>tIDENTIFIER</code><td><td>ローカル変数に使える識別子<td></tr>
+<tr><td><code>tCONSTANT</code><td><td>定数に使える識別子（一文字目が大文字）<td></tr>
+<tr><td><code>tCOLON2</code><td><td><code>::</code><td></tr>
+<tr><td><code>backref</code><td><td><code>$1 $2 $3...</code><td></tr>
+</table>
+
+<p>
+ちなみにarefはLisp用語だ。対になるasetというのもあって、そちらは
+array setの略。この略語は<code>ruby</code>のソースコードのいろいろなところで
+使われている。
+</p>
+
+<p class="caption">▼<code>stmt</code>（3）</p>
+<pre class="longlist">
+                | lhs '=' mrhs_basic
+                | mlhs '=' mrhs
+</pre>
+
+
+<p>
+この二つは多重代入である。<code>mrhs</code>は<code>mlhs</code>と同じ作りで、multipleな
+<code>rhs</code>（右辺）。
+こう見てくると、名前の意味を知るだけでもかなりわかりやすいということが
+わかる。
+</p>
+
+<p class="caption">▼<code>stmt</code>（4）</p>
+<pre class="longlist">
+                | expr
+</pre>
+
+
+<p>
+最後に、<code>expr</code>へ連結する。
+</p>
+
+
+
+<h3><code>expr</code></h3>
+
+<p class="caption">▼<code>expr</code></p>
+<pre class="longlist">
+expr            : kRETURN call_args
+                | kBREAK call_args
+                | kNEXT call_args
+                | command_call
+                | expr kAND expr
+                | expr kOR expr
+                | kNOT expr
+                | '!' command_call
+                | arg
+</pre>
+
+
+<p>
+式。<code>ruby</code>の式は文法上はかなり小さい。なぜなら普通は<code>expr</code>に入るものがほと
+んど<code>arg</code>に行ってしまっているからだ。逆に言うと、ここには<code>arg</code>に行けなかっ
+たものが残っているということになる。では行けなかったものはなにかと言う
+と、これまたメソッド呼び出し括弧の省略組である。<code>call_args</code>は剥き出しの
+引数リストで、<code>command_call</code>は先程言ったとおり括弧省略メソッドのこと。こ
+ういうものを「小さい」単位に入れると衝突しまくることになる。
+</p>
+
+<p>
+ただし以下の二つだけは種類が違う。
+</p>
+
+<pre class="emlist">
+expr kAND expr
+expr kOR expr
+</pre>
+
+<p>
+<code>kAND</code>は「<code>and</code>」で<code>kOR</code>は「<code>or</code>」。この二つは制御構造としての役割があ
+るので、<code>command_call</code>以上に「大きい」構文単位に入れなければならない。
+そして<code>command_call</code>は<code>expr</code>にある。だから最低でも<code>expr</code>にしてやらない
+とうまくいかない。例えば次のような使いかたが存在するのだが……
+</p>
+
+<pre class="emlist">
+  valid_items.include? arg  or raise ArgumentError, 'invalid arg'
+# valid_items.include?(arg) or raise(ArgumentError, 'invalid arg')
+</pre>
+
+<p>
+もし<code>kAND</code>の規則が<code>expr</code>でなくて<code>arg</code>にあったとすると、次のように
+連結されてしまうことになる。
+</p>
+
+<pre class="emlist">
+valid_items.include?((arg or raise)) ArgumentError, 'invalid arg'
+</pre>
+
+<p>
+当然パースエラーだ。
+</p>
+
+
+
+<h3><code>arg</code></h3>
+
+<p class="caption">▼<code>arg</code></p>
+<pre class="longlist">
+arg             : lhs '=' arg
+                | var_lhs tOP_ASGN arg
+                | primary_value '[' aref_args ']' tOP_ASGN arg
+                | primary_value '.' tIDENTIFIER tOP_ASGN arg
+                | primary_value '.' tCONSTANT tOP_ASGN arg
+                | primary_value tCOLON2 tIDENTIFIER tOP_ASGN arg
+                | backref tOP_ASGN arg
+                | arg tDOT2 arg
+                | arg tDOT3 arg
+                | arg '+' arg
+                | arg '-' arg
+                | arg '*' arg
+                | arg '/' arg
+                | arg '%' arg
+                | arg tPOW arg
+                | tUPLUS arg
+                | tUMINUS arg
+                | arg '|' arg
+                | arg '^' arg
+                | arg '&amp;' arg
+                | arg tCMP arg
+                | arg '&gt;' arg
+                | arg tGEQ arg
+                | arg '&lt;' arg
+                | arg tLEQ arg
+                | arg tEQ arg
+                | arg tEQQ arg
+                | arg tNEQ arg
+                | arg tMATCH arg
+                | arg tNMATCH arg
+                | '!' arg
+                | '~' arg
+                | arg tLSHFT arg
+                | arg tRSHFT arg
+                | arg tANDOP arg
+                | arg tOROP arg
+                | kDEFINED opt_nl  arg
+                | arg '?' arg ':' arg
+                | primary
+</pre>
+
+
+<p>
+規則の数は多いが、文法の複雑さは規則の数には比例しない。単に場合分けが
+多いだけの文法は<code>yacc</code>にとっては非常に扱いやすく、むしろ規則の深さである
+とか再帰のほうが複雑さに影響する。
+</p>
+
+<p>
+そうすると演算子のところで<code>arg OP arg</code>という形で再帰しているのが気になる
+のだが、これらの演算子には全て演算子優先順位が設定されているため
+実質上ただの列挙にすぎない。
+そこで<code>arg</code>の規則からそういう「ただの列挙」を併合して削ってしまおう。
+</p>
+
+<pre class="emlist">
+arg: lhs '=' arg              /* 1 */
+   | primary T_opeq arg       /* 2 */
+   | arg T_infix arg          /* 3 */
+   | T_pre arg                /* 4 */
+   | arg '?' arg ':' arg      /* 5 */
+   | primary                  /* 6 */
+</pre>
+
+<p>
+終端記号および終端記号のリストは区別する意味がないので全部まとめて<code>T_</code>の
+付く記号で表現した。<code>opeq</code>は<code>operator + equal</code>、<code>T_pre</code>は<code>'!'</code>や<code>'~'</code>の
+ような前置型演算子、<code>T_infix</code>は<code>'*'</code>や<code>'%'</code>と言った二項演算子を表す。
+</p>
+
+<p>
+この構造で衝突しないためには以下のようなことが重要になる
+（ただしこれが全てではない）。
+</p>
+
+<ul>
+<li><code>T_infix</code>が<code>'='</code>を含まないこと</li>
+</ul>
+
+<p>
+<code>arg</code>は<code>lhs</code>と部分的に重なるので<code>'='</code>があると規則1と3が区別できない。
+</p>
+
+<ul>
+<li><code>T_opeq</code>と<code>T_infix</code>が共通項を持たないこと</li>
+</ul>
+
+<p>
+<code>arg</code>は<code>primary</code>を含むから共通項を持つと規則2と3が区別できない。
+</p>
+
+<ul>
+<li><code>T_infix</code>の中に<code>'?'</code>がないこと</li>
+</ul>
+
+<p>
+もし含むと規則3と5がshift/reduce conflictを起こす。
+</p>
+
+<ul>
+<li><code>T_pre</code>が<code>'?'</code>や<code>':'</code>を含まない</li>
+</ul>
+
+<p>
+もし含むと規則4と5がかなり複雑に衝突する。
+</p>
+
+<p>
+結論としては全ての条件が成立しているので、この文法は衝突しない。
+当然と言えば当然だ。
+</p>
+
+
+
+<h3><code>primary</code></h3>
+
+<p>
+<code>primary</code>は規則が多いので最初から分割して示す。
+</p>
+
+<p class="caption">▼<code>primary</code>（1）</p>
+<pre class="longlist">
+primary         : literal
+                | strings
+                | xstring
+                | regexp
+                | words
+                | qwords
+</pre>
+
+
+<p>
+リテラル類。<code>literal</code>は<code>Symbol</code>リテラル（<code>:sym</code>）と数値。
+</p>
+
+<p class="caption">▼<code>primary</code>（2）</p>
+<pre class="longlist">
+                | var_ref
+                | backref
+                | tFID
+</pre>
+
+
+<p>
+変数類。<code>var_ref</code>はローカル変数やインスタンス変数など。
+<code>backref</code>は<code>$1 $2 $3</code>……。
+<code>tFID</code>は<code>!</code>や<code>?</code>が付いた識別子、例えば<code>include? reject!</code>など。
+<code>tFID</code>はローカル変数ではありえないので、
+それ単独で出てきたとしてもパーサレベルでメソッド呼び出しになる。
+</p>
+
+<p class="caption">▼<code>primary</code>（3）</p>
+<pre class="longlist">
+                | kBEGIN
+                  bodystmt
+                  kEND
+</pre>
+
+
+<p>
+<code>bodystmt</code>が<code>rescue</code>や<code>ensure</code>も含んでいる。
+つまりこれは例外制御の<code>begin</code>である。
+</p>
+
+<p class="caption">▼<code>primary</code>（4）</p>
+<pre class="longlist">
+                | tLPAREN_ARG expr  ')'
+                | tLPAREN compstmt ')'
+</pre>
+
+
+<p>
+既に説明した。構文縮退。
+</p>
+
+<p class="caption">▼<code>primary</code>（5）</p>
+<pre class="longlist">
+                | primary_value tCOLON2 tCONSTANT
+                | tCOLON3 cname
+</pre>
+
+
+<p>
+定数の参照。<code>tCONSTANT</code>は定数名（大文字で始まる識別子）。
+</p>
+
+<p>
+<code>tCOLON2</code>は<code>::</code>と<code>tCOLON3</code>は両方とも<code>::</code>なのだが、<code>tCOLON3</code>はトップレベルを
+意味する<code>::</code>だけを表している。つまり<code>::Const</code>という場合の<code>::</code>である。
+<code>Net::SMTP</code>のような<code>::</code>は<code>tCOLON2</code>だ。
+</p>
+
+<p>
+同じトークンに違う記号が使われているのは括弧省略メソッドに対応する
+ためである。例えば次の二つを見分けるためだ。
+</p>
+
+<pre class="emlist">
+p Net::HTTP    # p(Net::HTTP)
+p Net  ::HTTP  # p(Net(::HTTP))
+</pre>
+
+<p>
+直前にスペースがあるか、あるいは開き括弧などの境界文字がある場合は
+<code>tCOLON3</code>でそれ以外では<code>tCOLON2</code>になる。
+</p>
+
+<p class="caption">▼<code>primary</code>（6）</p>
+<pre class="longlist">
+                | primary_value '[' aref_args ']'
+</pre>
+
+
+<p>
+インデックス形式の呼び出し、例えば<code>arr[i]</code>。
+</p>
+
+<p class="caption">▼<code>primary</code>（7）</p>
+<pre class="longlist">
+                | tLBRACK aref_args ']'
+                | tLBRACE assoc_list '}'
+</pre>
+
+
+<p>
+配列リテラルとハッシュリテラル。こちらの<code>tLBRACK</code>も<code>'['</code>を表して
+いるのだが、<code>'['</code>は<code>'['</code>でも前に空白のない<code>'['</code>のこと。この区別が必要
+なのもメソッド呼び出し括弧の省略の余波だ。
+</p>
+
+<p>
+それにしてもこの規則の終端記号は一文字しか違わないので非常にわかりずらい。
+以下の表に括弧の読みかたを書いておいたので対照しながら読んでほしい。
+</p>
+
+<p class="caption">▼各種括弧の英語名</p>
+<table>
+<tr><td>記号<td><td>英語名<td><td>日本語名（の一例）<td></tr>
+<tr><td><code>( )</code><td><td>parentheses<td><td>丸括弧、括弧<td></tr>
+<tr><td><code>{ }</code><td><td>braces<td><td>ヒゲ括弧、中括弧<td></tr>
+<tr><td><code>[ ]</code><td><td>brackets<td><td>角括弧、大括弧<td></tr>
+</table>
+
+<p class="caption">▼<code>primary</code>（8）</p>
+<pre class="longlist">
+                | kRETURN
+                | kYIELD '(' call_args ')'
+                | kYIELD '(' ')'
+                | kYIELD
+                | kDEFINED opt_nl '('  expr ')'
+</pre>
+
+
+<p>
+メソッド呼び出しと形式が似ている構文。
+順番に、<code>return</code>、<code>yield</code>、<code>defined?</code>。
+</p>
+
+<p>
+<code>yield</code>には引数が付いているのに<code>return</code>に引数がないのはどうしてだろう。
+根本的な原因は、<code>yield</code>はそれ自体に返り値があるのに対し<code>return</code>には返り値が
+ないことである。ただし、ここで引数がないからといって値を渡せないわけでは、
+もちろんない。<code>expr</code>に次のような規則があった。
+</p>
+
+<pre class="emlist">
+kRETURN call_args
+</pre>
+
+<p>
+<code>call_args</code>は剥き出しの引数リストなので<code>return 1</code>や<code>return nil</code>には対
+処できる。<code>return(1)</code>のようなものは<code>return (1)</code>として扱われる。という
+ことは、次のように引数が二個以上ある<code>return</code>には括弧が付けられないはず
+だ。
+</p>
+
+<pre class="emlist">
+return(1, 2, 3)   # return  (1,2,3)と解釈されてパースエラー
+</pre>
+
+<p>
+このあたりは次章『状態付きスキャナ』を読んでから
+もう一度見てもらうとよくわかるだろう。
+</p>
+
+<p class="caption">▼<code>primary</code>（9）</p>
+<pre class="longlist">
+                | operation brace_block
+                | method_call
+                | method_call brace_block
+</pre>
+
+
+<p>
+メソッド呼び出し。<code>method_call</code>は引数あり（括弧もある）、<code>operation</code>は
+括弧も引数もなし。<code>brace_block</code>は<code>{</code>〜<code>}</code>か<code>do</code>〜<code>end</code>で、それがついて
+いるメソッドとはつまりイテレータだ。<code>brace</code>なのになぜ<code>do</code>〜<code>end</code>が入る
+のか……ということにはマリアナ海溝よりも深淵な理由があるのだが、これも
+やはり次章『状態付きスキャナ』を読んでもらうしかない。
+</p>
+
+<p class="caption">▼<code>primary</code>（10）</p>
+<pre class="longlist">
+  | kIF expr_value then compstmt if_tail kEND         # if
+  | kUNLESS expr_value then compstmt opt_else kEND    # unless
+  | kWHILE expr_value do compstmt kEND                # while
+  | kUNTIL expr_value do compstmt kEND                # until
+  | kCASE expr_value opt_terms case_body kEND         # case
+  | kCASE opt_terms case_body kEND                    # case（形式2）
+  | kFOR block_var kIN expr_value do compstmt kEND    # for
+</pre>
+
+
+<p>
+基本制御構造。ちょっと意外なのは、こんなデカそうなものが<code>primary</code>という
+「小さい」ものの中にあることだ。<code>primary</code>は<code>arg</code>でもあるのでこんなこと
+もできるということになる。
+</p>
+
+<pre class="emlist">
+p(if true then 'ok' end)   # "ok"と表示される
+</pre>
+
+<p>
+Rubyの特徴の一つに「ほとんどの構文要素が式」というのがあった。
+<code>if</code>や<code>while</code>が<code>primary</code>にあることでそれが具体的に表現されている。
+</p>
+
+<p>
+それにしてもどうしてこんな「大きい」要素が<code>primary</code>にあって大丈夫なのだ
+ろう。それはRubyの構文が「終端記号Aで始まり終端記号Bで終わる」
+という特徴があるからに他ならない。この点については次の項で改めて
+考えてみる。
+</p>
+
+<p class="caption">▼<code>primary</code>（11）</p>
+<pre class="longlist">
+  | kCLASS cname superclass bodystmt kEND        # クラス定義
+  | kCLASS tLSHFT expr term bodystmt kEND        # 特異クラス定義
+  | kMODULE cname bodystmt kEND                  # モジュール定義
+  | kDEF fname f_arglist bodystmt kEND           # メソッド定義
+  | kDEF singleton dot_or_colon fname f_arglist bodystmt kEND
+                                                 # 特異メソッド定義
+</pre>
+
+
+<p>
+定義文。クラス文クラス文と呼んできたが、本当はクラス項と呼ぶべきで
+あったか。これらも全て「終端記号Aで始まりBで終わる」パターンなので、
+いくら増えたところで一向に問題はない。
+</p>
+
+<p class="caption">▼<code>primary</code>（12）</p>
+<pre class="longlist">
+                | kBREAK
+                | kNEXT
+                | kREDO
+                | kRETRY
+</pre>
+
+
+<p>
+各種ジャンプ。このへんはまあ、文法的にはどうでもいい。
+</p>
+
+
+
+<h3>衝突するリスト</h3>
+
+<p>
+先の項では<code>if</code>が<code>primary</code>なんかにあって大丈夫なのだろうか、という疑問を
+提示した。厳密に証明するにはなかなか難しいのだが、感覚的にならわりと
+簡単に説明できる。ここでは次のような小さい規則でシミュレーション
+してみよう。
+</p>
+
+<pre class="emlist">
+%token A B o
+%%
+element   : A item_list B
+
+item_list :
+          | item_list item
+
+item      : element
+          | o
+</pre>
+
+<p>
+<code>element</code>がこれから問題にしようとしている要素だ。例えば<code>if</code>について考える
+なら<code>if</code>だ。<code>element</code>は終端記号<code>A</code>で始まり<code>B</code>で終わるリストである。
+<code>if</code>で言うなら<code>if</code>で始まり<code>end</code>で終わる。内容物の<code>o</code>はメソッドや
+変数参照やリテラルである。リストの要素には、その<code>o</code>か、または<code>element</code>が
+ネストする。
+</p>
+
+<p>
+この文法に基くパーサで次のような入力をパースしてみよう。
+</p>
+
+<pre class="emlist">
+A  A  o  o  o  B  o  A  o  A  o  o  o  B  o  B  B
+</pre>
+
+<p>
+ここまでネストしまくっていると人間にはインデントなどの助けがないとちょっ
+とわかりにくい。だが次のように考えればわりと簡単である。いつか必ず
+<code>A</code>と<code>B</code>が<code>o</code>だけを狭んで現れるので、それを消して<code>o</code>に変える。それを繰り
+返すだけでいい。結論は図4のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_ablist.jpg" alt="(ablist)"><br>
+図4: Aで始まりBで終わるリストのリストをパース
+</p>
+
+<p>
+しかしもし終端の<code>B</code>がなかったりすると……
+</p>
+
+<pre class="emlist">
+%token A o
+%%
+element   : A item_list    /* Bを消してみた */
+
+item_list :
+          | item_list item
+
+item      : element
+          | o
+</pre>
+
+<p>
+これを<code>yacc</code>で処理すると2 shift/reduce conflictsと出た。つまりこの文法は
+曖昧である。入力は、先程のものから単純に<code>B</code>を抜くと次のようになってしまう。
+</p>
+
+<pre class="emlist">
+A  A  o  o  o  o  A  o  A  o  o  o  o
+</pre>
+
+<p>
+どうにもよくわからない。しかしshift/reduce conflictはシフトしろ、とい
+うルールがあったので、試しにそれに従ってシフト優先（即ち内側優先）でパー
+スしてみよう（図5）。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_alist.jpg" alt="(alist)"><br>
+図5: Aで始まるリストのリストをパース
+</p>
+
+<p>
+とりあえずパースできた。しかしこれでは入力と意図が全く違うし、どうやっ
+ても途中でリストを切ることができなくなってしまった。
+</p>
+
+<p>
+実はRubyの括弧省略メソッドはこれと似たような状態にある。わかりにくいが、
+メソッド名と第一引数が合わせて<code>A</code>だ。なぜならその二つの間にだけカンマが
+ないので、新しいリストの始まりだと認識できるからである。
+</p>
+
+<p>
+他に「現実的な」HTMLもこのパターンを含む。例えば<code>&lt;/p&gt;</code>や<code>&lt;/li&gt;</code>が省略され
+たときはこうなる。そういうわけで<code>yacc</code>は普通のHTMLにはまるで通用しない。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>スキャナ</h2>
+
+<h3>パーサ概形</h3>
+
+<p>
+スキャナに移る前にパーサの概形について説明しておこう。
+図6を見てほしい。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_interf.jpg" alt="(interf)"><br>
+図6: パーサインターフェイス（コールグラフ）
+</p>
+
+<p>
+パーサの公式インターフェイスは<code>rb_compile_cstr()</code>、
+<code>rb_compile_string()</code>、
+<code>rb_compile_file()</code>の三つである。それぞれCの文字列、Rubyの文字列オブジェク
+ト、Rubyの<code>IO</code>オブジェクトからプログラムを読み込んでコンパイルする。
+</p>
+
+<p>
+これらの関数は直接間接に<code>yycompile()</code>を呼び出し、最終的に<code>yacc</code>が生成した
+<code>yyparse()</code>に完全に制御を移す。パーサの中心とはこの<code>yyparse()</code>に他ならない
+のだから、<code>yyparse()</code>を中心に把握してやるとよい。即ち<code>yyparse()</code>に移る前の
+関数は全て前準備であり、<code>yyparse()</code>より後の関数は<code>yyparse()</code>にこき使われ
+る雑用関数にすぎない。
+</p>
+
+<p>
+<code>parse.y</code>にある残りの関数は<code>yylex()</code>から呼び出される補助関数群だが、こちらも
+また明確に分類することができる。
+</p>
+
+<p>
+まずスキャナの最も低レベルな部分には入力バッファがある。<code>ruby</code>はソースプ
+ログラムをRubyの<code>IO</code>オブジェクトか文字列のどちらからでも入力できるように
+なっており、入力バッファはそれを隠蔽して単一のバイトストリームに見せか
+ける。
+</p>
+
+<p>
+次のレベルはトークンバッファである。入力バッファから1バイト
+ずつ読んだらトークンが一つ完成するまでここにまとめてとっておく。
+</p>
+
+<p>
+従って<code>yylex</code>全体の構造は図7のように図示できる。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_scanner.jpg" alt="(scanner)"><br>
+図7: スキャナの全体像
+</p>
+
+
+
+<h3>入力バッファ</h3>
+
+<p>
+まず入力バッファから見ていこう。インターフェイスは
+<code>nextc()</code>、<code>pushback()</code>、<code>peek()</code>の三つだけだ。
+</p>
+
+<p>
+しつこいようだがまずデータ構造を調べるのだった。
+入力バッファの使う変数はこうだ。
+</p>
+
+<p class="caption">▼入力バッファ</p>
+<pre class="longlist">
+2279  static char *lex_pbeg;
+2280  static char *lex_p;
+2281  static char *lex_pend;
+
+(parse.y)
+</pre>
+
+
+<p>
+バッファの先頭と現在位置、終端。どうやらこのバッファは単純な一列の
+文字列バッファらしい（図8）。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_ibuffer.jpg" alt="(ibuffer)"><br>
+図8: 入力バッファ
+</p>
+
+<h4><code>nextc()</code></h4>
+
+<p>
+ではこれを使っているところを見てみる。まずは一番オーソドックスと
+思われる<code>nextc()</code>から。
+</p>
+
+<p class="caption">▼<code>nextc()</code></p>
+<pre class="longlist">
+2468  static inline int
+2469  nextc()
+2470  {
+2471      int c;
+2472
+2473      if (lex_p == lex_pend) {
+2474          if (lex_input) {
+2475              VALUE v = lex_getline();
+2476
+2477              if (NIL_P(v)) return -1;
+2478              if (heredoc_end &gt; 0) {
+2479                  ruby_sourceline = heredoc_end;
+2480                  heredoc_end = 0;
+2481              }
+2482              ruby_sourceline++;
+2483              lex_pbeg = lex_p = RSTRING(v)-&gt;ptr;
+2484              lex_pend = lex_p + RSTRING(v)-&gt;len;
+2485              lex_lastline = v;
+2486          }
+2487          else {
+2488              lex_lastline = 0;
+2489              return -1;
+2490          }
+2491      }
+2492      c = (unsigned char)*lex_p++;
+2493      if (c == '\r' &amp;&amp; lex_p &lt;= lex_pend &amp;&amp; *lex_p == '\n') {
+2494          lex_p++;
+2495          c = '\n';
+2496      }
+2497
+2498      return c;
+2499  }
+
+(parse.y)
+</pre>
+
+
+<p>
+最初の<code>if</code>で入力バッファの最後まで行ったかどうかテストしているようだ。そ
+してその内側の<code>if</code>は、<code>else</code>で<code>-1</code>（<code>EOF</code>）を返していることから入力全体の
+終わりをテストしているのだと想像できる。逆に言えば、入力が終わったときには
+<code>lex_input</code>が0になる。
+</p>
+
+<p>
+ということは入力バッファには少しずつ文字列が入ってきているのだというこ
+とがわかる。その単位はと言うと、バッファを更新する関数の名前が
+<code>lex_getline()</code>なので行に間違いない。
+</p>
+
+<p>
+まとめるとこういうことだ。
+</p>
+
+<pre class="emlist">
+if (バッファ終端に到達した)
+    if (まだ入力がある)
+        次の行を読み込む
+    else
+        return EOF
+ポインタを進める
+CRを読み飛ばす
+return c
+</pre>
+
+<p>
+行を補給する関数<code>lex_getline()</code>も見てみよう。
+この関数で使う変数も一緒に並べておく。
+</p>
+
+<p class="caption">▼<code>lex_getline()</code></p>
+<pre class="longlist">
+2276  static VALUE (*lex_gets)();     /* gets function */
+2277  static VALUE lex_input;         /* non-nil if File */
+
+2420  static VALUE
+2421  lex_getline()
+2422  {
+2423      VALUE line = (*lex_gets)(lex_input);
+2424      if (ruby_debug_lines &amp;&amp; !NIL_P(line)) {
+2425          rb_ary_push(ruby_debug_lines, line);
+2426      }
+2427      return line;
+2428  }
+
+(parse.y)
+</pre>
+
+
+<p>
+最初の行以外はどうでもよい。
+<code>lex_gets</code>が一行読み込み関数へのポインタ、<code>lex_input</code>が本当の入力だろう。
+<code>lex_gets</code>をセットしているところを検索してみると、こう出た。
+</p>
+
+<p class="caption">▼<code>lex_gets</code>をセット</p>
+<pre class="longlist">
+2430  NODE*
+2431  rb_compile_string(f, s, line)
+2432      const char *f;
+2433      VALUE s;
+2434      int line;
+2435  {
+2436      lex_gets = lex_get_str;
+2437      lex_gets_ptr = 0;
+2438      lex_input = s;
+
+2454  NODE*
+2455  rb_compile_file(f, file, start)
+2456      const char *f;
+2457      VALUE file;
+2458      int start;
+2459  {
+2460      lex_gets = rb_io_gets;
+2461      lex_input = file;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>rb_io_gets()</code>はパーサ専用というわけではなく、<code>ruby</code>の汎用ライブラリだ。
+<code>IO</code>オブジェクトから一行読み込む関数である。
+</p>
+
+<p>
+一方の<code>lex_get_str()</code>は次のように定義されている。
+</p>
+
+<p class="caption">▼<code>lex_get_str()</code></p>
+<pre class="longlist">
+2398  static int lex_gets_ptr;
+
+2400  static VALUE
+2401  lex_get_str(s)
+2402      VALUE s;
+2403  {
+2404      char *beg, *end, *pend;
+2405
+2406      beg = RSTRING(s)-&gt;ptr;
+2407      if (lex_gets_ptr) {
+2408          if (RSTRING(s)-&gt;len == lex_gets_ptr) return Qnil;
+2409          beg += lex_gets_ptr;
+2410      }
+2411      pend = RSTRING(s)-&gt;ptr + RSTRING(s)-&gt;len;
+2412      end = beg;
+2413      while (end &lt; pend) {
+2414          if (*end++ == '\n') break;
+2415      }
+2416      lex_gets_ptr = end - RSTRING(s)-&gt;ptr;
+2417      return rb_str_new(beg, end - beg);
+2418  }
+
+(parse.y)
+</pre>
+
+
+<p>
+この関数はいいだろう。<code>lex_gets_ptr</code>が既に読み込んだところを記憶している。
+それを次の<code>\n</code>まで移動し、同時にそこを切り取って返す。
+
+<p>
+ここで<code>nextc</code>に戻ろう。このように同じインターフェイスの関数を二つ用意
+して、パーサの初期化のときに関数ポインタを切り替えてしまうことで他の部
+分を共通化しているわけだ。コードの差分をデータに変換して吸収していると
+も言える。<code>st_table</code>にも似たような手法があった。
+</p>
+
+<h4><code>pushback()</code></h4>
+
+<p>
+バッファの物理構造と<code>nextc()</code>がわかればあとは簡単だ。
+一文字書き戻す<code>pushback()</code>。Cで言えば<code>ungetc()</code>である。
+</p>
+
+<p class="caption">▼<code>pushback()</code></p>
+<pre class="longlist">
+2501  static void
+2502  pushback(c)
+2503      int c;
+2504  {
+2505      if (c == -1) return;
+2506      lex_p--;
+2507  }
+
+(parse.y)
+</pre>
+
+
+<h4><code>peek()</code></h4>
+
+<p>
+そしてポインタを進めずに次の文字をチェックする<code>peek()</code>（語意は
+「覗き見る」）。
+</p>
+
+<p class="caption">▼<code>peek()</code></p>
+<pre class="longlist">
+2509  #define peek(c) (lex_p != lex_pend &amp;&amp; (c) == *lex_p)
+
+(parse.y)
+</pre>
+
+
+
+
+<h3>トークンバッファ</h3>
+
+<p>
+トークンバッファは次のレベルのバッファである。
+トークンが一つ切り出せるまで文字列を保管しておく。
+インターフェイスは以下の五つである。
+</p>
+
+<table>
+<tr><td><code>newtok</code><td><td>新しいトークンを開始する<td></tr>
+<tr><td><code>tokadd</code><td><td>バッファに文字を足す<td></tr>
+<tr><td><code>tokfix</code><td><td>バッファを終端する<td></tr>
+<tr><td><code>tok</code><td><td>バッファリングしている文字列の先頭へのポインタ<td></tr>
+<tr><td><code>toklen</code><td><td>バッファリングしている文字列長さ<td></tr>
+<tr><td><code>toklast</code><td><td>バッファリングしている文字列の最後のバイト<td></tr>
+</table>
+
+<p>
+ではまずデータ構造から見ていく。
+</p>
+
+<p class="caption">▼トークンバッファ</p>
+<pre class="longlist">
+2271  static char *tokenbuf = NULL;
+2272  static int   tokidx, toksiz = 0;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>tokenbuf</code>がバッファで、<code>tokidx</code>がトークンの末尾（<code>int</code>なのでインデッ
+クスらしい）、<code>toksiz</code>がバッファ長だろう。こちらも入力バッファと同じく
+単純な構造だ。絵にすると図9のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_tbuffer.jpg" alt="(tbuffer)"><br>
+図9: トークンバッファ
+</p>
+
+<p>
+引き続きインターフェイスに行って、新しいトークンを開始する<code>newtok()</code>を
+読もう。
+</p>
+
+<p class="caption">▼<code>newtok()</code></p>
+<pre class="longlist">
+2516  static char*
+2517  newtok()
+2518  {
+2519      tokidx = 0;
+2520      if (!tokenbuf) {
+2521          toksiz = 60;
+2522          tokenbuf = ALLOC_N(char, 60);
+2523      }
+2524      if (toksiz &gt; 4096) {
+2525          toksiz = 60;
+2526          REALLOC_N(tokenbuf, char, 60);
+2527      }
+2528      return tokenbuf;
+2529  }
+
+(parse.y)
+</pre>
+
+
+<p>
+バッファ全体の初期化インターフェイスというのはないので、バッファが初期
+化されていない可能性がある。だから最初の<code>if</code>でそれをチェックし初期化す
+る。<code>ALLOC_N()</code>は<code>ruby</code>が定義しているマクロで、<code>calloc()</code>とだいたい
+同じだ。
+</p>
+
+<p>
+割り当てる長さは初期値で60だが、大きくなりすぎていたら（<code>&gt; 4096</code>）小さく
+戻している。一つのトークンがそんなに長くなることはまずないので、このサ
+イズで現実的だ。
+</p>
+
+<p>
+次はトークンバッファに文字を追加する<code>tokadd()</code>を見る。
+</p>
+
+<p class="caption">▼<code>tokadd()</code></p>
+<pre class="longlist">
+2531  static void
+2532  tokadd(c)
+2533      char c;
+2534  {
+2535      tokenbuf[tokidx++] = c;
+2536      if (tokidx &gt;= toksiz) {
+2537          toksiz *= 2;
+2538          REALLOC_N(tokenbuf, char, toksiz);
+2539      }
+2540  }
+
+(parse.y)
+</pre>
+
+
+<p>
+一行目で文字を追加。そのあとトークン長をチェックし、バッファ末尾を
+越えそうだったら<code>REALLOC_N()</code>する。<code>REALLOC_N()</code>は引数指定方式が
+<code>calloc()</code>と同じ<code>realloc()</code>だ。
+</p>
+
+<p>
+残りのインターフェイスはまとめてしまう。
+</p>
+
+<p class="caption">▼<code>tokfix() tok() toklen() toklast()</code></p>
+<pre class="longlist">
+2511  #define tokfix() (tokenbuf[tokidx]='\0')
+2512  #define tok() tokenbuf
+2513  #define toklen() tokidx
+2514  #define toklast() (tokidx&gt;0?tokenbuf[tokidx-1]:0)
+
+(parse.y)
+</pre>
+
+
+<p>
+問題ないだろう。
+</p>
+
+
+
+<h3><code>yylex()</code></h3>
+
+<p>
+<code>yylex()</code>はとても長い。現在1000行以上ある。そのほとんどが巨大な
+<code>switch</code>文一つで占められており、文字ごとに分岐するようになっている。
+まず一部省略して全体構造を示す。
+</p>
+
+<p class="caption">▼<code>yylex</code>概形</p>
+<pre class="longlist">
+3106  static int
+3107  yylex()
+3108  {
+3109      static ID last_id = 0;
+3110      register int c;
+3111      int space_seen = 0;
+3112      int cmd_state;
+3113
+3114      if (lex_strterm) {
+              /* ……文字列のスキャン…… */
+3131          return token;
+3132      }
+3133      cmd_state = command_start;
+3134      command_start = Qfalse;
+3135    retry:
+3136      switch (c = nextc()) {
+3137        case '\0':                /* NUL */
+3138        case '\004':              /* ^D */
+3139        case '\032':              /* ^Z */
+3140        case -1:                  /* end of script. */
+3141          return 0;
+3142
+3143          /* white spaces */
+3144        case ' ': case '\t': case '\f': case '\r':
+3145        case '\13': /* '\v' */
+3146          space_seen++;
+3147          goto retry;
+3148
+3149        case '#':         /* it's a comment */
+3150          while ((c = nextc()) != '\n') {
+3151              if (c == -1)
+3152                  return 0;
+3153          }
+3154          /* fall through */
+3155        case '\n':
+              /* ……省略…… */
+
+            case xxxx:
+                ：
+              break;
+                ：
+            /* 文字ごとにたくさん分岐 */
+                ：
+                ：
+4103        default:
+4104          if (!is_identchar(c) || ISDIGIT(c)) {
+4105              rb_compile_error("Invalid char `\\%03o' in expression", c);
+4106              goto retry;
+4107          }
+4108
+4109          newtok();
+4110          break;
+4111      }
+
+          /* ……通常の識別子を扱う…… */
+      }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>yylex()</code>の返り値はゼロが「入力終わり」、非ゼロなら記号である。
+</p>
+
+<p>
+「<code>c</code>」などという非常に簡潔な変数が全体に渡って使われているので注意。
+スペースを読んだときの<code>space_seen++</code>は後で役に立つ。
+</p>
+
+<p>
+あとは文字ごとに分岐してひたすら処理すればよいのだが、単調な処理が続く
+ので読むほうはとても退屈だ。そこでいくつかポイントを絞って見てみること
+にする。本書では全ての文字は解説しないが、同じパターンを敷衍していけば
+簡単である。
+</p>
+
+
+<h4><code>'!'</code></h4>
+
+<p>
+まずは簡単なものから見てみよう。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>'!'</code></p>
+<pre class="longlist">
+3205        case '!':
+3206          lex_state = EXPR_BEG;
+3207          if ((c = nextc()) == '=') {
+3208              return tNEQ;
+3209          }
+3210          if (c == '~') {
+3211              return tNMATCH;
+3212          }
+3213          pushback(c);
+3214          return '!';
+
+(parse.y)
+</pre>
+
+
+<p>
+日本語でコードの意味を書き出したので対照して読んでみてほしい。
+</p>
+
+<pre class="emlist">
+case '!':
+  EXPR_BEGに移行
+  if (次の文字が'='なら) {
+      トークンは「!=（tNEQ）」である
+  }
+  if (次の文字が'~'なら) {
+      トークンは「!~（tNMATCH）」である
+  }
+  どちらでもないなら読んだ文字は戻しておく
+  トークンは「'!'」である。
+</pre>
+
+<p>
+この<code>case</code>節は短かいが、スキャナの重要な法則が示されている。それは
+「最長一致の原則」である。<code>"!="</code>という二文字は「<code>!</code>と<code>=</code>」「<code>!=</code>」の
+二通りに解釈できるが、この場合は「<code>!=</code>」を選ばなければならない。
+プログラム言語のスキャナでは最長一致が基本である。
+</p>
+
+<p>
+また<code>lex_state</code>はスキャナの状態を表す変数である。
+次章『状態付きスキャナ』で嫌になるほど
+やるので、とりあえず無視しておいていい。いちおう意味だけ言っておくと、
+<code>EXPR_BEG</code>は「明らかに式の先頭にいる」ことを示している。<code>not</code>の<code>!</code>だろ
+うと<code>!=</code>だろうと<code>!~</code>だろうと、次は式の先頭だからだ。
+</p>
+
+
+<h4><code>'&gt;'</code></h4>
+
+<p>
+次は<code>yylval</code>（記号の値）を使う例として<code>'&gt;'</code>を見てみる。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>'&gt;'</code></p>
+<pre class="longlist">
+3296        case '&gt;':
+3297          switch (lex_state) {
+3298            case EXPR_FNAME: case EXPR_DOT:
+3299              lex_state = EXPR_ARG; break;
+3300            default:
+3301              lex_state = EXPR_BEG; break;
+3302          }
+3303          if ((c = nextc()) == '=') {
+3304              return tGEQ;
+3305          }
+3306          if (c == '&gt;') {
+3307              if ((c = nextc()) == '=') {
+3308                  yylval.id = tRSHFT;
+3309                  lex_state = EXPR_BEG;
+3310                  return tOP_ASGN;
+3311              }
+3312              pushback(c);
+3313              return tRSHFT;
+3314          }
+3315          pushback(c);
+3316          return '&gt;';
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>yylval</code>のところ以外は無視してよい。プログラムを読むときは一つのことに
+だけ集中するのが肝心だ。
+</p>
+
+<p>
+ここでは<code>&gt;=</code>に対応する記号<code>tOP_ASGN</code>に対してその値<code>tRSHFT</code>をセットして
+いる。使っている共用体メンバが<code>id</code>だから型は<code>ID</code>である。<code>tOP_ASGN</code>は自
+己代入の記号で、<code>+=</code>とか<code>-=</code>とか<code>*=</code>といったものを全部まとめて表してい
+るから、それを後で区別するために何の自己代入かを値として渡すわけだ。
+</p>
+
+<p>
+なぜ自己代入をまとめるかというと、そのほうが規則が短くなるからだ。
+スキャナでまとめられるものはできるだけたくさんまとめてしまったほうが規
+則がすっきりする。ではなぜ二項演算子は全部まとめないのかと言うと、優先
+順位が違うからである。
+</p>
+
+<h4><code>':'</code></h4>
+
+<p>
+スキャンがパースから完全に独立していれば話は簡単なのだが、現実はそう
+簡単ではない。Rubyの文法は特に複雑で空白が前にあるとなんか違うとか、
+まわりの状況でトークンの切り方が変わったりする。以下に示す<code>':'</code>の
+コードは空白で挙動が変わる一例だ。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>':'</code></p>
+<pre class="longlist">
+3761        case ':':
+3762          c = nextc();
+3763          if (c == ':') {
+3764              if (lex_state == EXPR_BEG ||  lex_state == EXPR_MID ||
+3765                  (IS_ARG() &amp;&amp; space_seen)) {
+3766                  lex_state = EXPR_BEG;
+3767                  return tCOLON3;
+3768              }
+3769              lex_state = EXPR_DOT;
+3770              return tCOLON2;
+3771          }
+3772          pushback(c);
+3773          if (lex_state == EXPR_END ||
+                  lex_state == EXPR_ENDARG ||
+                  ISSPACE(c)) {
+3774              lex_state = EXPR_BEG;
+3775              return ':';
+3776          }
+3777          lex_state = EXPR_FNAME;
+3778          return tSYMBEG;
+
+(parse.y)
+</pre>
+
+
+<p>
+今度も<code>lex_state</code>関係は無視して<code>space_seen</code>まわりだけに注目してほしい。
+</p>
+
+<p>
+<code>space_seen</code>はトークンの前に空白があると真になる変数だ。それが成立
+すると、つまり<code>'::'</code>の前に空白があるとそれは<code>tCOLON3</code>になり、空白がな
+ければ<code>tCOLON2</code>になるらしい。これは前節で<code>primary</code>のところで説明した通
+りだ。
+</p>
+
+<h4>識別子</h4>
+
+<p>
+ここまでは記号ばかりなのでせいぜい一文字二文字だったが、今度は
+もう少し長いものも見てみることにする。識別子のスキャンパターンだ。
+</p>
+
+<p>
+まず<code>yylex</code>の全体像はこうなっていた。
+</p>
+
+<pre class="emlist">
+yylex(...)
+{
+    switch (c = nextc()) {
+      case xxxx:
+        ....
+      case xxxx:
+        ....
+      default:
+    }
+
+    識別子のスキャンコード
+}
+</pre>
+
+<p>
+次のコードは巨大<code>switch</code>の末尾のところからの引用である。
+やや長いのでコメントを入れつつ示そう。
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子</p>
+<pre class="longlist">
+4081        case '@':                 /* インスタンス変数かクラス変数 */
+4082          c = nextc();
+4083          newtok();
+4084          tokadd('@');
+4085          if (c == '@') {         /* @@、つまりクラス変数 */
+4086              tokadd('@');
+4087              c = nextc();
+4088          }
+4089          if (ISDIGIT(c)) {       /* @1など */
+4090              if (tokidx == 1) {
+4091    rb_compile_error("`@%c' is not a valid instance variable name", c);
+4092              }
+4093              else {
+4094    rb_compile_error("`@@%c' is not a valid class variable name", c);
+4095              }
+4096          }
+4097          if (!is_identchar(c)) { /* @の次に変な文字がある */
+4098              pushback(c);
+4099              return '@';
+4100          }
+4101          break;
+4102
+4103        default:
+4104          if (!is_identchar(c) || ISDIGIT(c)) {
+4105              rb_compile_error("Invalid char `\\%03o' in expression", c);
+4106              goto retry;
+4107          }
+4108
+4109          newtok();
+4110          break;
+4111      }
+4112
+4113      while (is_identchar(c)) {   /* 識別子に使える文字のあいだ…… */
+4114          tokadd(c);
+4115          if (ismbchar(c)) {      /* マルチバイト文字の先頭バイトならば */
+4116              int i, len = mbclen(c)-1;
+4117
+4118              for (i = 0; i &lt; len; i++) {
+4119                  c = nextc();
+4120                  tokadd(c);
+4121              }
+4122          }
+4123          c = nextc();
+4124      }
+4125      if ((c == '!' || c == '?') &amp;&amp;
+              is_identchar(tok()[0]) &amp;&amp;
+              !peek('=')) {      /* name!またはname?の末尾一文字 */
+4126          tokadd(c);
+4127      }
+4128      else {
+4129          pushback(c);
+4130      }
+4131      tokfix();
+
+(parse.y)
+</pre>
+
+
+<p>
+最後に<code>!</code>/<code>?</code>を追加しているところの条件に注目してほしい。
+この部分は次のような解釈をするためである。
+</p>
+
+<pre class="emlist">
+obj.m=1       # obj.m  =   1       (obj.m= ... ではない)
+obj.m!=1      # obj.m  !=  1       (obj.m! ... ではない)
+</pre>
+
+<p>
+つまり最長一致「ではない」。
+最長一致はあくまで原則であって規則ではないので、
+ときには破っても構わないのだ。
+</p>
+
+<h4>予約語</h4>
+
+<p>
+識別子をスキャンした後には実はもう100行くらいコードがあって、そこでは
+実際の記号を割り出している。先程のコードではインスタンス変数やクラス変
+数、ローカル変数などをまとめてスキャンしてしまっていたから、それを改め
+て分類するわけだ。
+</p>
+
+<p>
+それはまあいいのだが、その中にちょっと変わった項目がある。それは予約語
+を漉し取ることだ。予約語は文字種的にはローカル変数と変わらないので、ま
+とめてスキャンしておいて後から分類するほうが効率的なのである。
+</p>
+
+<p>
+では<code>char*</code>文字列<code>str</code>があったとして、予約語かどうか見分けるにはどうしたら
+いいだろうか。まずもちろん<code>if</code>文と<code>strcmp()</code>で比較しまくる方法がある。しか
+しそれでは全くもって賢くない。柔軟性がない。スピードも線型増加する。
+普通はリストとかハッシュにデータだけ分離して、コードを短く済ますだろう。
+</p>
+
+<pre class="emlist">
+/* コードをデータに変換する */
+struct entry {char *name; int symbol;};
+struct entry *table[] = {
+    {"if",     kIF},
+    {"unless", kUNLESS},
+    {"while",  kWHILE},
+    /* ……略…… */
+};
+
+{
+    ....
+    return lookup_symbol(table, tok());
+}
+</pre>
+
+<p>
+それで<code>ruby</code>はどうしているかと言うと、ハッシュテーブルを使っている。そ
+れも完全ハッシュだ。<code>st_table</code>の話をしたときにも言った
+が、キーになりうる集合が前もってわかっていれば絶対に衝突しないハッシュ
+関数を作れることがある。予約語というのは「キーになりうる集合が前もって
+わかってい」るわけだから、完全ハッシュ関数が作れそうだ。
+</p>
+
+<p>
+しかし「作れる」のと実際に作るのとは別の話だ。
+手動で作るなんてことはやっていられない。予約語は増えたり減ったり
+するのだから、そういう作業は自動化しなければいけない。
+</p>
+
+<p>
+そこで<code>gperf</code>である。<code>gperf</code>はGNUプロダクトの一つで、値の集合から完全
+ハッシュ関数を作ってくれる。<code>gperf</code>自体の詳しい使いかたは<code>man gperf</code>し
+てもらうとして、ここでは生成した結果の使いかただけ述べよう。
+</p>
+
+<p>
+<code>ruby</code>での<code>gperf</code>の入力ファイルは<code>keywords</code>で出力は<code>lex.c</code>である。
+<code>parse.y</code>はこれを直接<code>#include</code>している。基本的にはCの
+ファイルを<code>#include</code>す
+るのはよろしくないが、関数一つのために本質的でないファイル分割をやるの
+はさらによろしくない。特に<code>ruby</code>では<code>extern</code>関数はいつのまにか拡張ライブラリ
+に使われてしまう恐れがあるので、互換性を保ちたくない関数はできるだけ
+<code>static</code>にすべきなのだ。
+</p>
+
+<p>
+そしてその<code>lex.c</code>には<code>rb_reserved_word()</code>という関数が定義されている。
+予約語の<code>char*</code>をキーにしてこれを呼ぶと索ける。返り値は、見付から
+なければ<code>NULL</code>、見付かれば（つまり引数が予約語なら）<code>struct kwtable*</code>が返る。
+<code>struct kwtable</code>の定義は以下のとおり。
+</p>
+
+<p class="caption">▼<code>kwtable</code></p>
+<pre class="longlist">
+   1  struct kwtable {char *name; int id[2]; enum lex_state state;};
+
+(keywords)
+</pre>
+
+
+<p>
+<code>name</code>が予約語の字面、<code>id[0]</code>がその記号、<code>id[1]</code>が修飾版の記号
+（<code>kIF_MOD</code>など）。
+<code>lex_state</code>は「その予約語を読んだ後に移行すべき<code>lex_state</code>」である。
+<code>lex_state</code>については次章で説明する。
+</p>
+
+<p>
+実際に索いているのはこのあたりだ。
+</p>
+
+<p class="caption">▼<code>yylex()</code>−識別子−<code>rb_reserved_word()</code>を呼ぶ</p>
+<pre class="longlist">
+4173                  struct kwtable *kw;
+4174
+4175                  /* See if it is a reserved word.  */
+4176                  kw = rb_reserved_word(tok(), toklen());
+4177                  if (kw) {
+
+(parse.y)
+</pre>
+
+
+
+
+<h3>文字列類</h3>
+
+<p>
+<code>yylex()</code>のダブルクォート（<code>"</code>）のところを見ると、こうなっている。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>'"'</code></p>
+<pre class="longlist">
+3318        case '"':
+3319          lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
+3320          return tSTRING_BEG;
+
+(parse.y)
+</pre>
+
+
+<p>
+なんと一文字目だけをスキャンして終了してしまう。そこで今度は
+規則を見てみると、次の部分に<code>tSTRING_BEG</code>が見付かった。
+</p>
+
+<p class="caption">▼文字列関連の規則</p>
+<pre class="longlist">
+string1         : tSTRING_BEG string_contents tSTRING_END
+
+string_contents :
+                | string_contents string_content
+
+string_content  : tSTRING_CONTENT
+                | tSTRING_DVAR string_dvar
+                | tSTRING_DBEG term_push compstmt '}'
+
+string_dvar     : tGVAR
+                | tIVAR
+                | tCVAR
+                | backref
+
+term_push       :
+</pre>
+
+
+<p>
+この規則は文字列中の式埋め込みに対応するために導入された部分である。
+<code>tSTRING_CONTENT</code>がリテラル部分、<code>tSTRING_DBEG</code>が<code>"#{"</code>である。
+<code>tSTRING_DVAR</code>は「後に変数が続く<code>#</code>」を表す。例えば
+</p>
+
+<pre class="emlist">
+".....#$gvar...."
+</pre>
+
+<p>
+のような構文である。説明していなかったが埋め込む式が変数一個の
+場合には<code>{</code>と<code>}</code>は省略できるのだ。ただしあまり推奨はされない。
+ちなみに<code>DVAR</code>、<code>DBEG</code>の<code>D</code>は<code>dynamic</code>の略だと思われる。
+</p>
+
+<p>
+また<code>backref</code>は<code>$1 $2</code>……とか<code>$&amp; $'</code>といった正規表現関連の
+特殊変数を表す。
+</p>
+
+<p>
+<code>term_push</code>は「アクションのための規則」である。
+</p>
+
+<p>
+さてここで<code>yylex()</code>に戻る。
+単純にパーサに戻っても、コンテキストが文字列の「中」になる
+わけだから、次の<code>yylex()</code>でいきなり変数だの<code>if</code>だのスキャンされたら困る。
+そこで重要な役割を果たすのが……
+</p>
+
+<pre class="emlist">
+      case '"':
+        lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
+        return tSTRING_BEG;
+</pre>
+
+<p>
+……<code>lex_strterm</code>だ、ということになる。<code>yylex()</code>の先頭に戻ってみよう。
+</p>
+
+<p class="caption">▼<code>yylex()</code>先頭</p>
+<pre class="longlist">
+3106  static int
+3107  yylex()
+3108  {
+3109      static ID last_id = 0;
+3110      register int c;
+3111      int space_seen = 0;
+3112      int cmd_state;
+3113
+3114      if (lex_strterm) {
+              /* ……文字列のスキャン…… */
+3131          return token;
+3132      }
+3133      cmd_state = command_start;
+3134      command_start = Qfalse;
+3135    retry:
+3136      switch (c = nextc()) {
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>lex_strterm</code>が存在するときは問答無用で文字列モードに突入するようになっ
+ている。ということは逆に言うと<code>lex_strterm</code>があると文字列をスキャン中と
+いうことであり、文字列中の埋め込み式をパースするときには<code>lex_strterm</code>を
+0にしておかなければならない。そして埋め込み式が終わったらまた戻さな
+ければならない。それをやっているのが次の部分だ。
+</p>
+
+<p class="caption">▼<code>string_content</code></p>
+<pre class="longlist">
+1916  string_content  : ....
+1917                  | tSTRING_DBEG term_push
+1918                      {
+1919                          $&lt;num&gt;1 = lex_strnest;
+1920                          $&lt;node&gt;$ = lex_strterm;
+1921                          lex_strterm = 0;
+1922                          lex_state = EXPR_BEG;
+1923                      }
+1924                    compstmt '}'
+1925                      {
+1926                          lex_strnest = $&lt;num&gt;1;
+1927                          quoted_term = $2;
+1928                          lex_strterm = $&lt;node&gt;3;
+1929                          if (($$ = $4) &amp;&amp; nd_type($$) == NODE_NEWLINE) {
+1930                              $$ = $$-&gt;nd_next;
+1931                              rb_gc_force_recycle((VALUE)$4);
+1932                          }
+1933                          $$ = NEW_EVSTR($$);
+1934                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+埋め込みアクションで<code>lex_strterm</code>を<code>tSTRING_DBEG</code>の値として保存し
+（事実上のスタックプッシュ）、通常のアクションで復帰している（ポップ）。
+なかなかうまい方法だ。
+</p>
+
+<p>
+しかしなんでこのような七面倒くさいことをするのだろう。普通にスキャンし
+ておいて、「<code>#{</code>」を見付けた時点で<code>yyparse()</code>を再帰呼び出しすればいい
+のではないだろうか。そこに実は問題がある。<code>yyparse()</code>は再帰呼び出しで
+きないのだ。これはよく知られた<code>yacc</code>の制限である。値の受け渡しに利用す
+る<code>yylval</code>がグローバル変数なので、うかつに再帰すると値が壊れてしまう。
+<code>bison</code>（GNUの<code>yacc</code>）だと<code>%pure_parser</code>というディレクティブを使うこと
+で再帰可能にできるのだが、現在の<code>ruby</code>は<code>bison</code>を仮定しないことになっ
+ている。現実にBSD由来のOSやWindowsなどでは<code>byacc</code>（Berkeley yacc）
+を使うことが多いので<code>bison</code>が前提になるとちょっと面倒だ。
+</p>
+
+<h4><code>lex_strterm</code></h4>
+
+<p>
+見てきたように<code>lex_strterm</code>は真偽値として見た場合はスキャナが文字列モードか
+そうでないかを表すわけだが、実は内容にも意味がある。まず型を見てみよう。
+</p>
+
+<p class="caption">▼<code>lex_strterm</code></p>
+<pre class="longlist">
+  72  static NODE *lex_strterm;
+
+(parse.y)
+</pre>
+
+
+<p>
+まずこの定義から型は<code>NODE*</code>だとわかる。これは構文木に使うノードの型で、
+第12章『構文木の構築』で詳しく説明する。とりあえずは、三要素を持つ構造体
+である、<code>VALUE</code>なので<code>free()</code>する必要がない、の二点を押さえておけばよ
+い。
+</p>
+
+<p class="caption">▼<code>NEW_STRTERM()</code></p>
+<pre class="longlist">
+2865  #define NEW_STRTERM(func, term, paren) \
+2866          rb_node_newnode(NODE_STRTERM, (func), (term), (paren))
+
+(parse.y)
+</pre>
+
+
+<p>
+これは<code>lex_strterm</code>に格納するノードを作るマクロだ。まず<code>term</code>は文字列の終
+端文字を示す。例えば<code>"</code>文字列ならば<code>"</code>である。<code>'</code>文字列ならば<code>'</code>である。
+</p>
+
+<p>
+<code>paren</code>は<code>%</code>文字列のときに対応する括弧を格納するのに使う。例えば
+</p>
+
+<pre class="emlist">
+%Q(..........)
+</pre>
+
+<p>
+なら<code>paren</code>に<code>'('</code>が入る。そして<code>term</code>には閉じ括弧<code>')'</code>が入る。
+<code>%</code>文字列以外のときは<code>paren</code>は0だ。
+</p>
+
+<p>
+最後に<code>func</code>だが、文字列の種類を示す。
+使える種類は以下のように決められている。
+</p>
+
+<p class="caption">▼<code>func</code></p>
+<pre class="longlist">
+2775  #define STR_FUNC_ESCAPE 0x01  /* \nなどバックスラッシュ記法が有効 */
+2776  #define STR_FUNC_EXPAND 0x02  /* 埋め込み式が有効 */
+2777  #define STR_FUNC_REGEXP 0x04  /* 正規表現である */
+2778  #define STR_FUNC_QWORDS 0x08  /* %w(....)または%W(....) */
+2779  #define STR_FUNC_INDENT 0x20  /* &lt;&lt;-EOS（終了記号がインデント可） */
+2780
+2781  enum string_type {
+2782      str_squote = (0),
+2783      str_dquote = (STR_FUNC_EXPAND),
+2784      str_xquote = (STR_FUNC_ESCAPE|STR_FUNC_EXPAND),
+2785      str_regexp = (STR_FUNC_REGEXP|STR_FUNC_ESCAPE|STR_FUNC_EXPAND),
+2786      str_sword  = (STR_FUNC_QWORDS),
+2787      str_dword  = (STR_FUNC_QWORDS|STR_FUNC_EXPAND),
+2788  };
+
+(parse.y)
+</pre>
+
+
+<p>
+つまり<code>enum string_type</code>のそれぞれの意味は次のようだとわかる。
+</p>
+
+<table>
+<tr><td><code>str_squote</code><td><td><code>'</code>文字列／<code>%q</code><td></tr>
+<tr><td><code>str_dquote</code><td><td><code>"</code>文字列／<code>%Q</code><td></tr>
+<tr><td><code>str_xquote</code><td><td>コマンド文字列（本書では説明していない）<td></tr>
+<tr><td><code>str_regexp</code><td><td>正規表現<td></tr>
+<tr><td><code>str_sword</code><td><td><code>%w</code><td></tr>
+<tr><td><code>str_dword</code><td><td><code>%W</code><td></tr>
+</table>
+
+
+<h4>文字列スキャン関数</h4>
+
+<p>
+あとは文字列モードのときの<code>yylex()</code>、つまり冒頭の<code>if</code>を読めばいい。
+</p>
+
+<p class="caption">▼<code>yylex</code>−文字列</p>
+<pre class="longlist">
+3114      if (lex_strterm) {
+3115          int token;
+3116          if (nd_type(lex_strterm) == NODE_HEREDOC) {
+3117              token = here_document(lex_strterm);
+3118              if (token == tSTRING_END) {
+3119                  lex_strterm = 0;
+3120                  lex_state = EXPR_END;
+3121              }
+3122          }
+3123          else {
+3124              token = parse_string(lex_strterm);
+3125              if (token == tSTRING_END || token == tREGEXP_END) {
+3126                  rb_gc_force_recycle((VALUE)lex_strterm);
+3127                  lex_strterm = 0;
+3128                  lex_state = EXPR_END;
+3129              }
+3130          }
+3131          return token;
+3132      }
+
+(parse.y)
+</pre>
+
+
+<p>
+大きくヒアドキュメントとそれ以外に分かれている。のだが、今回は
+<code>parse_string()</code>は読まない。前述のように大量の条件付けがあるため、凄まじ
+いスパゲッティコードになっている。例え説明してみたとしても「コードその
+ままじゃん！」という文句が出ること必至だ。しかも苦労するわりに全然面白
+くない。
+</p>
+
+<p>
+しかし全く説明しないわけにもいかないので、スキャンする対象ごとに関数を
+分離したものを添付CD-ROMに入れて
+おく\footnote{<code>parse_string()</code>の解析：添付CD-ROM<code>doc/parse_string.html</code>}。
+興味のある読者はそちらを眺めてみてほしい。
+</p>
+
+<h4>ヒアドキュメント</h4>
+
+<p>
+普通の文字列に比べるとヒアドキュメントはなかなか面白い。やはり他の
+要素と違って単位が「行」であるせいだろう。しかも開始記号がプログラムの
+途中に置けるところが恐ろしい。まずヒアドキュメントの開始記号をスキャン
+する<code>yylex()</code>のコードから示そう。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>'&lt;'</code></p>
+<pre class="longlist">
+3260        case '&lt;':
+3261          c = nextc();
+3262          if (c == '&lt;' &amp;&amp;
+3263              lex_state != EXPR_END &amp;&amp;
+3264              lex_state != EXPR_DOT &amp;&amp;
+3265              lex_state != EXPR_ENDARG &amp;&amp;
+3266              lex_state != EXPR_CLASS &amp;&amp;
+3267              (!IS_ARG() || space_seen)) {
+3268              int token = heredoc_identifier();
+3269              if (token) return token;
+
+(parse.y)
+</pre>
+
+
+<p>
+例によって<code>lex_state</code>の群れは無視する。すると、ここでは「<code>&lt;&lt;</code>」だけを
+読んでおり、残りは<code>heredoc_identifier()</code>でスキャンするらしいとわかる。
+そこで<code>heredoc_identifier()</code>だ。
+</p>
+
+<p class="caption">▼<code>heredoc_identifier()</code></p>
+<pre class="longlist">
+2926  static int
+2927  heredoc_identifier()
+2928  {
+          /* ……省略……開始記号を読む */
+2979      tokfix();
+2980      len = lex_p - lex_pbeg;   /*（A）*/
+2981      lex_p = lex_pend;         /*（B）*/
+2982      lex_strterm = rb_node_newnode(NODE_HEREDOC,
+2983                          rb_str_new(tok(), toklen()),  /* nd_lit */
+2984                          len,                          /* nd_nth */
+2985          /*（C）*/       lex_lastline);                /* nd_orig */
+2986
+2987      return term == '`' ? tXSTRING_BEG : tSTRING_BEG;
+2988  }
+
+(parse.y)
+</pre>
+
+
+<p>
+開始記号（<code>&lt;&lt;EOS</code>）を読むところはどうでもいいのでバッサリ省略した。
+ここまでで入力バッファは図10のようになっているはずだ。
+入力バッファは行単位だったことを思い出そう。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_lexparams.jpg" alt="(lexparams)"><br>
+図10: <code>"printf(&lt;&lt;EOS, n)"</code>のスキャン
+</p>
+
+<p>
+<code>heredoc_identifier()</code>でやっていることは以下の通り。
+（A）<code>len</code>は現在行のうち読み込んだバイト数だ。
+（B）そしていきなり<code>lex_p</code>を行の末尾まで飛ばす。
+ということは、読み込み中の行のうち開始記号の後が読み捨てられて
+しまっている。この残りの部分はいつパースするのだろう。
+その謎の答えは（C）で<code>lex_lastline</code>（読み込み中の行）と
+<code>len</code>（既に読んだ長さ）を保存しているところにヒントがある。
+</p>
+
+<p>
+では<code>heredoc_identifier()</code>前後の動的コールグラフを以下に簡単に示す。
+</p>
+
+<pre class="emlist">
+yyparse
+    yylex（case '&lt;'）
+        heredoc_identifier（lex_strterm = ....）
+    yylex（冒頭のif）
+        here_document
+</pre>
+
+<p>
+そしてこの<code>here_document()</code>がヒアドキュメント本体のスキャンを行っている。
+以下に、異常系を省略しコメントを加えた<code>here_document()</code>を示す。
+<code>lex_strterm</code>が<code>heredoc_identifier()</code>でセットしたままであることに
+注意してほしい。
+</p>
+
+<p class="caption">▼<code>here_document()</code>（簡約版）</p>
+<pre class="longlist">
+here_document(NODE *here)
+{
+    VALUE line;                      /* スキャン中の行 */
+    VALUE str = rb_str_new("", 0);   /* 結果をためる文字列 */
+
+    /* ……異常系の処理、省略…… */
+
+    if (式の埋め込み式が無効) {
+        do {
+            line = lex_lastline;     /*（A）*/
+            rb_str_cat(str, RSTRING(line)-&gt;ptr, RSTRING(line)-&gt;len);
+            lex_p = lex_pend;        /*（B）*/
+            if (nextc() == -1) {     /*（C）*/
+                goto error;
+            }
+        } while (読み込み中の行が終了記号と等しくない);
+    }
+    else {
+        /* 式の埋め込み式ができる場合……略 */
+    }
+    heredoc_restore(lex_strterm);
+    lex_strterm = NEW_STRTERM(-1, 0, 0);
+    yylval.node = NEW_STR(str);
+    return tSTRING_CONTENT;
+}
+</pre>
+
+
+<p>
+<code>rb_str_cat()</code>はRubyの文字列の末尾に<code>char*</code>を連結する関数だ。
+つまり（A）では現在読み込み中の行<code>lex_lastline</code>を<code>str</code>に連結している。
+連結したらもう今の行は用済みだ。（B）で<code>lex_p</code>をいきなり行末に
+飛ばす。そして（C）が問題で、ここでは終了チェックをしているように
+見せかけつつ実は次の「行」を読み込んでいるのだ。思い出してほしいの
+だが、<code>nextc()</code>は行が読み終わっていると勝手に次の行を読み込むという
+仕様だった。だから（B）で強制的に行を終わらせているので
+（C）で<code>lex_p</code>は次の行に移ることになる。
+</p>
+
+<p>
+そして最後に<code>do</code>〜<code>while</code>ループを抜けて<code>heredoc_restore()</code>だ。
+</p>
+
+<p class="caption">▼<code>heredoc_restore()</code></p>
+<pre class="longlist">
+2990  static void
+2991  heredoc_restore(here)
+2992      NODE *here;
+2993  {
+2994      VALUE line = here-&gt;nd_orig;
+2995      lex_lastline = line;
+2996      lex_pbeg = RSTRING(line)-&gt;ptr;
+2997      lex_pend = lex_pbeg + RSTRING(line)-&gt;len;
+2998      lex_p = lex_pbeg + here-&gt;nd_nth;
+2999      heredoc_end = ruby_sourceline;
+3000      ruby_sourceline = nd_line(here);
+3001      rb_gc_force_recycle(here-&gt;nd_lit);
+3002      rb_gc_force_recycle((VALUE)here);
+3003  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>here-&gt;nd_orig</code>には開始記号のあった行が入っている。
+<code>here-&gt;nd_nth</code>には開始記号のあった行のうち既に読んだ長さが入っている。
+つまり開始記号の直後から何事もなかったかのようにスキャンしつづけられる
+というわけだ（図11）。
+</p>
+
+<p class="image">
+<img src="images/ch_parser_heredoc.jpg" alt="(heredoc)"><br>
+図11: ヒアドキュメントのスキャン分担図
+</p>
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

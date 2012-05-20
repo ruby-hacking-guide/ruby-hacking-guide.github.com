@@ -1,0 +1,1441 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第9章 速習<code>yacc</code></title></head>
+<body>
+
+<h1>第9章 速習<code>yacc</code></h1>
+
+<h2>概要</h2>
+
+<h3>パーサとスキャナ</h3>
+
+<p>
+プログラム言語のパーサの書きかたは昔からしつこく研究されてきており、
+かなりしっかりした定石がある。よほど変な（または曖昧な）文法でない
+限り、定石にのっていけば解決できるものだ。
+</p>
+
+<p>
+まず最底辺には文字列を単語（トークンとも言う）の列に切り出す部
+分がある。これをスキャナ（scanner）とかレクサ（lexer）と言
+う。日本語で言うと字句解析器だが、言いにくいのでスキャナと呼ぼう。
+</p>
+
+<p>
+スキャナというものが出てくる根底にはそもそも「単語の区切りには空白ある
+でしょ」という常識がある。そして実際にたいていのプログラミング
+言語はそういう仕様になっている。そのほうが楽だからだ。
+</p>
+
+<p>
+例えば古いFortranでは空白が意味を持たなかった。つまり空白を入れても
+単語区切りとは限らないし、変数の途中で何の前触れもなく空白を挿入したり
+することもできた。ところが解析が恐ろしく面倒なものでコンパイラベンダが
+次々とその規格を無視しはじめ、結局Fortran 90もそれを後追いして空白が
+ちゃんと影響するような規格になった。
+</p>
+
+<p>
+ちなみにFortran 77がなぜ空白に意味を持たせなかったかと言うと、プログラ
+ムをパンチカードに打つときに空白の数を間違いやすかったから、らしい。
+</p>
+
+
+
+<h3>記号列</h3>
+
+<p>
+スキャナは単語（トークン）の列を吐きだすと言ったが、正確に言うと単語で
+はない。スキャナが生成するのは「記号」の列である。
+</p>
+
+<p>
+記号とはなんだろうか。例えば数値のことを考えてみよう。プログラム言語
+なら1も2も3も99も同じ「数」だ。どれも文法的には全く同じ扱いをされる。
+1と書ける場所なら2も3も書ける。だからパーサとしてみれば必ずしもこれらを
+全部区別して扱う必要はない。数値なら「数値」で十分だ。
+</p>
+
+<p>
+その「数値」とか「識別子」のようなものをまとめて「記号（symbol）」
+と呼ぶ。
+日本語になってしまうと意味がわかりづらいが、この場合の記号とは「意味」
+とか「象徴」のような意味で使われている。もうちょっといい呼びかたはない
+ものかと考えたのだが、シンボルと言うと<code>Symbol</code>クラスのインスタンスと紛ら
+わしい。symbolと書くと変数名と紛らわしい。仕方がないのであきらめて「記
+号」と呼んでおくことにする。
+</p>
+
+<p>
+スキャナはまず文字列を単語に区切り、そしてその記号を割り出す。
+例えば数値なら<code>NUMBER</code>や<code>DIGIT</code>、
+「<code>name</code>」のような名前（識別子）なら<code>IDENTIFIER</code>、
+予約語の<code>if</code>なら<code>IF</code>、というように。
+そしてその記号を次の段階に渡す。
+</p>
+
+
+
+<h3>パーサジェネレータ</h3>
+
+<p>
+さてスキャナが吐きだした単語と記号の列を今度はツリー状に組み立てていく。
+このツリーを構文木（syntax tree）と言う。
+</p>
+
+<p>
+単にパーサという言葉を使うと構文木を作るところからスキャナまで全部含め
+ることもあるので、この構文木を作る装置を限定的に狭義のパーサと呼ぼう。
+その狭義のパーサはどうやってただの記号列をツリーにするのだろうか。
+言い換えると、何に注目すればツリーを発見できるだろうか。
+</p>
+
+<p>
+一つは、その単語の持つ意味に注目するという手がある。例えば<code>var</code>という
+単語を発見したとしよう。このときまでにローカル変数<code>var</code>の定義が発見され
+ていれば、これはローカル変数の参照だな、とわかるはずである。
+</p>
+
+<p>
+もう一つはひたすら見ために注目する方法である。例えば識別子の次に<code>=</code>が来
+たら、これは代入だな、とわかる。予約語の<code>if</code>が登場したら、ここからは
+<code>if</code>文だな、とわかる。
+</p>
+
+<p>
+後者の、見ためにだけ注目する方式が現在のトレンドだ。つまり記号列だけを
+見て解析できるように言語を設計するということだ。なぜならそのほうが簡単
+で単純でしかも一般化が進んでいる、従ってツールで自動化できるからである。
+その自動化ツールをパーサジェネレータ（parser generator）と言う。
+</p>
+
+<p>
+そしてUNIXで一番使われているパーサジェネレータが<code>yacc</code>だ。<code>ruby</code>の
+パーサも御多分に漏れずこの<code>yacc</code>を使って書かれている。<code>parse.y</code>がその
+入力だ。つまり<code>ruby</code>のパーサを読むためには<code>yacc</code>のことをある程度知って
+おかなければならない。
+</p>
+
+<p>
+そこで本章は<code>parse.y</code>解析の前準備として<code>yacc</code>の簡単な解説を行うが、あくま
+で読むのに必要な最小限の説明にとどめる。もっと詳しくパーサとパーサジェ
+ネレータについて知りたい読者には拙著
+『Rubyを256倍使うための本 無道編』\footnote{『Rubyを256倍使うための本 無道編』青木峰郎著、アスキー出版局、2001}を
+お勧めしておく。これは別に自分で書いたから勧めているわけではなく、客
+観的に見てもこの分野に関しては一番わかりやすい本だからである。それに安
+いので博打にならない。
+</p>
+
+<p>
+それでもやっぱり別の人のがいい、ということなら
+オライリーの『lex&amp;yaccプログラミング』
+\footnote{『lex&amp;yaccプログラミング』John R. Levine, Tony Mason, Doug Brown著、村上列訳、アスキー出版局、1994}
+をお勧めする。
+それでもまだ満足できなければあとはAhoの
+『コンパイラ』
+\footnote{『コンパイラ』Alfred V.Aho, Ravi Sethi, Jeffrey D.Ullman共著、原田賢一訳、サイエンス社、1990}
+でも読んでもらうほかない。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>文法</h2>
+
+<h3>文法ファイル</h3>
+
+<p>
+<code>yacc</code>への入力は文法ファイルと言う。文法を書いたファイルだから文法ファイ
+ルだ。文法ファイルは<code>*.y</code>というファイル名にするのが慣例である。
+これを<code>yacc</code>にかけるとCのソースコードができるので、
+あとは普段通りそれをコンパイルすればよい（全体図は図1）。
+</p>
+
+<p class="image">
+<img src="images/ch_yacc_build.jpg" alt="(build)"><br>
+図1: ファイル関係図
+</p>
+
+<p>
+なお、出力ファイル名は常に<code>y.tab.c</code>で、変更できない。
+新しい<code>yacc</code>だとたいていコマンドラインオプションで変更できるが、
+互換性を考えると<code>y.tab.c</code>にしておいたほうが無難である。
+ちなみに<code>y.tab.c</code>の<code>tab</code>は<code>table</code>の<code>tab</code>らしい。巨大なテーブルがたくさん
+定義されているからだ。一度ファイルを覗いてみるといい。
+</p>
+
+<p>
+さて、文法ファイルの中身は次のような形になっている。
+</p>
+
+<p class="caption">▼文法ファイル概形</p>
+<pre class="longlist">
+%{
+ヘッダ
+%}
+%union ....
+%token ....
+%type ....
+
+%%
+規則部
+%%
+ユーザ定義部
+</pre>
+
+
+<p>
+<code>yacc</code>の入力はまず<code>%%</code>で大きく三つに区分される。最初の一つ
+は定義部と言い、いろいろな定義をしたり前準備を書く。特に<code>%{</code>から
+<code>%}</code>まではC言語で好きなことが書ける場所である。ここには例えば必要なマ
+クロを書いたりする。その外では<code>%</code>を使った<code>yacc</code>特有の命令が続く。ここで使
+う命令についてはその都度説明しよう。
+</p>
+
+<p>
+真ん中は規則部と言う。<code>yacc</code>の一番肝心なところで、ここに「こういう文法を
+パースしたいんだ」と書いておくとパーサができる。詳しくは次の項で話す。
+</p>
+
+<p>
+最後の一つ、ユーザ定義部はユーザが自由に使ってよい。<code>yacc</code>はここの内容に
+は全く関知せず、一字一句そのまま出力ファイルにコピーしてくれる。
+例えばパースのときに必要になる補助ルーチンを書いたりするのに使う。
+</p>
+
+
+
+<h3><code>yacc</code>のすること</h3>
+
+<p>
+<code>yacc</code>が面倒を見てくれるのは主にその真ん中のところ、規則部に書いたものだ。
+ここに文法を書くと<code>yacc</code>がそれを<code>yyparse()</code>という関数に変換してくれる。
+これがつまり狭義のパーサである。
+</p>
+
+<p>
+狭義の、なので、その他にスキャナが必要である。しかし<code>yacc</code>はスキャナまで
+は面倒を見てくれないのでユーザが用意しなければならない。
+スキャナは<code>yylex()</code>という関数である。
+</p>
+
+<p>
+それから、<code>yyparse()</code>にしても<code>yacc</code>が生成してくれるのはその中のさらに肝心
+な部分だけで、後述する「アクション」というところはほとんど<code>yacc</code>の範囲外
+になる。それでは<code>yacc</code>の活躍する部分が少なすぎないか、と思うかもしれない
+が、さにあらず。その「肝心な部分」というのがあまりにも
+肝心すぎるからこそ、なんだかんだと文句を言われつつも<code>yacc</code>がい
+まだに生き残っているのである。ではその肝心な部分とはいったい何なのか、
+という話になるわけだ。
+</p>
+
+
+
+<h3>BNF</h3>
+
+<p>
+Cでパーサを書くとすると、そのコードは「文字列のここをこう切って、これ
+を<code>if</code>文にして……」となる。パーサジェネレータを使う場合はその逆で、「こ
+ういう文法をパースしたいんだ」と言えばいい。そうするとその文法を扱うパー
+サを生成してくれる。つまり仕様を伝えると実装ができるわけだ。それが
+<code>yacc</code>の便利なところである。
+</p>
+
+<p>
+ではどうやって仕様を伝えるのだろうか。
+<code>yacc</code>の場合はBNF（Backus-Naur Form）
+という記述方法を使う。ごくごく簡単な例を見てみよう。
+</p>
+
+<pre class="emlist">
+if_stmt: IF expr THEN stmt END
+</pre>
+
+<p>
+「<code>:</code>」の左右で分けて見る。左側のもの、つまり<code>if_stmt</code>は、右側の並びに等し
+い……というのが、ここで言っていることだ。つまり
+</p>
+
+<p class="center">
+if_stmtはIF expr THEN stmt ENDという並びと等しい
+</p>
+
+<p>
+と言っているのだ。ここで<code>if_stmt</code>や<code>IF</code>や<code>expr</code>や……は全て「記号」である。
+<code>expr</code>は<code>expression</code>（式）、<code>stmt</code>は<code>statement</code>（文）の略のつもりだ。これは
+きっと<code>if</code>文の定義なんだろう。
+</p>
+
+<p>
+この定義一つのことを規則と言う。そして「<code>:</code>」の左側を「左辺」、
+右側を「右辺」と呼ぶ。実にストレートで覚えやすいネーミングだ。
+</p>
+
+<p>
+さてしかし、これだけではちょっとものたりない。<code>if</code>文なら<code>else</code>も付けられな
+いと嫌だ。それも、いつも<code>else</code>を書くのは面倒なので<code>else</code>が必要ないときは
+省略できるようにしたい。そういうときは次のようにすればいい。
+</p>
+
+<pre class="emlist">
+if_stmt: IF expr THEN stmt END
+       | IF expr THEN stmt ELSE stmt END
+</pre>
+
+<p>
+「<code>|</code>」は「or（または）」の意味である。
+</p>
+
+<p class="center">
+if_stmtは、「IF expr THEN stmt END」という並びか
+または「IF expr THEN stmt ELSE stmt END」という並びである。
+</p>
+
+<p>
+ということだ。
+</p>
+
+<p>
+ここで注意してほしいのは、<code>|</code>で区切るとそれだけで規則は一つ増えてい
+るということだ。実は<code>|</code>で区切るというのは左辺の記述を省略しているだけで
+あり、論理的には先程の例は次の文法と全く同じ意味なのである。
+</p>
+
+<pre class="emlist">
+if_stmt: IF expr THEN stmt END
+if_stmt: IF expr THEN stmt ELSE stmt END
+</pre>
+
+<p>
+つまり先程の例で定義した規則は二つである。
+</p>
+
+<p>
+これだけで<code>if</code>文の定義が完結したわけではない。<code>expr</code>や<code>stmt</code>なんて記号
+はスキャナから送られてくるはずがないから、それがどういう並びなのかをちゃ
+んと定義しないといけない。Rubyに近付けるべく、大胆に規則を足してみよう。
+</p>
+
+<pre class="emlist">
+stmt   : if_stmt
+       | IDENTIFIER '=' expr   /* 代入 */
+       | expr
+
+if_stmt: IF expr THEN stmt END
+       | IF expr THEN stmt ELSE stmt END
+
+expr   : IDENTIFIER       /* 変数参照 */
+       | NUMBER           /* 整数定数 */
+       | funcall          /* 関数呼び出し（FUNction CALL） */
+
+funcall: IDENTIFIER '(' args ')'
+
+args   : expr             /* とりあえず引数は一つだけ */
+</pre>
+
+<p>
+新しい要素を二つ使った。まずC言語と同じ形式のコメント、それから<code>'='</code>のよ
+うな文字の表現だ。この<code>'='</code>もやはり記号である。
+「=」のような記号は数などと違ってただ一種類しか
+ないので、記号もそのまま<code>'='</code>でいいのだ。と来れば予約語などにも文字列を
+そのまま使いたくなるが、C言語の制約のためそれはできない。
+</p>
+
+<p>
+こういうふうに規則を増やしていって、従うべき規則全体が書ければ文法ので
+きあがりだ。<code>yacc</code>では一番上に書いた規則の左辺が「表現したい文法全体」を
+表すことになっているので、この例なら<code>stmt</code>がプログラム全体を表すことにな
+る。
+</p>
+
+<p>
+ちょっと抽象的にすぎた。もう少し具体的に説明しよう。「<code>stmt</code>がプログラム
+全体を表す」というのは、<code>stmt</code>と規則上「等しい」記号の並び全てが文法とし
+て認められる、ということである。例えばまず、<code>stmt</code>は<code>stmt</code>と等しい。あたり
+まえだ。次に、<code>expr</code>は<code>stmt</code>と等しい。これは規則そのままだ。そして次に、
+<code>NUMBER</code>は<code>stmt</code>と等しい。なぜなら<code>NUMBER</code>は<code>expr</code>で<code>expr</code>は<code>stmt</code>だからだ。
+</p>
+
+<p>
+もちろんもっと複雑なものも等しいと言える。
+</p>
+
+<pre class="emlist">
+              stmt
+               ↓
+             if_stmt
+               ↓
+      IF expr THEN stmt END
+          ↓        ↓
+IF IDENTIFIER THEN expr END
+                    ↓
+IF IDENTIFIER THEN NUMBER END
+</pre>
+
+<p>
+ここまで展開したところで全部スキャナから送られてくる記号になったようだ。
+つまりこういう記号の並びはプログラムとして正しいということである。逆に
+言えば、こういう記号の並びがスキャナから送られてくるとパーサは展開の逆
+の順序で入力を理解していける。
+</p>
+
+<pre class="emlist">
+IF IDENTIFIER THEN NUMBER END
+                    ↓
+IF IDENTIFIER THEN expr END
+          ↓        ↓
+      IF expr THEN stmt END
+               ↓
+             if_stmt
+               ↓
+              stmt
+</pre>
+
+<p>
+そして<code>stmt</code>はプログラム全体を表す記号だ。だからこの記号列はプログラムと
+して正しい。と、パーサは思うことだろう。そうなるとパースルーチン
+<code>yyparse()</code>は成功したという印に0を返して終了する。
+</p>
+
+<p>
+ちなみに専門用語だとパース成功のことを受理（accept）と言う。
+パーサはお役所みたいなもんで、自分の指定した枠にカッチリはめた
+書類を提出してくれないと即つっぱねるわけだ。acceptされる記号列とい
+うのはその枠にちゃんとはまっているのである。妙に指定が細かいところとか、
+わざわざ難解な用語を使うあたり、パーサとお役所はかなり似ている。
+</p>
+
+
+
+<h3>終端記号と非終端記号</h3>
+
+<p>
+さて、どさくさに紛れて「スキャナから来る記号」なんて言葉を説明なしで入
+れてみたわけだが、改めて説明しよう。実は一口に記号と言っても二種類ある。
+</p>
+
+<p>
+一つはスキャナから送られてくる記号、例えば<code>IF</code>、<code>THEN</code>、<code>END</code>、<code>'='</code>など
+である。これを終端記号（terminal symbol）と言う。先程のようにどんどん
+展開したときに一番端っこに並ぶからだ。本章では終端記号は常に全て大文字
+で記述する。ただし<code>'='</code>のようにクオートでくくってあるものは特別だ。この
+類の記号は例外なく終端記号である。
+</p>
+
+<p>
+もう一つはスキャナからは絶対に来ない記号、例えば<code>if_stmt</code>、<code>expr</code>、
+<code>stmt</code>である。こういう記号を非終端記号（nonterminal symbol）と
+言う。非終端記号はスキャナから来ないわけだから、パーサの中だけの存在だ。
+そして非終端記号はいつか必ず規則の左辺に現れる。本章では非終端記号は全
+て小文字で記述する。
+</p>
+
+
+
+<h3>テストの方法</h3>
+
+<p>
+ここらで文法ファイルを<code>yacc</code>で実際に処理する方法を教えておこう。
+</p>
+
+<pre class="emlist">
+%token A B C D E
+%%
+list: A B C
+    | de
+
+de  : D E
+</pre>
+
+<p>
+まず使っている終端記号を<code>%token</code>のあとに全て並べる。
+ただしクオートを使った記号（<code>'='</code>など）は書かなくてよい。
+そして<code>%%</code>で区切って文法を書く。これだけだ。
+</p>
+
+<p>
+では処理してみよう。
+</p>
+
+<pre class="screen">
+% yacc first.y
+% ls
+first.y  y.tab.c
+%
+</pre>
+
+<p>
+UNIXツールの常として「沈黙は成功の意」である。
+</p>
+
+<p>
+それから、規則（群）の最後にセミコロンが必要な<code>yacc</code>も存在する。
+そのときは次のようにしよう。
+</p>
+
+<pre class="emlist">
+%token A B C D E
+%%
+list: A B C
+    | de
+    ;
+
+de  : D E
+    ;
+</pre>
+
+<p>
+筆者はこのセミコロンが嫌いなので本書では常に省略する。
+</p>
+
+
+
+<h3>空規則</h3>
+
+<p>
+ではもう少し<code>yacc</code>の文法記述の定石をいくつか見ておくことにする。
+まずは空規則から紹介しよう。
+</p>
+
+<pre class="emlist">
+void:
+</pre>
+
+<p>
+右辺に何もない。ということは、記号<code>void</code>は「無」と等しいということであ
+る。例えば次の二つの<code>target</code>は全く同じ意味になる。
+</p>
+
+<pre class="emlist">
+target: A B C
+
+target: A void B void C
+void  :
+</pre>
+
+<p>
+こんなものが何の役に立つのだろうか。それがとても役に立つのだ。
+例えば次のように。
+</p>
+
+<pre class="emlist">
+if_stmt : IF expr THEN stmts opt_else END
+
+opt_else:
+        | ELSE stmts
+</pre>
+
+<p>
+空規則を使うことで「<code>else</code>節は省略される（無）かもしれない」ことを
+うまく表現できた。先程のように同じような規則を二つ並べて書くよりも
+こちらのほうが簡潔だし、責任が分散しなくてよい。
+</p>
+
+
+
+<h3>再帰定義</h3>
+
+<p>
+次の例はもう少しわかりにくい。
+</p>
+
+<pre class="emlist">
+list: ITEM         /*  規則1  */
+    | list ITEM    /*  規則2  */
+</pre>
+
+<p>
+これは一個以上の<code>ITEM</code>を並べたリストを表現している。
+つまり以下の記号列のいずれかを示す。
+</p>
+
+<pre class="emlist">
+ITEM
+ITEM ITEM
+ITEM ITEM ITEM
+ITEM ITEM ITEM ITEM
+      ：
+</pre>
+
+<p>
+どうしてかわかるだろうか。まず規則1により
+<code>list</code>は<code>ITEM</code>と読み換えることができる。
+すると今度は規則2から<code>list</code>は<code>ITEM ITEM</code>だと言えるようになる。
+</p>
+
+<pre class="emlist">
+list: list ITEM
+    = ITEM ITEM
+</pre>
+
+<p>
+これで<code>ITEM ITEM</code>という記号列も<code>list</code>と等しいとわかる。
+これをまたさらに規則2の<code>list</code>にあてはめれば<code>ITEM</code>三つも<code>list</code>に等しいと言え……
+これをどんどん続ければ<code>ITEM</code>をいくらでも増やしていける。
+数学的帰納法みたいなものだ。
+</p>
+
+<p>
+次の例を示す。以下は<code>ITEM</code>をゼロ個以上並べたリストを表す。
+</p>
+
+<pre class="emlist">
+list:
+    | list ITEM
+</pre>
+
+<p>
+まず一行目は「<code>list</code>は（無）と等しい」という意味である。
+無とは即ち<code>ITEM</code>ゼロ個のリストである。
+次に二つめの規則を見ると、「<code>list ITEM</code>」は<code>ITEM</code>一個と等しいと言える。
+なぜなら<code>list</code>は無と等しいからだ。
+</p>
+
+<pre class="emlist">
+list: list ITEM
+    =（無）ITEM
+    =      ITEM
+</pre>
+
+<p>
+先程と同じようにこの置き換え作業を何度も続ければ、<code>list</code>はゼロ個以上
+の<code>ITEM</code>のリストの表現であるとわかる。
+</p>
+
+<p>
+この知識を応用すれば「<code>ITEM</code>が二個以上のリスト」とか「<code>ITEM</code>が三個以上のリスト」
+は簡単だし、「<code>ITEM</code>が偶数個のリスト」なんてものも作れる。
+</p>
+
+<pre class="emlist">
+list:
+    | list ITEM ITEM
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>値の構築</h2>
+
+<p>
+抽象的な話が続いたのでこの節は思いきり物理的に話を進めたいと思う。
+</p>
+
+<h3>シフトと還元</h3>
+
+<p>
+ここまででは文法の書きかたをいろいろ説明してきたが、我々がやりたいのは
+あくまで構文木を作ることだ。しかし残念ながら規則を伝えるだけで構文木ま
+で作ってくれるわけでは、さすがにない。そこで今度は規則にプラスアルファ
+して構文木を作る方法を教えよう。
+</p>
+
+<p>
+まずパーサが現実に実行時にやることを説明する。
+次のような単純な文法を例に取ろう。
+</p>
+
+<pre class="emlist">
+%token A B C
+%%
+program: A B C
+</pre>
+
+<p>
+パーサの中にはセマンティックスタック（semantic stack）と呼ばれるスタッ
+クが一つある。そしてこれにスキャナから来る記号をどんどんプッシュしてい
+く。この動作のことを指して「記号をシフト（shift）する」と言う。
+</p>
+
+<pre class="emlist">
+[ A B ] ← C   シフト
+</pre>
+
+<p>
+そして文法のいずれかの右辺にある並びがスタックの先端に揃うと、
+これを「理解」する。「理解」すると右辺の並びが左辺の記号に変わる。
+</p>
+
+<pre class="emlist">
+[ A B C ]
+    ↓         還元
+[ program ]
+</pre>
+
+<p>
+この動作を「<code>A B C</code>を<code>program</code>に還元（reduce）する」と言う。
+言葉は偉そうだがようするに白發中が揃うと大三元になるようなものだ。
+……それは違うか。
+</p>
+
+<p>
+そして<code>program</code>はプログラム全体を表すから、スタックに<code>program</code>だけがあると
+いうことはプログラム全体を見付けたのかもしれない。だからここでちょうど
+入力が終われば受理される。
+</p>
+
+<p>
+もう少しだけ複雑な文法で試してみよう。
+</p>
+
+<pre class="emlist">
+%token IF E S THEN END
+%%
+program : if
+
+if      : IF expr THEN stmts END
+
+expr    : E
+
+stmts   : S
+        | stmts S
+</pre>
+
+<p>
+スキャナからの入力はこうだ。
+</p>
+
+<pre class="emlist">
+IF  E  THEN  S  S  S  END
+</pre>
+
+<p>
+このときのセマンティックスタックの遷移を以下に示す。
+</p>
+
+<table>
+<tr><td>スタック<td><td>動作<td></tr>
+<tr><td><td><td>最初は空<td></tr>
+<tr><td><code>IF</code><td><td><code>IF</code>をシフト<td></tr>
+<tr><td><code>IF E</code><td><td><code>E</code>をシフト<td></tr>
+<tr><td><code>IF expr</code><td><td><code>E</code>→<code>expr</code>で還元<td></tr>
+<tr><td><code>IF expr THEN</code><td><td><code>THEN</code>をシフト<td></tr>
+<tr><td><code>IF expr THEN S</code><td><td><code>S</code>をシフト<td></tr>
+<tr><td><code>IF expr THEN stmts</code><td><td><code>S</code>→<code>stmts</code>で還元<td></tr>
+<tr><td><code>IF expr THEN stmts S</code><td><td><code>S</code>をシフト<td></tr>
+<tr><td><code>IF expr THEN stmts</code><td><td><code>stmts S</code>→<code>stmts</code>で還元<td></tr>
+<tr><td><code>IF expr THEN stmts S</code><td><td><code>S</code>をシフト<td></tr>
+<tr><td><code>IF expr THEN stmts</code><td><td><code>stmts S</code>→<code>stmts</code>で還元<td></tr>
+<tr><td><code>IF expr THEN stmts END</code><td><td><code>END</code>をシフト<td></tr>
+<tr><td><code>if</code><td><td><code>IF expr THEN stmts END</code>→<code>if</code>で還元<td></tr>
+<tr><td><code>program</code><td><td><code>if</code>→<code>program</code>で還元<td></tr>
+<tr><td><td><td>accept.<td></tr>
+</table>
+
+<p>
+最後に一つだけ注意。還元では記号が減るとは限らない。
+空規則があると「無」から記号が生成される場合もある。
+</p>
+
+
+
+<h3>アクション</h3>
+
+<p>
+さて、ここからが重要なところだ。シフトだろうが還元だろうが、セマンティッ
+クスタックの中でウダウダやっているだけでは何の意味もない。我々の最終目
+標は構文木を生成することだったから、それにつながってくれないと困るのだ。
+<code>yacc</code>はどう落としまえを付けるつもりなのか。「パーサが還元する瞬間をフッ
+クできるようにしましょう」というのが<code>yacc</code>の出した答えだ。そのフックを
+パーサのアクション（action）と言う。アクションは次のように規則の
+最後に書く。
+</p>
+
+<pre class="emlist">
+program: A B C { /* ここがアクション */ }
+</pre>
+
+<p>
+<code>{</code>と<code>}</code>で囲んだ部分がアクションだ。こう書いておくと<code>A B C</code>を<code>program</code>に
+還元する瞬間にこのアクションを実行してくれる。アクションでは何をしようと
+自由だ。Cのコードならだいたいなんでも書ける。
+</p>
+
+
+
+<h3>記号の値</h3>
+
+<p>
+そしてここからがさらに重要なのだが、全ての記号には「その値」というもの
+がある。終端記号も非終端記号もだ。終端記号はスキャナから来るからその値
+もスキャナからもらう。それは例えば記号<code>NUMBER</code>に対しては1とか9とか
+108かもしれない。記号<code>IDENTIFIER</code>に対しては<code>"attr"</code>とか<code>"name"</code>とか
+<code>"sym"</code>かもしれない。なんでもいいのだ。その値は記号といっしょにセマン
+ティックスタックに積まれる。次の図は今ちょうど<code>S</code>を値と一緒にシフトし
+たところだ。
+</p>
+
+<pre class="emlist">
+IF    expr   THEN   stmts   S
+値    値     値     値     値
+</pre>
+
+<p>
+先程の規則によれば<code>stmts S</code>は<code>stmts</code>に還元できる。もしその規則にアクション
+が書いてあればそれが実行されるわけだが、その時、右辺に対応する分の記号
+の値をアクションに渡すのだ。
+</p>
+
+<pre class="emlist">
+IF    expr   THEN   stmts  S      /* スタック */
+値1   値2    値3    値4    値5
+                    ↓     ↓
+            stmts:  stmts  S      /* 規則 */
+                    ↓     ↓
+                  { $1  +  $2; }  /* アクション */
+</pre>
+
+<p>
+と、このようにアクションでは<code>$1</code>、<code>$2</code>、<code>$3</code>……
+で規則右辺に相当する記号の値を取ることができる。
+<code>$1</code>とか<code>$2</code>はスタックを指す表現に<code>yacc</code>が書き換えてくれるわけだ。
+もっともC言語なら本当は型のこととかいろいろあるのだけれど、
+面倒なので当面<code>int</code>と仮定しておこう。
+</p>
+
+<p>
+そして次は代わりに左辺の記号を積むのだが、記号はどれも値があるのだか
+らその左辺の記号にもやはり値がなくてはいけない。それはアクション中では
+<code>$$</code>と表現され、アクションを抜けたときの<code>$$</code>の値が左辺の記号の値となる。
+</p>
+
+<pre class="emlist">
+IF    expr   THEN   stmts  S      /* 還元直前のスタック */
+値1   値2    値3    値4    値5
+                    ↓     ↓
+            stmts:  stmts  S      /* 右辺が末尾にマッチした規則 */
+              ↑    ↓     ↓
+            { $$  = $1  +  $2; }  /* そのアクション */
+
+
+IF    expr   THEN   stmts         /* 還元後のスタック */
+値1   値2    値3    (値4+値5)
+</pre>
+
+<p>
+最後に蛇足。記号の値は意味値、semantic valueと呼ばれることもある。
+だからそれを入れるスタックはsemantic value stackで、
+略してsemantic stackと呼ぶわけだ。
+</p>
+
+
+
+<h3><code>yacc</code>と型</h3>
+
+<p>
+さて実に面倒だが、型の話をしなければ話が収まらない。記号の値の型はいっ
+たいなんだろう。結論から言うと<code>YYSTYPE</code>という型になる。きっとこれは
+<code>YY Stack TYPE</code>か、はたまた<code>Semantic value TYPE</code>か、どちらかの略に違いない。
+そして<code>YYSTYPE</code>は当然何か別の型の<code>typedef</code>である。その型とは、定義部で
+<code>%union</code>という命令で指定した共用体だ。
+</p>
+
+<p>
+だが今までは<code>%union</code>なんて書いていなかった。それなのにエラーにならなかっ
+たのはどういうわけだろう。それは<code>yacc</code>が気をきかせて勝手にデフォルトでもっ
+て処理してくれたからだ。Cでデフォルトと言えば当然<code>int</code>だ。ということ
+で<code>YYSTYPE</code>のデフォルトは<code>int</code>である。
+</p>
+
+<p>
+<code>yacc</code>の本に出す例や電卓プログラムくらいなら<code>int</code>のままでも構わないのだが、
+構文木を作るには構造体やポインタやその他いろいろを使いたい。そこで例え
+ば次のように<code>%union</code>を使う。
+</p>
+
+<pre class="emlist">
+%union {
+    struct node {
+        int type;
+        struct node *left;
+        struct node *right;
+    } *node;
+    int num;
+    char *str;
+}
+</pre>
+
+<p>
+今は実際に使うわけではないので型やメンバ名は適当だ。普通のCと違って
+<code>%union</code>のブロックの最後にはセミコロンが必要ないので注意。
+</p>
+
+<p>
+それで、こう書くと<code>y.tab.c</code>では次のようになるわけだ。
+</p>
+
+<pre class="emlist">
+typedef union {
+    struct node {
+        int type;
+        struct node *left;
+        struct node *right;
+    } *node;
+    int num;
+    char *str;
+} YYSTYPE;
+</pre>
+
+<p>
+そうするとセマンティックスタックは
+</p>
+
+<pre class="emlist">
+YYSTYPE yyvs[256];       /* スタックの実体（yyvs = YY Value Stack） */
+YYSTYPE *yyvsp = yyvs;   /* スタックの先端を指すポインタ */
+</pre>
+
+<p>
+という感じだろうな、と予想が付く。
+それならアクションに出てくる記号の値も……
+</p>
+
+<pre class="emlist">
+/* yacc処理前のアクション */
+target: A B C { func($1, $2, $3); }
+
+/* 変換後、y.tab.cでの様子 */
+{ func(yyvsp[-2], yyvsp[-1], yyvsp[0]); ;
+</pre>
+
+<p>
+当然こうなる。
+</p>
+
+<p>
+この場合はデフォルトの<code>int</code>を使ったのでスタックを参照するだけでよいが、
+<code>YYSTYPE</code>が共用体の場合は同時にそのメンバも指定しなければアクセスでき
+ないはずである。それには記号単位で結び付ける方法とその都度指定する
+方法の二通りがある。
+</p>
+
+<p>
+まずは一般的な、記号単位で指定する方法から。終端記号の場合は
+<code>%token</code>を、非終端記号の場合は<code>%type</code>を使って次のように書く。
+</p>
+
+<pre class="emlist">
+%token&lt;num&gt; A B C    /* 全てのA B Cの値はint型 */
+%type&lt;str&gt; target    /* 全てのtargetの値はchar*型 */
+</pre>
+
+<p>
+一方、毎回指定する場合は次のように<code>$</code>の次にメンバ名を割り込ませる。
+</p>
+
+<pre class="emlist">
+%union { char *str; }
+%%
+target: { $&lt;str&gt;$ = "ようするにキャストみたいなものさ"; }
+</pre>
+
+<p>
+こちらの方法はできるだけ使わないほうがいい。
+記号単位でメンバを決めるのが基本だ。
+</p>
+
+
+
+<h3>パーサとスキャナの連結</h3>
+
+<p>
+これでパーサの中の値のアレコレについては全て話した。あとはスキャナ
+との連結プロトコルを話せば核となる事項は全ておしまいだ。
+</p>
+
+<p>
+まず確認すると、スキャナは関数<code>yylex()</code>であった。
+（終端）記号そのものは関数の返り値として（<code>int</code>で）返す。<code>yacc</code>が記
+号と同じ名前で定数を<code>#define</code>してくれているので、記号<code>NUMBER</code>なら<code>NUMBER</code>と
+書くだけでいい。そしてその値は<code>yylval</code>というグローバル変数に入れて渡す。
+この<code>yylval</code>もまた<code>YYSTYPE</code>型で、パーサのときと全く同じことが言える。つま
+り<code>%union</code>で定義すると共用体になる。しかし今回はメンバを勝手に選んだりは
+してくれないので自分でメンバ名を書かないとだめだ。つまり非常に簡単な
+例だと次のようになる。
+</p>
+
+<pre class="emlist">
+static int
+yylex()
+{
+    yylval.str = next_token();
+    return STRING;
+}
+</pre>
+
+<p>
+ここまでの関係を図2にまとめたので一つ一つ確認してみてほしい。
+<code>yylval</code>、<code>$$</code>、<code>$1</code>、<code>$2</code>……など、インターフェイスとなる変数は全て
+<code>YYSTYPE</code>型である。
+</p>
+
+<p class="image">
+<img src="images/ch_yacc_yaccvars.jpg" alt="(yaccvars)"><br>
+図2: <code>yacc</code>関連の変数・関数の関係
+</p>
+
+
+
+<h3>埋め込みアクション</h3>
+
+<p>
+アクションは規則の最後に書くもの、と説明したが、実は規則の途中で
+書いてしまうこともできる。
+</p>
+
+<pre class="emlist">
+target: A B { puts("embedded action"); } C D
+</pre>
+
+<p>
+これを埋め込みアクションと言う。
+埋め込みアクションは次のような記述の
+単なるシンタックスシュガーだ。
+</p>
+
+<pre class="emlist">
+target: A B dummy C D
+
+dummy :     /* 空規則 */
+        {
+            puts("embedded action");
+        }
+</pre>
+
+<p>
+実行されるタイミングなどはこれで全てわかるだろう。記号の値も普通に取れ
+る。つまりこの例なら埋め込みアクションの値は<code>$3</code>として出てくる。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>現実的な話題</h2>
+
+<h3>衝突</h3>
+
+<p>
+もうこれで<code>yacc</code>なんて恐くない。
+</p>
+
+<p>
+と思ったとしたらそれはかなり甘い。なぜ<code>yacc</code>がこれほどまでに
+恐れられるのか、その理由はこの後にあるのだ。
+</p>
+
+<p>
+これまでは「規則の右辺がスタック先端にマッチしたら」と何気なく書いて
+きたが、次のような規則があったらどうなるのだろうか。
+</p>
+
+<pre class="emlist">
+target  : A B C
+        | A B C
+</pre>
+
+<p>
+実際に<code>A B C</code>という記号列が出てきたとき、どちらの規則がマッチするのか
+わからなくなるはずである。こんなものは人間にだって理解できない。
+従って<code>yacc</code>もわからない。こういう変な文法を発見すると<code>yacc</code>は
+reduce/reduce conflict（還元・還元衝突）が起きた、と文句を
+言ってくる。複数の規則が同時に還元可能であるという意味だ。
+</p>
+
+<pre class="screen">
+% yacc rrconf.y
+conflicts:  1 reduce/reduce
+</pre>
+
+<p>
+とはいえ普通ならば事故以外にこんなことはしないと思うが、
+次の例はどうだろうか。記述している記号列は全く同じである。
+</p>
+
+<pre class="emlist">
+target  : abc
+        | A bc
+
+abc     : A B C
+
+bc      :   B C
+</pre>
+
+<p>
+これならば比較的ありうる。特に規則を考えながらグチャグチャ移
+動していると知らず知らずのうちにこんな規則ができてしまうものだ。
+</p>
+
+<p>
+似たパターンで次のようなものもある。
+</p>
+
+<pre class="emlist">
+target  : abc
+        | ab C
+
+abc     : A B C
+
+ab      : A B
+</pre>
+
+<p>
+<code>A B C</code>という記号列が現れた場合、<code>abc</code>一つを選ぶべきか<code>ab</code>と<code>C</code>の組み
+合わせにすべきかわからない。こういうとき<code>yacc</code>は
+shift/reduce conflict（シフト・還元衝突）が起きたぞ、と文句を垂れる。
+こちらは、同時にシフトできる規則と還元できる規則があるという意味だ。
+</p>
+
+<pre class="screen">
+% yacc srconf.y
+conflicts:  1 shift/reduce
+</pre>
+
+<p>
+shift/reduce conflictの有名な例が「ぶらさがり<code>else</code>問題」である。
+例えばC言語の<code>if</code>文でこの問題が起こる。話を単純化して書いてみよう。
+</p>
+
+<pre class="emlist">
+stmt     : expr ';'
+         | if
+
+expr     : IDENTIFIER
+
+if       : IF '(' expr ')' stmt
+         | IF '(' expr ')' stmt  ELSE stmt
+</pre>
+
+<p>
+式は<code>IDENTIFIER</code>（変数）だけ、<code>if</code>の本体は文一つだけとして規則を作ってみた。
+さて、この文法で次のプログラムをパースするとどういうことになるだろう。
+</p>
+
+<pre class="emlist">
+if (cond)
+    if (cond)
+        true_stmt;
+    else
+        false_stmt;
+</pre>
+
+<p>
+こう書いてしまうとなんとなく一目瞭然に見えるのだが、
+実は次のようにも解釈できる。
+</p>
+
+<pre class="emlist">
+if (cond) {
+    if (cond)
+        true_stmt;
+}
+else {
+    false_stmt;
+}
+</pre>
+
+<p>
+つまり外側と内側どちらの<code>if</code>に<code>else</code>を付けるかという問題だ。
+</p>
+
+<p>
+ただしshift/reduce conflictはreduce/reduce conflictに比べれば比較的無
+害な衝突である。なぜかというと、たいていの場合はシフトを選べばうまくい
+くからだ。シフトを選ぶというのは「できるだけ近い要素同士を連結する」と
+だいたい同義語であり、人間の直感にマッチしやすい。実際、ぶらさがり
+<code>else</code>もシフトしておけばうまくいく。そういうわけで<code>yacc</code>もその流れに従い
+shift/reduce conflictが起きたときにはデフォルトでシフトを選ぶようになっ
+ている。
+</p>
+
+
+
+<h3>先読み</h3>
+
+<p>
+試しに次の文法を<code>yacc</code>にかけてみてほしい。
+</p>
+
+<pre class="emlist">
+%token A B C
+%%
+target  : A B C   /* 規則1 */
+        | A B     /* 規則2 */
+</pre>
+
+<p>
+どう考えても衝突しそうではないだろうか。<code>A B</code>まで読んだ時点で
+規則1はシフトしたがるし、規則2は還元したがる。
+つまりこれはshift/reduce conflictになるはずだ。ところが……
+</p>
+
+<pre class="screen">
+% yacc conf.y
+%
+</pre>
+
+<p>
+おかしい、衝突しない。どうしてだろう。
+</p>
+
+<p>
+実を言うと<code>yacc</code>で作ったパーサは記号を一つだけ
+「先読み（look ahead）」できる。
+本当にシフトや還元をする前に次の記号を盗み見て、どうするか判断
+できるのだ。
+</p>
+
+<p>
+だからパーサ生成時にもそれを考慮してくれて、一つの先読みで区別
+できるなら衝突させない。例えば先程の規則なら<code>A B</code>の次に<code>C</code>が来れば
+規則1しか可能性はないので規則1を選ぶ（シフトする）。入力が終わっ
+たら規則2を選ぶ（還元する）。
+</p>
+
+<p>
+注意してほしいのは「先読み」という単語には二通りの意味があることだ。
+一つは<code>yacc</code>で<code>*.y</code>を処理するときの先読み。もう一つは生成したパーサを
+実際に動かすときの先読み。実行時の先読みはたいして難しくないが<code>yacc</code>自身
+の先読みは非常にややこしい。なぜなら文法規則だけから実行時のあらゆる
+入力パターンを予測して挙動を決めないといけないからだ。
+</p>
+
+<p>
+もっとも、実際には「あらゆる」は無理なので「かなりの」パターンに対処す
+ることになる。そして全パターンのうちどのくらいの範囲に対処できるかどう
+かが先読みアルゴリズムの強さになるわけだ。<code>yacc</code>が文法ファイル処理時に
+使っている先読みアルゴリズムはLALR(1)と言い、現存する衝突解決アルゴリ
+ズムの中ではわりと強力なものである。
+</p>
+
+<p>
+いろいろ言ったが、本書でやるのは規則を読むだけで書くことではないので、
+あまり心配することはない。ここで説明したかったのは文法を使った先読みで
+はなく実行時の先読みのほうだ。
+</p>
+
+
+
+<h3>演算子優先順位</h3>
+
+<p>
+しばらく抽象的な話が続いたのでここらでもう少し具体的な話をする。<code>+</code>や
+<code>*</code>などの二項演算子（インフィックス型演算子）の規則を定義してみること
+にしよう。これにも定石があるので、おとなしくそれに従っておけばいい。以
+下に四則演算が使える電卓のようなものを定義した。
+</p>
+
+<pre class="emlist">
+expr    : expr '+' expr
+        | expr '-' expr
+        | expr '*' expr
+        | expr '/' expr
+        | primary
+
+primary : NUMBER
+        | '(' expr ')'
+</pre>
+
+<p>
+<code>primary</code>は「項」とか訳される。一番小さな文法単位のことである。
+<code>expr</code>を括弧でくくると<code>primary</code>になるというところがポイントだ。
+</p>
+
+<p>
+さて、この文法を適当にファイルに書いてコンパイルすると、こうなる。
+</p>
+
+<pre class="screen">
+% yacc infix.y
+16 shift/reduce conflicts
+</pre>
+
+<p>
+激しく衝突してしまった。五分ばかり考えていればわかると思うが、
+この規則では次のような場合に困るのである。
+</p>
+
+<pre class="emlist">
+1 - 1 - 1
+</pre>
+
+<p>
+これは次の二通りのどちらにも解釈できてしまう。
+</p>
+
+<pre class="emlist">
+(1 - 1) - 1
+1 - (1 - 1)
+</pre>
+
+<p>
+数式として自然なのはもちろん前者だ。しかし<code>yacc</code>がやるのはあくまで見ため
+の処理であって、そこに意味は全く入らない。<code>-</code>という記号の持つ意味なんてこれっ
+ぽちも考慮してはくれないのだ。人間の意図を正しく反映させるには、やりた
+いことを地道に指示してやらないといけない。
+</p>
+
+<p>
+ではどうしたらいいかと言うと、定義部にこう書けばよい。
+</p>
+
+<pre class="emlist">
+%left '+' '-'
+%left '*' '/'
+</pre>
+
+<p>
+この命令は演算子の優先順位と結合性の二つを同時に指定する。
+順番に説明していこう。
+</p>
+
+<p>
+優先順位という言葉はプログラム言語の文法の話をするときにはよく出てくる
+と思う。理論的に話すとややこしいので直感的に言うと、次のような場合にど
+ちらの演算子に括弧が付くかという話だ。
+</p>
+
+<pre class="emlist">
+1 + 2 * 3
+</pre>
+
+<p>
+<code>*</code>のほうが優先順位が高ければ、こうなる。
+</p>
+
+<pre class="emlist">
+1 + (2 * 3)
+</pre>
+
+<p>
+<code>+</code>のほうが優先順位が高ければ、こうなる。
+</p>
+
+<pre class="emlist">
+(1 + 2) * 3
+</pre>
+
+<p>
+このように、演算子に強いものと弱いものを設定して
+shift/reduce conflictを解決するのが演算子優先順位だ。
+</p>
+
+<p>
+だがしかし、同じ状況に陥っても優先順位が同じだったらどうすればいい
+だろうか。例えばこのように。
+</p>
+
+<pre class="emlist">
+1 - 2 - 3
+</pre>
+
+<p>
+今度はどちらも<code>-</code>なので優先順位は全く同じだ。こういうときには結合性
+を使って解決する。結合性にはleft right nonassocの三種類があり、
+それぞれ次のように解釈される。
+</p>
+
+<table>
+<tr><td>結合性<td><td>解釈<td></tr>
+<tr><td>left（左結合）<td><td><code>(1 - 2) - 3</code><td></tr>
+<tr><td>right（右結合）<td><td><code>1 - (2 - 3)</code><td></tr>
+<tr><td>nonassoc（非結合）<td><td>パースエラー<td></tr>
+</table>
+
+<p>
+数式用演算子だとほとんど左結合である。右結合は主に代入の<code>=</code>や
+否定の<code>not</code>で使う。
+</p>
+
+<pre class="emlist">
+a = b = 1    # (a = (b = 1))
+not not a    # (not (not a))
+</pre>
+
+<p>
+nonassocの代表格は比較演算子だろう。
+</p>
+
+<pre class="emlist">
+a == b == c   # パースエラー
+a &lt;= b &lt;= c   # パースエラー
+</pre>
+
+<p>
+もっともPythonなどでは三項の比較が可能なのでこの限りではない。
+</p>
+
+<p>
+それで先程の<code>%left</code>・<code>%right</code>・<code>%nonassoc</code>という命令は、
+名前通りの結合性を示すために使われる。そして優先順位は並べる順で示す。
+下にある演算子ほど優先順位が高い。同じ列にあれば同じ順位である。
+</p>
+
+<pre class="emlist">
+%left  '+' '-'    /* 左結合で優先順位3 */
+%left  '*' '/'    /* 左結合で優先順位2 */
+%right '!'        /* 右結合で優先順位1 */
+</pre>
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

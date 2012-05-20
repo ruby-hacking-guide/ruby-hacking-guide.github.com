@@ -1,0 +1,1953 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第1章 Ruby言語ミニマム</title></head>
+<body>
+
+<h1>第1章 Ruby言語ミニマム</h1>
+
+<p>
+Ruby言語について、当面第一部を理解するのに必要な知識だけ簡単に解説して
+おく。プログラミング上のテクニックであるとか注意すべきところなんてもの
+は全く指摘しないので、この章を読んだからと言ってRubyプログラムが書ける
+ようになるわけではない。既にRuby言語の経験がある読者はこの章は飛ばし
+て問題ないだろう。
+</p>
+
+<p>
+また文法については第二部で嫌というほど話すから、この章ではできるだけ文
+法の詳細には関らないようにする。ハッシュリテラルなどバリエーションがあ
+る表記は最も多用されるもののみ示す。省略可能なものは原則的に省略せずに
+示す。そのほうが構文規則がシンプルになるからだ。いちいち「省略できる」
+とも言わない。
+</p>
+
+
+
+
+
+
+<h2>オブジェクト</h2>
+
+<h3>文字列</h3>
+
+<p>
+Rubyプログラムが操作できるものは全てオブジェクトである。Javaの<code>int</code>や
+<code>long</code>のような「基本型（primitive）」はない。例えば以下のように書くと
+それは「<code>content</code>」
+という内容を持った文字列オブジェクト（<code>String</code>オブジェクト）である。
+</p>
+
+<pre class="emlist">
+"content"
+</pre>
+
+<p>
+単に文字列オブジェクトと言ったが、正確に言えばこれは文字列オブジェクト
+を生成する「式」である。だから、何回も書けばそのたびに別の文字列オブジェ
+クトが生成される。
+</p>
+
+<pre class="emlist">
+"content"
+"content"
+"content"
+</pre>
+
+<p>
+ここでは「<code>content</code>」という内容を持った文字列オブジェクトが三つ生成される。
+</p>
+
+<p>
+ところで、オブジェクトがそこにあるだけではプログラマには見え
+ない。オブジェクトを端末に表示する方法を教えておこう。
+</p>
+
+<pre class="emlist">
+p("content")   # "content"と表示される
+</pre>
+
+<p>
+「<code>#</code>」以降はコメントだ。今後、結果はコメントとして付けておくことに
+する。
+</p>
+
+<p>
+「<code>p(</code>……<code>)</code>」は関数<code>p</code>の呼び出しである。任意のオブジェクトを「そ
+れっぽく」表示してくれる。基本的にデバッグ用の関数だ。
+</p>
+
+<p>
+厳密に言うとRubyには関数はないのだが、いまは関数と考えておいてよい。関
+数はどこにいても使うことができる。
+</p>
+
+
+
+<h3>様々なリテラル</h3>
+
+<p>
+さて、直接オブジェクトを生成する式（リテラル）をもう少し説明しておこう。
+まずは一般的なところで、整数と小数だ。
+</p>
+
+<pre class="emlist">
+# 整数
+1
+2
+100
+9999999999999999999999999   # どんなに大きな数でも使える
+
+# 小数
+1.0
+99.999
+1.3e4     # 1.3×10^4
+</pre>
+
+<p>
+これも全てオブジェクトを生成する式であることを忘れないでほしい。
+繰り返すが、Rubyには「基本型」はない。
+</p>
+
+<p>
+以下の表現は配列オブジェクトを生成する。
+</p>
+
+<pre class="emlist">
+[1, 2, 3]
+</pre>
+
+<p>
+このプログラムは整数1 2 3の三つをその順番で要素として持つ配列を生成す
+る。配列の要素には任意のオブジェクトが使えるので、こんなこともできる。
+</p>
+
+<pre class="emlist">
+[1, "string", 2, ["nested", "array"]]
+</pre>
+
+<p>
+さらに、以下の表現はハッシュテーブルを生成する。
+</p>
+
+<pre class="emlist">
+{"key"=&gt;"value", "key2"=&gt;"value2", "key3"=&gt;"value3"}
+</pre>
+
+<p>
+ハッシュテーブルというのは、任意のオブジェクト同士の一対一対応を表す構
+造だ。上記のように書くと次のような関係を記憶したテーブルができる。
+</p>
+
+<pre class="emlist">
+"key"   →  "value"
+"key2"  →  "value2"
+"key3"  →  "value3"
+</pre>
+
+<p>
+こうやって作ったハッシュテーブルオブジェクトに「<code>"key"</code>に対応付けられて
+るのは何？」と聞けば、「<code>"value"</code>だよ」と教えてもらえる。どうやって聞
+くか。それにはメソッドを使う。
+</p>
+
+
+
+<h3>メソッド呼び出し</h3>
+
+<p>
+オブジェクトに対してはメソッドが呼べる。C++用語ではメンバ関数である。
+メソッドとは何か、という説明は必要ないと思うので記法だけ簡単に解説す
+る。
+</p>
+
+<pre class="emlist">
+"content".upcase()
+</pre>
+
+<p>
+ここでは文字列オブジェクト（内容は「content」）に対して<code>upcase</code>メソッド
+を呼び出している。<code>upcase</code>はアルファベットの小文字を大文字にした新しい文
+字列を返すメソッドなので、次のような結果になる。
+</p>
+
+<pre class="emlist">
+p("content".upcase())   # "CONTENT"と表示される
+</pre>
+
+<p>
+メソッド呼び出しは連鎖してよい。
+</p>
+
+<pre class="emlist">
+"content".upcase().downcase()
+</pre>
+
+<p>
+この場合、<code>"content".upcase()</code>の返り値のオブジェクトに対して<code>downcase</code>メソッ
+ドを呼ぶ、ということになる。
+</p>
+
+<p>
+またJavaやC++のような公開フィールド（メンバ変数）はない。オブジェクト
+のインターフェイスはメソッドのみである。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>プログラム</h2>
+
+<h3>トップレベル</h3>
+
+<p>
+Rubyでは式をいきなり書けばそれがプログラムになる。
+C++やJavaのように<code>main()</code>を定義する必要はない。
+</p>
+
+<pre class="emlist">
+p("content")
+</pre>
+
+<p>
+これだけで完結したRubyプログラムである。このリストを<code>first.rb</code>という
+ファイルに入れたとすると、コマンドラインから次のように実行できる。
+</p>
+
+<pre class="screen">
+% ruby first.rb
+"content"
+</pre>
+
+<p>
+<code>ruby</code>コマンドの<code>-e</code>オプションを使えばいちいちファイルを作る必要すらない。
+</p>
+
+<pre class="screen">
+% ruby -e 'p("content")'
+"content"
+</pre>
+
+<p>
+ところで、<code>p</code>が書いてある場所はプログラムのネストレベルが一番低い、
+つまりプログラム的には一番「上」なので、「トップレベル」と呼ばれている。
+トップレベルがあるのはRubyのスクリプト言語としての大きな特徴だ。
+</p>
+
+<p>
+Rubyは基本的に一行が一文である。終端のセミコロンなどは必要ない。
+だから以下のプログラムは三文と解釈される。
+</p>
+
+<pre class="emlist">
+p("content")
+p("content".upcase())
+p("CONTENT".downcase())
+</pre>
+
+<p>
+実行すればこうなる。
+</p>
+
+<pre class="screen">
+% ruby second.rb
+"content"
+"CONTENT"
+"content"
+</pre>
+
+
+
+<h3>ローカル変数</h3>
+
+<p>
+Rubyでは変数や定数は全てオブジェクトへの参照（<code>reference</code>）を
+保持している。だから別の変数に代入しただけでコピーが起こったりはしない。
+Javaならオブジェクト型変数、C++ならオブジェクトへのポインタを考えれば
+いいだろう。ただしそのポインタ自体の値は変更できない。
+</p>
+
+<p>
+Rubyでは変数名の一文字目で変数の種別（スコープ）がわかるようになってい
+る。アルファベット小文字かアンダーバーで始まるのがローカル変数だ。そし
+て「<code>=</code>」を使って代入を書ける。
+</p>
+
+<pre class="emlist">
+str = "content"
+arr = [1,2,3]
+</pre>
+
+<p>
+最初の代入が変数宣言を兼ねるので宣言は必要ない。また変数には
+型がないのでどんなオブジェクトだろうと無差別に代入できる。
+以下のプログラムは全く合法である。
+</p>
+
+<pre class="emlist">
+lvar = "content"
+lvar = [1,2,3]
+lvar = 1
+</pre>
+
+<p>
+もっとも、やれるからと言ってやる必要はない。いろいろな種類のオブジェク
+トを一つの変数にごっちゃに入れたりすれば普通は読みにくくなるものだ。現
+実にあるRubyプログラムなら、こういうことは滅多にしない。これはあくまで
+例のための例である。
+</p>
+
+<p>
+変数参照もごく常識的な記法だ。
+</p>
+
+<pre class="emlist">
+str = "content"
+p(str)           # "content"が表示される
+</pre>
+
+<p>
+それから変数がリファレンスを保持するという点を例で見ておこう。
+</p>
+
+<pre class="emlist">
+a = "content"
+b = a
+c = b
+</pre>
+
+<p>
+このプログラムを実行したあと、<code>a b c</code>三つのローカル変数が指しているのは
+同じオブジェクトで、一行目の<code>"content"</code>で生成した文字列オブジェクトであ
+る図1。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_reference.jpg" alt="(reference)"><br>
+図1: Rubyの変数はオブジェクトへの参照を保持する
+</p>
+
+<p>
+ところで、ローカルと言うからにはどこかに対してローカルでなければならな
+いはずだが、しばらく後にならないとこの範囲を言うことができない。とりあ
+えずトップレベルは一つの「ローカル」スコープだ、ということだけ言ってお
+こう。
+</p>
+
+
+
+<h3>定数</h3>
+
+<p>
+変数名が大文字で始まるのが定数である。定数と言うからには（最初の）一回
+しか代入できないものだ。
+</p>
+
+<pre class="emlist">
+Const = "content"
+PI = 3.1415926535
+
+p(Const)   # "content"と表示される
+</pre>
+
+<p>
+二回代入するとエラーになる。と言いたいのだが、実は警告だけでエラーにな
+らない。これは、Rubyプログラム自体を操作するアプリケーション、例えば
+開発環境などで、同じファイルを二回ロードしたときにエラーにならないよう
+にするためだ。つまり実用のためにやむを得ず認めているだけで、本当はエラー
+にしたいのである。実際にもバージョン1.1まではエラーになっていた。
+</p>
+
+<pre class="emlist">
+C = 1
+C = 2   # 現実には警告が出るだけだが、理念としてはエラー
+</pre>
+
+<p>
+さて、定数という言葉で騙される人が多いのだが、定数というのは「いったん
+指すオブジェクトを記憶したら二度と変えない」という意味である。定数の指
+すオブジェクトそれ自体が変わらないわけではない。英語で言うなら、
+constantよりもread onlyのほうがよりよく意図を示しているだろう
+（図2）。
+ちなみにオブジェクト自体が変化しないよう指示するには<code>freeze</code>という
+別の方法を使う。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_const.jpg" alt="(const)"><br>
+図2: 定数はread onlyの意味
+</p>
+
+<p>
+そして実は定数のスコープについてもまだ話せない。次の節でクラスとからめて
+話すことにする。
+</p>
+
+
+
+<h3>制御構造</h3>
+
+<p>
+Rubyは制御構造が豊富で並べるだけでも大変なので、
+とりあえず<code>if</code>と<code>while</code>はある、ということだけ言っておく。
+</p>
+
+<pre class="emlist">
+if i &lt; 10 then
+  # 本体
+end
+
+while i &lt; 10 do
+  # 本体
+end
+</pre>
+
+<p>
+条件式では<code>false</code>と<code>nil</code>という二つのオブジェクトだけが偽で、
+残りのあらゆるオブジェクトは真になる。0や空文字列ももちろん真だ。
+</p>
+
+<p>
+それとついでに、<code>false</code>だけでは収まりが悪いから<code>true</code>もある。
+これも当然真だ。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>クラスとメソッド</h2>
+
+<h3>クラス</h3>
+
+<p>
+本来オブジェクト指向システムにおいてメソッドとはオブジェクトに所属する
+ものだ。だがそれはあくまで理想の世界でのこと。普通のプログラムなら同じ
+メソッドの集合を持つオブジェクトがたくさんあるわけで、もしバカ正直にオブ
+ジェクト単位で呼び出せるメソッドを記憶していたりしたら大変なことになっ
+てしまう。そこで普通はクラスとかマルチメソッドのような仕組みを利用し
+て定義の重複をなくすわけだ。
+</p>
+
+<p>
+Rubyでは、オブジェクトとメソッドを結びつける仕組みとして伝統的な「クラス」
+の概念を採用している。即ち全てのオブジェクトはただ一つのクラスに所属
+しており、呼び出せるメソッドをクラスで決める。このときオブジェクトのこ
+とを「○○クラスのインスタンス（instance）」と言うのだった。
+</p>
+
+<p>
+例えば文字列<code>"str"</code>は<code>String</code>クラスのインスタンスである。そしてその
+<code>String</code>クラスには<code>upcase</code>、<code>downcase</code>、<code>strip</code>、その他いろいろなメソッド
+が定義されているので、あたかも全ての文字列オブジェクトがこれらのメソッドに
+反応できるかのように見えるわけだ。
+</p>
+
+<pre class="emlist">
+# みんなStringクラスに属するので同じメソッドが定義されている
+       "content".upcase()
+"This is a pen.".upcase()
+    "chapter II".upcase()
+
+       "content".length()
+"This is a pen.".length()
+    "chapter II".length()
+</pre>
+
+<p>
+ところで、呼び出したメソッドが定義されていなかったらどうなるのだろう。
+静的な言語ならコンパイルエラーになるところだが、Rubyでは実行時例外にな
+る。実際に試してみよう。この程度の長さなら<code>-e</code>でプログラムを渡してしま
+うのが便利だ。
+</p>
+
+<pre class="screen">
+% ruby -e '"str".bad_method()'
+-e:1: undefined method `bad_method' for "str":String (NoMethodError)
+</pre>
+
+<p>
+メソッドが見付からないときは<code>NoMethodError</code>というエラーになるようだ。
+
+<p>
+それと最後に、いちいち「<code>String</code>の<code>upcase</code>メソッド」などと言うのは煩わ
+しいので専用の記法を用意しておこう。「<code>String#upcase</code>」で「<code>String</code>ク
+ラスに定義された<code>upcase</code>メソッド」を示すことにする。
+</p>
+
+<p>
+ちなみに「<code>String.upcase</code>」と書くとRubyの世界では全く別の意味を持つ。
+それはどんな意味か。それは次の項で説明する。
+</p>
+
+
+
+<h3>クラス定義</h3>
+
+<p>
+ここまでは既に定義されているクラスの話だった。
+独自のクラスももちろん定義できる。
+クラスを定義するには<code>class</code>文を使う。
+</p>
+
+<pre class="emlist">
+class C
+end
+</pre>
+
+<p>
+これは新しいクラス<code>C</code>の定義だ。定義したら次のように使うことができる。
+</p>
+
+<pre class="emlist">
+class C
+end
+c = C.new()   # クラスCのインスタンスを作成し変数cに代入
+</pre>
+
+<p>
+インスタンスを作成する記法は<code>new C</code>ではないので注意。うーん、なんだか
+<code>C.new()</code>という記法はメソッド呼び出しみたいだな、と思った読者は鋭い。
+Rubyではオブジェクトを生成する式は単なるメソッド呼び出しなのである。
+</p>
+
+<p>
+まずRubyにおいてクラス名とは定数名と同義である。ではクラス名と同名の定数
+には何が入っているのか。実は、クラスが入っている。Rubyではプログラムが
+さわれるものは全てオブジェクトだったから、クラスも当然オブジェクトとし
+て表現されている。これをクラスオブジェクトと呼んでおこう。全てのクラス
+オブジェクトは<code>Class</code>クラスのインスタンスである。
+</p>
+
+<p>
+つまり<code>class</code>文とは、新しいクラスオブジェクトを作り、クラス名と同名の定
+数にそれを代入する、という操作である。一方インスタンスの生成とは、定数
+を参照し、そのオブジェクトに対してメソッド（普通は<code>new</code>）を呼ぶ、という
+操作である。以下のような例を見ると、インスタンスの生成が普通のメソッド
+呼び出しとなんら変わらないことがよくわかるだろう。
+</p>
+
+<pre class="emlist">
+S = "content"
+class C
+end
+
+S.upcase()  # 定数Sの指すオブジェクトを得てメソッドupcaseを呼び出す
+C.new()     # 定数Cの指すオブジェクトを得てメソッドnewを呼び出す
+</pre>
+
+<p>
+そんなわけでRubyでは<code>new</code>は予約語ではない。
+</p>
+
+<p>
+それから、作りたてのクラスのインスタンスでも<code>p</code>できるということを書いて
+おこう。
+</p>
+
+<pre class="emlist">
+class C
+end
+
+c = C.new()
+p(c)       # #&lt;C:0x2acbd7e4&gt;
+</pre>
+
+<p>
+さすがに文字列や整数のようにきれいに表示することはできないが、所属クラ
+スと内部IDを表示してくれる。ちなみにこのIDはオブジェクトを指すポインタ
+の値だったりする。
+</p>
+
+<p>
+そうそう、すっかり忘れていたがメソッド名の記法についてだ。「<code>Object.new</code>」
+はクラスオブジェクト<code>Object</code>それ自体に対して呼ぶメソッド<code>new</code>、の意味にな
+る。「<code>Object#new</code>」と「<code>Object.new</code>」は全く別物なので厳密に区別しなければ
+いけない。
+</p>
+
+<pre class="emlist">
+obj = Object.new()   # Object.new
+obj.new()            # Object#new
+</pre>
+
+<p>
+現実には<code>Object#new</code>なんてメソッドは定義されていないので
+このプログラムは二行目でエラーになる。あくまで表記の例として
+受け取ってほしい。
+</p>
+
+
+
+<h3>メソッド定義</h3>
+
+<p>
+クラスが定義できてもメソッドが定義できなかったら意味がない。
+我々のクラス<code>C</code>にもメソッドを定義してみよう。
+</p>
+
+<pre class="emlist">
+class C
+  def myupcase( str )
+    return str.upcase()
+  end
+end
+</pre>
+
+<p>
+メソッドを定義するには<code>def</code>文を使う。この例では<code>myupcase</code>という
+メソッドを定義した。パラメータは一つで名前は<code>str</code>である。
+変数のときと同じく、パラメータ変数や返り値の型を書く必要はない。
+またパラメータの数はいくつでもよい。
+</p>
+
+<p>
+定義したメソッドを使ってみる。メソッドはデフォルトで外から呼べる
+ようになっている。
+</p>
+
+<pre class="emlist">
+c = C.new()
+result = c.myupcase("content")
+p(result)   # "CONTENT"が表示される
+</pre>
+
+<p>
+もちろん慣れればいちいち代入する必要はない。以下のように書いても同じで
+ある。
+</p>
+
+<pre class="emlist">
+p(C.new().myupcase("content"))   # 同じく"CONTENT"が表示される
+</pre>
+
+
+
+<h3><code>self</code></h3>
+
+<p>
+メソッド実行中は常に自分自身（メソッドが呼び出されたインスタンス）が
+誰であるかという情報が保存されており、<code>self</code>でその情報を取ることができる。
+C++やJavaで言えば<code>this</code>だ。確かめてみよう。
+</p>
+
+<pre class="emlist">
+class C
+  def get_self()
+    return self
+  end
+end
+
+c = C.new()
+p(c)              # #&lt;C:0x40274e44&gt;
+p(c.get_self())   # #&lt;C:0x40274e44&gt;
+</pre>
+
+<p>
+見てのとおり、二つの式は全く同一のオブジェクトを返している。
+つまり<code>c</code>に対するメソッド呼び出しの中にいるときには<code>self</code>は<code>c</code>であることが
+確認できた。
+</p>
+
+<p>
+では自分自身に対してメソッドを呼ぶにはどうしたらいいだろうか。
+まず<code>self</code>経由で呼ぶ方法が考えられる。
+</p>
+
+<pre class="emlist">
+class C
+  def my_p( obj )
+    self.real_my_p(obj)   # 自分自身に対してメソッドを呼ぶ
+  end
+
+  def real_my_p( obj )
+    p(obj)
+  end
+end
+
+C.new().my_p(1)   # 1を表示
+</pre>
+
+<p>
+しかし自分自身のメソッドを呼ぶのに「自分の」とわざわざ指定しなければな
+らないのは面倒だ。それで<code>self</code>に対する呼び出しのときはメソッドを呼び出す
+対象のオブジェクト（レシーバreceiver）を省略できるようになっている。
+</p>
+
+<pre class="emlist">
+class C
+  def my_p( obj )
+    real_my_p(obj)   # レシーバ指定なしで呼べる
+  end
+
+  def real_my_p( obj )
+    p(obj)
+  end
+end
+
+C.new().my_p(1)   # 1を表示
+</pre>
+
+
+
+<h3>インスタンス変数</h3>
+
+<p>
+オブジェクトはデータ + コードだ、という表現もあるくらいで、メソッドが定
+義できるだけではあまり役に立たない。オブジェクト単位でデータを記憶でき
+る必要がある。即ちインスタンス変数である。C++で言えばメンバ変数だ。
+</p>
+
+<p>
+Rubyの変数名ルール通り、一文字目が種別を決める。インスタンス変数は「<code>@</code>」
+だ。
+</p>
+
+<pre class="emlist">
+class C
+  def set_i(value)
+    @i = value
+  end
+
+  def get_i()
+    return @i
+  end
+end
+
+c = C.new()
+c.set_i("ok")
+p(c.get_i())   # "ok"を表示する
+</pre>
+
+<p>
+インスタンス変数はこれまでの変数とはちょっと変わっていて、代入しなくて
+も（定義しなくても）参照できる。その場合どうなるかというと……前のコー
+ドの続きとしてこんなことをやってみた。
+</p>
+
+<pre class="emlist">
+c = C.new()
+p(c.get_i())   # nilと表示される
+</pre>
+
+<p>
+<code>set</code>せずに<code>get</code>してみたら、<code>nil</code>と表示された。<code>nil</code>というのは「ない」
+を意味するオブジェクトである。そこにオブジェクトがあるのに
+ないというのも不思議だが、そういうものなのだからしかたがない。
+</p>
+
+<p>
+<code>nil</code>はリテラルのように使うこともできる。
+</p>
+
+<pre class="emlist">
+p(nil)   # nilと表示される
+</pre>
+
+
+
+<h3><code>initialize</code></h3>
+
+<p>
+これまで見てきたように、定義したばかりのクラスでも<code>new</code>を呼べばインスタ
+ンスが作れる。それは確かにそうなのだが、クラス特有の初期化をしたいこと
+もあるだろう。そういうときは<code>new</code>を変えるのではなくて、<code>initialize</code>という
+メソッドを定義しておく。そうすると<code>new</code>の中でそれを呼んでくれる。
+</p>
+
+<pre class="emlist">
+class C
+  def initialize()
+    @i = "ok"
+  end
+  def get_i()
+    return @i
+  end
+end
+c = C.new()
+p(c.get_i())   # "ok"と表示される
+</pre>
+
+<p>
+ただ厳密に言うならこれはあくまで<code>new</code>というメソッドの仕様であって
+言語の仕様ではない。
+</p>
+
+
+
+<h3>継承</h3>
+
+<p>
+クラスは他のクラスを継承できる。例えば<code>String</code>クラスは<code>Object</code>クラスを
+継承している。本書ではこの関係を図3のように縦の矢印で書く。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_supersub.jpg" alt="(supersub)"><br>
+図3: 継承
+</p>
+
+<p>
+この図の場合、継承されるほうのクラス（<code>Object</code>）はスーパークラスとか
+上位クラスと呼ぶ。継承したクラス（<code>String</code>）はサブクラスまたは
+下位クラスと呼ぶ。この点C++とは用語が違うので注意してほしい。
+Javaとは同じだ。
+</p>
+
+<p>
+とにかく試してみよう。我々の作ったクラスにも他のクラスを継承させてみる。
+クラスを継承して作るには（スーパークラスを指定するには）次のように書く。
+</p>
+
+<pre class="emlist">
+class C &lt; SuperClassName
+end
+</pre>
+
+<p>
+これまでのようにスーパークラスを省略して書いたときは暗黙のうちに
+<code>Object</code>というクラスがスーパークラスになる。
+</p>
+
+<p>
+さてなんのために継承するかと言えば、もちろんメソッドを引き継ぐためだ。
+引き継ぐというのは、あたかもスーパークラスでのメソッド定義をサブクラス
+でもう一度繰り返したかのように働く、ということである。これも試してみよう。
+</p>
+
+<pre class="emlist">
+class C
+  def hello()
+    return "hello"
+  end
+end
+
+class Sub &lt; C
+end
+
+sub = Sub.new()
+p(sub.hello())   # "hello"を表示する
+</pre>
+
+<p>
+<code>hello</code>はクラス<code>C</code>で定義されたメソッドだが、<code>Sub</code>クラスのインスタンス
+に対しても呼ぶことができた。もちろん今度も変数に代入する必要はない。以
+下のように書いても同じだ。
+</p>
+
+<pre class="emlist">
+p(Sub.new().hello())
+</pre>
+
+<p>
+同じ名前のメソッドを定義すればオーバーライドできる。C++や
+Object Pascal（Delphi）では予約語<code>virtual</code>などで明示的に指定したメソッド
+しかオーバーライドできないが、Rubyでは全メソッドが無条件にオーバーライ
+ド可能である。
+</p>
+
+<pre class="emlist">
+class C
+  def hello()
+    return "Hello"
+  end
+end
+
+class Sub &lt; C
+  def hello()
+    return "Hello from Sub"
+  end
+end
+
+p(Sub.new().hello())   # "Hello from Sub"を表示する
+p(C.new().hello())     # "Hello"を表示する
+</pre>
+
+<p>
+またクラスは何段継承してもよい。例えば図4のように。こ
+の場合<code>Fixnum</code>は<code>Object</code>と<code>Numeric</code>と<code>Integer</code>のメソッド全て
+を引き継ぐわけだ。同名のメソッドがあるときはより近いクラスのメソッドが
+優先される。型によるオーバーロードなんてものは一切ないので条件は非常に
+単純である。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_multiinherit.jpg" alt="(multiinherit)"><br>
+図4: 多段の継承
+</p>
+
+<p>
+それと、C++だと何も継承しないクラスというものを作れるが、Rubyでは必ず
+<code>Object</code>クラスを直接または間接に継承しなければならない。つまり継承関係の
+図を書くと<code>Object</code>を頂点とする一本のツリーになる。例えば基本ライブラリの
+重要クラスの継承関係をツリーにすると図5のような感じだ。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_classtree.jpg" alt="(classtree)"><br>
+図5: Rubyのクラスツリー
+</p>
+
+<p>
+スーパークラスは一度（定義するときに）決めたらそれきりで、その後は
+絶対に変えられない。つまりクラスツリーには新しいクラスが追加されること
+はあっても位置が移動したり削除されたりすることはない。
+</p>
+
+
+
+<h3>変数の継承……？</h3>
+
+<p>
+Rubyでは変数（インスタンス変数）は継承するものではない。継承しようにも、
+そのクラスでどんな変数が使われるか、クラスには情報がないからだ。
+</p>
+
+<p>
+だがメソッドさえ継承されればその継承したメソッドが呼ばれたときに（下位
+クラスのインスタンスで）インスタンス変数への代入が起こる。つまり定義さ
+れる。そうすれば、インスタンス変数の名前空間はインスタンスごとに完全に
+フラットなので、どのクラスのメソッドからだろうとアクセスできるようにな
+る。
+</p>
+
+<pre class="emlist">
+class A
+  def initialize()   # newの過程で呼ばれる
+    @i = "ok"
+  end
+end
+
+class B &lt; A
+  def print_i()
+    p(@i)
+  end
+end
+
+B.new().print_i()   # "ok"と表示される
+</pre>
+
+<p>
+この挙動が納得できないならクラスと継承を潰して考えてしまうといい。クラ
+ス<code>C</code>のインスタンス<code>obj</code>があるとしたら、まず<code>C</code>のスーパークラスのメソッ
+ドが全部<code>C</code>に定義されているとして考える。もちろんオーバーライドの規則
+はちゃんと考慮しよう。そして今度は<code>C</code>のメソッドを<code>obj</code>にくっつけてしま
+う（図6）。この強烈な「モノ感」がRubyのオブジェクト指向の
+特徴である。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_objimage.jpg" alt="(objimage)"><br>
+図6: Rubyのオブジェクトのイメージ
+</p>
+
+
+
+<h3>モジュール</h3>
+
+<p>
+スーパークラスは一つしか指定できなかった。つまりRubyは見ためには
+単一継承のように見える。しかし実際にはモジュールがあるために
+多重継承と同等の能力を持つ。次にそのモジュールについて説明しよう。
+</p>
+
+<p>
+モジュールを一言で言えば、スーパークラスを指定できず、インスタンスも
+作れないクラスだ。定義は次のように書く。
+</p>
+
+<pre class="emlist">
+module M
+end
+</pre>
+
+<p>
+これでモジュール<code>M</code>が定義された。メソッドもクラスと全く同じに
+定義できる。
+</p>
+
+<pre class="emlist">
+module M
+  def myupcase( str )
+    return str.upcase()
+  end
+end
+</pre>
+
+<p>
+しかしインスタンスが作れないので直接は呼び出せない。そこでどうする
+かと言うと、他のクラスに「インクルード」して使う。すると
+あたかもそのモジュールをクラスが継承したかのように扱うことができる
+ようになる。
+</p>
+
+<pre class="emlist">
+module M
+  def myupcase( str )
+    return str.upcase()
+  end
+end
+
+class C
+  include M
+end
+
+p(C.new().myupcase("content"))  # "CONTENT"と表示される
+</pre>
+
+<p>
+クラス<code>C</code>では何のメソッドも定義していないのに<code>myupcase</code>を呼び出すことがで
+きた。つまりこれはモジュール<code>M</code>のメソッドを「継承」したということである。
+インクルードは機能的には継承と全く同じものだ。メソッド定義もインスタン
+ス変数のアクセスもなんら制限されない。
+</p>
+
+<p>
+モジュールはスーパークラスを指定できない、と言ったが、
+別のモジュールをインクルードすることならできる。
+</p>
+
+<pre class="emlist">
+module M
+end
+
+module M2
+  include M
+end
+</pre>
+
+<p>
+つまりこれまた機能的にはスーパークラスを指定できるのに等しい。ただクラス
+が上位に来ることだけは決してない。あくまでモジュールの上にはモジュール
+だけが許される。
+</p>
+
+<p>
+メソッドの継承も含めた例を以下に示す。
+</p>
+
+<pre class="emlist">
+module OneMore
+  def method_OneMore()
+    p("OneMore")
+  end
+end
+
+module M
+  include OneMore
+
+  def method_M()
+    p("M")
+  end
+end
+
+class C
+  include M
+end
+
+C.new().method_M()         # "M"が表示される
+C.new().method_OneMore()   # "OneMore"が表示される
+</pre>
+
+<p>
+クラスと同じように継承を書けば図7のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_modinherit.jpg" alt="(modinherit)"><br>
+図7: 多段のインクルード
+</p>
+
+<p>
+ところでクラス<code>C</code>にはスーパークラスもあるが、それとモジュールの関係はど
+うなるのだろう。例えば次のような場合を考えよう。
+</p>
+
+<pre class="emlist">
+# modcls.rb
+
+class Cls
+  def test()
+    return "class"
+  end
+end
+
+module Mod
+  def test()
+    return "module"
+  end
+end
+
+class C &lt; Cls
+  include Mod
+end
+
+p(B.new().test())   # "class"？ "module"？
+</pre>
+
+<p>
+<code>C</code>は<code>Cls</code>を継承し、<code>Mod</code>をインクルードしている。この場合、表示されるのは
+<code>"class"</code>だろうか、<code>"module"</code>だろうか。つまりモジュールとクラスのどちらが
+より「近い」のだろうか。RubyのことはRubyに聞け、ということで実行してみる。
+</p>
+
+<pre class="screen">
+% ruby modcls.rb
+"module"
+</pre>
+
+<p>
+スーパークラスよりモジュールが優先されるようだ。
+</p>
+
+<p>
+一般的に言うと、Rubyではモジュールをインクルードするとそのクラスと
+スーパークラスの「間」にはさまるような形で継承する。絵にするなら
+図8のように書けるだろう。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_modclass.jpg" alt="(modclass)"><br>
+図8: クラスとモジュールの相関関係
+</p>
+
+<p>
+またモジュールにインクルードされているモジュールも考えれば
+図9のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_modclass2.jpg" alt="(modclass2)"><br>
+図9: クラスとモジュールの相関関係（2）
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>プログラム（II）</h2>
+
+<p>
+注意。この節は非常に重要で、しかも静的な言語だけを使ってきたプログラ
+マにはなじみにくい要素を説明している。他は斜め読みでもいいが、ここだけ
+は注意して読んでほしい。説明も比較的丁寧に行う。
+</p>
+
+
+<h3>定数のネスト</h3>
+
+<p>
+まず定数について復習。大文字から始まるのが定数で、次のように
+して定義できた。
+</p>
+
+<pre class="emlist">
+Const = 3
+</pre>
+
+<p>
+そしてこの定数を参照するときは次のようにするのだった。
+</p>
+
+<pre class="emlist">
+p(Const)   # 3を表示する
+</pre>
+
+<p>
+実はこれは次のようにも書ける。
+</p>
+
+<pre class="emlist">
+p(::Const)   # 同じく3を表示する
+</pre>
+
+<p>
+頭に<code>::</code>が付くと「トップレベルで定義された定数である」ことを示す。ファイ
+ルシステムのパスに例えてみるといい。ルートディレクトリに<code>vmunix</code>というファ
+イルがあったとしよう。<code>/</code>にいるときは単に<code>vmunix</code>と書けばアクセスできる。
+またフルパスで<code>/vmunix</code>と指定することもできる。<code>Const</code>と<code>::Const</code>もその関係
+と同じである。トップレベルにいる間は単に<code>Const</code>と書いてもいいし、フルパ
+スで<code>::Const</code>と書いてもいい。
+</p>
+
+<p>
+ではファイルシステムのディレクトリにあたるものはRubyではなんだろうか。
+それはクラス定義文とモジュール定義文である。しかし二つあると長くて面倒
+なので以後はまとめてクラス定義文で代表することにしておこう。そのクラス
+定義文中では定数レベルが上がる（ディレクトリの中に入る）。
+</p>
+
+<pre class="emlist">
+class SomeClass
+  Const = 3
+end
+
+p(::SomeClass::Const)   # 3と表示する
+p(  SomeClass::Const)   # 同じ。3と表示する
+</pre>
+
+<p>
+<code>SomeClass</code>はトップレベルで定義されたクラス即ち定数なので単に<code>SomeClass</code>と
+書いても<code>::SomeClass</code>と書いても参照できる。そしてそのクラス定義にネスト
+している定数<code>Const</code>は「<code>SomeClass</code>の中にある」<code>Const</code>ということで、
+<code>::SomeClass::Const</code>になる。
+</p>
+
+<p>
+ディレクトリの中にまたディレクトリを作れるように、クラスの中でク
+ラスを作ることもできる。例えばこのように。
+</p>
+
+<pre class="emlist">
+class C        # ::C
+  class C2     # ::C::C2
+    class C3   # ::C::C2::C3
+    end
+  end
+end
+</pre>
+
+<p>
+ところで、クラス定義文の中で定義した定数は常にフルパスで書かなければいけな
+いのだろうか。もちろんそんなことはない。ファイルシステムの例えと同じで、
+同じレベルのクラス定義文の「なか」にいれば<code>::</code>なしで参照できる。つま
+りこういうことである。
+</p>
+
+<pre class="emlist">
+class SomeClass
+  Const = 3
+  p(Const)   # 3と表示する
+end
+</pre>
+
+<p>
+あれっ、と思わなかっただろうか。なんと、クラス定義文中だろうと
+実行されるプログラムが書けてしまうのである。静的な言語（だけ）
+に慣れている人だとこれは相当に意外だと思う。筆者も初めて見たときはギョッ
+とした。
+</p>
+
+<p>
+いちおう付け加えておくと、もちろんメソッドの中からでも定数は見える。参
+照規則はそのクラス定義文の中（メソッドの外）と全く同じである。
+</p>
+
+<pre class="emlist">
+class C
+  Const = "ok"
+  def test()
+    p(Const)
+  end
+end
+
+C.new().test()   # "ok"を表示
+</pre>
+
+
+
+<h3>全ては実行される</h3>
+
+<p>
+ここで全体を見据えて一つ書いておこう。
+Rubyではプログラムのほとんどの部分が「実行される」。
+定数定義・クラス定義文・メソッド定義文やその他
+ほとんどのものは見た通りの順番で、実行される。
+</p>
+
+<p>
+例えば次のコードを見てほしい。
+今までに使った構造をいろいろ使ってみた。
+</p>
+
+<pre class="emlist">
+ 1:  p("first")
+ 2:
+ 3:  class C &lt; Object
+ 4:    Const = "in C"
+ 5:
+ 6:    p(Const)
+ 7:
+ 8:    def myupcase(str)
+ 9:       return str.upcase()
+10:    end
+11:  end
+12:
+13:  p(C.new().myupcase("content"))
+</pre>
+
+<p>
+このプログラムは以下の順番で実行される。
+</p>
+
+<table>
+<tr><td><code>1:  p("first")</code><td><td><code>"first"</code>と表示する。<td></tr>
+<tr><td><code>3:  &lt; Object</code><td><td>定数<code>Object</code>を参照しクラスオブジェクト<code>Object</code>を得る<td></tr>
+<tr><td><code>3:  class C</code><td><td><code>Object</code>をスーパークラスとする新しいクラスオブジェクトを生成、定数<code>C</code>に代入<td></tr>
+<tr><td><code>4:  Const = "in C"</code><td><td><code>::C::Const</code>を定義。値は<code>"in C"</code><td></tr>
+<tr><td><code>6:  p(Const)</code><td><td><code>::C::Const</code>を表示。<code>"in C"</code>を表示する。<td></tr>
+<tr><td><code>8:  def myupcase(...)...end</code><td><td>メソッド<code>C#myupcase</code>を定義。<td></tr>
+<tr><td><code>13:  C.new().myupcase(...)</code><td><td>定数<code>C</code>を参照し、それに対し<code>new</code>を呼び出し、さらにそれに対し<code>myupcase</code>を呼び出す。<td></tr>
+<tr><td><code>9:  return str.upcase()</code><td><td><code>"CONTENT"</code>を返す。<td></tr>
+<tr><td><code>13:  p(...)</code><td><td><code>"CONTENT"</code>を表示。<td></tr>
+</table>
+
+
+
+<h3>ローカル変数のスコープ</h3>
+
+<p>
+これでようやくローカル変数のスコープについて話すことができる。
+</p>
+
+<p>
+トップレベル、クラス定義文内、モジュール定義文内、メソッド本体、はそれぞれ
+完全に独立したローカル変数スコープを持つ。つまり次のプログラムにある<code>lvar</code>は
+全て別の変数であり、相互に行き来がない。
+</p>
+
+<pre class="emlist">
+lvar = 'toplevel'
+
+class C
+  lvar = 'in C'
+  def method()
+    lvar = 'in C#method'
+  end
+end
+
+p(lvar)   # "toplevel"と表示される
+
+module M
+  lvar = 'in M'
+end
+
+p(lvar)   # "toplevel"と表示される
+</pre>
+
+
+
+<h3>コンテキストとしての<code>self</code></h3>
+
+<p>
+以前、メソッドを実行中は自分自身（メソッドを呼び出したオブジェクト）が
+<code>self</code>になると言った。それは正しいのだが、半分でしかない。実はRubyプログ
+ラム実行中はどこにいようと<code>self</code>が設定されている。つまりトップレベルにも
+クラス定義文にも<code>self</code>があるのだ。
+</p>
+
+<p>
+例えばトップレベルでも<code>self</code>がある。トップレベルの<code>self</code>は、<code>main</code>という。
+なんの変哲もない、<code>Object</code>クラスのインスタンスだ。<code>main</code>は
+とりあえず<code>self</code>を設定するために用意されているだけで、
+それ自体にあまり深い意味があるわけではない。
+</p>
+
+<p>
+そんなわけでトップレベルの<code>self</code>即ち<code>main</code>は<code>Object</code>のインスタンスなの
+で、トップレベルでも<code>Object</code>のメソッドが呼べるということになる。そして
+<code>Object</code>には<code>Kernel</code>というモジュールがインクルードされており、そこで
+<code>p</code>や<code>puts</code>などの「関数風メソッド」が定義されている
+（図10）。だからこそトップレベルでも<code>p</code>や<code>puts</code>が呼べるのだ。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_Kernel.jpg" alt="(Kernel)"><br>
+図10: <code>main</code>と<code>Object</code>、<code>Kernel</code>
+</p>
+
+<p>
+だから本当は<code>p</code>も関数ではなくメソッドなのである。ただ、<code>Kernel</code>で定義され
+ているため、どこにいようと、つまり<code>self</code>のクラスがなんだろうと、「自分の」
+メソッドとして関数のように呼べてしまうのだ。だからRubyには本当の意味で
+の「関数」は存在しない。あるのはメソッドだけである。
+</p>
+
+<p>
+ちなみにそういう関数風メソッドには<code>p</code>や<code>puts</code>の他にも
+<code>print</code> <code>puts</code> <code>printf</code> <code>sprintf</code> <code>gets</code> <code>fork</code> <code>exec</code>などなど、
+どこかで見たような
+名前のものがたくさん存在する。このへんの名前の選びかたを見ると
+Rubyの性格がなんとなく想像できるのではなかろうか。
+</p>
+
+<p>
+さて、どこにでも<code>self</code>が設定されているということはクラス定義文中にも
+同じように<code>self</code>があるはずだ。クラス定義中の<code>self</code>はそのクラス
+（クラスオブジェクト）である。だからこんなふうになる。
+</p>
+
+<pre class="emlist">
+class C
+  p(self)   # C
+end
+</pre>
+
+<p>
+これが一体何の役に立つのだろう。
+実はもう非常に役立つ例を目にしている。これだ。
+</p>
+
+<pre class="emlist">
+module M
+end
+class C
+  include M
+end
+</pre>
+
+<p>
+実はこの<code>include</code>はクラスオブジェクト<code>C</code>に対するメソッド呼び出しである。ま
+だ言っていないことだが、Rubyではメソッド呼び出しの括弧が省略できるのだ。
+これまではクラス定義文の話が済んでいなかったので、メソッド呼び出しに見
+えてしまわないようにあえて括弧を外しておいた。
+</p>
+
+
+
+<h3>ロード</h3>
+
+<p>
+Rubyではライブラリのロードも全て実行時に行われる。
+通常はこう書く。
+</p>
+
+<pre class="emlist">
+require("library_name")
+</pre>
+
+<p>
+見ためを裏切らず<code>require</code>はメソッドである。予約語ですらない。こう書くと
+こう書いた場所でロードが実行されて、そのライブラリ（のコード）に実行が
+移る。Javaのパッケージのような概念はRubyにはないので、ライブラリ名の
+名前空間を分離したいときはファイルをディレクトリに入れて分離する。
+</p>
+
+<pre class="emlist">
+require("somelib/file1")
+require("somelib/file2")
+</pre>
+
+<p>
+そしてライブラリの中では普通<code>class</code>文や<code>module</code>文でもってクラスなどを定義
+するわけだ。トップレベルの定数スコープはファイルの別に関係なくフラット
+なので別のファイルで定義したクラスも最初から見える。クラス名の名前空間
+を分離したいときは以下のように明示的にモジュールにネストさせる。
+</p>
+
+<pre class="emlist">
+# net ライブラリの名前空間分離の例
+module Net
+  class SMTP
+    # ...
+  end
+  class POP
+    # ...
+  end
+  class HTTP
+    # ...
+  end
+end
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>クラスについてさらに</h2>
+
+<h3>まだ続く定数の話</h3>
+
+<p>
+これまで定数のスコープをファイルシステムに例え
+てきたが、ここからはその例えはすっかり忘れていただきたい。
+</p>
+
+<p>
+定数にはまだまだ仕掛けがある。
+まず、「外」のクラスにある定数も見ることができる。
+</p>
+
+<pre class="emlist">
+Const = "ok"
+class C
+  p(Const)   # "ok"を表示
+end
+</pre>
+
+<p>
+なぜこうなっているかと言うと、モジュールを名前空間として使うときに
+便利だからだ。どういうことか、先程の<code>net</code>ライブラリの例に少し追加した
+もので説明しよう。
+</p>
+
+<pre class="emlist">
+module Net
+  class SMTP
+    # メソッドでNet::SMTPHelperを使う
+  end
+  class SMTPHelper   # Net::SMTPを補助するクラス
+  end
+end
+</pre>
+
+<p>
+こういう場合、<code>SMTP</code>クラスの中からも<code>SMTPHelper</code>と書いただけで
+参照できるほうが便利ではないだろうか。
+そこで「外のクラスが見えると便利」という結論になるわけだ。
+</p>
+
+<p>
+「外」のクラスは何段ネストしていても参照できる。同じ名前の定数が複数のネ
+ストレベルで定義されているときは、内側から順番に見ていって最初に見付かっ
+たものが参照される。
+</p>
+
+<pre class="emlist">
+Const = "far"
+class C
+  Const = "near" # こちらのほうが上のConstより近い
+  class C2
+    class C3
+      p(Const)   # "near"を表示
+    end
+  end
+end
+</pre>
+
+<p>
+また定数にはもう一つ検索パスがある。どんどん外のクラスを探していって
+トップレベルまで行っても見付からなかった場合は、さらに自分の
+スーパークラスの定数も見るのだ。
+</p>
+
+<pre class="emlist">
+class A
+  Const = "ok"
+end
+class B &lt; A
+  p(Const)   # "ok"を表示
+end
+</pre>
+
+<p>
+全く、ややこしいことこのうえない。
+</p>
+
+<p>
+まとめよう。定数を探すときは、まず外のクラスを探し次にスーパークラスを
+探す。例えば、かなり作為的だが、以下のようなクラス階層があったとする。
+</p>
+
+<pre class="emlist">
+class A1
+end
+class A2 &lt; A1
+end
+class A3 &lt; A2
+  class B1
+  end
+  class B2 &lt; B1
+  end
+  class B3 &lt; B2
+    class C1
+    end
+    class C2 &lt; C1
+    end
+    class C3 &lt; C2
+      p(Const)
+    end
+  end
+end
+</pre>
+
+<p>
+<code>C3</code>で定数<code>Const</code>を参照すると図11の順番で検索される。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_constref.jpg" alt="(constref)"><br>
+図11: 定数の検索順序
+</p>
+
+<p>
+一点注意。外のクラスのスーパークラス、例えば<code>A1</code>や<code>B2</code>は全く検索されない。
+検索するのは、外ならあくまで外方向に向かってのみ、スーパークラス
+ならスーパークラス方向のみだ。でないととんでもない数のクラスを検索する
+ことになりかねないし、そんなに複雑なものは挙動が予測できない。
+</p>
+
+
+
+<h3>メタクラス</h3>
+
+<p>
+オブジェクトならばメソッドを呼べる、と言った。呼べるメソッドはオブジェ
+クトのクラスで決まるとも言った。ならばクラスオブジェクトにも「そのクラス」
+があるのだろうか（図12）。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_classclass.jpg" alt="(classclass)"><br>
+図12: クラスのクラスは？
+</p>
+
+<p>
+こういうときRubyでは実際に確かめてみることができる。
+「自分の所属するクラス（クラスオブジェクト）を返す
+メソッド」<code>Object#class</code>があるからだ。
+</p>
+
+<pre class="emlist">
+p("string".class())   # Stringと表示された
+p(String.class())     # Classと表示された
+p(Object.class())     # Classと表示された
+</pre>
+
+<p>
+<code>String</code>は<code>Class</code>というクラスに所属しているらしい。
+ではさらに<code>Class</code>のクラスはなんだろう。
+</p>
+
+<pre class="emlist">
+p(Class.class())      # Classと表示された
+</pre>
+
+<p>
+また<code>Class</code>らしい。つまりどんなオブジェクトだろうと
+<code>.class().class().class()</code>……と辿っていけば<code>Class</code>に行き着き、
+そこでループにはまってどんづまりになる（図13）。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_ccc.jpg" alt="(ccc)"><br>
+図13: クラスのクラスのクラスの……
+</p>
+
+<p>
+<code>Class</code>はクラスのクラスだ。そして「○○の○○」という再帰構造を
+持つもののことを「メタ○○」と言うから、<code>Class</code>は「メタクラス」
+である。
+</p>
+
+
+
+<h3>メタオブジェクト</h3>
+
+<p>
+では今度は対象を変えて、モジュールについて考えてみる。モジュールもやは
+りオブジェクトなので、クラスと全く同じように「そのクラス」があるはずだ。
+見てみよう。
+</p>
+
+<pre class="emlist">
+module M
+end
+p(M.class())   # Moduleと表示される
+</pre>
+
+<p>
+モジュールオブジェクトのクラスは<code>Module</code>と言うらしい。
+では<code>Module</code>クラスのクラスは何だろう。
+</p>
+
+<pre class="emlist">
+p(Module.class())   # Class
+</pre>
+
+<p>
+これまた<code>Class</code>だ。
+</p>
+
+<p>
+それなら今度は方向を変えて継承関係を調べてみる。
+<code>Class</code>と<code>Module</code>のスーパークラスはなんだろうか。
+Rubyでは<code>Class#superclass</code>でそれを調べられる。
+</p>
+
+<pre class="emlist">
+p(Class.superclass())    # Module
+p(Module.superclass())   # Object
+p(Object.superclass())   # nil
+</pre>
+
+<p>
+なんと、<code>Class</code>は<code>Module</code>の下位クラスであった。
+これらの事実からRubyの重要クラスの関係を図示すると
+図14のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_minimum_metaobjects.jpg" alt="(metaobjects)"><br>
+図14: Rubyの重要クラスの関係
+</p>
+
+<p>
+今まで何の説明もなく<code>new</code>や<code>include</code>を使ってきたが、これでようやく正体を
+説明できる。<code>new</code>は実は<code>Class</code>クラスで定義されたメソッドなのである。だから
+どんなクラスでも（<code>Class</code>のインスタンスだから）いきなり<code>new</code>が使えるわけだ。
+しかし<code>Module</code>には<code>new</code>が定義されていないのでインスタンスが作れない。また
+<code>include</code>は<code>Module</code>クラスで定義されているから、モジュールに対してもクラスに
+対しても<code>include</code>が呼べる。
+</p>
+
+<p>
+この三つのクラス、<code>Object</code>、<code>Module</code>、<code>Class</code>はRubyの根幹を支えるオブ
+ジェクトたちだ。言ってみれば、この三つのオブジェクトがRubyのオブジェク
+ト世界自体を記述しているわけだ。つまりオブジェクトを記述するオブジェク
+トである。ならば<code>Object Module Class</code>はRubyの「メタオブジェクト」だ。
+</p>
+
+
+
+<h3>特異メソッド</h3>
+
+<p>
+オブジェクトならばメソッドを呼べる、と言った。呼べるメソッドはオブジェ
+クトのクラスで決まるとも言った。だが理念としてはメソッドはオブジェクトに
+所属するのだということも言ったと思う。あくまでクラスは同じメソッドを
+何度も定義してやる手間を省くための仕掛けだと。
+</p>
+
+<p>
+そこでだ。実はRubyにはクラスとは関係なく個々のオブジェクト（インスタン
+ス）に対してメソッドを定義する仕組みもあるのだ。それにはこう書く。
+</p>
+
+<pre class="emlist">
+obj = Object.new()
+def obj.my_first()
+  puts("My first singleton method")
+end
+obj.my_first()   # My first singleton methodと表示
+</pre>
+
+<p>
+知ってのとおり<code>Object</code>は全クラスのルートである。そんな重要クラスに
+<code>my_first</code>などという変な名前のメソッドが定義されているはずがない。そし
+て<code>obj</code>は<code>Object</code>のインスタンスである。しかし<code>obj</code>に対して<code>my_first</code>と
+いうメソッドを呼ぶことができる。つまり間違いなく、所属するクラスとは全
+く全然なにも関係ないメソッドが定義されている。このような、オブジェクト
+ごとに定義されたメソッドのことを特異メソッド（singleton method）と
+言う。
+</p>
+
+<p>
+特異メソッドはどんなときに使うか。まずJavaやC++で言う
+スタティックメソッドの
+ようなものを定義するときだ。つまりインスタンスを生成しなくても使えるメ
+ソッドである。こういうメソッドはRubyではクラスオブジェクトの特異メソッ
+ドとして表現されるのだ。
+</p>
+
+<p>
+例えばUNIXの<code>unlink</code>というシステムコールがある。ファイルのエントリをファ
+イルシステムから削除する命令だ。Rubyではこれをダイレクトに<code>File</code>クラスの
+特異メソッド<code>unlink</code>として使えるようにしてある。それを使ってみよう。
+</p>
+
+<pre class="emlist">
+File.unlink("core")  # コアダンプを消す
+</pre>
+
+<p>
+いちいち「<code>File</code>オブジェクトの特異メソッド<code>unlink</code>」と言うのは面倒なので、
+これからは単に「<code>File.unlink</code>」と書くことにする。間違えてこれを
+「<code>File#unlink</code>」と書いたり、逆に「<code>File</code>で定義されたメソッド<code>write</code>」を
+「<code>File.write</code>」と書いたりしないでほしい。
+</p>
+
+<p class="caption">▼メソッド記法のまとめ</p>
+<table>
+<tr><td>記法<td><td>呼び出せる対象<td><td>呼び出し例<td></tr>
+<tr><td><code>File.unlink</code><td><td><code>File</code>クラス自身<td><td><code>File.unlink("core")</code><td></tr>
+<tr><td><code>File#write</code><td><td><code>File</code>のインスタンス<td><td><code>f.write("str")</code><td></tr>
+</table>
+
+
+
+<h3>クラス変数</h3>
+
+<p>
+クラス変数は<code>ruby</code> 1.6から加わった、比較的新しい機能だ。定数と同じくクラ
+スに所属しており、クラスと、そのインスタンスの両方から代入・参照できる。
+例を見てみよう。変数名の頭を<code>@@</code>にしたものがクラス変数である。
+</p>
+
+<pre class="emlist">
+class C
+  @@cvar = "ok"
+  p(@@cvar)      # "ok"を表示
+
+  def print_cvar()
+    p(@@cvar)
+  end
+end
+
+C.new().print_cvar()  # "ok"を表示
+</pre>
+
+<p>
+クラス変数も最初の代入が定義を兼ねているので、次のように代入前に
+参照すると実行時エラーになる。<code>@</code>こそ付くものの、インスタンス変数
+とは振舞いがまるで違うのだ。
+</p>
+
+<pre class="screen">
+% ruby -e '
+class C
+  @@cvar
+end
+'
+-e:3: uninitialized class variable @@cvar in C (NameError)
+</pre>
+
+<p>
+ここではちょっと横着して<code>-e</code>オプションでプログラムを与えてみた。
+<code>'</code>と<code>'</code>で囲まれている三行がプログラムだ。
+</p>
+
+<p>
+またクラス変数は継承する。言いかたを変えると、下位クラスから上位
+クラスのクラス変数を代入・参照できる。
+</p>
+
+<pre class="emlist">
+class A
+  @@cvar = "ok"
+end
+
+class B &lt; A
+  p(@@cvar)            # "ok"を表示
+  def print_cvar()
+    p(@@cvar)
+  end
+end
+
+B.new().print_cvar()   # "ok"を表示
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>グローバル変数</h2>
+
+<p>
+最後に、いちおうグローバル変数もある。プログラムのどこからでも代入・参
+照できるのがグローバル変数だ。変数名一文字目を<code>$</code>にしたのがグローバル変数
+である。
+</p>
+
+<pre class="emlist">
+$gvar = "global variable"
+p($gvar)   # "global variable"と表示
+</pre>
+
+<p>
+グローバル変数はインスタンス変数と同じく、あらゆる名前が代入前に
+定義されていると見做せる。つまり代入前に参照しても
+<code>nil</code>を返すだけでエラーにはならない。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

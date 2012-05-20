@@ -1,0 +1,2127 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第4章 クラスとモジュール</title></head>
+<body>
+
+<h1>第4章 クラスとモジュール</h1>
+
+<p>
+本章ではクラスとモジュールの作りだすデータ構造について詳細を見ていく。
+</p>
+
+
+<h2>クラスとメソッドの定義</h2>
+
+<p>
+まずはCレベルでRubyのクラスを定義する方法を少しだけ見ておきたいと思う。
+この章ではある意味「特殊な」ところばかりを追求するので、圧倒的多数を占
+める通常ルートを先に知っておいてほしいのだ。
+</p>
+
+<p>
+クラスとメソッドを定義する主要なAPIは以下の六つである。
+</p>
+
+<ul>
+<li><code>rb_define_class()</code></li>
+<li><code>rb_define_class_under()</code></li>
+<li><code>rb_define_module()</code></li>
+<li><code>rb_define_module_under()</code></li>
+<li><code>rb_define_method()</code></li>
+<li><code>rb_define_singleton_method()</code></li>
+</ul>
+
+<p>
+多少の派生バージョンはあるものの、拡張ライブラリはもちろん、基本クラス
+ライブラリまでのほとんどがこれだけのAPIで定義されている。順番に紹介し
+ていこう。
+</p>
+
+
+<h3>クラスの定義</h3>
+
+<p>
+<code>rb_define_class()</code>はトップレベルのクラスを定義する。
+Rubyの配列クラス、<code>Array</code>の定義を例に取ろう。
+</p>
+
+<p class="caption">▼クラス<code>Array</code>の定義</p>
+<pre class="longlist">
+  19  VALUE rb_cArray;
+
+1809  void
+1810  Init_Array()
+1811  {
+1812      rb_cArray  = rb_define_class("Array", rb_cObject);
+
+(array.c)
+</pre>
+
+
+<p>
+<code>rb_cObject</code>と<code>rb_cArray</code>がそれぞれRubyレベルで言う<code>Object</code>と<code>Array</code>に
+相当する。<code>ruby</code>に属することを示すプリフィクス<code>rb</code>と、クラスオブジェク
+トであることを示す<code>c</code>を追加してあるのだ。この名前付け規則は<code>ruby</code>の全
+体を通して一貫している。
+</p>
+
+<p>
+さて、この<code>rb_define_class()</code>の呼び出しでまず<code>Object</code>を継承したクラス
+<code>Array</code>を定義できた。<code>rb_define_class()</code>はクラスオブジェクトを作ると同時に
+定数も定義するので、この時点で既にRubyプログラムからも<code>Array</code>を参照できる
+ようになっている。つまり以下のRubyプログラムに相当する。
+</p>
+
+<pre class="emlist">
+class Array &lt; Object
+</pre>
+
+<p>
+<code>end</code>がないのに注意してほしい。これはわざと書かなかった。
+<code>rb_define_class()</code>ではクラス文本体は実行されないからである。
+</p>
+
+
+
+<h3>ネストしたクラスの定義</h3>
+
+<p>
+続いて<code>rb_define_class_under()</code>。
+この関数は他のクラス／モジュールにネストした
+クラスを定義する。今度の例は<code>stat(2)</code>の返り値である<code>File::Stat</code>だ。
+
+<p class="caption">▼<code>File::Stat</code>の定義</p>
+<pre class="longlist">
+  78  VALUE rb_cFile;
+  80  static VALUE rb_cStat;
+
+2581      rb_cFile = rb_define_class("File", rb_cIO);
+2674      rb_cStat = rb_define_class_under(rb_cFile, "Stat", rb_cObject);
+
+(file.c)
+</pre>
+
+
+<p>
+このコードは以下のRubyプログラムに相当する。
+</p>
+
+<pre class="emlist">
+class File &lt; IO
+  class Stat &lt; Object
+</pre>
+
+<p>
+今度もあえて<code>end</code>は抜かした。
+</p>
+
+
+
+<h3>モジュールの定義</h3>
+
+<p>
+<code>rb_define_module()</code>は簡単なのであっさりと終わろう。
+</p>
+
+<p class="caption">▼<code>Enumerable</code>の定義</p>
+<pre class="longlist">
+  17  VALUE rb_mEnumerable;
+
+ 492      rb_mEnumerable = rb_define_module("Enumerable");
+
+(enum.c)
+</pre>
+
+
+<p>
+<code>rb_mEnumerable</code>の頭の<code>m</code>はクラスの<code>c</code>と似ていて、モジュールであることを
+示している。そして対応するRubyプログラムはこうだ。
+</p>
+
+<pre class="emlist">
+module Enumerable
+</pre>
+
+<p>
+<code>rb_define_module_under()</code>はあまり使わないので省略する。
+</p>
+
+
+
+<h3>メソッドの定義</h3>
+
+<p>
+今度はメソッドを定義する<code>rb_define_method()</code>、
+これは非常にたくさん使う。例はまた<code>Array</code>から取ろう。
+</p>
+
+<p class="caption">▼<code>Array#to_s</code>の定義</p>
+<pre class="longlist">
+1818  rb_define_method(rb_cArray, "to_s", rb_ary_to_s, 0);
+
+(array.c)
+</pre>
+
+
+<p>
+これで<code>Array</code>クラスに<code>to_s</code>という名前のメソッドが定義される。
+メソッドの実体は関数ポインタで与える（<code>rb_ary_to_s</code>）。第四引数は
+メソッドの受ける引数の数である。<code>to_s</code>は引数を取らないので0だ。
+また対応するRubyプログラムを書くと、こうなる。
+</p>
+
+<pre class="emlist">
+class Array &lt; Object
+  def to_s
+    # rb_ary_to_s()の中身
+  end
+end
+</pre>
+
+<p>
+もちろん<code>class</code>文の部分は<code>rb_define_method()</code>には含まれないので正確には
+<code>def</code>の部分だけだが、<code>class</code>文をなくしてしまうと関数風メソッドを定義している
+ように見えてしまうので仕方なく<code>class</code>文の囲いも書いた。
+</p>
+
+<p>
+もう一つ、今度は引数を取るものを見てみよう。
+</p>
+
+<p class="caption">▼<code>Array#concat</code>の定義</p>
+<pre class="longlist">
+1835  rb_define_method(rb_cArray, "concat", rb_ary_concat, 1);
+
+(array.c)
+</pre>
+
+
+<p>
+定義するクラスは<code>rb_cArray</code>（<code>Array</code>）、メソッド名は<code>concat</code>、
+その実体は<code>rb_ary_concat()</code>で引数の数は1である。対応する
+Rubyプログラムを書くならこうだ。
+</p>
+
+<pre class="emlist">
+class Array &lt; Object
+  def concat( str )
+    # rb_ary_concat()の中身
+  end
+end
+</pre>
+
+
+
+<h3>特異メソッドの定義</h3>
+
+<p>
+特定のオブジェクトだけに定義されているメソッド、
+特異メソッドの定義もできる。第1章『Ruby言語ミニマム』では
+さんざん<code>File.unlink</code>を例にしたので、ここでも<code>File.unlink</code>の
+定義を見よう……かと思ったのだが、とある重要な理由により
+<code>File.link</code>に変更する。
+
+<p class="caption">▼<code>File.link</code>の定義</p>
+<pre class="longlist">
+2624  rb_define_singleton_method(rb_cFile, "link", rb_file_s_link, 2);
+
+(file.c)
+</pre>
+
+
+<p>
+<code>rb_define_method()</code>と使いかたは同じである。
+第一引数が定義する「オブジェクト」になるだけだ。
+この場合は<code>rb_cFile</code>に定義する。
+</p>
+
+
+
+<h3>エントリポイント</h3>
+
+<p>
+さて、以上のように定義できるのはいいとして、こういった定義関数の呼び出
+しはどこに書いてあり、どうやって実行されるのだろう。
+これは<code>Init_xxxx()</code>という名前の関数にまとめて書いてある。
+例えば<code>Array</code>のためには次のような<code>Init_Array()</code>が用意されている。
+</p>
+
+<p class="caption">▼<code>Init_Array</code></p>
+<pre class="longlist">
+1809  void
+1810  Init_Array()
+1811  {
+1812      rb_cArray  = rb_define_class("Array", rb_cObject);
+1813      rb_include_module(rb_cArray, rb_mEnumerable);
+1814
+1815      rb_define_singleton_method(rb_cArray, "allocate",
+                                     rb_ary_s_alloc, 0);
+1816      rb_define_singleton_method(rb_cArray, "[]", rb_ary_s_create, -1);
+1817      rb_define_method(rb_cArray, "initialize", rb_ary_initialize, -1);
+1818      rb_define_method(rb_cArray, "to_s", rb_ary_to_s, 0);
+1819      rb_define_method(rb_cArray, "inspect", rb_ary_inspect, 0);
+1820      rb_define_method(rb_cArray, "to_a", rb_ary_to_a, 0);
+1821      rb_define_method(rb_cArray, "to_ary", rb_ary_to_a, 0);
+1822      rb_define_method(rb_cArray, "frozen?",  rb_ary_frozen_p, 0);
+
+(array.c)
+</pre>
+
+
+<p>
+組み込みライブラリの<code>Init</code>関数は<code>ruby</code>の起動時に明示的に呼ばれる。
+具体的には<code>inits.c</code>の中である。
+</p>
+
+<p class="caption">▼<code>rb_call_inits()</code></p>
+<pre class="longlist">
+  47  void
+  48  rb_call_inits()
+  49  {
+  50      Init_sym();
+  51      Init_var_tables();
+  52      Init_Object();
+  53      Init_Comparable();
+  54      Init_Enumerable();
+  55      Init_Precision();
+  56      Init_eval();
+  57      Init_String();
+  58      Init_Exception();
+  59      Init_Thread();
+  60      Init_Numeric();
+  61      Init_Bignum();
+  62      Init_Array();
+
+(inits.c)
+</pre>
+
+
+<p>
+このように、ちゃんと<code>Init_Array()</code>も呼ばれている。
+</p>
+
+<p>
+組み込みライブラリはこれでいいとして、拡張ライブラリではどうなるのだろ
+う。実は拡張ライブラリでも約束事は同じである。例えば
+</p>
+
+<pre class="emlist">
+require "myextention"
+</pre>
+
+<p>
+という形でロードされる拡張ライブラリ<code>myextention.so</code>ならば、ロードされた
+ときに<code>Init_myextention()</code>という名前の（<code>extern</code>）関数が呼ばれるようになっ
+ている。どうやって呼んでいるのか、についてはこの章の範囲を越える。
+第18章『ロード』を読んでいただきたい。ここでは<code>Init</code>関数の
+例だけ出して終わりとする。
+</p>
+
+<p>
+以下の例は<code>ruby</code>に添付されている、
+つまり組み込みではない拡張ライブラリ、<code>stringio</code>だ。
+</p>
+
+<p class="caption">▼<code>Init_stringio()</code>（先頭）</p>
+<pre class="longlist">
+ 895  void
+ 896  Init_stringio()
+ 897  {
+ 898      VALUE StringIO = rb_define_class("StringIO", rb_cData);
+ 899      rb_define_singleton_method(StringIO, "allocate",
+                                     strio_s_allocate, 0);
+ 900      rb_define_singleton_method(StringIO, "open", strio_s_open, -1);
+ 901      rb_define_method(StringIO, "initialize", strio_initialize, -1);
+ 902      rb_enable_super(StringIO, "initialize");
+ 903      rb_define_method(StringIO, "become", strio_become, 1);
+ 904      rb_define_method(StringIO, "reopen", strio_reopen, -1);
+
+(ext/stringio/stringio.c)
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>特異クラス</h2>
+
+<h3><code>rb_define_singleton_method()</code></h3>
+
+<p>
+通常のメソッドを定義する方法はなんとなくわかる。なにやらメソッドの実体を
+作って、<code>m_tbl</code>に登録すればいいのだ。しかし特異メソッドのほうは全く
+わからない。そこでまずは特異メソッドの定義に踏み込んでいくことにしよう。
+</p>
+
+<p class="caption">▼<code>rb_define_singleton_method()</code></p>
+<pre class="longlist">
+ 721  void
+ 722  rb_define_singleton_method(obj, name, func, argc)
+ 723      VALUE obj;
+ 724      const char *name;
+ 725      VALUE (*func)();
+ 726      int argc;
+ 727  {
+ 728      rb_define_method(rb_singleton_class(obj), name, func, argc);
+ 729  }
+
+(class.c)
+</pre>
+
+
+<p>
+解説した通り、<code>rb_define_method()</code>は普通のメソッド定義に使う関数なので、
+違いは<code>rb_singleton_class()</code>だけだ。singleton class、日本語にすると
+特異クラスだが、これはいったい何だろうか。
+</p>
+
+<p>
+一言で言うと、特異クラスとは特異メソッドを実装するためだけに使われる
+仮想クラスである。特異メソッドとは特異クラスに定義されたメソッドのことな
+のだ。クラスというもの自体がそもそもオブジェクトとメソッドを結びつける
+ための（ある意味での）「実装」だったわけだが、特異クラスはさらに実装寄
+りの存在だ。Rubyの言語仕様にも公式には含まれないことになっており、Ruby
+レベルにはほとんど姿を現さない。
+</p>
+
+
+
+<h3><code>rb_singleton_class()</code></h3>
+
+<p>
+では特異クラスの仕組みを確認していくことにする。
+しかし毎回毎回いきなり関数を眺めるのでは芸がない。
+今回は新兵器コールグラフ（call graph）を使ってみよう。
+</p>
+
+<pre class="emlist">
+rb_define_singleton_method
+    rb_define_method
+    rb_singleton_class
+        SPECIAL_SINGLETON
+        rb_make_metaclass
+            rb_class_boot
+            rb_singleton_class_attached
+</pre>
+
+<p>
+コールグラフというのは関数（より一般には手続き）の呼び出し関係を
+図にしたものである。ソースコードに書いてある呼び出しを素直に全部
+表示したのが静的なコールグラフ（static call graph）で、実行時に
+呼び出した手続きだけを表示したものが動的なコールグラフ（
+dynamic call graph）と呼ばれる。
+</p>
+
+<p>
+この図は静的なコールグラフで、
+インデントが呼び出しを表している。例えば<code>rb_define_singleton_method()</code>が
+<code>rb_define_method()</code>と<code>rb_singleton_class()</code>を呼んでいる。その
+<code>rb_singleton_class()</code>はまた<code>SPECIAL_SINGLETON()</code>と
+<code>rb_make_metaclass()</code>を呼んでいる。コールグラフを採取するには
+<code>cflow</code>\footnote{<code>cflow</code>：添付CD-ROMの<code>doc/callgraph.html</code>を参照}などが
+使える。
+</p>
+
+<p>
+ちなみに本書では関数限定で取りたかったので<code>ruby</code>専用ツールを自分で
+作ってしまった。コード解析部分を修正すれば一般化できるはずなので、
+出版前後までにはなんとかしたいと思う。そのへんの事情も
+添付CD-ROMの<code>doc/callgraph.html</code>に書いてある。
+
+<p>
+さてコードに戻ろう。コールグラフを見ると、<code>rb_singleton_class()</code>の呼び出し
+は随分と深い。これまでの関数はどれもこれも呼び出しレベルが浅かったので
+いきなり読んでも迷わなかったのだが、これくらい深くなってくると自分が何
+をしていたのかすぐに忘れてしまう。こういうときは常にコールグラフを置い
+ておき、自分がいる位置を把握しながら読まなければならない。今回はその実
+例として<code>rb_singleton_class()</code>以下の全手続きを並行解読する。読むべきポ
+イントは次の二点である。
+</p>
+
+<ul>
+<li>特異クラスとは具体的に何か</li>
+<li>特異クラスは何のためにあるのか</li>
+</ul>
+
+
+
+<h3>通常のクラスと特異クラス</h3>
+
+<p>
+特異クラスとは特殊なクラスである。つまり、基本的には普通のクラス
+と同じではあるけれど、少しだけ違うところがあるということだ。その違うと
+ころを見付けることこそが「具体的に特異クラスを理解すること」だと言える。
+</p>
+
+<p>
+違いを見付けるにはどうするか。通常のクラスを生成する関数と特異クラスを
+生成する関数の意味的な差分を取ればよい。そのためには通常のクラスを作成
+する関数を見付けなければならない。ここで、通常のクラスは
+<code>rb_define_class()</code>で定義できたから、きっとその先に通常クラスを作成する
+関数があるだろうと予想できる。今は<code>rb_define_class()</code>の中身ではなくてそ
+の先にあるものに興味があるわけだから、ここはまず<code>rb_define_class()</code>の
+コールグラフを眺めてみるのがよさそうだ。
+</p>
+
+<pre class="emlist">
+rb_define_class
+    rb_class_inherited
+    rb_define_class_id
+        rb_class_new
+            rb_class_boot
+        rb_make_metaclass
+            rb_class_boot
+            rb_singleton_class_attached
+</pre>
+
+<p>
+<code>rb_class_new()</code>が気になる。どう見てもこの名前はクラスを作っているうに
+見えるではないか。確かめてみよう。
+</p>
+
+<p class="caption">▼<code>rb_class_new()</code></p>
+<pre class="longlist">
+  37  VALUE
+  38  rb_class_new(super)
+  39      VALUE super;
+  40  {
+  41      Check_Type(super, T_CLASS);
+  42      if (super == rb_cClass) {
+  43          rb_raise(rb_eTypeError, "can't make subclass of Class");
+  44      }
+  45      if (FL_TEST(super, FL_SINGLETON)) {
+  46          rb_raise(rb_eTypeError, "can't make subclass of virtual class");
+  47      }
+  48      return rb_class_boot(super);
+  49  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>Check_Type()</code>はオブジェクト構造体の型チェックだ。つまり、無視してよい。
+<code>rb_raise()</code>もエラー処理だから無視してよい。とすると残りは
+<code>rb_class_boot()</code>だけだ。これも見よう。
+</p>
+
+<p class="caption">▼<code>rb_class_boot()</code></p>
+<pre class="longlist">
+  21  VALUE
+  22  rb_class_boot(super)
+  23      VALUE super;
+  24  {
+  25      NEWOBJ(klass, struct RClass);        /* struct RClassを割り当てる */
+  26      OBJSETUP(klass, rb_cClass, T_CLASS); /* RBasic部分の初期化 */
+  27
+  28      klass-&gt;super = super;       /*（A）*/
+  29      klass-&gt;iv_tbl = 0;
+  30      klass-&gt;m_tbl = 0;
+  31      klass-&gt;m_tbl = st_init_numtable();
+  32
+  33      OBJ_INFECT(klass, super);
+  34      return (VALUE)klass;
+  35  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>NEWOBJ()</code>と<code>OBJSETUP()</code>は組み込みの構造体型（<code>struct Rxxxx</code>）を持つ
+Rubyオブジェクトを生成するときの決まり文句である。両方ともマクロだ。
+<code>NEWOBJ()</code>で<code>struct RClass</code>が生成され、第一引数の<code>klass</code>にポインタが入
+る。<code>OBJSETUP()</code>ではその<code>RClass</code>のうち<code>RBasic</code>部分、つまり
+<code>basic.klass</code>と<code>basic.flags</code>を初期化する。
+</p>
+
+<p>
+<code>OBJ_INFECT()</code>はセキュリティ関係のマクロ。以後は全て無視してよい。
+</p>
+
+<p>
+そして（A）では引数の<code>super</code>を<code>super</code>メンバにセットしている。つまり
+<code>rb_class_boot()</code>は<code>super</code>を継承したクラスを生成する関数だとまとめられ
+そうだ。
+
+<p>
+以上から、<code>rb_class_boot()</code>はクラスを作る関数で、<code>rb_class_new()</code>はそれと
+ほぼ等しいとわかった。
+</p>
+
+<p>
+ここでもう一度<code>rb_singleton_class()</code>のコールグラフを見てみる。
+</p>
+
+<pre class="emlist">
+rb_singleton_class
+    SPECIAL_SINGLETON
+    rb_make_metaclass
+        rb_class_boot
+        rb_singleton_class_attached
+</pre>
+
+<p>
+ここにも<code>rb_class_boot()</code>が現れている。つまりここまでは普通のクラスと同
+じだということだ。その続きでやっている部分が通常クラスと特異クラスの違
+い、即ち特異クラスの特徴ということになるだろう。ここまでわかればあとは
+<code>rb_singleton_class()</code>と<code>rb_make_metaclass()</code>を読むだけである。
+</p>
+
+
+
+<h3><code>rb_singleton_class()</code>の圧縮</h3>
+
+<p>
+<code>rb_singleton_class()</code>は少し長いので、
+まずは本質的でないところを削り圧縮していこう。
+</p>
+
+<p class="caption">▼<code>rb_singleton_class()</code></p>
+<pre class="longlist">
+ 678  #define SPECIAL_SINGLETON(x,c) do {\
+ 679      if (obj == (x)) {\
+ 680          return c;\
+ 681      }\
+ 682  } while (0)
+
+ 684  VALUE
+ 685  rb_singleton_class(obj)
+ 686      VALUE obj;
+ 687  {
+ 688      VALUE klass;
+ 689
+ 690      if (FIXNUM_P(obj) || SYMBOL_P(obj)) {
+ 691          rb_raise(rb_eTypeError, "can't define singleton");
+ 692      }
+ 693      if (rb_special_const_p(obj)) {
+ 694          SPECIAL_SINGLETON(Qnil, rb_cNilClass);
+ 695          SPECIAL_SINGLETON(Qfalse, rb_cFalseClass);
+ 696          SPECIAL_SINGLETON(Qtrue, rb_cTrueClass);
+ 697          rb_bug("unknown immediate %ld", obj);
+ 698      }
+ 699
+ 700      DEFER_INTS;
+ 701      if (FL_TEST(RBASIC(obj)-&gt;klass, FL_SINGLETON) &amp;&amp;
+ 702          (BUILTIN_TYPE(obj) == T_CLASS ||
+ 703           rb_iv_get(RBASIC(obj)-&gt;klass, "__attached__") == obj)) {
+ 704          klass = RBASIC(obj)-&gt;klass;
+ 705      }
+ 706      else {
+ 707          klass = rb_make_metaclass(obj, RBASIC(obj)-&gt;klass);
+ 708      }
+ 709      if (OBJ_TAINTED(obj)) {
+ 710          OBJ_TAINT(klass);
+ 711      }
+ 712      else {
+ 713          FL_UNSET(klass, FL_TAINT);
+ 714      }
+ 715      if (OBJ_FROZEN(obj)) OBJ_FREEZE(klass);
+ 716      ALLOW_INTS;
+ 717
+ 718      return klass;
+ 719  }
+
+(class.c)
+</pre>
+
+
+<p>
+空行で前半後半に区切られており、前半が特殊条件、後半が一般条件を扱って
+いる。つまり本流は後半ということになる。だからこれを後に残してここでは
+残りの部分のことを簡単に話しておこう。
+</p>
+
+<p>
+前半で扱っているのは全て<code>VALUE</code>がポインタでないもの、つまりオブジェク
+ト構造体が存在しないものだ。まず<code>Fixnum</code>と<code>Symbol</code>は明示的に弾いている。そ
+して<code>rb_special_const_p()</code>はポインタでない<code>VALUE</code>に対して真を返す関数なの
+で、ここでは<code>Qtrue Qfalse Qnil</code>だけがひっかかるはずだ。それ以外には
+非ポインタの<code>VALUE</code>はないので<code>rb_bug()</code>でバグを報告する。
+</p>
+
+<p>
+<code>DEFER_INTS()</code>と<code>ALLOW_INTS()</code>は<code>INTS</code>が同じなので一対と見るべき
+だろう。そして実際そのとおりで、シグナルがらみのマクロである。なぜなら
+<code>rubysig.h</code>で定義されているし、<code>INTS</code>はinterruptsの略だろうと想像が
+付くからだ。無視してよい。
+</p>
+
+
+
+<h3><code>rb_make_metaclass()</code>の圧縮</h3>
+
+<p class="caption">▼<code>rb_make_metaclass()</code></p>
+<pre class="longlist">
+ 142  VALUE
+ 143  rb_make_metaclass(obj, super)
+ 144      VALUE obj, super;
+ 145  {
+ 146      VALUE klass = rb_class_boot(super);
+ 147      FL_SET(klass, FL_SINGLETON);
+ 148      RBASIC(obj)-&gt;klass = klass;
+ 149      rb_singleton_class_attached(klass, obj);
+ 150      if (BUILTIN_TYPE(obj) == T_CLASS) {
+ 151          RBASIC(klass)-&gt;klass = klass;
+ 152          if (FL_TEST(obj, FL_SINGLETON)) {
+ 153              RCLASS(klass)-&gt;super =
+                          RBASIC(rb_class_real(RCLASS(obj)-&gt;super))-&gt;klass;
+ 154          }
+ 155      }
+ 156
+ 157      return klass;
+ 158  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>rb_class_boot()</code>は既に見た。引数の<code>super</code>をスーパークラスとして（普通の）
+クラスを生成するのだった。ここではそのクラスに対して<code>FL_SINGLETON</code>という
+フラグを立てている。これは明らかに怪しい。名前から考えて、これが特異
+クラスの印ではないかと考えられる。
+</p>
+
+
+
+<h3>特異クラスとは何か</h3>
+
+<p>
+以上の過程を終え、さらに引数・返り値・ローカル変数は全部<code>VALUE</code>なので宣
+言も捨ててしまうと、これくらいに圧縮できる。
+</p>
+
+<p class="caption">▼<code>rb_singleton_class() rb_make_metaclass()</code>（圧縮後）</p>
+<pre class="longlist">
+rb_singleton_class(obj)
+{
+    if (FL_TEST(RBASIC(obj)-&gt;klass, FL_SINGLETON) &amp;&amp;
+        (BUILTIN_TYPE(obj) == T_CLASS || BUILTIN_TYPE(obj) == T_MODULE) &amp;&amp;
+        rb_iv_get(RBASIC(obj)-&gt;klass, "__attached__") == obj) {
+        klass = RBASIC(obj)-&gt;klass;
+    }
+    else {
+        klass = rb_make_metaclass(obj, RBASIC(obj)-&gt;klass);
+    }
+    return klass;
+}
+
+rb_make_metaclass(obj, super)
+{
+    klass = superをスーパークラスにしたクラスを生成;
+    FL_SET(klass, FL_SINGLETON);
+    RBASIC(obj)-&gt;klass = klass;
+    rb_singleton_class_attached(klass, obj);
+    if (BUILTIN_TYPE(obj) == T_CLASS) {
+        RBASIC(klass)-&gt;klass = klass;
+        if (FL_TEST(obj, FL_SINGLETON)) {
+            RCLASS(klass)-&gt;super =
+                    RBASIC(rb_class_real(RCLASS(obj)-&gt;super))-&gt;klass;
+        }
+    }
+
+    return klass;
+}
+</pre>
+
+
+<p>
+<code>rb_singleton_class()</code>の<code>if</code>の条件が手強そうだ。しかしこの条件は
+本流の<code>rb_make_metaclass()</code>と外れているのでまた後回しにする。
+まずは無条件で偽側に行ったとして考えよう。
+</p>
+
+<p>
+また<code>rb_make_metaclass()</code>の<code>BUILTIN_TYPE()</code>というのは<code>TYPE()</code>と同じく
+構造体型フラグ（<code>T_xxxx</code>）を得るマクロだ。つまり「<code>obj</code>がクラスだったら」
+という条件なのだが、今は<code>obj</code>をクラスとは限定したくない。だから
+これも消しておこう。
+</p>
+
+<p>
+以上の条件を考えて関数を合成してしまうと、こうなった。
+</p>
+
+<p class="caption">▼<code>rb_singleton_class() rb_make_metaclass()</code>（再圧縮後）</p>
+<pre class="longlist">
+rb_singleton_class(obj)
+{
+    klass = RBASIC(obj)-&gt;klassをスーパークラスにしたクラスを生成;
+    FL_SET(klass, FL_SINGLETON);
+    RBASIC(obj)-&gt;klass = klass;
+    return klass;
+}
+</pre>
+
+
+<p>
+だがまだイマイチわかりにくいような気がする。
+どうしてかと言うと<code>klass</code>という名前が多すぎるからだ。
+そこで変数の<code>klass</code>は<code>sclass</code>にしてしまおう。
+</p>
+
+<p class="caption">▼<code>rb_singleton_class() rb_make_metaclass()</code>（変数置換）</p>
+<pre class="longlist">
+rb_singleton_class(obj)
+{
+    sclass = RBASIC(obj)-&gt;klassをスーパークラスにしたクラスを生成;
+    FL_SET(sclass, FL_SINGLETON);
+    RBASIC(obj)-&gt;klass = sclass;
+    return sclass;
+}
+</pre>
+
+
+<p>
+これなら非常にわかりやすい。さらにわかりやすくするために、
+やっていることを図にまとめてみた（図1）。
+横の矢印が「インスタンス〜クラス」関係で、縦の矢印が継承であ
+る（上がスーパークラス）。
+</p>
+
+<p class="image">
+<img src="images/ch_class_addsclass.jpg" alt="(addsclass)"><br>
+図1: <code>rb_singleton_class</code>
+</p>
+
+<p>
+この図で最初と最後を見比べてみると、構造を全く変えずに<code>sclass</code>だけが挿
+入されていることがわかる。これが特異クラスの仕組みの全てだ。つまり仮想
+的に継承を一段増やすのである。そこにメソッドを定義すれば、<code>klass</code>の他
+のインスタンスには全く関係ないメソッドを定義できるという仕組みなのだ。
+</p>
+
+
+
+<h3>特異クラスとインスタンス</h3>
+
+<p>
+ところで、圧縮の過程で<code>rb_singleton_class_attached()</code>の呼び出しが
+何も言及なくこっそり消されていたことに気付いただろうか。ここだ。
+</p>
+
+<pre class="emlist">
+rb_make_metaclass(obj, super)
+{
+    klass = superをスーパークラスにしたクラス生成;
+    FL_SET(klass, FL_SINGLETON);
+    RBASIC(obj)-&gt;klass = klass;
+    rb_singleton_class_attached(klass, obj);   /* これ */
+</pre>
+
+<p>
+この関数は何をしているのか、中を見てみよう。
+</p>
+
+<p class="caption">▼<code>rb_singleton_class_attached()</code></p>
+<pre class="longlist">
+ 130  void
+ 131  rb_singleton_class_attached(klass, obj)
+ 132      VALUE klass, obj;
+ 133  {
+ 134      if (FL_TEST(klass, FL_SINGLETON)) {
+ 135          if (!RCLASS(klass)-&gt;iv_tbl) {
+ 136              RCLASS(klass)-&gt;iv_tbl = st_init_numtable();
+ 137          }
+ 138          st_insert(RCLASS(klass)-&gt;iv_tbl,
+                        rb_intern("__attached__"), obj);
+ 139      }
+ 140  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>klass</code>にフラグ<code>FL_SINGLETON</code>が立っていたら……つまり特異クラスだった
+ら、<code>klass</code>のインスタンス変数テーブル（<code>iv_tbl</code>）に
+<code>__attached__</code>→<code>obj</code>という関連付けを登録する。と読めそうだ
+（今は<code>klass</code>は常に特異クラスである……つまり<code>FL_SINGLETON</code>が付いている）。
+</p>
+
+<p>
+<code>__attached__</code>にはプリフィクスの<code>@</code>が付いていないが、インスタンス変数テー
+ブルに格納されるのだからいちおうインスタンス変数ということになる。この
+ようなインスタンス変数はRubyレベルからは絶対に参照できなくなるので、ユー
+ザには見せたくないシステム専用の値を保存するのに使えるというわけだ。
+</p>
+
+<p>
+そして<code>klass</code>と<code>obj</code>の関係も考えよう。<code>klass</code>は<code>obj</code>の特異クラスである。
+つまりここでは特異クラスにそのインスタンスを覚えさせているようだ。この
+値は、特異クラスが変更されたときにそのインスタンス（つまり<code>obj</code>）に対
+してフックメソッドを呼んだりするために使う。例えば特異クラスにメソッド
+が追加されると<code>obj</code>の<code>singleton_method_added</code>というメソッドが呼ばれる。
+これは「そういう仕様だから」そうしたのであって論理的に必然性があるので
+はない。
+
+<p>
+だがこれで大丈夫なのだろうか。このように<code>__attached__</code>にインスタンスを
+記録するという方式では、特異クラス一つにつきインスタンス一つしか持てな
+いことになる。例えば特異クラスをなんらかの手段で取り出して<code>new</code>したら
+一つの特異クラスで複数のインスタンスを持ててしまうのではないだろうか。
+</p>
+
+<p>
+結論から言うと、そういうことはない。特異クラスはインスタンスを生成
+できないようにちゃんとチェックされているからだ。
+</p>
+
+<p>
+そもそも特異クラスは特異メソッドのためにあり、特異メソッドとは特定オブ
+ジェクトだけにあるメソッドのことだ。もし特異クラスが複数のインスタンス
+を持ってしまえたら普通のクラスと変わらなくなってしまう。だから特異クラ
+スはインスタンスをただ一つしか持たない……と言うより、一つにしなければ
+ならないのだ。
+</p>
+
+
+
+<h3>まとめ</h3>
+
+<p>
+グチャグチャといろいろやってきて混乱してしまったかもしれないので最後に
+結論だけまとめよう。
+</p>
+
+<p>
+特異クラスとは何か。特異クラスとは<code>FL_SINGLETON</code>フラグが付いたクラスで、
+ただ一つしかインスタンスを持たないクラスのことである。
+</p>
+
+<p>
+特異メソッドとは何か。オブジェクトの特異クラスに定義されたメソッドの
+ことである。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>メタクラス</h2>
+
+<h3>特異メソッドの継承</h3>
+
+<h4>クラスの無限連鎖</h4>
+
+<p>
+クラスにも「そのクラス」があり、それは<code>Class</code>だった。そして<code>Class</code>のクラス
+はまた<code>Class</code>だった。つまりここで無限ループができている（図2）。
+</p>
+
+<p class="image">
+<img src="images/ch_class_infloop.jpg" alt="(infloop)"><br>
+図2: クラスの無限ループ
+</p>
+
+<p>
+ここまでは既にやったことである。ここからがこの章のテーマだ。
+なぜクラスはループしていなくてはいけないのだろうか。
+</p>
+
+<p>
+まず、Rubyでは全てのデータはオブジェクトである。そしてまたRubyではク
+ラスもデータなのでクラスもオブジェクトでなければならない。
+</p>
+
+<p>
+オブジェクトであるからにはメソッドに反応できなくてはならない。そして
+「メソッドに反応するためにはなんらかのクラスに属していなければいけない」
+というルールにしたほうが処理が楽だ。ここから、クラス自身にもクラスを持
+たせる必要が出てくる。
+</p>
+
+<p>
+このことを踏まえて現実に実装することを考えてみよう。まず最も素朴な
+方法として、<code>Class</code>のクラスは<code>ClassClass</code>、<code>ClassClass</code>のクラスは 
+<code>ClassClassClass</code>……というふうに、クラスのためのクラスを次々と連鎖する
+ことが考えられる。しかし論理的にはともあれ、こんなものは効率的には実装
+できない。そういうわけでクラスがオブジェクトであるオブジェクト指向言語は、
+<code>Class</code>のクラスを<code>Class</code>自身にしてしまうことでループを作りだし、無限のイン
+スタンス〜クラス関係を仮想的に作りだすのが常套手段なのである。
+</p>
+
+<p>
+繰り返すが、<code>Class</code>のクラスが<code>Class</code>なのは実装を楽にするためだ。
+論理的に重要なのではない。
+</p>
+
+<h4>「クラスもオブジェクト」</h4>
+
+<p>
+よくRubyに関して「なんでもオブジェクト」という宣伝文句を目にする。そし
+てその一環として「クラスもオブジェクトだ！」という言葉が出てくることも
+ある。しかしこの表現はあまりにナーバスにすぎる。この問題について考える
+ときは、以下の二つは区別して考えなければいけない。
+</p>
+
+<ul>
+<li>全てのデータがオブジェクトであること</li>
+<li>クラスがデータであること</li>
+</ul>
+
+<p>
+データとかコードとか言い出すとどうも話がややこしくなる。ここでは非常に
+限定的に、「プログラムで変数に入れられるもの」をデータと呼ぶことにして
+おく。
+</p>
+
+<p>
+クラスをプログラムから操作できるのはRubyプログラムに自分自身（プログ
+ラム）を操作できる能力を与えるためである。そのような能力を
+リフレクション（reflection）と言う。オブジェクト指向言語で
+しかもクラスを持つRubyにおいてはクラスを直接操作できることが相当する。
+</p>
+
+<p>
+それでも、クラスをオブジェクトにしない方法もある。例えば関数風メソッ
+ドとしてクラスを操作する機能を提供しても全く問題はない。ただしクラスを
+表現するインタプリタ内部のデータ構造があるのだからそれを直接出すほうが
+オブジェクト指向言語として自然ではある。そしてRubyはそうした。
+</p>
+
+<p>
+さらに、Ruby言語ではデータは全てオブジェクトにするという方針である。だ
+からクラスもオブジェクトにするのが適切だ。
+</p>
+
+<p>
+ちなみに、Rubyでクラスがオブジェクトでなければいけないのにはリフクレショ
+ン以外の理由もある。それはインスタンスから独立したメソッド、つまり
+JavaやC++で言うスタティックメソッドの定義先を用意することだ。
+</p>
+
+<p>
+そしてスタティックメソッドを実現するためにもう一つ必要になるのが特異メ
+ソッドである。すると連鎖的に特異クラスが必要になる。つまりこのあたりの
+要求関係を図示すると図3のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_class_reqlink.jpg" alt="(reqlink)"><br>
+図3: 要求の連鎖
+</p>
+
+<h4>クラスメソッドの継承</h4>
+
+<p>
+Rubyではクラスに定義された特異メソッドのことをクラスメソッドと
+呼ぶのだが、そのクラスメソッドにはちょっと不思議な仕様がある。
+クラスメソッドは、なぜか継承するのだ。
+</p>
+
+<pre class="emlist">
+class A
+  def A.test    # Aに特異メソッドを定義する
+    puts("ok")
+  end
+end
+
+class B &lt; A
+end
+
+B.test()  # 呼べてしまう
+</pre>
+
+<p>
+こんなことはクラス以外のオブジェクトの特異メソッドでは絶対に起こらない。
+つまりクラスだけが特別扱いされているのである。この節ではクラスメソッド
+が継承する仕組みを追っていこう。
+</p>
+
+
+
+<h3>クラスの特異クラス</h3>
+
+<p>
+クラスメソッドを継承させるとしたら、その作業はどこでやっているだろうか。
+クラスを定義（生成）するときか、特異メソッドを定義するときか、どちらか
+のタイミングでやっているとしか考えられない。そこでまずはクラスを定義す
+るコードを眺めてみることにしよう。
+</p>
+
+<p>
+クラスを定義すると言えば<code>rb_define_class()</code>だろう。そこでこの関数のコール
+グラフを出してみる。
+</p>
+
+<pre class="emlist">
+rb_define_class
+    rb_class_inherited
+    rb_define_class_id
+        rb_class_new
+            rb_class_boot
+        rb_make_metaclass
+            rb_class_boot
+            rb_singleton_class_attached
+</pre>
+
+<p>
+どこかで見たことがあると思ったらこのグラフは前の節でも見たのだった。
+その時は気付かなかったが、よく見るとなぜか<code>rb_make_metaclass()</code>が登場し
+ている。この関数は先程見たとおり、特異クラスを導入する関数だ。これがと
+ても怪しい。なぜ特異メソッドを定義してもいないのにこんなものを呼ぶのだ
+ろう。しかも、<code>rb_singleton_class()</code>ではなく一段下の
+<code>rb_make_metaclass()</code>を使うのはどうしてだろうか。このあたりを改めて
+確認しなければならないようだ。
+</p>
+
+<h4><code>rb_define_class_id()</code></h4>
+
+<p>
+まずはその呼び出し元の<code>rb_define_class_id()</code>から読んでみよう。
+</p>
+
+<p class="caption">▼<code>rb_define_class_id()</code></p>
+<pre class="longlist">
+ 160  VALUE
+ 161  rb_define_class_id(id, super)
+ 162      ID id;
+ 163      VALUE super;
+ 164  {
+ 165      VALUE klass;
+ 166
+ 167      if (!super) super = rb_cObject;
+ 168      klass = rb_class_new(super);
+ 169      rb_name_class(klass, id);
+ 170      rb_make_metaclass(klass, RBASIC(super)-&gt;klass);
+ 171
+ 172      return klass;
+ 173  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>rb_class_new()</code>は<code>super</code>をスーパークラスにしてクラスを生成する関数であっ
+た。<code>rb_name_class()</code>の<code>name</code>は動詞「命名する」だ。今は名前のことはどうで
+もいいので飛ばす。そして問題の<code>rb_make_metaclass()</code>がある。気になるのは
+前回<code>rb_singleton_class()</code>から呼んだときと引数が違うことだ。前回はこうだっ
+た。
+</p>
+
+<pre class="emlist">
+rb_make_metaclass(obj, RBASIC(obj)-&gt;klass);
+</pre>
+
+<p>
+だが今回はこうだ。
+</p>
+
+<pre class="emlist">
+rb_make_metaclass(klass, RBASIC(super)-&gt;klass);
+</pre>
+
+<p>
+この通り微妙に違う。これによって結果がどう変わってくるのか、簡約版の
+<code>rb_make_metaclass()</code>を再度見ていくことにしよう。
+</p>
+
+<h4><code>rb_make_metaclass</code>（再）</h4>
+
+<p class="caption">▼<code>rb_make_metaclass</code>（第一回圧縮後）</p>
+<pre class="longlist">
+rb_make_metaclass(obj, super)
+{
+    klass = superをスーパークラスにしたクラスを生成;
+    FL_SET(klass, FL_SINGLETON);
+    RBASIC(obj)-&gt;klass = klass;
+    rb_singleton_class_attached(klass, obj);
+    if (BUILTIN_TYPE(obj) == T_CLASS) {
+        RBASIC(klass)-&gt;klass = klass;
+        if (FL_TEST(obj, FL_SINGLETON)) {
+            RCLASS(klass)-&gt;super =
+                    RBASIC(rb_class_real(RCLASS(obj)-&gt;super))-&gt;klass;
+        }
+    }
+
+    return klass;
+}
+</pre>
+
+
+<p>
+前回は後半の<code>if</code>文をさっくり無視したが、改めて見ると<code>T_CLASS</code>つまり
+クラスに限定して何かやっている。これが明らかに重要そうだ。
+<code>rb_define_class_id()</code>では
+</p>
+
+<pre class="emlist">
+rb_make_metaclass(klass, RBASIC(super)-&gt;klass);
+</pre>
+
+<p>
+という形で呼んでいたから、<code>rb_make_metaclass()</code>のパラメータ変数を
+この実際の値で展開してしまおう。
+</p>
+
+<p class="caption">▼<code>rb_make_metaclass</code>（再圧縮）</p>
+<pre class="longlist">
+rb_make_metaclass(klass, super_klass  /* == RBASIC(super)-&gt;klass */)
+{
+    sclass = super_klassをスーパークラスにした特異クラスを生成;
+    RBASIC(klass)-&gt;klass = sclass;
+    RBASIC(sclass)-&gt;klass = sclass;
+    return sclass;
+}
+</pre>
+
+
+<p>
+これを図にすると図4のようになった。括弧付きのものが特異
+クラスを示している。この表記は本書で何度も使うので覚えておいてほしい。
+つまり一般に<code>obj</code>の特異クラスを<code>(obj)</code>と書く。ここにある<code>(klass)</code>なら
+オブジェクト<code>klass</code>のための特異クラスである。どうやら特異クラスがクラ
+スとそのスーパークラスのクラスの間にはさまるようになっているようだ。
+</p>
+
+<p class="image">
+<img src="images/ch_class_metaclass.jpg" alt="(metaclass)"><br>
+図4: クラスの特異クラス導入
+</p>
+
+<p>
+この結果からさらに想像力を広げてみると、スーパークラスのクラス
+（図4の<code>c</code>）もまた特異クラスのはずだ、と考えられる。もう一
+段階継承してみればわかる（図5）。
+</p>
+
+<p class="image">
+<img src="images/ch_class_multi.jpg" alt="(multi)"><br>
+図5: 多段の継承で形成される階層
+</p>
+
+<p>
+<code>super</code>と<code>klass</code>の関係は<code>klass</code>と
+<code>klass2</code>の関係と同じだから、<code>c</code>は特異クラス<code>(super)</code>であるはずだ。この考えか
+たを進めていくと最終的には、<code>Object</code>のクラスは<code>(Object)</code>でなければならない、
+というところまで行き着くだろう。そして実際にその通りなのである。例えば
+次のプログラムのように継承すると、
+</p>
+
+<pre class="emlist">
+class A &lt; Object
+end
+class B &lt; A
+end
+</pre>
+
+<p>
+内部では図6のような構造が作られている。
+</p>
+
+<p class="image">
+<img src="images/ch_class_metatree.jpg" alt="(metatree)"><br>
+図6: クラス階層とメタクラス
+</p>
+
+<p>
+このようにクラスの特異クラス自身がクラスと連動して継承するため、
+クラスメソッドが継承されるのである。
+</p>
+
+
+
+<h3>クラスのクラスのクラス</h3>
+
+<p>
+これでクラスメソッドの継承に関する仕組みはわかったが、そうすると逆に
+いくつか疑問が出てくる。まず、クラスの特異クラスのクラスは
+なんだろうか。これはデバッガを使って見てみればいい。この調査結果を
+図にしたのが図7だ。
+</p>
+
+<p class="image">
+<img src="images/ch_class_mmm.jpg" alt="(mmm)"><br>
+図7: クラスの特異クラスのクラス
+</p>
+
+<p>
+クラスの特異クラスは自分自身をクラスとするようだ。ややこしい。
+
+<p>
+二つめの疑問。<code>Object</code>のクラスは<code>Class</code>だったはずだ。
+第1章『Ruby言語ミニマム』でちゃんと<code>class()</code>メソッドで確かめたではないか。
+</p>
+
+<pre class="emlist">
+p(Object.class())   # Class
+</pre>
+
+<p>
+確かに「Rubyレベルでは」その通りだ。しかし「Cレベルでは」特異クラス
+<code>(Object)</code>なのである。Rubyレベルに<code>(Object)</code>が出てこないのは
+<code>Object#class</code>が特異クラスをスキップするようになっているからだ。
+メソッドの実体である<code>rb_obj_class()</code>を見て確かめてみよう。
+</p>
+
+<p class="caption">▼<code>rb_obj_class()</code></p>
+<pre class="longlist">
+  86  VALUE
+  87  rb_obj_class(obj)
+  88      VALUE obj;
+  89  {
+  90      return rb_class_real(CLASS_OF(obj));
+  91  }
+
+  76  VALUE
+  77  rb_class_real(cl)
+  78      VALUE cl;
+  79  {
+  80      while (FL_TEST(cl, FL_SINGLETON) || TYPE(cl) == T_ICLASS) {
+  81          cl = RCLASS(cl)-&gt;super;
+  82      }
+  83      return cl;
+  84  }
+
+(object.c)
+</pre>
+
+
+<p>
+<code>CLASS_OF(obj)</code>が<code>obj</code>の<code>basic.klass</code>を返す。そして<code>rb_class_real()</code>で
+は特異クラスを全て（スーパークラス方向に）スキップしている。特異クラス
+はそもそもスーパークラスとの間にはさまれる「代理」のようなクラスだった
+から、「真の」クラスが必要なときはスーパークラスに戻らなければいけない
+というわけだ（図8）。
+</p>
+
+<p>
+また<code>I_CLASS</code>は後でインクルードの話をするときに登場する。
+</p>
+
+<p class="image">
+<img src="images/ch_class_real.jpg" alt="(real)"><br>
+図8: 特異クラスと真のクラス
+</p>
+
+
+
+<h3>特異クラスとメタクラス</h3>
+
+<p>
+さて、クラスに導入された特異クラスもやはりクラスの一種である。
+ということはクラスのクラスである。つまりメタクラスと呼べる。
+</p>
+
+<p>
+ただしここで注意したいのは、特異クラス「が」メタクラスなのではないと
+いうことだ。クラスに導入された特異ク
+ラスがメタクラスである。特異クラスであることが重要なのではなくて、クラ
+スのクラスであることが重要なのだ。この点は筆者がRubyを学びはじめのころ
+にひっかかっていたことで、もしかすると他にも仲間がいるかもしれないので
+ここに明記しておく。
+</p>
+
+<p>
+そういう点を考えると<code>rb_make_metaclass()</code>という関数名はあまりよくない。
+クラスに使うときは確かにメタクラスを作っているが、それ以外のオブジェク
+トに使うときはメタクラスではないからだ。
+</p>
+
+<p>
+それから最後に、とあるクラスがメタクラスだとわかっても何か具体的な
+御利益があるわけではない。あまり気にしすぎないようにしていただきたい。
+</p>
+
+
+
+<h3>ブートストラップ</h3>
+
+<p>
+ここまででクラスとメタクラスの話についてはほぼ話し終わった。だがまだ
+一つだけ問題が残っている。それは三つのメタオブジェクト、
+<code>Object</code>・<code>Module</code>・
+<code>Class</code>のことである。この三つだけは<code>rb_define_class()</code>などの通常のAPIでは
+作成できない。クラスを作るためにはそのメタクラスを作る必要
+があるが、先程見た通り、メタクラスのスーパークラスには<code>Class</code>があった。
+だがもちろん<code>Class</code>はまだできていないので、メタクラスが作れないのである。
+そこで<code>ruby</code>ではこの三つだけ特別扱いにして生成する。
+</p>
+
+<p>
+ではコードを見ていこう。
+</p>
+
+<p class="caption">▼<code>Object Module Class</code>の生成</p>
+<pre class="longlist">
+1243  rb_cObject = boot_defclass("Object", 0);
+1244  rb_cModule = boot_defclass("Module", rb_cObject);
+1245  rb_cClass =  boot_defclass("Class",  rb_cModule);
+1246
+1247  metaclass = rb_make_metaclass(rb_cObject, rb_cClass);
+1248  metaclass = rb_make_metaclass(rb_cModule, metaclass);
+1249  metaclass = rb_make_metaclass(rb_cClass, metaclass);
+
+(object.c)
+</pre>
+
+
+<p>
+まず前半、<code>boot_defclass()</code>は<code>rb_class_boot()</code>とほぼ同じである。
+つまりスーパークラスだけをセットしたクラスを作る。
+ここまででリンクは図9左のようになっている
+</p>
+
+<p>
+そして後半の三行で<code>(Object) (Module) (Class)</code>が生成され、セットされる
+（図9右）。<code>(Object)</code>や<code>(Module)</code>のクラス……つまり自分自身……
+は<code>rb_make_metaclass()</code>の中で既にセットされているので問題ない。これで
+メタオブジェクトのブートストラップが完了した。
+
+<p class="image">
+<img src="images/ch_class_boot1.jpg" alt="(boot1)"><br>
+図9: メタオブジェクトの作成
+</p>
+
+<p>
+以上の全てを考慮した最終的な姿は図10のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_class_metaobj.jpg" alt="(metaobj)"><br>
+図10: Rubyのメタオブジェクト
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>クラス名</h2>
+
+<p>
+この節ではクラスとクラス名、つまり定数の相互変換を成立させる手順に
+ついて解析する。具体的には<code>rb_define_class()</code>と<code>rb_define_class_under()</code>が
+対象である。
+</p>
+
+
+<h3>名前→クラス</h3>
+
+<p>
+まずは<code>rb_define_class()</code>を読んでいこう。
+この関数を終えると定数からクラスが検索できるようになる。
+</p>
+
+<p class="caption">▼<code>rb_define_class()</code></p>
+<pre class="longlist">
+ 183  VALUE
+ 184  rb_define_class(name, super)
+ 185      const char *name;
+ 186      VALUE super;
+ 187  {
+ 188      VALUE klass;
+ 189      ID id;
+ 190
+ 191      id = rb_intern(name);
+ 192      if (rb_autoload_defined(id)) {             /*（A）オートロード */
+ 193          rb_autoload_load(id);
+ 194      }
+ 195      if (rb_const_defined(rb_cObject, id)) {    /*（B）rb_const_defined */
+ 196          klass = rb_const_get(rb_cObject, id);  /*（C）rb_const_get */
+ 197          if (TYPE(klass) != T_CLASS) {
+ 198              rb_raise(rb_eTypeError, "%s is not a class", name);
+ 199          }                                      /*（D）rb_class_real */
+ 200          if (rb_class_real(RCLASS(klass)-&gt;super) != super) {
+ 201              rb_name_error(id, "%s is already defined", name);
+ 202          }
+ 203          return klass;
+ 204      }
+ 205      if (!super) {
+ 206          rb_warn("no super class for `%s', Object assumed", name);
+ 207      }
+ 208      klass = rb_define_class_id(id, super);
+ 209      rb_class_inherited(super, klass);
+ 210      st_add_direct(rb_class_tbl, id, klass);
+ 211
+ 212      return klass;
+ 213  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>rb_define_class_id()</code>の前後で大きく話が分かれる。前がクラスの取得または
+生成。後が定数への代入である。以下詳しく見ていく。
+</p>
+
+<p>
+（A）Rubyには、とある定数が参照されたときに自動的にライブラリをロード
+するオートロードという機能がある。この<code>rb_autoload_xxxx()</code>という名前の
+関数はそのチェックだ。無視して問題ない。
+</p>
+
+<p>
+（B）クラス<code>klass</code>に定数<code>name</code>が定義されているかどうか判定する。
+</p>
+
+<p>
+（C）クラス<code>klass</code>の定数<code>name</code>の値を得る。
+第6章『変数と定数』で詳述。
+</p>
+
+<p>
+（D）<code>rb_class_real()</code>は先程見た。クラス<code>c</code>が特異クラスや<code>ICLASS</code>であったら
+そうでないクラスまで<code>super</code>をたぐり、それを返す。ようするにRubyレベルに
+出してはいけない仮想クラスを飛ばすための関数。
+</p>
+
+<p>
+というあたりで読めるだろうか。
+</p>
+
+<p>
+このあたりは定数が絡んでくるので非常にやりにくい。しかし定数の章でクラ
+ス定義の話をするのもなんだし、ということでどっちつかずの中途半端な記述
+になってるわけだ。
+</p>
+
+<p>
+さらに<code>rb_define_class_id()</code>後のこれだが、
+</p>
+
+<pre class="emlist">
+st_add_direct(rb_class_tbl, id, klass);
+</pre>
+
+<p>
+これがクラスを定数に代入している部分である。しかしどう見てもそうは見え
+ない。実はトップレベルのクラスだけは通常の定数とは分けて<code>rb_class_tbl</code>に
+まとめられているのである。分けてあるのにはGCが少し関係している。あまり本質
+的な意味はない。
+</p>
+
+
+
+<h3>クラス→名前</h3>
+
+<p>
+クラス名からクラスが取れるような仕組みがあるのはわかったが、その逆はど
+うなのだろう。例えば<code>p</code>したり<code>Class#name</code>を呼んだりするとクラスからその名
+前が取れるが、どうやって実装されているのだろうか。
+</p>
+
+<p>
+実はそれはずっと昔に出てきた<code>rb_name_class()</code>によって行
+われている。呼び出し位置はこのあたりだ。
+</p>
+
+<pre class="emlist">
+rb_define_class
+    rb_define_class_id
+        rb_name_class
+</pre>
+
+<p>
+内容を見てみよう。
+</p>
+
+<p class="caption">▼<code>rb_name_class()</code></p>
+<pre class="longlist">
+ 269  void
+ 270  rb_name_class(klass, id)
+ 271      VALUE klass;
+ 272      ID id;
+ 273  {
+ 274      rb_iv_set(klass, "__classid__", ID2SYM(id));
+ 275  }
+
+(variable.c)
+</pre>
+
+
+<p>
+<code>__classid__</code>もRubyからは見えないインスタンス変数だ。インスタンス変数
+テーブルには<code>VALUE</code>以外の値は入れられないので、<code>ID</code>は<code>ID2SYM()</code>で
+<code>Symbol</code>に変換して入れておく。
+</p>
+
+<p>
+これでクラス→定数名という方向の検索もできるようになった。
+</p>
+
+
+
+<h3>ネストレベル2以上</h3>
+
+<p>
+これでネストレベル1の場合の名前とクラスの相互リンクはわかった。
+あとはネストレベル2以上の場合で、こちらはもう少し複雑だ。
+レベル2以上のクラスを定義するのは<code>rb_define_class_under()</code>である。
+</p>
+
+<p class="caption">▼<code>rb_define_class_under()</code></p>
+<pre class="longlist">
+ 215  VALUE
+ 216  rb_define_class_under(outer, name, super)
+ 217      VALUE outer;
+ 218      const char *name;
+ 219      VALUE super;
+ 220  {
+ 221      VALUE klass;
+ 222      ID id;
+ 223
+ 224      id = rb_intern(name);
+ 225      if (rb_const_defined_at(outer, id)) {
+ 226          klass = rb_const_get(outer, id);
+ 227          if (TYPE(klass) != T_CLASS) {
+ 228              rb_raise(rb_eTypeError, "%s is not a class", name);
+ 229          }
+ 230          if (rb_class_real(RCLASS(klass)-&gt;super) != super) {
+ 231              rb_name_error(id, "%s is already defined", name);
+ 232          }
+ 233          return klass;
+ 234      }
+ 235      if (!super) {
+ 236          rb_warn("no super class for `%s::%s', Object assumed",
+ 237                  rb_class2name(outer), name);
+ 238      }
+ 239      klass = rb_define_class_id(id, super);
+ 240      rb_set_class_path(klass, outer, name);
+ 241      rb_class_inherited(super, klass);
+ 242      rb_const_set(outer, id, klass);
+ 243
+ 244      return klass;
+ 245  }
+
+(class.c)
+</pre>
+
+
+<p>
+構造は<code>rb_define_class()</code>と同じで、<code>rb_define_class_id()</code>呼び出しの前が再
+定義チェック、後が定数とクラスの相互リンク作成である。
+前半は<code>rb_define_class()</code>とほとんど同じでつまらないので飛ばす。
+後半では<code>rb_set_class_path()</code>が目新しい。ここに絞って見ていこう。
+</p>
+
+<h4><code>rb_set_class_path()</code></h4>
+
+<p>
+この関数は、クラス<code>under</code>にネストしたクラス<code>klass</code>に名前<code>name</code>を付ける。
+関数名
+のclass path（クラスパス）というのは例えば
+「<code>Net::NetPrivate::Socket</code>」のようにトップ
+レベルからのネスト情報を全て含んだ定数名のことである。
+</p>
+
+<p class="caption">▼<code>rb_set_class_path()</code></p>
+<pre class="longlist">
+ 210  void
+ 211  rb_set_class_path(klass, under, name)
+ 212      VALUE klass, under;
+ 213      const char *name;
+ 214  {
+ 215      VALUE str;
+ 216
+ 217      if (under == rb_cObject) {
+              /* トップレベルに定義した */
+ 218          str = rb_str_new2(name);    /* nameからRubyの文字列を作る */
+ 219      }
+ 220      else {
+              /* ネストした定義 */
+ 221          str = rb_str_dup(rb_class_path(under));  /* 返り値をコピー */
+ 222          rb_str_cat2(str, "::");     /* それに"::"を連結 */
+ 223          rb_str_cat2(str, name);     /* それにnameを連結 */
+ 224      }
+ 225      rb_iv_set(klass, "__classpath__", str);
+ 226  }
+
+(variable.c)
+</pre>
+
+
+<p>
+最後の一行以外でクラスパスを作り、最後の一行でクラスに自分の名前を覚え
+させている。<code>__classpath__</code>もやはりRubyプログラムからは見えないインスタ
+ンス変数だ。<code>rb_name_class()</code>では<code>__classid__</code>というのが出てきたが、
+<code>id</code>のほうはネスト情報を含まないところが違う（以下の表を参照）。
+</p>
+
+<pre class="emlist">
+__classpath__    Net::NetPrivate::Socket
+__classid__                       Socket
+</pre>
+
+<p>
+つまり<code>rb_define_class()</code>などで定義したクラスには<code>__classid__</code>か
+<code>__classpath__</code>のどちらかは定義されているはずなので、<code>under</code>のクラスパスを
+求めるにはそれを検索すればいい。それをやっているのが
+<code>rb_class_path()</code>だ。内容は省略する。
+</p>
+
+
+
+<h3>無名クラス</h3>
+
+<p>
+と言った直後になんだが、実は<code>__classpath__</code>も<code>__classid__</code>もセットされてい
+ない場合がありうる。Rubyでは次のようにメソッドを使ってクラスを作ること
+ができるからだ。
+</p>
+
+<pre class="emlist">
+c = Class.new()
+</pre>
+
+<p>
+このような作られかたをしてしまうと<code>rb_define_class_id()</code>を通らないのでク
+ラスパスがセットされない。その場合クラス<code>c</code>は名前がないクラス、つまり無
+名クラスとなる。
+</p>
+
+<p>
+しかし後で定数に代入するとその時点で名前が付くことになる。
+</p>
+
+<pre class="emlist">
+SomeClass = c   # クラス名はSomeClass
+</pre>
+
+<p>
+厳密に言うと定数に代入したあと初めて名前を要求したときに名前が付く。例
+えばこの<code>SomeClass</code>クラスを<code>p</code>したときや<code>Class#name</code>というメソッドを呼んだと
+きだ。そのときには<code>rb_class_tbl</code>を検索して値が等しいものを探し、名前を
+作らなければならない。また、
+</p>
+
+<pre class="emlist">
+class A
+  class B
+    C = tmp = Class.new()
+    p(tmp)   # ここで名前が検索される
+  end
+end
+</pre>
+
+<p>
+というようにネストしている場合もありうるので、最悪の場合は定数空間全体
+を検索しなければならない。しかし普通、定数はあまり多くないので、全体
+を検索してもそう時間がかかることはない。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>インクルード</h2>
+
+<p>
+散々クラスについて話してきたので最後は目先を変えてモジュールの
+インクルードについて話すことにしよう。
+</p>
+
+<h3><code>rb_include_module</code>（1）</h3>
+
+<p>
+インクルードは普通のメソッド<code>Module#include</code>で行われるのであった。そ
+のCでの実体は<code>rb_include_module()</code>である。ただし本当に正確に言うと
+<code>rb_mod_include()</code>が実体で、そこから<code>Module#append_features</code>が呼ばれ、そ
+のデフォルトの実装が<code>rb_include_module()</code>を呼ぶようになっている。
+RubyとCの手続きを混ぜてコールグラフを書けばこうだ。
+</p>
+
+<pre class="emlist">
+Module#include (rb_mod_include)
+    Module#append_features (rb_mod_append_features)
+        rb_include_module
+</pre>
+
+<p>
+なんにしても普段インクルードだと思っている操作は<code>rb_include_module()</code>で
+行われている。この関数はやや長いので半分ずつ見ていく。
+</p>
+
+<p class="caption">▼<code>rb_include_module</code>（前半）</p>
+<pre class="longlist">
+      /* klassにmoduleをインクルードする */
+ 347  void
+ 348  rb_include_module(klass, module)
+ 349      VALUE klass, module;
+ 350  {
+ 351      VALUE p, c;
+ 352      int changed = 0;
+ 353
+ 354      rb_frozen_class_p(klass);
+ 355      if (!OBJ_TAINTED(klass)) {
+ 356          rb_secure(4);
+ 357      }
+ 358
+ 359      if (NIL_P(module)) return;
+ 360      if (klass == module) return;
+ 361
+ 362      switch (TYPE(module)) {
+ 363        case T_MODULE:
+ 364        case T_CLASS:
+ 365        case T_ICLASS:
+ 366          break;
+ 367        default:
+ 368          Check_Type(module, T_MODULE);
+ 369      }
+
+(class.c)
+</pre>
+
+
+<p>
+ここまでは全てセキュリティや型のチェックで、従って無視してよい。
+以下が本処理だ。
+</p>
+
+<p class="caption">▼<code>rb_include_module</code>（後半）</p>
+<pre class="longlist">
+ 371      OBJ_INFECT(klass, module);
+ 372      c = klass;
+ 373      while (module) {
+ 374          int superclass_seen = Qfalse;
+ 375
+ 376          if (RCLASS(klass)-&gt;m_tbl == RCLASS(module)-&gt;m_tbl)
+ 377              rb_raise(rb_eArgError, "cyclic include detected");
+ 378          /*（A）スーパークラスで既にmoduleをインクルードしていたらスキップ */
+ 379          for (p = RCLASS(klass)-&gt;super; p; p = RCLASS(p)-&gt;super) {
+ 380              switch (BUILTIN_TYPE(p)) {
+ 381                case T_ICLASS:
+ 382                  if (RCLASS(p)-&gt;m_tbl == RCLASS(module)-&gt;m_tbl) {
+ 383                      if (!superclass_seen) {
+ 384                          c = p;  /* 挿入地点をずらす */
+ 385                      }
+ 386                      goto skip;
+ 387                  }
+ 388                  break;
+ 389                case T_CLASS:
+ 390                  superclass_seen = Qtrue;
+ 391                  break;
+ 392              }
+ 393          }
+ 394          c = RCLASS(c)-&gt;super =
+                          include_class_new(module, RCLASS(c)-&gt;super);
+ 395          changed = 1;
+ 396        skip:
+ 397          module = RCLASS(module)-&gt;super;
+ 398      }
+ 399      if (changed) rb_clear_cache();
+ 400  }
+
+(class.c)
+</pre>
+
+
+<p>
+まず（A）のブロックでやっていることはコメントに書いてある。これは
+特殊条件らしいのでまずは読み飛ばしてしまおう。残りから重要そうな
+ものだけ残すとこうなる。
+</p>
+
+<pre class="emlist">
+c = klass;
+while (module) {
+    c = RCLASS(c)-&gt;super = include_class_new(module, RCLASS(c)-&gt;super);
+    module = RCLASS(module)-&gt;super;
+}
+</pre>
+
+<p>
+つまり<code>module</code>の<code>super</code>に対する繰り返しだ。<code>module</code>の<code>super</code>に入ってい
+るのは、<code>module</code>にインクルードしたモジュールだろう（理由は勘）。そして
+インクルードする対象のクラスのスーパークラスを何かで差し替えている。何
+に差し替えているのかはよくわからないが、これを見た瞬間に「あ、これはリ
+ストの要素追加（cons）の形じゃないか？」と気付けるととても話が早くなる。
+つまり
+</p>
+
+<pre class="emlist">
+list = new(item, list)
+</pre>
+
+<p>
+という形である。そう考えるとこのループでは<code>c</code>と<code>c-&gt;super</code>の間に
+<code>module</code>を挟み込もうとしているのかな、と予想できる。そういう仕組みなら
+モジュールの仕様にも一致する。
+</p>
+
+<p>
+しかし本当にそうなのかは<code>include_class_new()</code>を読まないとわからない。
+</p>
+
+
+
+<h3><code>include_class_new()</code></h3>
+
+<p class="caption">▼<code>include_class_new()</code></p>
+<pre class="longlist">
+ 319  static VALUE
+ 320  include_class_new(module, super)
+ 321      VALUE module, super;
+ 322  {
+ 323      NEWOBJ(klass, struct RClass);               /*（A）*/
+ 324      OBJSETUP(klass, rb_cClass, T_ICLASS);
+ 325
+ 326      if (BUILTIN_TYPE(module) == T_ICLASS) {
+ 327          module = RBASIC(module)-&gt;klass;
+ 328      }
+ 329      if (!RCLASS(module)-&gt;iv_tbl) {
+ 330          RCLASS(module)-&gt;iv_tbl = st_init_numtable();
+ 331      }
+ 332      klass-&gt;iv_tbl = RCLASS(module)-&gt;iv_tbl;     /*（B）*/
+ 333      klass-&gt;m_tbl = RCLASS(module)-&gt;m_tbl;
+ 334      klass-&gt;super = super;                       /*（C）*/
+ 335      if (TYPE(module) == T_ICLASS) {             /*（D）*/
+ 336          RBASIC(klass)-&gt;klass = RBASIC(module)-&gt;klass;   /*（D-1）*/
+ 337      }
+ 338      else {
+ 339          RBASIC(klass)-&gt;klass = module;                  /*（D-2）*/
+ 340      }
+ 341      OBJ_INFECT(klass, module);
+ 342      OBJ_INFECT(klass, super);
+ 343
+ 344      return (VALUE)klass;
+ 345  }
+
+(class.c)
+</pre>
+
+
+<p>
+見たことのないものは飛ばしてしまうのが吉だ。
+</p>
+
+<p>
+（A）まず新しいクラスを作り、
+</p>
+
+<p>
+（B）<code>module</code>のインスタンス変数テーブル・メソッドテーブルをそれに移植、
+</p>
+
+<p>
+（C）インクルード先クラスのスーパークラス（<code>super</code>）をスーパークラスにする。
+</p>
+
+<p>
+つまりこの関数では<code>module</code>の「化身」とも言うべきクラスを作っているようだ。
+（B）でテーブルをコピーせずポインタだけを移しているのがポイントで、後
+からメソッドを追加されても実体のモジュールと化身クラスが全く同じメソッ
+ドを持つようになる（図11）。
+</p>
+
+<p class="image">
+<img src="images/ch_class_symbolic.jpg" alt="(symbolic)"><br>
+図11: 化身クラス
+</p>
+
+<p>
+また（A）をよく見ると構造体型フラグを<code>T_ICLASS</code>というのにしている。これ
+が化身クラスの印らしい。この関数の名前が<code>include_class_new()</code>なのだ
+から<code>ICLASS</code>の<code>I</code>は<code>include</code>だろう。
+</p>
+
+<p>
+そしてここまでの作業と<code>rb_include_module()</code>を合わせて考えると先程の予
+想は間違っていなかったとわかる。つまりインクルードとはクラスとその
+スーパークラスの間にモジュールの化身クラスを挿入することなのだ
+（図12）。
+</p>
+
+<p class="image">
+<img src="images/ch_class_include.jpg" alt="(include)"><br>
+図12: インクルード
+</p>
+
+<p>
+そして（D-2）では実体のモジュールを化身クラスの<code>klass</code>に保存している。す
+るとその次からは（D-1）でその実体モジュールが取り出される……と言いた
+いのだが、実はここのチェックは必要ない。この関数の最初のほうで既に
+<code>T_ICLASS</code>のチェックをしているから、ここに来るときにまだ<code>T_ICLASS</code>というこ
+とはありえないのだ。<code>ruby</code>はかなり長期間ちょこちょこと変更が重なってきて
+いるので、こういう細かい見落としは結構ある。
+</p>
+
+<p>
+もう一つ考えることがある。どうやら化身クラスの<code>basic.klass</code>は実体のモジュー
+ルを示すためだけに使われているようなので、化身クラスに対してメソッドが
+呼ばれたりする状況は非常にまずい。だから化身クラスは絶対にRubyプログラ
+ムから見えてはならないはずである。そして実際に全てのメソッドは化身クラ
+スをスキップする。例外は一切ない。
+</p>
+
+
+
+<h3>シミュレーション</h3>
+
+<p>
+ややこしかったので<code>include</code>で起こる操作を具体例を通じて見てみよう。
+図13(1)を見てほしい。<code>m2</code>をインクルードしたモジュール
+<code>m1</code>と、クラス<code>c1</code>がある。ここから<code>c1</code>に<code>m1</code>をインクルードしたときの
+変化が(2)と(3)である。<code>im</code>と書いてあるのはもちろん化身クラスのことだ。
+</p>
+
+<p class="image">
+<img src="images/ch_class_simulate.jpg" alt="(simulate)"><br>
+図13: インクルード
+</p>
+
+
+
+<h3><code>rb_include_module</code>（2）</h3>
+
+<p>
+さてここまでくると<code>rb_include_module()</code>の読み飛ばしていた部分を
+理解できるようになる。
+</p>
+
+<p class="caption">▼<code>rb_include_module</code>（重複インクルードの回避）</p>
+<pre class="longlist">
+ 378  /*（A）スーパークラスで既にmoduleをインクルードしていたらスキップ */
+ 379  for (p = RCLASS(klass)-&gt;super; p; p = RCLASS(p)-&gt;super) {
+ 380      switch (BUILTIN_TYPE(p)) {
+ 381        case T_ICLASS:
+ 382          if (RCLASS(p)-&gt;m_tbl == RCLASS(module)-&gt;m_tbl) {
+ 383              if (!superclass_seen) {
+ 384                  c = p;  /* 挿入地点をずらす */
+ 385              }
+ 386              goto skip;
+ 387          }
+ 388          break;
+ 389        case T_CLASS:
+ 390          superclass_seen = Qtrue;
+ 391          break;
+ 392      }
+ 393  }
+
+(class.c)
+</pre>
+
+
+<p>
+<code>klass</code>のスーパークラス（<code>p</code>）のうち<code>T_ICLASS</code>で（化身クラスで）、インクルー
+ドしようとしているモジュール（<code>module</code>）と同じメソッドテーブルを持つもの
+があったらそれは<code>p</code>が<code>module</code>の化身であるということだ。だから二回インクルー
+ドしないようスキップする。ただしそのモジュールがインクルードしているモ
+ジュール（<code>p-&gt;super</code>）があったらそれは再確認する、というわけだ。
+</p>
+
+<p>
+しかし、<code>p</code>は一度インクルードしたモジュールなのだから、それにインクルー
+ドされたモジュールも既にインクルードしているはず……と一瞬思ったのだ
+が、以下のような状況がありうる。
+</p>
+
+<pre class="emlist">
+module M
+end
+module M2
+end
+class C
+  include M   # まだM2はMにインクルードされてない。
+end           # 従ってCのスーパークラスにM2は存在しない。
+
+module M
+  include M2  # 今度はMにM2がインクルードされているので、
+end
+class C
+  include M   # ここではM2だけ追加したい
+end
+</pre>
+
+<p>
+これを逆に言うと、<code>include</code>の結果がリアルタイムに伝わらない場合もあると
+いうことである。
+</p>
+
+<p>
+またクラスの継承の場合にはクラスの特異メソッドも一緒に継承したが、モ
+ジュールの場合は特にそのような仕組みはなかった。従ってモジュールの特異
+メソッドはインクルード先クラス（またはモジュール）には継承されない。特
+異メソッドも継承したいときは<code>Module#append_features</code>をオーバーライドする
+のが常套手段だ。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

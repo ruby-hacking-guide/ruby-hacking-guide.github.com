@@ -1,0 +1,1327 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第18章 ロード</title></head>
+<body>
+
+<h1>第18章 ロード</h1>
+
+<h2>概要</h2>
+
+<h3>インターフェイス</h3>
+
+<p>
+Rubyレベルでロードに使える手続きは二つある。
+<code>require</code>と<code>load</code>だ。
+</p>
+
+<pre class="emlist">
+require 'uri'            # URIのライブラリをロード
+load '/home/foo/.myrc'   # なにかのリソースファイルを読む
+</pre>
+
+<p>
+どちらも通常のメソッドであり、他のコードと全く同様にコンパイル
+され、評価される。つまり、完全にコンパイルして評価の段階に移ってから
+ロードが起こる。
+</p>
+
+<p>
+二つのインターフェイスははっきりと用途が分離されている。
+ライブラリをロードするときは<code>require</code>、任意のファイルをロード
+しようとするときは<code>load</code>だ。それぞれ詳しく特徴を説明していこう。
+</p>
+
+<h4><code>require</code></h4>
+
+<p>
+<code>require</code>の特徴は四点だ。
+</p>
+
+<ul>
+<li>ロードパスからファイルを探してくる</li>
+<li>拡張ライブラリもロードできる</li>
+<li>拡張子<code>.rb</code>/<code>.so</code>を省略できる</li>
+<li>同じファイルは二度以上ロードしない</li>
+</ul>
+
+<p>
+Rubyのロードパスは<code>$:</code>というグローバル変数に入っていて、その値は
+文字列配列である。例えば筆者が普段使っている環境で<code>$:</code>の中身を表示して
+みたらこうなった。
+</p>
+
+<pre class="screen">
+% ruby -e 'puts $:'
+/usr/lib/ruby/site_ruby/1.7
+/usr/lib/ruby/site_ruby/1.7/i686-linux
+/usr/lib/ruby/site_ruby
+/usr/lib/ruby/1.7
+/usr/lib/ruby/1.7/i686-linux
+.
+</pre>
+
+<p>
+配列は<code>puts</code>するだけで一要素が一行に表示されるのでとても見やすい。
+</p>
+
+<p>
+筆者は<code>--prefix=/usr</code>で<code>configure</code>している
+のでライブラリのパスが<code>/usr/lib/ruby</code>以下になっているが、普通にソース
+コードからコンパイルした場合は<code>/usr/local/lib/ruby</code>以下に入る。
+Windows環境ならさらにドライブレターも付く。
+</p>
+
+<p>
+さて、このロードパスから標準ライブラリの<code>nkf.so</code>を<code>require</code>してみよう。
+</p>
+
+<pre class="emlist">
+require 'nkf'
+</pre>
+
+<p>
+<code>require</code>した名前（<code>require</code>名と呼ぼう）に拡張子が付いていないと、
+<code>require</code>は勝手に拡張子を補うようになっている。まず<code>.rb</code>を試し、次に<code>.so</code>を
+試す。もちろん拡張ライブラリの拡張子はプラットフォームごとに独立で、
+Windows環境なら<code>.dll</code>も試すし、Mac OS Xなら<code>.bundle</code>を試す。
+</p>
+
+<p>
+筆者の環境を使ってシミュレーションしてみよう。
+<code>ruby</code>は次のようなパスを順番に確かめてみる。
+</p>
+
+<pre class="emlist">
+/usr/lib/ruby/site_ruby/1.7/nkf.rb
+/usr/lib/ruby/site_ruby/1.7/nkf.so
+/usr/lib/ruby/site_ruby/1.7/i686-linux/nkf.rb
+/usr/lib/ruby/site_ruby/1.7/i686-linux/nkf.so
+/usr/lib/ruby/site_ruby/nkf.rb
+/usr/lib/ruby/site_ruby/nkf.so
+/usr/lib/ruby/1.7/nkf.rb
+/usr/lib/ruby/1.7/nkf.so
+/usr/lib/ruby/1.7/i686-linux/nkf.rb
+/usr/lib/ruby/1.7/i686-linux/nkf.so    発見！
+</pre>
+
+<p>
+<code>/usr/lib/ruby/1.7/i686-linux</code>で<code>nkf.so</code>が見付かった。見付かったら、
+<code>require</code>の最後の特徴……同じファイルを二度ロードしない……ためにロック
+をかける。ロックは<code>$"</code>というグローバル変数に入っている文字列配列で、今回
+は<code>"nkf.so"</code>という文字列が入る。たとえ<code>require</code>するときに拡張子を省略して
+あったとしても、<code>$"</code>に入れるときにはそれを補ったファイル名になる。
+</p>
+
+<pre class="emlist">
+require 'nkf'   # nkfをロードすると……
+p $"            # ["nkf.so"] ロックされる。
+
+require 'nkf'   # もう一回requireしても何も起こらない。
+p $"            # ["nkf.so"] ロック配列の内容は変わらない。
+</pre>
+
+<p>
+<code>$"</code>で拡張子が補われる理由は二つある。一つは後から同じファイルを拡張子付
+きで<code>require</code>されたときに二度ロードしないようにすること、もう一つは
+<code>nkf.rb</code>と<code>nkf.so</code>を両方ロードできるようにすることだ。また実際の拡張子はプ
+ラットフォームごとに<code>.so .dll .bundle</code>などとバラバラだったが、ロックする
+ときは常に<code>.so</code>になる。だからRubyプログラムを書いている間は拡張子の違い
+は無視して常に<code>.so</code>を仮定してよい。ここで<code>.so</code>になるあたりが<code>ruby</code>が
+UNIX指向と言われる所以だ。
+</p>
+
+<p>
+ちなみに<code>$"</code>はRubyレベルからでも好きなようにいじれてしまうので強固なロッ
+クとは言えない。例えば<code>$"</code>をクリアすれば同じ拡張ライブラリを何回もロード
+できてしまう。
+</p>
+
+<h4><code>load</code></h4>
+
+<p>
+<code>load</code>のほうは<code>require</code>と比べるとずっと簡単だ。<code>require</code>と同じくファイルを
+<code>$:</code>から探す。ロードできるのはRubyプログラムだけ。また拡張子は省略できず、
+常に完全なファイル名を指定しないといけない。
+</p>
+
+<pre class="emlist">
+load 'uri.rb'   # 標準添付のURIライブラリをロード
+</pre>
+
+<p>
+ここでは簡単な例としてライブラリをロードしてみたが、フルパスを指定して
+リソースファイルをロードしたりするのが<code>load</code>のまっとうな使いかたである。
+</p>
+
+
+
+<h3>処理全体の流れ</h3>
+
+<p>
+おもいきり大雑把に分けると「ファイルをロードする」という操作は
+</p>
+
+<ul>
+<li>ファイルを見付ける</li>
+<li>ファイルを読み込み、内部形式にマップする</li>
+<li>評価する</li>
+</ul>
+
+<p>
+の三段階に分かれている。<code>require</code>と<code>load</code>で違うのはファイルを見付ける
+手順だけだ。残りは<code>require</code>だろうと<code>load</code>だろうと違いはない。
+</p>
+
+<p>
+最後の評価の段階についてもう少しだけ説明しておく。Rubyプログラムの場合、
+ロードされたプログラムは基本的にはトップレベルで評価される。つまり定数
+を定義すればトップレベルの定数となるし、メソッドを定義すれば関数風メソッ
+ドになる。
+</p>
+
+<pre class="emlist">
+### mylib.rb
+MY_OBJECT = Object.new
+def my_p(obj)
+  p obj
+end
+
+### first.rb
+require 'mylib'
+my_p MY_OBJECT   # 別のファイルで定義した定数やメソッドも使える
+</pre>
+
+<p>
+ただしトップレベルのローカル変数スコープだけはファイルが変わると別に
+なる。つまり別のファイル間ではローカル変数を共有することはできない。も
+ちろん<code>Proc</code>その他を駆使すれば共有自体はできるが、それはロードのメカニズ
+ムを使って共有しているのではない。
+</p>
+
+<p>
+それと、ときどき勘違いする人がいるのだが、どこでロードしてもクラスがロー
+ドされる先が変わったりはしない。例えば次のように<code>module</code>文の中でロードし
+ても何の意味もなく、ファイルのトップレベルにあるものは全てトップレベル
+に置かれる。
+</p>
+
+<pre class="emlist">
+require 'mylib'     # トップレベルでrequireしても、
+module SandBox
+  require 'mylib'   # モジュールの中でrequireしても、結果は同じ。
+end
+</pre>
+
+
+
+<h3>本章の見どころ</h3>
+
+<p>
+以上を踏まえてこれから読んでいくわけだが、今回は仕様がかなり詳細に決まっ
+ているのでただただ読んでみてもコードの羅列になりかねない。そこで本章で
+は以下の三点にターゲットを絞り込む。
+</p>
+
+<ul>
+<li>ロードのシリアライズ</li>
+<li>各ファイルへの関数の分配</li>
+<li>拡張ライブラリのロードの仕組み</li>
+</ul>
+
+<p>
+第一点は現物を見ればわかる。
+</p>
+
+<p>
+第二点に関して。本章の関数は<code>eval.c ruby.c file.c dln.c</code>の四つのファイ
+ルから入り乱れて登場する。どうしてそうなってしまうのか、そのあたりの現
+実的な事情を考えてみようと思う。
+</p>
+
+<p>
+第三点は読んでの通り。最近流行りの実行時ロード、俗に言うプラグインの仕組
+みを見ていく。ここは本章で一番面白いところなので、ページもできるだけた
+くさん割いて話していきたい。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>ライブラリの探索</h2>
+
+<h3><code>rb_f_require()</code></h3>
+
+<p>
+<code>require</code>の実体は<code>rb_f_require()</code>である。まずはその中からファイル探索の
+部分だけを載せよう。場合分けが多いと嫌なので、引数は拡張子なしで
+指定された場合に限定する。
+</p>
+
+<p class="caption">▼<code>rb_f_require()</code>（簡約版）</p>
+<pre class="longlist">
+5527  VALUE
+5528  rb_f_require(obj, fname)
+5529      VALUE obj, fname;
+5530  {
+5531      VALUE feature, tmp;
+5532      char *ext, *ftptr; /* OK */
+5533      int state;
+5534      volatile int safe = ruby_safe_level;
+5535
+5536      SafeStringValue(fname);
+5537      ext = strrchr(RSTRING(fname)-&gt;ptr, '.');
+5538      if (ext) {
+              /* ……拡張子が指定された場合…… */
+5584      }
+5585      tmp = fname;
+5586      switch (rb_find_file_ext(&amp;tmp, loadable_ext)) {
+5587        case 0:
+5588          break;
+5589
+5590        case 1:
+5591          feature = fname = tmp;
+5592          goto load_rb;
+5593
+5594        default:
+5595          feature = tmp;
+5596          fname = rb_find_file(tmp);
+5597          goto load_dyna;
+5598      }
+5599      if (rb_feature_p(RSTRING(fname)-&gt;ptr, Qfalse))
+5600          return Qfalse;
+5601      rb_raise(rb_eLoadError, "No such file to load -- %s",
+                   RSTRING(fname)-&gt;ptr);
+5602
+5603    load_dyna:
+          /* ……拡張ライブラリをロード…… */
+5623      return Qtrue;
+5624
+5625    load_rb:
+          /* ……Rubyプログラムをロード…… */
+5648      return Qtrue;
+5649  }
+
+5491  static const char *const loadable_ext[] = {
+5492      ".rb", DLEXT,    /* DLEXT=".so", ".dll", ".bundle"... */
+5493  #ifdef DLEXT2
+5494      DLEXT2,          /* DLEXT2=".dll" on Cygwin, MinGW */
+5495  #endif
+5496      0
+5497  };
+
+(eval.c)
+</pre>
+
+
+<p>
+この関数では<code>goto</code>ラベルの<code>load_rb</code>・<code>load_dyna</code>以降が事実上のサブルーチン
+のようになっており、二つの変数<code>feature</code>と<code>fname</code>がその引数のような存在
+である。その変数は次のような意味を持つ。
+</p>
+
+<table>
+<tr><td>変数<td><td>意味<td><td>例<td></tr>
+<tr><td><code>feature</code><td><td><code>$"</code>に入れる形式のライブラリ名<td><td><code>uri.rb</code>、<code>nkf.so</code><td></tr>
+<tr><td><code>fname</code><td><td>ライブラリのフルパス<td><td><code>/usr/lib/ruby/1.7/uri.rb</code><td></tr>
+</table>
+
+<p>
+「feature」という語はどうやら一般名詞らしく、
+<code>rb_feature_p()</code>という呼び出しが見える。これは<code>$"</code>のロックが
+かかっているかチェックする関数である（すぐ後で見る）。
+</p>
+
+<p>
+実際にライブラリを探しているのは<code>rb_find_file()</code>と
+<code>rb_find_file_ext()</code>で
+ある。<code>rb_find_file()</code>はロードパス<code>$:</code>からファイルを探してくる。
+<code>rb_find_file_ext()</code>も同じだが、第二引数に拡張子のリスト（つまり
+<code>loadable_ext</code>）をもらいそれを順番に付けて試す、というところが違う。
+</p>
+
+<p>
+以下ではとりあえず探索のコードを最後まで見て、そのあと<code>load_rb</code>の
+<code>require</code>ロックのコードを見ることにしよう。
+</p>
+
+
+
+<h3><code>rb_find_file()</code></h3>
+
+<p>
+まず探索の続きで<code>rb_find_file()</code>だ。この関数は引数のファイル<code>path</code>を
+グローバルなロードパス<code>$:</code>（<code>rb_load_path</code>）から探す。汚染文字列チェック
+だのなんだのがうるさいので主要部分だけにして見てみる。
+</p>
+
+<p class="caption">▼<code>rb_find_file()</code>（簡約版）</p>
+<pre class="longlist">
+2494  VALUE
+2495  rb_find_file(path)
+2496      VALUE path;
+2497  {
+2498      VALUE tmp;
+2499      char *f = RSTRING(path)-&gt;ptr;
+2500      char *lpath;
+
+2530      if (rb_load_path) {
+2531          long i;
+2532
+2533          Check_Type(rb_load_path, T_ARRAY);
+2534          tmp = rb_ary_new();
+2535          for (i=0;i&lt;RARRAY(rb_load_path)-&gt;len;i++) {
+2536              VALUE str = RARRAY(rb_load_path)-&gt;ptr[i];
+2537              SafeStringValue(str);
+2538              if (RSTRING(str)-&gt;len &gt; 0) {
+2539                  rb_ary_push(tmp, str);
+2540              }
+2541          }
+2542          tmp = rb_ary_join(tmp, rb_str_new2(PATH_SEP));
+2543          if (RSTRING(tmp)-&gt;len == 0) {
+2544              lpath = 0;
+2545          }
+2546          else {
+2547              lpath = RSTRING(tmp)-&gt;ptr;
+2551          }
+2552      }
+
+2560      f = dln_find_file(f, lpath);
+2561      if (file_load_ok(f)) {
+2562          return rb_str_new2(f);
+2563      }
+2564      return 0;
+2565  }
+
+(file.c)
+</pre>
+
+
+<p>
+やっていることをRubyで書くとこうなる。
+</p>
+
+<pre class="emlist">
+tmp = []                     # 配列を作る
+$:.each do |path|            # ロードパスに対して繰り返し
+  tmp.push check(path)       # パスをチェックしつつ配列にプッシュ
+end
+lpath = tmp.join(PATH_SEP)   # PATH_SEPを要素間に狭んで連結
+
+dln_find_file(f, lpath)      # 本処理
+</pre>
+
+<p>
+<code>PATH_SEP</code>は<code>path separator</code>、つまりUNIXでは<code>':'</code>、Windowsでは<code>';'</code>で
+ある。<code>rb_ary_join()</code>はこの文字を要素の間に狭んだ文字列を作る。つまり
+せっかく配列になっているロードパスを文字区切りの文字列に戻しているので
+ある。
+</p>
+
+<p>
+なんでこんなことをするのだろう。それは、<code>dln_find_file()</code>が受け付ける
+のが<code>PATH_SEP</code>区切り文字列だけだからだ。ではなぜ<code>dln_find_file()</code>がそ
+ういう実装にならざるを得ないかというと、<code>dln.c</code>は<code>ruby</code>のライブラリで
+はない、ということになっているからだ。同じ作者によって書かれてはいても
+これは汎用ライブラリなのである。だからこそ序章『導入』でソース
+ファイルの分類をしたときも「ユーティリティ」に区分されていた。汎用ライ
+ブラリであるということはRubyオブジェクトを渡したりできないし<code>ruby</code>のグ
+ローバル変数を参照させるわけにもいかないのである。
+</p>
+
+<p>
+また<code>dln_find_file()</code>の中では<code>~</code>をホームディレクトリに展開していたりす
+るのだが、実はこれも<code>rb_find_file()</code>の省略した部分で既にやっているので
+<code>ruby</code>のことだけ考えるなら必要ない。
+</p>
+
+
+
+<h3>ロードウェイト</h3>
+
+<p>
+ファイル探索はこのへんであっさり終わって、次はロードのコードだ。
+より正確には「ロードの直前まで」である。
+<code>rb_f_require()</code>の<code>load_rb</code>のコードを以下に載せる。
+</p>
+
+<p class="caption">▼<code>rb_f_require():load_rb</code></p>
+<pre class="longlist">
+5625    load_rb:
+5626      if (rb_feature_p(RSTRING(feature)-&gt;ptr, Qtrue))
+5627          return Qfalse;
+5628      ruby_safe_level = 0;
+5629      rb_provide_feature(feature);
+5630      /* Rubyプログラムのロード作業はシリアライズする */
+5631      if (!loading_tbl) {
+5632          loading_tbl = st_init_strtable();
+5633      }
+5634      /* partial state */
+5635      ftptr = ruby_strdup(RSTRING(feature)-&gt;ptr);
+5636      st_insert(loading_tbl, ftptr, curr_thread);
+          /* ……Rubyプログラムをロードして評価…… */
+5643      st_delete(loading_tbl, &amp;ftptr, 0); /* loading done */
+5644      free(ftptr);
+5645      ruby_safe_level = safe;
+
+(eval.c)
+</pre>
+
+
+<p>
+前述の通り<code>rb_feature_p()</code>は<code>$"</code>のロックがかかっているかチェックする。
+そして<code>rb_provide_feature()</code>は<code>$"</code>に文字列をプッシュする。つまり
+ロックする。
+</p>
+
+<p>
+問題はその次のところだ。コメントにある通り「Rubyプログラムのロードはシ
+リアライズされる」。つまり一つのファイルは一つのスレッドでしかロードで
+きず、ロード中に他のスレッドから同じファイルをロードしようとすると前
+のロードが完了するまで待たされる。そうでないと、
+</p>
+
+<pre class="emlist">
+Thread.fork {
+    require 'foo'   # require開始時点でfoo.rbが$"に追加される、
+}                   # しかしfoo.rbを評価中にスレッドが変わる
+require 'foo'   # $"にfoo.rbが入っているのですぐ戻る
+# （A）fooのクラスを使う……
+</pre>
+
+<p>
+なんてことをすると、本当はまだライブラリ<code>foo</code>がロードされきって
+いないのに（A）のコードを実行されてしまうことがある。
+</p>
+
+<p>
+待ちを入れる仕組みは簡単である。グローバル変数<code>loading_tbl</code>に<code>st_table</code>を
+作り、「<code>feature=&gt;</code>ロードするスレッド」の対応を記録しておく。<code>curr_thread</code>は
+<code>eval.c</code>の変数で、値は現在実行中のスレッドである。これが排他ロックに
+なってなっているわけだ。そして<code>rb_feature_p()</code>の中で次のように、ロード中の
+スレッドがロードを完了するまで待つ。
+</p>
+
+<p class="caption">▼<code>rb_feature_p()</code>（後半）</p>
+<pre class="longlist">
+5477  rb_thread_t th;
+5478
+5479  while (st_lookup(loading_tbl, f, &amp;th)) {
+5480      if (th == curr_thread) {
+5481          return Qtrue;
+5482      }
+5483      CHECK_INTS;
+5484      rb_thread_schedule();
+5485  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>rb_thread_schedule()</code>を呼ぶとその中で別のスレッドに制御が移り、
+自分に制御が戻ると関数から返ってくる。<code>loading_tbl</code>からファイル名が
+なくなればロード終了なので終わってよい。<code>curr_thread</code>のチェックをして
+いるのは自分自身をロックしないようにするためである（図1）。
+</p>
+
+<p class="image">
+<img src="images/ch_load_loadwait.jpg" alt="(loadwait)"><br>
+図1: ロードのシリアライズ
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>Rubyプログラムのロード</h2>
+
+<h3><code>rb_load()</code></h3>
+
+<p>
+ではロードの本処理部分を見ていく。<code>rb_f_require()</code>の<code>load_rb</code>のうち、
+Rubyプログラムをロードする部分から始めよう。
+</p>
+
+<p class="caption">▼<code>rb_f_require()−load_rb−</code>ロード</p>
+<pre class="longlist">
+5638      PUSH_TAG(PROT_NONE);
+5639      if ((state = EXEC_TAG()) == 0) {
+5640          rb_load(fname, 0);
+5641      }
+5642      POP_TAG();
+
+(eval.c)
+</pre>
+
+
+<p>
+さてここで呼んでいる<code>rb_load()</code>、これは実はRubyレベルの<code>load</code>の実体である。
+ということは探索がもう一回必要になるわけで、同じ作業をもう一回見るなん
+てやっていられない。そこでその部分は以下では省略してある。
+また第二引数の<code>wrap</code>も、上記の呼び出しコードで0なので、0で畳み込んである。
+</p>
+
+<p class="caption">▼<code>rb_load()</code>（簡約版）</p>
+<pre class="longlist">
+void
+rb_load(fname, /* wrap=0 */)
+    VALUE fname;
+{
+    int state;
+    volatile ID last_func;
+    volatile VALUE wrapper = 0;
+    volatile VALUE self = ruby_top_self;
+    NODE *saved_cref = ruby_cref;
+
+    PUSH_VARS();
+    PUSH_CLASS();
+    ruby_class = rb_cObject;
+    ruby_cref = top_cref;           /*（A-1）CREFを変える */
+    wrapper = ruby_wrapper;
+    ruby_wrapper = 0;
+    PUSH_FRAME();
+    ruby_frame-&gt;last_func = 0;
+    ruby_frame-&gt;last_class = 0;
+    ruby_frame-&gt;self = self;        /*（A-2）ruby_frame-&gt;cbaseを変える */
+    ruby_frame-&gt;cbase = (VALUE)rb_node_newnode(NODE_CREF,ruby_class,0,0);
+    PUSH_SCOPE();
+    /* トップレベルの可視性はデフォルトでprivate */
+    SCOPE_SET(SCOPE_PRIVATE);
+    PUSH_TAG(PROT_NONE);
+    ruby_errinfo = Qnil;  /* 確実にnilにする */
+    state = EXEC_TAG();
+    last_func = ruby_frame-&gt;last_func;
+    if (state == 0) {
+        NODE *node;
+
+        /* （B）なぜかevalと同じ扱い */
+        ruby_in_eval++;
+        rb_load_file(RSTRING(fname)-&gt;ptr);
+        ruby_in_eval--;
+        node = ruby_eval_tree;
+        if (ruby_nerrs == 0) {   /* パースエラーは起きなかった */
+            eval_node(self, node);
+        }
+    }
+    ruby_frame-&gt;last_func = last_func;
+    POP_TAG();
+    ruby_cref = saved_cref;
+    POP_SCOPE();
+    POP_FRAME();
+    POP_CLASS();
+    POP_VARS();
+    ruby_wrapper = wrapper;
+    if (ruby_nerrs &gt; 0) {   /* パースエラーが起きた */
+        ruby_nerrs = 0;
+        rb_exc_raise(ruby_errinfo);
+    }
+    if (state) jump_tag_but_local_jump(state);
+    if (!NIL_P(ruby_errinfo))   /* ロード中に例外が発生した */
+        rb_exc_raise(ruby_errinfo);
+}
+</pre>
+
+
+<p>
+やっとスタック操作の嵐から抜けられたと思った瞬間また突入するというのも
+精神的に苦しいものがあるが、気を取りなおして読んでいこう。
+</p>
+
+<p>
+長い関数の常で、コードのほとんどがイディオムで占められている。
+<code>PUSH</code>/<code>POP</code>、タグプロテクトと再ジャンプ。その中でも注目したいのは
+（A）の<code>CREF</code>関係だ。ロードしたプログラムは常にトップレベル上で
+実行されるので、<code>ruby_cref</code>を（プッシュではなく）退避し<code>top_cref</code>に戻す。
+<code>ruby_frame-&gt;cbase</code>も新しいものにしている。
+</p>
+
+<p>
+それともう一ヶ所、（B）でなぜか<code>ruby_in_eval</code>をオンにしている。そもそも
+この変数はいったい何に影響するのか調べてみると、<code>rb_compile_error()</code>とい
+う関数だけのようだ。<code>ruby_in_eval</code>が真のときは例外オブジェクトにメッセージを
+保存、そうでないときは<code>stderr</code>にメッセージを出力、となっている。つまりコ
+マンドのメインプログラムのパースエラーのときはいきなり<code>stderr</code>に出力した
+いのだが評価器の中ではそれはまずいので止める、という仕組みらしい。すると
+<code>ruby_in_eval</code>のevalはメソッド<code>eval</code>や関数<code>eval()</code>ではなくて一般動詞の
+evaluateか、はたまた<code>eval.c</code>のことを指すのかもしれない。
+</p>
+
+
+
+<h3><code>rb_load_file()</code></h3>
+
+<p>
+ここでソースファイルは突然<code>ruby.c</code>へと移る。と言うよりも実際のところは
+こうではないだろうか。即ち、ロード関係のファイルは本来<code>ruby.c</code>に置きたい。
+しかし<code>rb_load()</code>では<code>PUSH_TAG()</code>などを使わざるを得ない。だから仕方なく
+<code>eval.c</code>に置く。でなければ最初から全部<code>eval.c</code>に置くだろう。
+</p>
+
+<p>
+それで、<code>rb_load_file()</code>だ。
+</p>
+
+<p class="caption">▼<code>rb_load_file()</code></p>
+<pre class="longlist">
+ 865  void
+ 866  rb_load_file(fname)
+ 867      char *fname;
+ 868  {
+ 869      load_file(fname, 0);
+ 870  }
+
+(ruby.c)
+</pre>
+
+
+<p>
+まるごと委譲。<code>load_file()</code>の第二引数<code>script</code>は真偽値で、<code>ruby</code>コマンドの
+引数のファイルをロードしているのかどうかを示す。今はそうではなく
+ライブラリのロードと考えたいので<code>script=0</code>で疊み込もう。
+さらに以下では意味も考え本質的でないものを削ってある。
+</p>
+
+<p class="caption">▼<code>load_file()</code>（簡約版）</p>
+<pre class="longlist">
+static void
+load_file(fname, /* script=0 */)
+    char *fname;
+{
+    VALUE f;
+    {
+        FILE *fp = fopen(fname, "r");   （A）
+        if (fp == NULL) {
+            rb_load_fail(fname);
+        }
+        fclose(fp);
+    }
+    f = rb_file_open(fname, "r");       （B）
+    rb_compile_file(fname, f, 1);       （C）
+    rb_io_close(f);
+}
+</pre>
+
+
+<p>
+（A）実際に<code>fopen()</code>で開いてみて本当に開けるかどうかチェックをする。
+大丈夫ならすぐに閉じる。無駄ではあるが、非常にシンプルかつ移植性が
+高くしかも確実な方法だ。
+</p>
+
+<p>
+（B）改めてRubyレベルのライブラリ<code>File.open</code>で開く。
+最初から<code>File.open</code>で開かないのはRubyの例外が発生してしまわないように
+するためである。今は何か例外が起きたらロードエラーにしたいので、
+<code>open</code>関係のエラー、例えば<code>Errno::ENOENT</code>とか<code>Errno::EACCESS</code>とか
+……になっ
+てしまうと困るのだ。ここは<code>ruby.c</code>なのでタグジャンプを止めることはできない。
+</p>
+
+<p>
+（C）パーサインターフェイス<code>rb_compile_file()</code>で<code>IO</code>オブジェクトから
+プログラムを読み、構文木にコンパイルする。
+構文木は<code>ruby_eval_tree</code>に追加されるので結果を受け取る必要はない。
+</p>
+
+<p>
+ロードのコードは以上だ。最後に、呼び出しがかなり深かったので
+<code>rb_f_require()</code>以下のコールグラフを載せておく。
+</p>
+
+<pre class="emlist">
+rb_f_require           ....eval.c
+    rb_find_file            ....file.c
+        dln_find_file           ....dln.c
+            dln_find_file_1
+    rb_load
+        rb_load_file            ....ruby.c
+            load_file
+                rb_compile_file     ....parse.y
+        eval_node
+</pre>
+
+<p>
+長旅のお供にコールグラフ。もはやこれは常識だ。
+</p>
+
+<h4>ロードに必要な<code>open</code>の数</h4>
+
+<p>
+先程ファイルが開けるかどうかチェックするためだけに使われる<code>open</code>があった
+が、実は<code>ruby</code>のロードの過程ではその他に<code>rb_find_file_ext()</code>などでも内部で
+<code>open</code>してチェックしている。全体ではいったい何回くらい<code>open()</code>しているのだ
+ろう。
+</p>
+
+<p>
+と思ったら実際に数えてみるのが正しいプログラマのありかただ。システムコー
+ルトレーサを使えば簡単に数えられる。そのためのツールはLinuxなら
+<code>strace</code>、Solarisなら<code>truss</code>、BSD系なら<code>ktrace</code>か<code>truss</code>、
+というように
+OSによって名前がてんでバラバラなのだが、Googleで検索すればすぐ見付かる
+はずだ。WindowsならたいていIDEにトレーサが付いている。
+</p>
+
+<p>
+さて、筆者のメイン環境はLinuxなので<code>strace</code>で見てみた。
+出力が<code>stderr</code>に出るので<code>2&gt;&amp;1</code>でリダイレクトしている。
+</p>
+
+<pre class="screen">
+% strace ruby -e 'require "rational"' 2&gt;&amp;1 | grep '^open'
+open("/etc/ld.so.preload", O_RDONLY)    = -1 ENOENT
+open("/etc/ld.so.cache", O_RDONLY)      = 3
+open("/usr/lib/libruby-1.7.so.1.7", O_RDONLY) = 3
+open("/lib/libdl.so.2", O_RDONLY)       = 3
+open("/lib/libcrypt.so.1", O_RDONLY)    = 3
+open("/lib/libc.so.6", O_RDONLY)        = 3
+open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
+open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
+open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
+open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
+</pre>
+
+<p>
+<code>libc.so.6</code>の<code>open</code>まではダイナミックリンクの実装で使っている<code>open</code>なので
+残りの<code>open</code>は計四回。つまり三回は無駄になっているようだ。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>拡張ライブラリのロード</h2>
+
+<h3><code>rb_f_require()</code>−<code>load_dyna</code></h3>
+
+<p>
+さて今度は拡張ライブラリのロードである。まずは<code>rb_f_require()</code>の
+<code>load_dyna</code>のところから行く。ただしロックまわりのコードはもういら
+ないので削った。
+</p>
+
+<p class="caption">▼<code>rb_f_require()</code>−<code>load_dyna</code></p>
+<pre class="longlist">
+5607  {
+5608      int volatile old_vmode = scope_vmode;
+5609
+5610      PUSH_TAG(PROT_NONE);
+5611      if ((state = EXEC_TAG()) == 0) {
+5612          void *handle;
+5613
+5614          SCOPE_SET(SCOPE_PUBLIC);
+5615          handle = dln_load(RSTRING(fname)-&gt;ptr);
+5616          rb_ary_push(ruby_dln_librefs, LONG2NUM((long)handle));
+5617      }
+5618      POP_TAG();
+5619      SCOPE_SET(old_vmode);
+5620  }
+5621  if (state) JUMP_TAG(state);
+
+(eval.c)
+</pre>
+
+
+<p>
+もはやほとんど目新しいものはない。タグはイディオム通りの使いかた
+しかしていないし、可視性スコープの退避・復帰も見慣れた手法だ。
+残るのは<code>dln_load()</code>だけである。これはいったい何をしているのだろう。
+というところで次に続く。
+</p>
+
+
+
+<h3>リンクについて復習</h3>
+
+<p>
+<code>dln_load()</code>は拡張ライブラリをロードしているわけだが、拡張ライブラリを
+ロードするとはどういうことなのだろうか。それを話すにはまず話を思い切り
+物理世界方向に巻き戻し、リンクのことから始めなければならない。
+</p>
+
+<p>
+Cのプログラムをコンパイルしたことはもちろんあると思う。筆者は
+Linuxで<code>gcc</code>を使っているので、次のようにすれば動くプログラムが
+作成できる。
+</p>
+
+<pre class="screen">
+% gcc hello.c
+</pre>
+
+<p>
+ファイル名からするときっとこれはHello, World!プログラムなんだろう。
+<code>gcc</code>はUNIXではデフォルトで<code>a.out</code>というファイルにプログラムを
+出力するので続いて次のように実行できる。
+</p>
+
+<pre class="screen">
+% ./a.out
+Hello, World!
+</pre>
+
+<p>
+ちゃんとできている。
+</p>
+
+<p>
+ところで、いま<code>gcc</code>は実際には何をしたのだろうか。普段はコンパイル、
+コンパイルと言うことが多いが、実際には
+</p>
+
+<ol>
+<li>プリプロセス（<code>cpp</code>）</li>
+<li>C言語をアセンブラにコンパイル（<code>cc</code>）</li>
+<li>アセンブラを機械語にアセンブル（<code>as</code>）</li>
+<li>リンク（<code>ld</code>）</li>
+</ol>
+
+<p>
+という四つの段階を通っている。このうちプリプロセス・コンパイル・アセン
+ブルまではいろいろなところで説明を見掛けるのだが、なぜかリンクの段階だ
+けは明文化されずに終わることが多いようだ。学校の歴史の授業では絶対に
+「現代」まで行き着かない、というのと同じようなものだろうか。そこで本書
+ではその断絶を埋めるべく、まずリンクとは何なのか簡単にまとめておくこと
+にする。
+
+<p>
+アセンブルまでの段階が完了したプログラムはなんらかの形式の
+「オブジェクトファイル」
+になっている。そのような形式でメジャーなものには以下のよう
+なものがある。
+</p>
+
+<ul>
+<li>ELF, Executable and Linking Format（新しめのUNIX）</li>
+<li><code>a.out</code>, assembler output（比較的古いUNIX）</li>
+<li>COFF, Common Object File Format（Win32）</li>
+</ul>
+
+<p>
+念のため言っておくが、オブジェクトファイル形式の<code>a.out</code>と<code>cc</code>の
+デフォルト出力ファイル名の<code>a.out</code>は全然別物である。例えば今時のLinuxで
+普通に作ればELF形式のファイル<code>a.out</code>ができる。
+</p>
+
+<p>
+それで、このオブジェクトファイル形式がどう違うのか、という話はこのさい
+どうでもいい。今認識しなければならないのは、これらのオブジェクトファイ
+ルはどれも「名前の集合」と考えられるということだ。例えばこのファイルに
+存在する関数名や変数名など。
+</p>
+
+<p>
+またオブジェクトファイルに含まれる名前の集合には二種類がある。即ち
+</p>
+
+<ul>
+<li>必要な名前の集合（例えば内部から呼んでいる外部関数。例：<code>printf</code>）</li>
+<li>提供する名前の集合（例えば内部で定義している関数。例：<code>hello</code>）</li>
+</ul>
+
+<p>
+である。そしてリンクとは、複数のオブジェクトファイルを集めてきたときに
+全てのオブジェクトファイルの「必要な名前の集合」が「提供する名前の集合」
+の中に含まれることを確認し、かつ互いに結び付けることだ。つまり全ての
+「必要な名前」から線をひっぱって、どこかのオブジェクトファイルが「提供
+する名前」につなげられるようにしなければいけない（図2）。
+このことを用語を使って
+言えば、未定義シンボルを解決する（resolving undefined symbol）、となる。
+</p>
+
+<p class="image">
+<img src="images/ch_load_link.jpg" alt="(link)"><br>
+図2: オブジェクトファイルとリンク
+</p>
+
+<p>
+論理的にはそういうことだが、現実にはそれだけではプログラムは走らないわ
+けだ。少なくともCのプログラムは走らない。名前をアドレス（数）に変換し
+てもらわなければ動けないからだ。
+</p>
+
+<p>
+そこで論理的な結合の次には物理的な結合が必要になる。オブジェクトファイ
+ルを現実のメモリ空間にマップし、全ての名前を数で置き換えないといけない。
+具体的に言えば関数呼び出し時のジャンプ先アドレスを調節したりする。
+</p>
+
+<p>
+そしてこの二つの結合をいつやるかによってリンクは二種類に分かれる。即ち
+スタティックリンクとダイナミックリンクである。スタティックリンクはコン
+パイル時に全段階を終了してしまう。一方ダイナミックリンクは結合のうちい
+くらかをプログラムの実行時まで遅らせる。そしてプログラムの実行時になっ
+て初めてリンクが完了する。
+</p>
+
+<p>
+もっともここで説明したのは非常に単純な理想的モデルであって現実をかなり
+歪曲している面がある。論理結合と物理結合はそんなにキッパリ分かれるもの
+ではないし、「オブジェクトファイルは名前の集合」というのもナイーブに過
+ぎる。しかしなにしろこのあたりはプラットフォームによってあまりに動作が
+違いすぎるので、真面目に話していたら本がもう一冊書けてしまう。
+現実レベルの知識を得るためにはさらに
+『エキスパートCプログラミング』\footnote{『エキスパートCプログラミング』Peter van der Linden著、梅原系訳、アスキー出版局、1996}
+『Linkers&amp;Loaders』@footnote{『Linkers&amp;Loaders』John R.Levine著、榊原一矢監訳 ポジティブエッジ訳、オーム社、2001}
+あたりも読んでおくとよい。
+</p>
+
+
+
+<h3>真にダイナミックなリンク</h3>
+
+<p>
+さてそろそろ本題に入ろう。ダイナミックリンクの「ダイナミック」は当然
+「実行時にやる」という意味だが、普通に言うところのダイナミックリンクだ
+と実はコンパイル時にかなりの部分が決まっている。例えば必要な関数の名前
+は決まっているだろうし、それがどこのライブラリにあるかということももう
+わかっている。例えば<code>cos()</code>なら<code>libm</code>にあるから<code>gcc -lm</code>という
+感じでリ
+ンクするわけだ。コンパイル時にそれを指定しなかったらリンクエラーになる。
+</p>
+
+<p>
+しかし拡張ライブラリの場合は違う。必要な関数の名前も、リンクするライブ
+ラリの名前すらもコンパイル時には決まっていない。文字列をプログラムの実
+行中に組み立ててロード・リンクしなければいけないのである。つまり先程の
+言葉で言う「論理結合」すらも全て実行時に行わなければならない。そのため
+には普通に言うところのダイナミックリンクとはまた少し違う仕組みが必要に
+なる。
+</p>
+
+<p>
+この操作、つまり実行時に全てを決めるリンク、のことを普通は
+「動的ロード（dynamic load）」と呼ぶ。本書の用語遣いからいくと
+「ダイナミックロード」と片仮名にひらくべきなのだろうが、
+ダイナミックリンクと
+ダイナミックロードだと紛らわしいのであえて漢字で「動的ロード」とする。
+</p>
+
+
+
+<h3>動的ロードAPI</h3>
+
+<p>
+概念の説明は以上だ。あとはその動的ロードをどうやればいいかである。とは
+言っても難しいことはなくて、普通はシステムに専用APIが用意されているの
+でこちらは単にそれを呼べばいい。
+</p>
+
+<p>
+例えばUNIXならわりと広範囲にあるのが<code>dlopen</code>というAPIである。ただし
+「UNIXならある」とまでは言えない。例えばちょっと前のHP-UXには全く違う
+インターフェイスがあるしMac OS XだとNeXT風のAPIを使う。また同じ
+<code>dlopen</code>でもBSD系だと<code>libc</code>にあるのにLinuxだと<code>libdl</code>として外付けになっ
+ている、などなど、壮絶なまでに移植性がない。いちおうUNIX系と並び称され
+ていてもこれだけ違うわけだから、他のOSになれば全然違うのもあたりまえで
+ある。同じAPIが使われていることはまずありえない。
+</p>
+
+<p>
+そこで<code>ruby</code>はどうしているかというと、その全然違うインターフェイスを吸収
+するために<code>dln.c</code>というファイルを用意している。<code>dln</code>はdynamic linkの略だろ
+う。<code>dln_load()</code>はその<code>dln.c</code>の関数の一つなのである。
+
+<p>
+そんなふうに全くバラバラの動的ロードAPIだが、せめてもの救
+いはAPIの使用パターンが全く同じだということだ。どのプラットフォームだ
+ろうと
+</p>
+
+<ol>
+<li>ライブラリをプロセスのアドレス空間にマップする</li>
+<li>ライブラリに含まれる関数へのポインタを取る</li>
+<li>ライブラリをアンマップ</li>
+</ol>
+
+<p>
+という三段階で構成されている。例えば<code>dlopen</code>系APIならば
+</p>
+
+<ol>
+<li><code>dlopen</code></li>
+<li><code>dlsym</code></li>
+<li><code>dlclose</code></li>
+</ol>
+
+<p>
+が対応する。Win32 APIならば
+</p>
+
+<ol>
+<li><code>LoadLibrary</code>（または<code>LoadLibraryEx</code>）</li>
+<li><code>GetProcAddress</code></li>
+<li><code>FreeLibrary</code></li>
+</ol>
+
+<p>
+が対応する。
+</p>
+
+<p>
+最後に、このAPI群を使って<code>dln_load()</code>が何をするかを話そう。これが実は、
+<code>Init_xxxx()</code>の呼び出しなのだ。ここに至ってついに<code>ruby</code>起動から終了までの全
+過程が欠落なく描けるようになる。即ち、<code>ruby</code>は起動すると評価器を初期化し
+なんらかの方法で受け取ったメインプログラムの評価を開始する。その途中で
+<code>require</code>か<code>load</code>が起こるとライブラリをロードし制御を移す。制御を移す、と
+は、Rubyライブラリならばパースして評価することであり、拡張ライブラリな
+らばロード・リンクして<code>Init_xxxx()</code>を呼ぶことである。
+</p>
+
+
+
+<h3><code>dln_load()</code></h3>
+
+<p>
+ようやく<code>dln_load()</code>の中身にたどりつけた。<code>dln_load()</code>も長い関数だが、これ
+また理由があって構造は単純である。まず概形を見てほしい。
+</p>
+
+<p class="caption">▼<code>dln_load()</code>（概形）</p>
+<pre class="longlist">
+void*
+dln_load(file)
+    const char *file;
+{
+#if defined _WIN32 &amp;&amp; !defined __CYGWIN__
+    Win32 APIでロード
+#else
+    プラットフォーム独立の初期化
+#ifdef 各プラットフォーム
+    ……プラットフォームごとのルーチン……
+#endif
+#endif
+#if !defined(_AIX) &amp;&amp; !defined(NeXT)
+  failed:
+    rb_loaderror("%s - %s", error, file);
+#endif
+    return 0;                   /* dummy return */
+}
+</pre>
+
+
+<p>
+このようにメインとなる部分がプラットフォームごとに完璧に分離しているため、
+考えるときは一つ一つのプラットフォームのことだけを考えていればいい。
+サポートされているAPIは以下の通りだ。
+</p>
+
+<ul>
+<li><code>dlopen</code>（多くのUNIX）</li>
+<li><code>LoadLibrary</code>（Win32）</li>
+<li><code>shl_load</code>（少し古いHP-UX）</li>
+<li><code>a.out</code>（かなり古いUNIX）</li>
+<li><code>rld_load</code>（<code>NeXT4</code>未満）</li>
+<li><code>dyld</code>（<code>NeXT</code>またはMac OS X）</li>
+<li><code>get_image_symbol</code>（BeOS）</li>
+<li><code>GetDiskFragment</code>（Mac OS 9以前）</li>
+<li><code>load</code>（少し古いAIX）</li>
+</ul>
+
+
+
+<h3><code>dln_load()</code>−<code>dlopen()</code></h3>
+
+<p>
+まず<code>dlopen</code>系のAPIのコードから行こう。
+</p>
+
+<p class="caption">▼<code>dln_load()</code>−<code>dlopen()</code></p>
+<pre class="longlist">
+1254  void*
+1255  dln_load(file)
+1256      const char *file;
+1257  {
+1259      const char *error = 0;
+1260  #define DLN_ERROR() (error = dln_strerror(),\
+                           strcpy(ALLOCA_N(char, strlen(error) + 1), error))
+1298      char *buf;
+1299      /* Init_xxxxという文字列をbufに書き込む（領域はalloca割り当て） */
+1300      init_funcname(&amp;buf, file);
+
+1304      {
+1305          void *handle;
+1306          void (*init_fct)();
+1307
+1308  #ifndef RTLD_LAZY
+1309  # define RTLD_LAZY 1
+1310  #endif
+1311  #ifndef RTLD_GLOBAL
+1312  # define RTLD_GLOBAL 0
+1313  #endif
+1314
+1315          /* （A）ライブラリをロード */
+1316          if ((handle = (void*)dlopen(file, RTLD_LAZY | RTLD_GLOBAL))
+                                                                 == NULL) {
+1317              error = dln_strerror();
+1318              goto failed;
+1319          }
+1320
+              /* （B）Init_xxxx()へのポインタを取る */
+1321          init_fct = (void(*)())dlsym(handle, buf);
+1322          if (init_fct == NULL) {
+1323              error = DLN_ERROR();
+1324              dlclose(handle);
+1325              goto failed;
+1326          }
+1327          /* （C）Init_xxxx()を呼ぶ */
+1328          (*init_fct)();
+1329
+1330          return handle;
+1331      }
+
+1576    failed:
+1577      rb_loaderror("%s - %s", error, file);
+1580  }
+
+(dln.c)
+</pre>
+
+
+<p>
+（A）<code>dlopen()</code>の引数の<code>RTLD_LAZY</code>は「実際に関数を要求したときに
+未解決シンボルを解決する」ことを示す。返り値はライブラリを識別する
+ための印（ハンドル）で、<code>dl*()</code>には常にこれを渡さないといけない。
+</p>
+
+<p>
+（B）<code>dlsym()</code>はハンドルの示すライブラリから関数ポインタを取る。返り値が
+<code>NULL</code>なら失敗だ。ここで<code>Init_xxxx()</code>へのポインタを取り、呼ぶ。
+</p>
+
+<p>
+<code>dlclose()</code>の呼び出しはない。<code>Init_xxxx()</code>の中でロードした
+ライブラリの関数ポインタを
+返したりしているはずだが、<code>dlclose()</code>するとライブラリ全体が使えなくなって
+しまうのでまずいのだ。つまりプロセスが終了するまで<code>dlclose()</code>は呼べない。
+</p>
+
+
+
+<h3><code>dln_load()</code>−Win32</h3>
+
+<p>
+Win32では<code>LoadLibrary()</code>と<code>GetProcAddress()</code>を使う。
+MSDNにも載っているごく一般的なWin32 APIである。
+</p>
+
+<p class="caption">▼<code>dln_load()</code>−Win32</p>
+<pre class="longlist">
+1254  void*
+1255  dln_load(file)
+1256      const char *file;
+1257  {
+
+1264      HINSTANCE handle;
+1265      char winfile[MAXPATHLEN];
+1266      void (*init_fct)();
+1267      char *buf;
+1268
+1269      if (strlen(file) &gt;= MAXPATHLEN) rb_loaderror("filename too long");
+1270
+1271      /* "Init_xxxx"という文字列をbufに書き込む（領域はalloca割り当て） */
+1272      init_funcname(&amp;buf, file);
+1273
+1274      strcpy(winfile, file);
+1275
+1276      /* ライブラリをロード */
+1277      if ((handle = LoadLibrary(winfile)) == NULL) {
+1278          error = dln_strerror();
+1279          goto failed;
+1280      }
+1281
+1282      if ((init_fct = (void(*)())GetProcAddress(handle, buf)) == NULL) {
+1283          rb_loaderror("%s - %s\n%s", dln_strerror(), buf, file);
+1284      }
+1285
+1286      /* Init_xxxx()を呼ぶ */
+1287      (*init_fct)();
+1288      return handle;
+
+1576    failed:
+1577      rb_loaderror("%s - %s", error, file);
+1580  }
+
+(dln.c)
+</pre>
+
+
+<p>
+<code>LoadLibrary()</code>して<code>GetProcAddress()</code>。ここまでパターンが同じだと
+言うこともないので、終わってしまうことにしよう。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第7章 セキュリティ</title></head>
+<body>
+
+<h1>第7章 セキュリティ</h1>
+
+<h3>原則</h3>
+
+<p>
+セキュリティと言ってもパスワードとか暗号化とかの話ではない。Rubyのセキュ
+リティ機能はCGIプログラムのような環境で「信用できない」ものを扱うため
+に存在する。
+</p>
+
+<p>
+例えば数値を表現した文字列を手軽に整数に変換したいとき、その文字列を
+<code>eval</code>するという方法がある。しかし<code>eval</code>というのは「文字列を
+Rubyプログラムとして実行する」というメソッドであり、ネットワーク越しに
+どこの誰かもわからない人から受け取った文字列を<code>eval</code>してしまったりすると、
+とても危険だ。しかしそういうことをプログラマが逐一管理して、これは安全、
+これは危険……と分けていくのは非常にしんどい。めんどい。従って確実にい
+つか間違える。だからそういうのは言語にやらせよう。というわけだ。
+</p>
+
+<p>
+ではRubyはどういうふうにその危険から守ってくれるのだろうか。危険な操作、
+例えば意図しないファイルを開いたりすること、の原因にはおおまかに言って
+二種類ある。
+</p>
+
+<ul>
+<li>危険な値</li>
+<li>危険なプログラム</li>
+</ul>
+
+<p>
+前者では値を扱うプログラムは確実に自分が書いたもので、従って
+（わりと）安全である。後者ではプログラムのコード自体が全く
+信用できない。
+</p>
+
+<p>
+この二つの原因ではかなり対策が違うので、レベルを分ける必要がある。これ
+をセキュリティレベルと言う。Rubyレベルでは<code>$SAFE</code>というグローバル変数と
+して出てくる。値は最低の0から最高の4まである。変数に代入することでレベ
+ルが上がり、一度上げたら絶対に下げられない。そしてそれぞれによって
+操作が制限されるわけだ。
+</p>
+
+<p>
+レベル1と3は略。
+レベル0は通常のプログラム環境である。セキュリティシステムは全く働
+かない。レベル2は危険な値に対処する。レベル4では危険なプログラムに対処
+する。0はいいとして、2と4について仕組みを詳しく見ていこう。
+</p>
+
+<h4>レベル2</h4>
+
+<p>
+危険な値に対処するためのレベル。通常のCGIなど。
+</p>
+
+<p>
+レベル2の基礎をなすのはオブジェクト単位で記憶されている汚染マークであ
+る。外部から読み込んだオブジェクト全部に汚染マークを付けておき、汚染さ
+れたオブジェクトを<code>eval</code>しようとしたり<code>File.open</code>しようとしたら例外を発生
+させて止める。
+</p>
+
+<p>
+それと汚染マークは「感染」する。例えば汚染した文字列の
+一部を取ると、それもやはり汚染されている。
+</p>
+
+<h4>レベル4</h4>
+
+<p>
+危険なプログラムに対処するためのレベル。
+外部から持ってきた（素性の知れない）プログラムの実行など。
+</p>
+
+<p>
+レベル2では操作とそれに使う値の両方でチェックしていたわけだが、
+レベル4に
+なると操作だけで禁止対象になる。例えば<code>exit</code>、ファイルI/O、スレッド
+操作、メソッド定義の変更、などなど。もちろん汚染情報も多少は使うのだが、
+基本的には操作が基準になる。
+</p>
+
+<h4>セキュリティ単位</h4>
+
+<p>
+<code>$SAFE</code>は見ためはグローバル変数だが実はスレッドローカルである。つまり
+Rubyのセキュリティシステムはスレッド単位で働く。Javaや.NETだとコンポー
+ネント（オブジェクト）単位で権限が設定できるが、Rubyはそこまではやって
+いない。想定するメインターゲットがCGIだからだろう。
+</p>
+
+<p>
+だからプログラムの一部分だけセキュリティレベルを上げたい、
+という場合は別スレッドにしてレ
+ベルを分離する。スレッドの作りかたなんてまだ説明していないわけだが、と
+りあえず以下の例だけで我慢しておいてほしい。
+</p>
+
+<pre class="emlist">
+# 別スレッドでセキュリティレベルを上げる
+p($SAFE)   # デフォルトは0
+Thread.fork {    # 別スレッドを起動して
+    $SAFE = 4    # レベルを上げて
+    eval(str)    # 危険なプログラムを実行
+}
+p($SAFE)   # ブロックの外ではレベル0のまま
+</pre>
+
+<h4><code>$SAFE</code>の信頼性</h4>
+
+<p>
+汚染マークの感染にしても操作の禁止にしても最終的には全て手作業で行われ
+ている。つまり使っている全ての組み込みライブラリと拡張ライブラリが抜け
+なく対処しないと途中で汚染が途切れ、安全ではなくなる。そして実際にそう
+いう穴はよく報告されている。だからとりあえず、筆者はあまり信用していな
+い。
+</p>
+
+<p>
+もっとも、だからと言って全てのRubyプログラムが危険であるわけでは、もち
+ろんない。<code>$SAFE=0</code>でも安全なプログラムは書けるし、<code>$SAFE=4</code>でも好き放
+題できるプログラムは書ける。ただ<code>$SAFE</code>は（まだ）過信できないというだ
+けだ。
+</p>
+
+<p>
+そもそも「活発な機能追加」と「セキュリティ」が両立するわけがない。どん
+どん新機能が付け加わっているのならそれに比例して穴も開きやすくなるとい
+うのは常識である。ならば当然<code>ruby</code>も危険だろうと考えるべきだ。
+</p>
+
+
+
+<h3>実装</h3>
+
+<p>
+ここからは実装に入るが、<code>ruby</code>のセキュリティシステムを完全に捉えるに
+は仕組みよりもむしろ「どこをチェックしているのか」を見なければならない。
+しかし今回それをやっているページはないし、いちいちリストアップするだけ
+では面白くない。そこでとりあえずこの章ではセキュリティチェックに使わ
+れる仕組みだけを解説して終えることにする。チェック用のAPIは主に以下の
+二つだ。
+</p>
+
+<ul>
+<li>レベル n 以上なら例外<code>SecurityError</code>を発生する<code>rb_secure(n)</code></li>
+<li>レベル1以上のとき、文字列が汚染されていたら例外を発生する<code>SafeStringValue()</code></li>
+</ul>
+
+<p>
+<code>SafeStringValue()</code>はここでは読まない。
+</p>
+
+<h4>汚染マーク</h4>
+
+<p>
+汚染マークとは具体的には<code>basic-&gt;flags</code>に記憶される
+フラグ<code>FL_TAINT</code>で、
+それを感染させるのは<code>OBJ_INFECT()</code>というマクロである。
+このように使う。
+</p>
+
+<pre class="emlist">
+OBJ_TAINT(obj)            /* objにFL_TAINTを付ける */
+OBJ_TAINTED(obj)          /* objにFL_TAINTが付いているか調べる */
+OBJ_INFECT(dest, src)     /* srcからdestにFL_TAINTを伝染させる */
+</pre>
+
+<p>
+<code>OBJ_TAINT()</code>・<code>OBJ_TAINTED()</code>はどうでもいいとして、
+<code>OBJ_INFECT()</code>だけさっと見よう。
+</p>
+
+<p class="caption">▼<code>OBJ_INFECT</code></p>
+<pre class="longlist">
+ 441  #define OBJ_INFECT(x,s) do {                             \
+          if (FL_ABLE(x) &amp;&amp; FL_ABLE(s))                        \
+              RBASIC(x)-&gt;flags |= RBASIC(s)-&gt;flags &amp; FL_TAINT; \
+      } while (0)
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>FL_ABLE()</code>は引数の<code>VALUE</code>がポインタであるかどうか調べる。
+両方のオブジェクトがポインタなら（つまり<code>flags</code>メンバがあるなら）、
+フラグを伝播する。
+</p>
+
+<h4><code>$SAFE</code></h4>
+
+<p class="caption">▼<code>ruby_safe_level</code></p>
+<pre class="longlist">
+ 124  int ruby_safe_level = 0;
+
+7401  static void
+7402  safe_setter(val)
+7403      VALUE val;
+7404  {
+7405      int level = NUM2INT(val);
+7406
+7407      if (level &lt; ruby_safe_level) {
+7408          rb_raise(rb_eSecurityError, "tried to downgrade safe level from %d to %d",
+7409                   ruby_safe_level, level);
+7410      }
+7411      ruby_safe_level = level;
+7412      curr_thread-&gt;safe = level;
+7413  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>$SAFE</code>の実体は<code>eval.c</code>の<code>ruby_safe_level</code>だ。先に書いたとおり
+<code>$SAFE</code>は
+スレッドに固有なので、スレッドの実装がある<code>eval.c</code>に書く必要があったからだ。
+つまりC言語の都合で<code>eval.c</code>にあるだけで、本来は別の場所にあってよい。
+</p>
+
+<p>
+<code>safe_setter()</code>はグローバル変数<code>$SAFE</code>の<code>setter</code>である。
+つまりRubyレベルからはこの関数経由でしかアクセスできないので
+レベルを下げることはできなくなる。
+</p>
+
+<p>
+ただし見てのとおり<code>ruby_safe_level</code>には<code>static</code>が付いていないので
+Cレベルからはインターフェイスを無視してセキュリティレベルを変更できる。
+</p>
+
+<h4><code>rb_secure()</code></h4>
+
+<p class="caption">▼<code>rb_secure()</code></p>
+<pre class="longlist">
+ 136  void
+ 137  rb_secure(level)
+ 138      int level;
+ 139  {
+ 140      if (level &lt;= ruby_safe_level) {
+ 141          rb_raise(rb_eSecurityError, "Insecure operation `%s' at level %d",
+ 142                   rb_id2name(ruby_frame-&gt;last_func), ruby_safe_level);
+ 143      }
+ 144  }
+
+(eval.c)
+</pre>
+
+
+<p>
+現在のセーフレベルが<code>level</code>以上だったら例外<code>SecurityError</code>を発生。簡単だ。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

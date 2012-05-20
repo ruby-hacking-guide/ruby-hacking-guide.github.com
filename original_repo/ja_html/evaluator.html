@@ -1,0 +1,1648 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第13章 評価器の構造</title></head>
+<body>
+
+<h1>第13章 評価器の構造</h1>
+
+<h2>第四部の概略</h2>
+
+<h3>評価器とは</h3>
+
+<p>
+「評価器」なんて聞き慣れない言葉だ。評価器という字面から考えるに
+「評価」
+するための「器械」には違いないけども、それでは評価するとはどういうこと
+だろうか。
+</p>
+
+<p>
+「評価」はevaluateの定訳だが、プログラム言語について話すという前提では、
+誤訳ぎみだ。日本語で評価と言うとどうしても「良い悪い」の意味合いが含ま
+れてしまう。
+</p>
+
+<p>
+プログラム言語におけるevaluateは良し悪しとは全く関係なく、「推し測る」
+とか「実行する」に近い意味を持つ。evaluateの語源はラテン語の
+ex+value+ateで、直訳すれば「値にする」となる。これが一番理解しやすいか
+もしれない。テキストで表現された式から値を求める、というわけだ。
+</p>
+
+<p>
+まあようするにぶっちゃけて言えば評価とは書かれている式を実行してその結
+果を得る、という意味である。ではなぜ実行と言わないかと言うと、実行だけ
+が評価ではないからだ。
+</p>
+
+<p>
+例えば普通のプログラム言語なら「3」と書けば整数の3として扱われる。こう
+いうとき「<code>"3"</code>を評価した結果は3である」と言ったりする。定数の式は実行し
+ているとは言い難いが、それもやはり評価なのである。「3」という字面を
+評価したときに整数6として扱われる（評価される）言語があっても、別に構
+わないのだから。
+</p>
+
+<p>
+別の例を挙げよう。定数を組み合わせた式があると、コンパイル中に計算して
+しまうことがある（定数畳み込み）。これも普通「実行」して計算していると
+は言わない。実行と言えば作ったバイナリが動いている間の作業を指すからだ。
+しかしいつ計算しようとプログラムの最終的な評価値は変わらない。
+</p>
+
+<p>
+つまり「評価する」とはたいていはプログラムを実行することと等しいのだが、
+根本的には実行と評価は違う。とりあえずこの点だけ覚えておいてほしい。
+</p>
+
+
+
+<h3><code>ruby</code>の評価器の特徴</h3>
+
+<p>
+<code>ruby</code>の評価器で最大の特徴は、インタプリタ全体に言えることだが、Cレベル
+（拡張ライブラリ）とRubyレベルのコードの表現の差が小さいことだ。普通の
+処理系では拡張ライブラリから使えるインタプリタの機能はかなり制限される
+ものだが、<code>ruby</code>では恐ろしく制限が少ない。クラス定義、メソッド定義、制限
+無しのメソッド呼び出し、あたりは当然として、例外処理、イテレータ、果て
+はスレッドまで使えてしまう。
+</p>
+
+<p>
+しかしその便利さの代償はどこかで払わなければならない。実装が異様に大変
+だったり、オーバーヘッドが大きかったり、同じようなことをRuby用とC用に
+二回実装している個所もかなりある。
+</p>
+
+<p>
+また<code>ruby</code>は動的な言語なので、実行時にプログラムを文字列で組み立てて
+それを評価させることもできる。<code>eval</code>という関数風メソッドがそれだ。
+名前はもちろんevaluateから来ている。それを使うとこんなこともできる。
+</p>
+
+<pre class="emlist">
+lvar = 1
+answer = eval("lvar + lvar")    # 答えは2
+</pre>
+
+<p>
+その他に<code>Module#module_eval</code>、<code>Object#instance_eval</code>というものもあり、
+またそれぞれに癖のある動きをする。このあたりの詳しいことは
+第17章『動的評価』で述べよう。
+</p>
+
+
+
+<h3><code>eval.c</code></h3>
+
+<p>
+評価器は<code>eval.c</code>で実装されている。ところがこの<code>eval.c</code>が非常に巨大で、実に
+9000行200Kバイト、関数の数309という難敵である。このくらいになってくる
+と頭から眺めた程度ではさっぱり構造がつかめない。
+</p>
+
+<p>
+ではどうするか。まず、巨大なファイルになればなるほど、その中に全く区分
+けがないということは考えられない。つまり内部でもっと小さい単位にモジュー
+ル化されているはずなのだ。だからそれを探すことを第一に考えるべきである。
+ではモジュールをどうやって探せばいいだろう。
+方法をいくつか羅列してみる。
+</p>
+
+<p>
+まず定義されている関数のリストを出力してプリフィクスを見る。<code>rb_dvar_</code>、
+<code>rb_mod_</code>、<code>rb_obj_</code>、<code>rb_thread_</code>といったプリフィクスを持った関数がズラズラ
+と並んでいるはずだ。これは明らかに同種の関数のまとまりである。
+</p>
+
+<p>
+またクラスライブラリのコードを見るとわかるのだが、<code>ruby</code>のコードでは
+<code>Init_xxxx()</code>は常にブロックの最後に置かれる。だから<code>Init_xxxx()</code>があったら
+そこも切れめである。
+</p>
+
+<p>
+それに当然ながら名前も重要である。<code>eval()</code>と<code>rb_eval()</code>と<code>eval_node()</code>が
+近くにあったら互いに深い関係があると思うのが当然だ。
+</p>
+
+<p>
+最後に、<code>ruby</code>のソースコードでは型や変数の定義、プロトタイプ宣言がはさまっ
+ていると切れめであることが多い。
+</p>
+
+<p>
+このあたりを意識して見てみると、<code>eval.c</code>は主に以下のようなモジュールに
+分割できそうだ。
+</p>
+
+<table>
+<tr><td>セーフレベル<td><td>第7章『セキュリティ』で説明済み<td></tr>
+<tr><td>メソッドエントリの操作<td><td>メソッド実体の構文木の探索や削除を行う<td></tr>
+<tr><td>評価器コア<td><td><code>rb_eval()</code>を中心とした、評価器の核心部<td></tr>
+<tr><td>例外<td><td>例外の発生とバックトレース生成<td></tr>
+<tr><td>メソッド<td><td>メソッド呼び出しの実装<td></tr>
+<tr><td>イテレータ<td><td>ブロックに関係する関数の実装<td></tr>
+<tr><td>ロード<td><td>外部ファイルのロードと評価<td></tr>
+<tr><td><code>Proc</code><td><td><code>Proc</code>の実装<td></tr>
+<tr><td>スレッド<td><td>Rubyスレッドの実装<td></tr>
+</table>
+
+<p>
+このうちロードとスレッドのパートは本来<code>eval.c</code>にあるべきではない部分だ。
+<code>eval.c</code>にあるのは単にC言語の制約が理由である。もう少し言うと、
+<code>PUSH_TAG()</code>など<code>eval.c</code>の内部で定義されているマクロを使う必要が
+あるからだ。そこでこの二つは第三部から外し、第四部で扱うことにした。
+またセーフレベルについては第一部で説明してしまったのでもういいだろう。
+</p>
+
+<p>
+以上の三つを削った残りの六項目が第三部の解説対象である。
+章との対応は以下の表のようになる。
+</p>
+
+<p class="caption">▼第三部解説割り振り</p>
+<table>
+<tr><td>メソッドエントリの操作<td><td>次章『コンテキスト』<td></tr>
+<tr><td>評価器コア<td><td>第三部全章<td></tr>
+<tr><td>例外<td><td>本章<td></tr>
+<tr><td>メソッド<td><td>第15章『メソッド』<td></tr>
+<tr><td>イテレータ<td><td>第16章『ブロック』<td></tr>
+<tr><td><code>Proc</code><td><td>第16章『ブロック』<td></tr>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>main</code>発<code>ruby_run</code>経由<code>rb_eval</code>行き</h2>
+
+<h3>コールグラフ</h3>
+
+<p>
+評価器の真のコアは<code>rb_eval()</code>という関数なのだが、
+この節は<code>main()</code>からその<code>rb_eval()</code>までの道筋を追ってゆく。
+まず以下は<code>rb_eval()</code>周辺のおおまかなコールグラフである。
+</p>
+
+<pre class="emlist">
+main                     ....main.c
+    ruby_init                ....eval.c
+        ruby_prog_init           ....ruby.c
+    ruby_options             ....eval.c
+        ruby_process_options     ....ruby.c
+    ruby_run                 ....eval.c
+        eval_node
+            rb_eval
+                *
+        ruby_stop
+</pre>
+
+<p>
+右側にはファイルが移動するところでファイル名を入れておいた。
+これをジッと見てみてまず気付くのは、<code>eval.c</code>の関数から<code>main.c</code>の
+関数を呼び返していることだ。
+</p>
+
+<p>
+呼び返している、と書いたのは、<code>main.c</code>と<code>ruby.c</code>はどちらかというと
+<code>ruby</code>コマンドの実装となるファイルだからだ。<code>eval.c</code>は<code>ruby</code>コマンドとは
+少し距離を置いた、評価器自体の実装である。つまり<code>eval.c</code>は<code>ruby.c</code>に
+使われる立場であって、<code>eval.c</code>から<code>ruby.c</code>の関数を呼んでしまったら
+<code>eval.c</code>の独立性が下がる。
+</p>
+
+<p>
+ではどうしてこうなっているのだろう。理由は主にC言語の制約による。
+<code>ruby_prog_init()</code>や<code>ruby_process_options()</code>ではRuby世界のAPIを使い
+はじめるので、例外が起きる可能性がある。しかしRubyの例外を止める
+ためには<code>eval.c</code>の中でしか使えない<code>PUSH_TAG()</code>というマクロを使わないと
+ならないのだ。つまり本来は<code>ruby_init()</code>や<code>ruby_run()</code>のほうが<code>ruby.c</code>に
+あるべきだということである。
+</p>
+
+<p>
+ではどうして<code>PUSH_TAG()</code>を<code>extern</code>関数なりなんなりにして公開しないのだろう。
+実は<code>PUSH_TAG()</code>は次のように<code>POP_TAG()</code>と対にしないと使えないのだ。
+</p>
+
+<pre class="emlist">
+PUSH_TAG();
+/* いろいろする */
+POP_TAG();
+</pre>
+
+<p>
+実装上の理由から、この二つのマクロは同じ関数に入れておかないといけない。
+やろうと思えば別々の関数に分けられるように実装することもできるのだが、
+そうすると速度が遅くなるのでそうはなっていないのだ。
+
+<p>
+次に気付くのは、<code>main()</code>から<code>ruby_xxxx()</code>という名前の関数を連続で呼んで
+いるのはとても意味がありそうだ、ということである。これだけあからさまに
+対称形なら何も関係ないほうがおかしい。
+</p>
+
+<p>
+実際この三つの関数には深い関係がある。一言で言ってしまうと、この三つは
+どれも「組み込みRubyインターフェイス」なのだ。つまり<code>ruby</code>インタプリタを
+組み込んだコマンドを作るときだけ使う、そして拡張ライブラリでは使わない、
+関数なのだ。<code>ruby</code>コマンド自体も理論上は組み込みRubyプログラムの一種と考
+えられるから、このインターフェイスを使うのが自然だ。
+</p>
+
+<p>
+<code>ruby_</code>というプリフィクスはなんだろう。<code>ruby</code>の関数はこれまで全て
+<code>rb_</code>だった。どうして<code>rb_</code>と<code>ruby_</code>の二種類あるのだろうか。調べてみ
+てもどうにも違いがわからないので直接理由を聞いてみたところ、「<code>ruby</code>コ
+マンドの補助をするものが<code>ruby_</code>で公式インターフェイスが<code>rb_</code>」なんだそ
+うだ。
+</p>
+
+<p>
+じゃあ<code>eval.c</code>の内部だけで使う<code>ruby_scope</code>などはなぜ<code>ruby_</code>なのか？ と
+ツッコんでみると、これは単なる偶然らしい。<code>ruby_scope</code>などは
+元々<code>the_</code>という名前だったのだが、1.3の途中で全インターフェイスに
+プリフィクスを付ける変更が入った。そのときに「なんとなく内部っぽい」
+変数に<code>ruby_</code>を付けたんだそうな。
+</p>
+
+<p>
+つまり結論だけ言うと、<code>ruby_</code>が付いているものは<code>ruby</code>コマンド補助用
+または内部専用変数。<code>rb_</code>が付いているものは<code>ruby</code>インタプリタの公式
+インターフェイス。ということだ。
+</p>
+
+
+
+<h3><code>main()</code></h3>
+
+<p>
+最初は素直に<code>main()</code>から見ていくことにしよう。
+ここは非常に短かくて助かる。
+</p>
+
+<p class="caption">▼<code>main()</code></p>
+<pre class="longlist">
+  36  int
+  37  main(argc, argv, envp)
+  38      int argc;
+  39      char **argv, **envp;
+  40  {
+  41  #if defined(NT)
+  42      NtInitialize(&amp;argc, &amp;argv);
+  43  #endif
+  44  #if defined(__MACOS__) &amp;&amp; defined(__MWERKS__)
+  45      argc = ccommand(&amp;argv);
+  46  #endif
+  47
+  48      ruby_init();
+  49      ruby_options(argc, argv);
+  50      ruby_run();
+  51      return 0;
+  52  }
+
+(main.c)
+</pre>
+
+
+<p>
+<code>#ifdef NT</code>は当然ながらWindows NTのNTである。が、なぜかWin9xでも
+NTは定義される。つまりWin32環境という意味だ。
+<code>NtInitialize()</code>はWin32のために<code>argc argv</code>とソケットシステム
+（WinSock）を初期化する。この関数は初期化をしているだけなので
+面白くないし本筋にも関係ないので省略する。
+</p>
+
+<p>
+また<code>__MACOS__</code>は「まこす」でなくてMac OSのこと。この場合Mac OS 9以前の
+ことで、Mac OS Xは入らない。こんな<code>#ifdef</code>は残っているが、最初に書いたと
+おり現在のバージョンはMac OS 9以前では動かない。動いていたころの名残で
+ある。よってこのコードも略。
+</p>
+
+<p>
+ところでC言語に詳しい読者ならば知っていると思うが、アンダーバーで始ま
+る識別子はシステムライブラリやOSのために予約されている。もっとも予約さ
+れているとは言っても使うとエラーになったりするということはまずないが、
+ちょっとヘンな<code>cc</code>ではエラーになることもある。例えばHP-UXの<code>cc</code>。
+HP-UXというのは<code>HP</code>の作っているUNIXのことだ。HP-UXはヘンじゃない、
+という意見は声を大にして却下する。
+</p>
+
+<p>
+まあ、なんにしてもユーザアプリケーションではそのような識別子は定義しない
+のがお約束である。
+</p>
+
+<p>
+では組み込みRubyインターフェイスをさらっと解説していこう。
+</p>
+
+
+
+<h3><code>ruby_init()</code></h3>
+
+<p>
+<code>ruby_init()</code>はRubyインタプリタを初期化する。現在のRubyインタプリタは一
+つのプロセスに一つしか存在できないので引数も返り値も必要ない。この点は
+一般には「機能不足」と見られている。
+</p>
+
+<p>
+インタプリタが一つだけだと困るのはなんと言ってもRubyの開発環境まわりだ
+ろう。具体的には<code>irb</code>であるとかRubyWin、RDEと言ったアプリケーションだ。
+プログラムを書き直してロードしても消したはずのクラスが残ってしまう。リ
+フレクションAPIを駆使すれば対処できないこともないが、かなり苦しい。
+</p>
+
+<p>
+だがまつもとさんはどうやら意図的にインタプリタの数を一つに制限している
+ようだ。「完全な初期化はできないから」というのが理由らしい。例えばロー
+ドしてしまった拡張ライブラリを外すことはできないというのが例として挙げ
+られている。
+</p>
+
+<p>
+<code>ruby_init()</code>のコードは見ても意味がないので略。
+</p>
+
+
+
+<h3><code>ruby_options()</code></h3>
+
+<p>
+Rubyインタプリタのためにコマンドラインオプションをパースするのが
+<code>ruby_options()</code>である。もちろんコマンドによっては使わなくてもよい。
+</p>
+
+<p>
+この関数の中で<code>-r</code>（ライブラリのロード）や
+<code>-e</code>（コマンドラインからプログラムを渡す）の処理は行われてしまう。
+それに引数に渡したファイルをRubyプログラムとしてパースするのもここだ。
+</p>
+
+<p>
+<code>ruby</code>コマンドはファイルを与えられればそこから、与えられなければ
+<code>stdin</code>から、メインプログラムを読む。そうしたら第二部で紹介した
+<code>rb_compile_string()</code>や<code>rb_compile_file()</code>を使ってテキストを構文木に
+コンパイルする。その結果はグローバル変数<code>ruby_eval_tree</code>にセット
+される。
+</p>
+
+<p>
+<code>ruby_options()</code>のコードも地道すぎて面白くないので略。
+</p>
+
+
+
+<h3><code>ruby_run()</code></h3>
+
+<p>
+そして最後に<code>ruby_run()</code>で<code>ruby_eval_tree</code>にセットされている構文木の
+評価を開始する。この関数も必ずしも呼ぶ必要はない。<code>ruby_run()</code>以外には
+例えば<code>rb_eval_string()</code>という関数を使って文字列を評価する方法がある。
+</p>
+
+<p class="caption">▼<code>ruby_run()</code></p>
+<pre class="longlist">
+1257  void
+1258  ruby_run()
+1259  {
+1260      int state;
+1261      static int ex;
+1262      volatile NODE *tmp;
+1263
+1264      if (ruby_nerrs &gt; 0) exit(ruby_nerrs);
+1265
+1266      Init_stack((void*)&amp;tmp);
+1267      PUSH_TAG(PROT_NONE);
+1268      PUSH_ITER(ITER_NOT);
+1269      if ((state = EXEC_TAG()) == 0) {
+1270          eval_node(ruby_top_self, ruby_eval_tree);
+1271      }
+1272      POP_ITER();
+1273      POP_TAG();
+1274
+1275      if (state &amp;&amp; !ex) ex = state;
+1276      ruby_stop(ex);
+1277  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>PUSH_xxxx()</code>というマクロが見えるが、とりあえず無視しておいていい。このあ
+たりの詳しいことはいずれときが来たら説明する。ここでは重要なのは
+<code>eval_node()</code>だけだ。その中身はと言うと、
+</p>
+
+<p class="caption">▼<code>eval_node()</code></p>
+<pre class="longlist">
+1112  static VALUE
+1113  eval_node(self, node)
+1114      VALUE self;
+1115      NODE *node;
+1116  {
+1117      NODE *beg_tree = ruby_eval_tree_begin;
+1118
+1119      ruby_eval_tree_begin = 0;
+1120      if (beg_tree) {
+1121          rb_eval(self, beg_tree);
+1122      }
+1123
+1124      if (!node) return Qnil;
+1125      return rb_eval(self, node);
+1126  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>ruby_eval_tree</code>に対して<code>rb_eval()</code>を呼ぶ。<code>ruby_eval_tree_begin</code>のほうは
+<code>BEGIN</code>で登録された文を格納している。が、これもどうでもいい。
+</p>
+
+<p>
+また<code>ruby_run()</code>の中の<code>ruby_stop()</code>では、スレッドを全部終了させて、
+オブジェクトを全てファイナライズし、例外をチェックして最終的に
+<code>exit()</code>を呼ぶ。こちらもどうでもいいので見ない。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>rb_eval()</code></h2>
+
+<h3>概要</h3>
+
+<p>
+さて<code>rb_eval()</code>である。この関数こそが<code>ruby</code>の真の核だ。
+<code>rb_eval()</code>の呼び出し一回が<code>NODE</code>一つを処理し、再帰呼び出し
+しながら構文木全体を処理していく（図1）。
+</p>
+
+<p class="image">
+<img src="images/ch_evaluator_rbeval.jpg" alt="(rbeval)"><br>
+図1: <code>rb_eval</code>のイメージ
+</p>
+
+<p>
+<code>rb_eval()</code>も<code>yylex()</code>と同じく巨大な<code>switch</code>文でできており、
+ノードごとに分岐するようになっている。まずは概形から見てみよう。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>概形</p>
+<pre class="longlist">
+2221  static VALUE
+2222  rb_eval(self, n)
+2223      VALUE self;
+2224      NODE *n;
+2225  {
+2226      NODE *nodesave = ruby_current_node;
+2227      NODE * volatile node = n;
+2228      int state;
+2229      volatile VALUE result = Qnil;
+2230
+2231  #define RETURN(v) do { \
+2232      result = (v);      \
+2233      goto finish;       \
+2234  } while (0)
+2235
+2236    again:
+2237      if (!node) RETURN(Qnil);
+2238
+2239      ruby_last_node = ruby_current_node = node;
+2240      switch (nd_type(node)) {
+            case NODE_BLOCK:
+              .....
+            case NODE_POSTEXE:
+              .....
+            case NODE_BEGIN:
+                   ：
+            （大量のcase文）
+                   ：
+3415        default:
+3416          rb_bug("unknown node type %d", nd_type(node));
+3417      }
+3418    finish:
+3419      CHECK_INTS;
+3420      ruby_current_node = nodesave;
+3421      return result;
+3422  }
+
+(eval.c)
+</pre>
+
+
+<p>
+省略したところには全ノードの処理コードがずらっと並んでいる。
+こうやって分岐してノードごとの処理を行うわけだ。コードが少なければ
+<code>rb_eval()</code>の中だけで処理されてしまうが、多くなってくると関数に
+分割される。<code>eval.c</code>の関数のほとんどはそうやってできたものだ。
+</p>
+
+<p>
+<code>rb_eval()</code>から値を返すときは<code>return</code>でなくマクロ<code>RETURN()</code>を使う。
+必ず<code>CHECK_INTS</code>を通るようにするためである。このマクロはスレッド
+関係なので、そのときまで無視しておいてよい。
+</p>
+
+<p>
+それから最後に、ローカル変数の<code>result</code>と<code>node</code>を
+<code>volatile</code>しているのはGC対策である。
+</p>
+
+
+
+<h3><code>NODE_IF</code></h3>
+
+<p>
+では<code>if</code>文を例にとって<code>rb_eval()</code>による評価の過程を具体的に見てみよう。
+以下、<code>rb_eval()</code>の解説では
+</p>
+
+<ul>
+<li>ソースプログラム（Rubyプログラム）</li>
+<li>それに対応する構文木</li>
+<li><code>rb_eval()</code>でのノード処理コード</li>
+</ul>
+
+<p>
+の三つを冒頭に挙げて読んでいくことにする。
+</p>
+
+<p class="caption">▼ソースプログラム</p>
+<pre class="longlist">
+if true
+  'true expr'
+else
+  'false expr'
+end
+</pre>
+
+
+<p class="caption">▼対応する構文木（<code>nodedump</code>）</p>
+<pre class="longlist">
+NODE_NEWLINE
+nd_file = "if"
+nd_nth  = 1
+nd_next:
+    NODE_IF
+    nd_cond:
+        NODE_TRUE
+    nd_body:
+        NODE_NEWLINE
+        nd_file = "if"
+        nd_nth  = 2
+        nd_next:
+            NODE_STR
+            nd_lit = "true expr":String
+    nd_else:
+        NODE_NEWLINE
+        nd_file = "if"
+        nd_nth  = 4
+        nd_next:
+            NODE_STR
+            nd_lit = "false expr":String
+</pre>
+
+
+<p>
+第二部で見たとおり、<code>elsif</code>や<code>unless</code>は組みかたを工夫することで
+<code>NODE_IF</code>一種類にまとめられるので特別に扱う必要はない。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−<code>NODE_IF</code></p>
+<pre class="longlist">
+2324  case NODE_IF:
+2325    if (trace_func) {
+2326        call_trace_func("line", node, self,
+2327                        ruby_frame-&gt;last_func,
+2328                        ruby_frame-&gt;last_class);
+2329    }
+2330    if (RTEST(rb_eval(self, node-&gt;nd_cond))) {
+2331        node = node-&gt;nd_body;
+2332    }
+2333    else {
+2334        node = node-&gt;nd_else;
+2335    }
+2336    goto again;
+
+(eval.c)
+</pre>
+
+
+<p>
+重要なのは最後の<code>if</code>文だけである。
+この文を意味を変えずに書きなおすとこうなる。
+</p>
+
+<pre class="emlist">
+if (RTEST(rb_eval(self, node-&gt;nd_cond))) {     (A)
+    RETURN(rb_eval(self, node-&gt;nd_body));      (B)
+}
+else {
+    RETURN(rb_eval(self, node-&gt;nd_else));      (C)
+}
+</pre>
+
+<p>
+まず（A）でRubyの条件式（のノード）を評価し、その値を<code>RTEST()</code>でテストする。
+<code>RTEST()</code>は<code>VALUE</code>がRubyの真であるかどうかテストするマクロだった。
+それが真なら（B）で<code>then</code>側の節を評価し、
+偽なら（C）で<code>else</code>側の節を評価する。
+</p>
+
+<p>
+そしてRubyの<code>if</code>式もまた値を持つのだったから、値を返さないといけない。
+<code>if</code>の値は<code>then</code>側または<code>else</code>側、実行されたほうの節の値だから、
+<code>RETURN()</code>マクロでそれを返す。
+</p>
+
+<p>
+オリジナルのリストで<code>rb_eval()</code>を再帰呼び出しせずに<code>goto</code>で済ませてい
+るのは前章『構文木の構築』でも登場した「末尾再帰→<code>goto</code>変換」である。
+</p>
+
+
+
+<h3><code>NODE_NEWLINE</code></h3>
+
+<p>
+<code>if</code>式のところに<code>NODE_NEWLINE</code>があったのでその処理コードも見ておこう。
+このノードは<code>stmt</code>一つにつき一つつくヘッダのようなものであった。
+<code>rb_eval()</code>では実行中のプログラムの、ファイル上での位置を
+逐次合わせるために使われる。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−<code>NODE_NEWLINE</code></p>
+<pre class="longlist">
+3404  case NODE_NEWLINE:
+3405    ruby_sourcefile = node-&gt;nd_file;
+3406    ruby_sourceline = node-&gt;nd_nth;
+3407    if (trace_func) {
+3408        call_trace_func("line", node, self,
+3409                        ruby_frame-&gt;last_func,
+3410                        ruby_frame-&gt;last_class);
+3411    }
+3412    node = node-&gt;nd_next;
+3413    goto again;
+
+(eval.c)
+</pre>
+
+
+<p>
+特に難しいことはない。
+</p>
+
+<p>
+<code>call_trace_func()</code>は<code>NODE_IF</code>でも登場していた。これがどういうものかと
+いうことだけ
+簡単に解説しておこう。これはRubyプログラムをRubyレベルからトレースす
+るための機能である。デバッガ（<code>debug.rb</code>）やトレーサ（<code>tracer.rb</code>）、
+プロファイラ（<code>profile.rb</code>）、
+<code>irb</code>（対話的な<code>ruby</code>コマンド）などがこの機能を使っている。
+</p>
+
+<p>
+<code>set_trace_func</code>という関数風メソッドを呼ぶとトレース用の<code>Proc</code>オブ
+ジェクトを登録できるようになっていて、その<code>Proc</code>オブジェクトが
+<code>trace_func</code>に入っている。<code>trace_func</code>が0でなかったら、つまり
+<code>Qfalse</code>でなかったら、それを<code>Proc</code>オブジェクトと見做して
+（<code>call_trace_func()</code>で）実行する。
+</p>
+
+<p>
+この<code>call_trace_func()</code>は本筋とはまるで関係がないうえ、あまり面白くな
+いので本書では以後一切無視する。興味のある人は第16章『ブロック』を
+読んでから挑戦してほしい。
+</p>
+
+
+
+<h3>擬似ローカル変数</h3>
+
+<p>
+<code>NODE_IF</code>などは構文木で言えば節に当たる部分であった。
+葉の部分も見ておこう。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−擬似ローカル変数ノード</p>
+<pre class="longlist">
+2312  case NODE_SELF:
+2313    RETURN(self);
+2314
+2315  case NODE_NIL:
+2316    RETURN(Qnil);
+2317
+2318  case NODE_TRUE:
+2319    RETURN(Qtrue);
+2320
+2321  case NODE_FALSE:
+2322    RETURN(Qfalse);
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>self</code>は<code>rb_eval()</code>の引数だった。ちょっと前に戻って確認しておいてほしい。
+他はいいだろう。
+</p>
+
+
+
+<h3>ジャンプタグ</h3>
+
+<p>
+次は<code>while</code>に対応するノード<code>NODE_WHILE</code>を解説していきたいのだが、
+<code>break</code>や<code>next</code>を実装するには関数の再帰呼び出しだけでは難しい。
+<code>ruby</code>はこれらの構文をジャンプタグというものを使って実現しているので、
+まずはその話をしよう。
+</p>
+
+<p>
+ジャンプタグを一言で言うと、C言語のライブラリ関数<code>setjmp()</code>と
+<code>longjmp()</code>の
+ラッパーである。<code>setjmp()</code>のことは知っているだろうか。
+この関数は<code>gc.c</code>でも出てきたが、あっちでの使いかたはかなり邪道だ。
+<code>setjmp()</code>は普通は関数越しジャンプのために使うものである。
+以下のコードを例にして説明しよう。エントリポイントは<code>parent()</code>だ。
+</p>
+
+<p class="caption">▼<code>setjmp()</code>と<code>longjmp()</code></p>
+<pre class="longlist">
+jmp_buf buf;
+
+void child2(void) {
+    longjmp(buf, 34);   /* parentまで一気に戻る。
+                           setjmpの返り値は34になる */
+    puts("このメッセージは絶対に出力されない");
+}
+
+void child1(void) {
+    child2();
+    puts("このメッセージは絶対に出力されない");
+}
+
+void parent(void) {
+    int result;
+    if ((result = setjmp(buf)) == 0) {
+        /* 普通にsetjmpから戻ってきた */
+        child1();
+    } else {
+        /* child2からlongjmpで戻ってきた */
+        printf("%d\n", result);   /* 34と表示される */
+    }
+}
+</pre>
+
+
+<p>
+まず<code>parent()</code>で<code>setjmp()</code>を呼ぶと引数の<code>buf</code>にその時の実行状態が記録
+される。もうちょっと直接的に言うと、マシンスタックの先端アドレスと
+CPUのレジスタが記録される。<code>setjmp()</code>の返り値が0だったらその<code>setjmp()</code>か
+ら普通に戻ってきたということなので、普通に続きのコードを書けばよい。そ
+れが<code>if</code>側だ。ここでは<code>child1()</code>を呼び出している。
+</p>
+
+<p>
+そして次に<code>child2()</code>に制御が移って<code>longjmp</code>を呼ぶと、引数の<code>buf</code>を
+<code>setjmp</code>した
+ところにいきなり戻ることができる。つまりこの場合は<code>parent()</code>の<code>setjmp</code>のと
+ころまで戻る。<code>longjmp</code>で戻ったときは<code>setjmp()</code>の返り値が<code>longjmp</code>の第二
+引数の値になるので<code>else</code>側が実行される。ちなみに<code>longjmp</code>に0を渡しても
+強制的に違う値にされてしまうので無駄だ。
+</p>
+
+<p>
+例によってマシンスタックの状態を図にすると図2のようになる。
+普通の関数は一回の呼び出しにつき一回しか戻らないものだ。しかし
+<code>setjmp()</code>は二回戻ることがある。<code>fork()</code>みたいなものだと言ったら少しは
+イメージがつかめるだろうか。
+
+<p class="image">
+<img src="images/ch_evaluator_setjmp.jpg" alt="(setjmp)"><br>
+図2: <code>setjmp()</code> <code>longjmp()</code>のイメージ
+</p>
+
+<p>
+さて、<code>setjmp()</code>の予習はここまでだ。<code>eval.c</code>では<code>EXEC_TAG()</code>が<code>setjmp()</code>、
+<code>JUMP_TAG()</code>が<code>longjmp()</code>に、それぞれ相当する（図3）。
+</p>
+
+<p class="image">
+<img src="images/ch_evaluator_jumptag.jpg" alt="(jumptag)"><br>
+図3: タグジャンプのイメージ
+</p>
+
+<p>
+この図を見ると<code>EXEC_TAG()</code>に引数がないようだ。<code>jmp_buf</code>は
+どこに行ってしまったのだろう。
+実は<code>ruby</code>では<code>jmp_buf</code>は<code>struct tag</code>という構造体にラップされている。
+見てみよう。
+</p>
+
+<p class="caption">▼<code>struct tag</code></p>
+<pre class="longlist">
+ 783  struct tag {
+ 784      jmp_buf buf;
+ 785      struct FRAME *frame;   /* PUSH_TAGしたときのFRAME */
+ 786      struct iter *iter;     /* PUSH_TAGしたときのITER */
+ 787      ID tag;                /* タグの種類 */
+ 788      VALUE retval;          /* ジャンプに伴う返り値 */
+ 789      struct SCOPE *scope;   /* PUSH_TAGしたときのSCOPE */
+ 790      int dst;               /* ジャンプ先ID */
+ 791      struct tag *prev;
+ 792  };
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>prev</code>メンバがあるので<code>struct tag</code>はリンクリストを使ったスタック
+構造だろうと予測できる。さらにまわりを見回してみると<code>PUSH_TAG()</code>と
+<code>POP_TAG()</code>というマクロがあるので、スタックで間違いなさそうだ。
+</p>
+
+<p class="caption">▼<code>PUSH_TAG() POP_TAG()</code></p>
+<pre class="longlist">
+ 793  static struct tag *prot_tag;   /* スタックの先端を指すポインタ */
+
+ 795  #define PUSH_TAG(ptag) do {             \
+ 796      struct tag _tag;                    \
+ 797      _tag.retval = Qnil;                 \
+ 798      _tag.frame = ruby_frame;            \
+ 799      _tag.iter = ruby_iter;              \
+ 800      _tag.prev = prot_tag;               \
+ 801      _tag.scope = ruby_scope;            \
+ 802      _tag.tag = ptag;                    \
+ 803      _tag.dst = 0;                       \
+ 804      prot_tag = &amp;_tag
+
+ 818  #define POP_TAG()                       \
+ 819      if (_tag.prev)                      \
+ 820          _tag.prev-&gt;retval = _tag.retval;\
+ 821      prot_tag = _tag.prev;               \
+ 822  } while (0)
+
+(eval.c)
+</pre>
+
+
+<p>
+ここで唖然としてほしいのだが、なんとタグの実体はローカル変数としてマシ
+ンスタックにベタ置き確保されているようだ（図4）。しかも
+<code>do</code>〜<code>while</code>が二つのマクロに分離している。Cのプリプロセッサの使いかた
+でもこれはかなり凶悪な部類に入るのではなかろうか。わかりやすく
+<code>PUSH</code>/<code>POP</code>のマクロを組にして展開するとこうなる。
+</p>
+
+<pre class="emlist">
+do {
+    struct tag _tag;
+    _tag.prev = prot_tag;   /* 前のタグを保存 */
+    prot_tag = &amp;_tag;       /* 新しいタグをスタックに積む */
+    /* いろいろする */
+    prot_tag = _tag.prev;   /* 前のタグを復帰 */
+} while (0);
+</pre>
+
+<p>
+この方法だと関数呼び出しのオーバーヘッドもなければメモリ割り当てのコス
+トもないに等しい。最もこの手法は<code>ruby</code>の評価器が<code>rb_eval()</code>の再帰でできて
+いるからこそできる技だ。
+</p>
+
+<p class="image">
+<img src="images/ch_evaluator_tagstack.jpg" alt="(tagstack)"><br>
+図4: タグスタックはマシンスタックに埋め込まれている
+</p>
+
+<p>
+こういう実装なので<code>PUSH_TAG()</code>と<code>POP_TAG()</code>は一つの関数に対にして
+置かないとまずい。またうっかり評価器の外で使われてよいものでもない
+ので公開もできない。
+</p>
+
+<p>
+ついでに<code>EXEC_TAG()</code>と<code>JUMP_TAG()</code>も見ておこう。
+</p>
+
+<p class="caption">▼<code>EXEC_TAG() JUMP_TAG()</code></p>
+<pre class="longlist">
+ 810  #define EXEC_TAG()    setjmp(prot_tag-&gt;buf)
+
+ 812  #define JUMP_TAG(st) do {               \
+ 813      ruby_frame = prot_tag-&gt;frame;       \
+ 814      ruby_iter = prot_tag-&gt;iter;         \
+ 815      longjmp(prot_tag-&gt;buf,(st));        \
+ 816  } while (0)
+
+(eval.c)
+</pre>
+
+
+<p>
+このように、<code>setjmp</code>と<code>longjmp</code>がそれぞれ<code>EXEC_TAG()</code>と<code>JUMP_TAG()</code>に
+ラップされている。<code>EXEC_TAG()</code>という字面だけ見ると一瞬<code>longjmp()</code>の
+ラッパーのように見えるのだが、こちらが<code>setjmp()</code>の実行である。
+
+<p>
+以上を踏まえて<code>while</code>の仕組みを説明しよう。まず<code>while</code>の開始時に
+<code>EXEC_TAG()</code>する（<code>setjmp</code>）。その後<code>rb_eval()</code>を再帰して本体を実行する。
+そして<code>break</code>や<code>next</code>があると<code>JUMP_TAG()</code>する（<code>longjmp</code>）。
+すると<code>while</code>ループの開始地点まで戻れるというわけだ（図5）。
+</p>
+
+<p class="image">
+<img src="images/ch_evaluator_whilejmp.jpg" alt="(whilejmp)"><br>
+図5: タグジャンプによる<code>while</code>の実装
+</p>
+
+<p>
+ここでは<code>break</code>を例にしたが、ジャンプしないと実装できないのは<code>break</code>だ
+けではない。<code>while</code>に限っても<code>next</code>や<code>redo</code>がある。またメソッドからの
+<code>return</code>や例外でも<code>rb_eval()</code>の壁を越えなければいけないはずだ。そして
+それぞれのために別のタグスタックを使うのは面倒だから、なんとかしてスタッ
+ク一本でまとめたいものだ。
+</p>
+
+<p>
+それを実現するには、「このジャンプは何のためのジャンプか」という情報を
+つければいい。都合のいいことに<code>longjmp()</code>に引数を渡すと<code>setjmp()</code>の返
+り値を指定することができたから、それを使えばよさそうだ。その種類が次の
+フラグで示されている。
+</p>
+
+<p class="caption">▼タグタイプ</p>
+<pre class="longlist">
+ 828  #define TAG_RETURN      0x1    /* return */
+ 829  #define TAG_BREAK       0x2    /* break */
+ 830  #define TAG_NEXT        0x3    /* next */
+ 831  #define TAG_RETRY       0x4    /* retry */
+ 832  #define TAG_REDO        0x5    /* redo */
+ 833  #define TAG_RAISE       0x6    /* 一般の例外 */
+ 834  #define TAG_THROW       0x7    /* throw（本書では扱わない）*/
+ 835  #define TAG_FATAL       0x8    /* 補足不可能な例外fatal */
+ 836  #define TAG_MASK        0xf
+
+(eval.c)
+</pre>
+
+
+<p>
+意味はコメントの通り。最後の<code>TAG_MASK</code>は<code>setjmp()</code>の返り値からこれらの
+フラグを取り出すためのビットマスクである。<code>setjmp()</code>の返り値には「ジャ
+ンプの種類」以外の情報も載せることがあるからだ。
+</p>
+
+
+
+<h3><code>NODE_WHILE</code></h3>
+
+<p>
+では<code>NODE_WHILE</code>のコードで実際のタグの使いかたを確かめよう。
+</p>
+
+<p class="caption">▼ソースプログラム</p>
+<pre class="longlist">
+while true
+  'true_expr'
+end
+</pre>
+
+
+<p class="caption">▼対応する構文木（<code>nodedump-short</code>）</p>
+<pre class="longlist">
+NODE_WHILE
+nd_state = 1 (while)
+nd_cond:
+    NODE_TRUE
+nd_body:
+    NODE_STR
+    nd_lit = "true_expr":String
+</pre>
+
+
+<p class="caption">▼<code>rb_eval</code>−<code>NODE_WHILE</code></p>
+<pre class="longlist">
+2418  case NODE_WHILE:
+2419    PUSH_TAG(PROT_NONE);
+2420    result = Qnil;
+2421    switch (state = EXEC_TAG()) {
+2422      case 0:
+2423        if (node-&gt;nd_state &amp;&amp; !RTEST(rb_eval(self, node-&gt;nd_cond)))
+2424            goto while_out;
+2425        do {
+2426          while_redo:
+2427            rb_eval(self, node-&gt;nd_body);
+2428          while_next:
+2429            ;
+2430        } while (RTEST(rb_eval(self, node-&gt;nd_cond)));
+2431        break;
+2432
+2433      case TAG_REDO:
+2434        state = 0;
+2435        goto while_redo;
+2436      case TAG_NEXT:
+2437        state = 0;
+2438        goto while_next;
+2439      case TAG_BREAK:
+2440        state = 0;
+2441        result = prot_tag-&gt;retval;
+2442      default:
+2443        break;
+2444    }
+2445  while_out:
+2446    POP_TAG();
+2447    if (state) JUMP_TAG(state);
+2448    RETURN(result);
+
+(eval.c)
+</pre>
+
+
+<p>
+ここにはこれから何度も何度も登場するイディオムが登場している。
+</p>
+
+<pre class="emlist">
+PUSH_TAG(PROT_NONE);
+switch (state = EXEC_TAG()) {
+  case 0:
+    /* 通常の処理を行う */
+    break;
+  case TAG_a:
+    state = 0;    /* 自分が待っていたジャンプだからstateをクリア */
+    /* TAG_aで飛んできたときの処理 */
+    break;
+  case TAG_b:
+    state = 0;    /* 自分が待っていたジャンプだからstateをクリア */
+    /* TAG_bで飛んできたときの処理 */
+    break;
+  default
+    break;        /* 自分が待っていたジャンプではない。すると…… */
+}
+POP_TAG();
+if (state) JUMP_TAG(state);   /* ……ここで再ジャンプする。*/
+</pre>
+
+<p>
+まず<code>PUSH_TAG()</code>と<code>POP_TAG()</code>は前述のような仕組みなので必ず対にしなければ
+ならない。また<code>EXEC_TAG()</code>よりも外側になければならない。そしていま積んだ
+ばかりの<code>jmp_buf</code>を<code>EXEC_TAG()</code>する。つまり<code>setjmp()</code>する。返り値が0なら
+<code>setjmp()</code>からすぐに戻ってきたということなので通常の処理を行う（普通は
+<code>rb_eval()</code>を含む）。<code>EXEC_TAG()</code>の返り値が0以外なら<code>longjmp()</code>で戻ってきた
+ということなので自分が必要なジャンプだけ<code>case</code>で漉し取り、残りは通す
+（<code>default</code>）。
+</p>
+
+<p>
+ジャンプするほうのコードも合わせて見るとわかりやすいかもしれない。
+以下に<code>redo</code>のノードのハンドラを示す。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−<code>NODE_REDO</code></p>
+<pre class="longlist">
+2560  case NODE_REDO:
+2561    CHECK_INTS;
+2562    JUMP_TAG(TAG_REDO);
+2563    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>JUMP_TAG()</code>で飛ぶと、その一つ前に行った<code>EXEC_TAG()</code>に戻る。
+その時の返り値は引数の<code>TAG_REDO</code>だ。それを考えつつ<code>NODE_WHILE</code>の
+コードを眺めて、どういう経路を通るか確認してほしい。
+
+<p>
+ではイディオムはいいとして、<code>NODE_WHILE</code>のコードをもうちょっと詳しく
+説明する。言った通り<code>case 0:</code>の中が本処理なのでそこだけ取りだし、
+ついでに読みやすくなるようにラベルをいくつかずらしてみた。
+</p>
+
+<pre class="emlist">
+  if (node-&gt;nd_state &amp;&amp; !RTEST(rb_eval(self, node-&gt;nd_cond)))
+      goto while_out;
+  do {
+      rb_eval(self, node-&gt;nd_body);
+  } while (RTEST(rb_eval(self, node-&gt;nd_cond)));
+while_out:
+</pre>
+
+<p>
+条件式に相当する<code>node-&gt;nd_cond</code>が二ヶ所で<code>rb_eval()</code>されている。一回目
+の条件判定だけが分離されているようだ。これは<code>do</code>〜<code>while</code>と<code>while</code>をま
+とめて扱うためである。<code>node-&gt;nd_state</code>が0のときが<code>do</code>〜<code>while</code>、1のと
+きが普通の<code>while</code>だ。あとは地道に追ってもらえればわかるだろう。いちい
+ち説明はしない。
+
+<p>
+ところで、もし条件式の中に<code>next</code>や<code>redo</code>があったら簡単に
+無限ループになりそうな気がする。もちろんそういう意味の
+コードなのだから書くほうが悪いのだが、ちょっと気になる。
+そこで実際にやってみた。
+</p>
+
+<pre class="screen">
+% ruby -e 'while next do nil end'
+-e:1: void value expression
+</pre>
+
+<p>
+あっさりパースの時点でハネられてしまった。安全ではあるが、
+面白い結果ではない。ちなみにこのエラーを出して
+いるのが<code>parse.y</code>の<code>value_expr()</code>である。
+</p>
+
+
+
+<h3><code>while</code>の評価値</h3>
+
+<p>
+長いこと<code>while</code>は値を持たなかったのだが、<code>ruby</code> 1.7からは<code>break</code>で値を返せる
+ようになった。今度は評価値の流れに注目してみよう。ローカル変数<code>result</code>の
+値が<code>rb_eval()</code>の返り値になることを頭に入れて見てほしい。
+</p>
+
+<pre class="emlist">
+        result = Qnil;
+        switch (state = EXEC_TAG()) {
+          case 0:
+            /* 本処理 */
+          case TAG_REDO:
+          case TAG_NEXT:
+            /* それぞれジャンプ */
+
+          case TAG_BREAK:
+            state = 0;
+            result = prot_tag-&gt;retval;     （A）
+          default:
+            break;
+        }
+        RETURN(result);
+</pre>
+
+<p>
+注目すべきは（A）のみである。ジャンプの返り値は
+<code>prot_tag-&gt;retval</code>つまり<code>struct tag</code>を経由して渡されているようだ。
+渡すほうはこうだ。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−<code>NODE_BREAK</code></p>
+<pre class="longlist">
+2219  #define return_value(v) prot_tag-&gt;retval = (v)
+
+2539  case NODE_BREAK:
+2540    if (node-&gt;nd_stts) {
+2541        return_value(avalue_to_svalue(rb_eval(self, node-&gt;nd_stts)));
+2542    }
+2543    else {
+2544        return_value(Qnil);
+2545    }
+2546    JUMP_TAG(TAG_BREAK);
+2547    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+このように<code>return_value()</code>というマクロでタグスタック先端の構造体に
+値を入れておく。
+</p>
+
+<p>
+基本的な流れはこれでよいのだが、実際には
+<code>NODE_WHILE</code>の<code>EXEC_TAG()</code>から<code>NODE_BREAK</code>の<code>JUMP_TAG()</code>までの
+間に別の<code>EXEC_TAG</code>が入ることもありうる。例えば例外処理の<code>rescue</code>が途中に
+入っているかもしれない。
+</p>
+
+<pre class="emlist">
+while cond       # NODE_WHILEでEXEC_TAG()
+  begin          # ここでrescueのためにまたEXEC_TAG()
+    break 1
+  rescue
+  end
+end
+</pre>
+
+<p>
+だから<code>NODE_BREAK</code>で<code>JUMP_TAG()</code>したときの<code>struct tag</code>が<code>NODE_WHILE</code>で
+積んだタグかどうかはわからない。その場合は<code>POP_TAG()</code>の中で次のように
+<code>retval</code>を伝播しているので、特に何も考えなくても次のタグへと返り値を渡
+せるようになっている。
+</p>
+
+<p class="caption">▼<code>POP_TAG()</code></p>
+<pre class="longlist">
+ 818  #define POP_TAG()                       \
+ 819      if (_tag.prev)                      \
+ 820          _tag.prev-&gt;retval = _tag.retval;\
+ 821      prot_tag = _tag.prev;               \
+ 822  } while (0)
+
+(eval.c)
+</pre>
+
+
+<p>
+図にすれば図6のようになるだろう。
+</p>
+
+<p class="image">
+<img src="images/ch_evaluator_usetag.jpg" alt="(usetag)"><br>
+図6: 返り値の伝播
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>例外</h2>
+
+<p>
+タグジャンプの使いかたの二つめの例として例外の取り扱いを見ていく。
+</p>
+
+<h3><code>raise</code></h3>
+
+<p>
+<code>while</code>では<code>setjmp()</code>側を先に見たので今回は趣向を変えて
+<code>longjmp()</code>側から見ていくことにしよう。<code>raise</code>の実体<code>rb_exc_raise()</code>だ。
+</p>
+
+<p class="caption">▼<code>rb_exc_raise()</code></p>
+<pre class="longlist">
+3645  void
+3646  rb_exc_raise(mesg)
+3647      VALUE mesg;
+3648  {
+3649      rb_longjmp(TAG_RAISE, mesg);
+3650  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>mesg</code>は例外オブジェクト（<code>Exception</code>以下のクラスのインスタンス）である。
+今回は<code>TAG_RAISE</code>でジャンプするらしいというところに注目しておこう。
+そして<code>rb_longjmp()</code>を思いきり簡単にしたものを以下に示す。
+</p>
+
+<p class="caption">▼<code>rb_longjmp()</code>（簡約版）</p>
+<pre class="longlist">
+static void
+rb_longjmp(tag, mesg)
+    int tag;
+    VALUE mesg;
+{
+    if (NIL_P(mesg))
+        mesg = ruby_errinfo;
+    set_backtrace(mesg, get_backtrace(mesg));
+    ruby_errinfo = mesg;
+    JUMP_TAG(tag);
+}
+</pre>
+
+
+<p>
+まあ当然と言えば当然だが、普通に<code>JUMP_TAG()</code>でジャンプするだけだ。
+</p>
+
+<p>
+<code>ruby_errinfo</code>は何だろう。少し<code>grep</code>してみるとこの変数がRubyのグローバ
+ル変数<code>$!</code>の実体であるとわかった。この変数は現在発生中の例外を示してい
+るから、その実体の<code>ruby_errinfo</code>も当然同じ意味を持つはずである。
+</p>
+
+
+
+<h3>全体像</h3>
+
+<p class="caption">▼ソースプログラム</p>
+<pre class="longlist">
+begin
+  raise('exception raised')
+rescue
+  'rescue clause'
+ensure
+  'ensure clause'
+end
+</pre>
+
+
+<p class="caption">▼対応する構文木（<code>nodedump-short</code>）</p>
+<pre class="longlist">
+NODE_BEGIN
+nd_body:
+    NODE_ENSURE
+    nd_head:
+        NODE_RESCUE
+        nd_head:
+            NODE_FCALL
+            nd_mid = 3857 (raise)
+            nd_args:
+                NODE_ARRAY [
+                0:
+                    NODE_STR
+                    nd_lit = "exception raised":String
+                ]
+        nd_resq:
+            NODE_RESBODY
+            nd_args = (null)
+            nd_body:
+                NODE_STR
+                nd_lit = "rescue clause":String
+            nd_head = (null)
+        nd_else = (null)
+    nd_ensr:
+        NODE_STR
+        nd_lit = "ensure clause":String
+</pre>
+
+
+<p>
+パーサレベルで<code>rescue</code>と<code>ensure</code>の順番が決められているように、構文木で
+もまた順番が厳密に決まっている。必ず<code>NODE_ENSURE</code>が一番「上」、その次
+に<code>NODE_RESCUE</code>、最後に本体（<code>raise</code>のあるところ）が来る。
+<code>NODE_BEGIN</code>は何もしないノードなので、実際には<code>NODE_ENSURE</code>が一番上に
+あると思っていい。
+</p>
+
+<p>
+つまりプロテクトしたい本体よりも<code>NODE_ENSURE</code>や<code>NODE_RESCUE</code>が上に来るから、
+単に<code>EXEC_TAG()</code>するだけで<code>raise</code>を止められる。と言うよりも、そうできるよ
+うに構文木上で上にしている、というほうが正しいか。
+</p>
+
+
+
+<h3><code>ensure</code></h3>
+
+<p>
+<code>ensure</code>のノード<code>NODE_ENSURE</code>のハンドラを見ていく。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−<code>NODE_ENSURE</code></p>
+<pre class="longlist">
+2634  case NODE_ENSURE:
+2635    PUSH_TAG(PROT_NONE);
+2636    if ((state = EXEC_TAG()) == 0) {
+2637        result = rb_eval(self, node-&gt;nd_head);   （A-1）
+2638    }
+2639    POP_TAG();
+2640    if (node-&gt;nd_ensr) {
+2641        VALUE retval = prot_tag-&gt;retval;   （B-1）
+2642        VALUE errinfo = ruby_errinfo;
+2643
+2644        rb_eval(self, node-&gt;nd_ensr);            （A-2）
+2645        return_value(retval);              （B-2）
+2646        ruby_errinfo = errinfo;
+2647    }
+2648    if (state) JUMP_TAG(state);            （B-3）
+2649    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+この<code>if</code>を使った分岐はタグを扱う二つめのイディオムだ。
+<code>EXEC_TAG()</code>してジャンプを止めておき、<code>ensure</code>節（<code>node-&gt;nd_ensr</code>）を
+評価する、となっている。処理の流れについては問題ないだろう。
+</p>
+
+<p>
+また評価値に関して考えてみる。仕様から確認すると、
+</p>
+
+<pre class="emlist">
+begin
+  expr0
+ensure
+  expr1
+end
+</pre>
+
+<p>
+という文の場合、<code>begin</code>全体の値は<code>ensure</code>のあるなしには関係なく<code>expr0</code>の値に
+なる。それが反映されているのが（A-1,2）のところで、<code>ensure</code>節の評価値が
+無碍に捨てられている。
+</p>
+
+<p>
+また（B-1,3）では本体でジャンプが発生した場合の評価値を扱っている。
+その場合の値は<code>prot_tag-&gt;retval</code>に入っているのだったから、<code>ensure</code>節の
+実行中にうっかり書き換えられないようローカル変数に退避する（B-1）。
+そして<code>ensure</code>節の評価が終わったら<code>return_value()</code>で元に戻す（B-2）。
+もし本体でジャンプが発生していなくても、つまり<code>state==0</code>でも、
+そのときはそもそも<code>prot_tag-&gt;retval</code>は使われないからどうでもいい。
+</p>
+
+
+
+<h3><code>rescue</code></h3>
+
+<p>
+少し間が空いてしまったのでもう一度<code>rescue</code>の構文木を見ておこう。
+</p>
+
+<p class="caption">▼ソースプログラム</p>
+<pre class="longlist">
+begin
+  raise()
+rescue ArgumentError, TypeError
+  'error raised'
+end
+</pre>
+
+
+<p class="caption">▼対応する構文木（<code>nodedump-short</code>）</p>
+<pre class="longlist">
+NODE_BEGIN
+nd_body:
+    NODE_RESCUE
+    nd_head:
+        NODE_FCALL
+        nd_mid = 3857 (raise)
+        nd_args = (null)
+    nd_resq:
+        NODE_RESBODY
+        nd_args:
+            NODE_ARRAY [
+            0:
+                NODE_CONST
+                nd_vid  = 4733 (ArgumentError)
+            1:
+                NODE_CONST
+                nd_vid  = 4725 (TypeError)
+            ]
+        nd_body:
+            NODE_STR
+            nd_lit = "error raised":String
+        nd_head = (null)
+    nd_else = (null)
+</pre>
+
+
+<p>
+<code>rescue</code>の対象にしたい文（の構文木）が<code>NODE_RESCUE</code>の「下」にあることを
+確認してほしい。
+</p>
+
+<p class="caption">▼<code>rb_eval()</code>−<code>NODE_RESCUE</code></p>
+<pre class="longlist">
+2590  case NODE_RESCUE:
+2591  retry_entry:
+2592    {
+2593        volatile VALUE e_info = ruby_errinfo;
+2594
+2595        PUSH_TAG(PROT_NONE);
+2596        if ((state = EXEC_TAG()) == 0) {
+2597            result = rb_eval(self, node-&gt;nd_head); /* 本体を評価 */
+2598        }
+2599        POP_TAG();
+2600        if (state == TAG_RAISE) { /* 本体で例外が発生した */
+2601            NODE * volatile resq = node-&gt;nd_resq;
+2602
+2603            while (resq) { /* rescue節を順番に扱う */
+2604                ruby_current_node = resq;
+2605                if (handle_rescue(self, resq)) { /* この節で扱うなら */
+2606                    state = 0;
+2607                    PUSH_TAG(PROT_NONE);
+2608                    if ((state = EXEC_TAG()) == 0) {
+2609                        result = rb_eval(self, resq-&gt;nd_body);
+2610                    }                            /* rescue節を評価 */
+2611                    POP_TAG();
+2612                    if (state == TAG_RETRY) { /* retryが発生したので */
+2613                        state = 0;
+2614                        ruby_errinfo = Qnil;  /* 例外は停止する */
+2615                        goto retry_entry;     /* gotoに変換 */
+2616                    }
+2617                    if (state != TAG_RAISE) {  /* returnなどでも、*/
+2618                        ruby_errinfo = e_info; /* 例外は停止する  */
+2619                    }
+2620                    break;
+2621                }
+2622                resq = resq-&gt;nd_head; /* 次のrescue節に進む */
+2623            }
+2624        }
+2625        else if (node-&gt;nd_else) { /* else節があり、 */
+2626            if (!state) { /* 例外が起きなかったときだけ評価する */
+2627                result = rb_eval(self, node-&gt;nd_else);
+2628            }
+2629        }
+2630        if (state) JUMP_TAG(state); /* 待っていないジャンプ */
+2631    }
+2632    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+多少コードサイズはあるが、ノードを地道に地道に扱うだけだから
+難しくはない。<code>handle_rescue()</code>というのが初出だが、この関数は
+ちょっとわけあって今見るわけにいかない。効果だけ説明しておく。
+プロトタイプは
+</p>
+
+<pre class="emlist">
+static int handle_rescue(VALUE self, NODE *resq)
+</pre>
+
+<p>
+で、現在発生中の例外（<code>ruby_errinfo</code>）が
+<code>resq</code>で表されるクラス（例えば<code>TypeError</code>）の下位クラスであるか
+どうか判定する。<code>self</code>を渡しているのは関数の中で<code>resq</code>を評価する
+ために<code>rb_eval()</code>を呼ぶ必要があるからだ。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

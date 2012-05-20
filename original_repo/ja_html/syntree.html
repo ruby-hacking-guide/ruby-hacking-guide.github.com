@@ -1,0 +1,2137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第12章 構文木の構築</title></head>
+<body>
+
+<h1>第12章 構文木の構築</h1>
+
+<h2>ノード</h2>
+
+<h3><code>NODE</code></h3>
+
+<p>
+既に書いたようにRubyプログラムはいったん構文木に変換される。
+そして構文木とは具体的に何かと言うと、「ノード（node）」と呼ばれる
+構造体で作られるツリー構造である。<code>ruby</code>ではノードは全て<code>NODE</code>型で
+表わされる。
+</p>
+
+<p class="caption">▼<code>NODE</code></p>
+<pre class="longlist">
+ 128  typedef struct RNode {
+ 129      unsigned long flags;
+ 130      char *nd_file;
+ 131      union {
+ 132          struct RNode *node;
+ 133          ID id;
+ 134          VALUE value;
+ 135          VALUE (*cfunc)(ANYARGS);
+ 136          ID *tbl;
+ 137      } u1;
+ 138      union {
+ 139          struct RNode *node;
+ 140          ID id;
+ 141          int argc;
+ 142          VALUE value;
+ 143      } u2;
+ 144      union {
+ 145          struct RNode *node;
+ 146          ID id;
+ 147          long state;
+ 148          struct global_entry *entry;
+ 149          long cnt;
+ 150          VALUE value;
+ 151      } u3;
+ 152  } NODE;
+
+(node.h)
+</pre>
+
+
+<p>
+構造体名<code>RNode</code>から推測できるかもしれないが、ノードはRubyオブジェクト
+である。つまりノードの生成と解放は<code>ruby</code>のガーベージコレクタが面倒をみる。
+</p>
+
+<p>
+だから当然<code>flags</code>にはまずオブジェクト構造体の<code>basic.flags</code>と同じ役割がある。
+つまり構造体の型<code>T_NODE</code>や<code>FL_FREEZE</code>などのフラグを記録している。
+<code>NODE</code>の場合はこれに加えてノードのタイプも<code>flags</code>に格納している。
+</p>
+
+<p>
+どういうことだろうか。プログラムには<code>if</code>や<code>while</code>、<code>def</code>などいろいろな
+要素があるので、それに対応してノードにもたくさん種類がある。それが
+ノードのタイプである。<code>NODE</code>には複雑な共用体が三つ用意されているが、
+この共用体の使いかたはそのノードのタイプによってただ一つに決定する。
+例えば<code>if</code>のノード<code>NODE_IF</code>ならこうだ。
+</p>
+
+<table>
+<tr><td>メンバ<td><td>共用体メンバ<td><td>役割<td></tr>
+<tr><td><code>u1</code><td><td><code>u1.node</code><td><td>条件式<td></tr>
+<tr><td><code>u2</code><td><td><code>u2.node</code><td><td>真の本体<td></tr>
+<tr><td><code>u3</code><td><td><code>u3.node</code><td><td>偽の本体<td></tr>
+</table>
+
+<p>
+また<code>node.h</code>ではこの共用体メンバにアクセスするためのマクロも用意されて
+いる。
+</p>
+
+<p class="caption">▼<code>NODE</code>アクセス用マクロ</p>
+<pre class="longlist">
+ 166  #define nd_head  u1.node
+ 167  #define nd_alen  u2.argc
+ 168  #define nd_next  u3.node
+ 169
+ 170  #define nd_cond  u1.node
+ 171  #define nd_body  u2.node
+ 172  #define nd_else  u3.node
+ 173
+ 174  #define nd_orig  u3.value
+                 ：
+                 ：
+
+(node.h)
+</pre>
+
+
+<p>
+例えばこんなふうに使う。
+</p>
+
+<pre class="emlist">
+NODE *head, *tail;
+head-&gt;nd_next = tail;    /* head-&gt;u3.node = tail */
+</pre>
+
+<p>
+ソース中ではほぼ間違いなくこのマクロのほうが使われる。そのごくわずかな
+例外は<code>parse.y</code>で<code>NODE</code>を生成しているところと<code>gc.c</code>で<code>NODE</code>をマークする
+ところの二カ所だけである。
+</p>
+
+<p>
+ところでこのようなマクロを使うのはなぜだろうか。一つは、<code>u1</code>のようにそれ
+自体何も意味のない数字を覚えるのは面倒だからだろう。しかしそれ以上に重
+要なのは、対応する数字は変わっても問題ないし、実際に変わる可能性がある
+ことだ。例えば<code>if</code>の条件節が<code>u1</code>に入っている必然性はないので、なんらかの理
+由で<code>u2</code>に変えたくなるかもしれない。しかし<code>u1</code>を直接使っていたらソースコー
+ドのあちこちを直してまわらないとならず、不便である。ノードは全部<code>NODE</code>で
+宣言されるから、<code>if</code>を表すノードを探すのは大変だ。アクセス用のマクロを用
+意しておけばそんなことはなくなるし、逆にマクロからノードの種類を判定す
+ることもできるようになる。
+</p>
+
+
+
+<h3>ノードタイプ</h3>
+
+<p>
+<code>NODE</code>構造体の<code>flags</code>にはノードの種類が記憶されていると言った。
+この情報の記憶方法を見ておこう。ノードタイプは<code>nd_set_type()</code>で
+セット、<code>nd_type()</code>で取得できる。
+</p>
+
+<p class="caption">▼<code>nd_type nd_set_type</code></p>
+<pre class="longlist">
+ 156  #define nd_type(n) (((RNODE(n))-&gt;flags&gt;&gt;FL_USHIFT)&amp;0xff)
+ 157  #define nd_set_type(n,t) \
+ 158      RNODE(n)-&gt;flags = ((RNODE(n)-&gt;flags &amp; ~FL_UMASK) \
+                             | (((t)&lt;&lt;FL_USHIFT) &amp; FL_UMASK))
+
+(node.h)
+</pre>
+
+
+<p class="caption">▼<code>FL_USHIFT FL_UMASK</code></p>
+<pre class="longlist">
+ 418  #define FL_USHIFT    11
+ 429  #define FL_UMASK  (0xff&lt;&lt;FL_USHIFT)
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>nd_type</code>あたりに注目していけばたいして苦労しない。
+ようするに図1のようになっているらしい。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_flagUsage.jpg" alt="(flagUsage)"><br>
+図1: RNode.flagsの使われかた
+</p>
+
+<p>
+それから、マクロだとデバッガで使えないので関数の<code>nodetype()</code>も
+用意されている。
+</p>
+
+<p class="caption">▼<code>nodetype</code></p>
+<pre class="longlist">
+4247  static enum node_type
+4248  nodetype(node)                  /* for debug */
+4249      NODE *node;
+4250  {
+4251      return (enum node_type)nd_type(node);
+4252  }
+
+(parse.y)
+</pre>
+
+
+
+
+<h3>ファイル名と行番号</h3>
+
+<p>
+<code>NODE</code>の<code>nd_file</code>にはこのノードに対応するテキストが存在していたファイル名
+（へのポインタ）が保持されている。ファイル名があれば行番号もありそうだが
+対応するメンバは見あたらない。実は行番号は以下のマクロによって<code>flags</code>に
+埋めこまれているのである。
+</p>
+
+<p class="caption">▼<code>nd_line nd_set_line</code></p>
+<pre class="longlist">
+ 160  #define NODE_LSHIFT (FL_USHIFT+8)
+ 161  #define NODE_LMASK  (((long)1&lt;&lt;(sizeof(NODE*)*CHAR_BIT-NODE_LSHIFT))-1)
+ 162  #define nd_line(n) \
+          ((unsigned int)((RNODE(n)-&gt;flags &gt;&gt; NODE_LSHIFT) &amp; NODE_LMASK))
+ 163  #define nd_set_line(n,l) \
+ 164      RNODE(n)-&gt;flags = ((RNODE(n)-&gt;flags &amp; ~(-1 &lt;&lt; NODE_LSHIFT)) \
+                             | (((l)&amp;NODE_LMASK) &lt;&lt; NODE_LSHIFT))
+
+(node.h)
+</pre>
+
+
+<p>
+<code>nd_set_line()</code>などはなかなか壮観だ。だが、名前からして<code>nd_set_line()</code>と
+<code>nd_line</code>が対称の働きをすることは間違いないので、簡単な<code>nd_line()</code>を調べて
+パラメータの関係をつかんでしまえば<code>nd_set_line()</code>はそもそも解析する必要
+がない。
+</p>
+
+<p>
+まず<code>NODE_LSHIFT</code>だが、これは前項のノードタイプの話を見てくれば想像
+できる通り、<code>flags</code>の使われているビット数だ。<code>FL_USHIFT</code>が<code>ruby</code>のシステム
+予約分（11ビット、<code>ruby.h</code>）、8がノードタイプ分である。
+</p>
+
+<p>
+次に<code>NODE_LMASK</code>。
+</p>
+
+<pre class="emlist">
+sizeof(NODE*) * CHAR_BIT - NODE_LSHIFT
+</pre>
+
+<p>
+は残っているビット数。これを<code>restbits</code>とでも置いてみよう。すると
+かなり簡単になる。
+</p>
+
+<pre class="emlist">
+#define NODE_LMASK  (((long)1 &lt;&lt; restbits) - 1)
+</pre>
+
+<p>
+つまり図2のようなことらしい。
+1を引くとくり下がりが起こるところがポイントだ。
+最終的に<code>NODE_LMASK</code>はまだ使えるビット分の1の並びだとわかる。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_lmask.jpg" alt="(lmask)"><br>
+図2: <code>NODE_LMASK</code>
+</p>
+
+<p>
+では改めて<code>nd_line()</code>を見てみよう。
+</p>
+
+<pre class="emlist">
+(RNODE(n)-&gt;flags &gt;&gt; NODE_LSHIFT) &amp; NODE_LMASK
+</pre>
+
+<p>
+右シフトで未使用ビット領域をLSBまで落とす。bit andでその未使用ビット領
+域だけを残す。つまり<code>flags</code>の使われかたをまとめると図3のよう
+になる。<code>FL_USHIFT</code>は11だったから、32ビットマシンでは 32-(10+8)=13 ビッ
+ト分が行番号に使えるということだ。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_flags.jpg" alt="(flags)"><br>
+図3: <code>NODE</code>での<code>flags</code>の使いかた
+</p>
+
+<p>
+……ということは、行番号が 2^13=8192 を超えると行番号表示が
+おかしくなるはずである。試そう。
+</p>
+
+<pre class="emlist">
+File.open('overflow.rb', 'w') {|f|
+    10000.times { f.puts }
+    f.puts 'raise'
+}
+</pre>
+
+<p>
+筆者の686マシンでは<code>ruby overflow.rb</code>でキッチリ1809行と表示された。成
+功である。ただし64ビットマシンではもう少しファイルを大きくしないとうま
+く失敗できないだろう。
+</p>
+
+
+
+<h3><code>rb_node_newnode()</code></h3>
+
+<p>
+最後に、ノードを生成する関数<code>rb_node_newnode()</code>を見よう。
+</p>
+
+<p class="caption">▼<code>rb_node_newnode()</code></p>
+<pre class="longlist">
+4228  NODE*
+4229  rb_node_newnode(type, a0, a1, a2)
+4230      enum node_type type;
+4231      NODE *a0, *a1, *a2;
+4232  {
+4233      NODE *n = (NODE*)rb_newobj();
+4234
+4235      n-&gt;flags |= T_NODE;
+4236      nd_set_type(n, type);
+4237      nd_set_line(n, ruby_sourceline);
+4238      n-&gt;nd_file = ruby_sourcefile;
+4239
+4240      n-&gt;u1.node = a0;
+4241      n-&gt;u2.node = a1;
+4242      n-&gt;u3.node = a2;
+4243
+4244      return n;
+4245  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>rb_newobj()</code>は第5章『ガ−ベージコレクション』で見た。空いている<code>RVALUE</code>を一つ取得する
+関数である。これに構造体型フラグ<code>T_NODE</code>を付けたところで<code>VALUE</code>として
+の初期化は完了。<code>u1 u2 u3</code>にはもちろん<code>NODE*</code>以外の値を受けることもあ
+るのだが、とりあえず<code>NODE*</code>でまとめて受けておく。<code>ruby</code>の構文木には
+<code>double</code>などは入らないのでポインタで受けておけばサイズが小さすぎるといっ
+た心配はない。
+</p>
+
+<p>
+ここまでわかったら、あとは細部は忘れて、<code>NODE</code>とは
+</p>
+
+<ul>
+<li><code>flags</code></li>
+<li><code>nodetype</code></li>
+<li><code>nd_line</code></li>
+<li><code>nd_file</code></li>
+<li><code>u1</code></li>
+<li><code>u2</code></li>
+<li><code>u3</code></li>
+</ul>
+
+<p>
+の七つのメンバを持つ構造体だと思っていればよい。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>構文木の構築</h2>
+
+<p>
+パーサの役割はバイト列であるソースコードを構文木に変換することだった。
+文法が通るだけではその仕事の半分もこなせていないのであって、ノードを組
+み立てて木を作らなければならない。この節ではその構文木の構築過程を見て
+いこう。
+</p>
+
+
+<h3><code>YYSTYPE</code></h3>
+
+<p>
+本章はようするにアクションの話だから、<code>$$</code>や<code>$1</code>の型である
+<code>YYSTYPE</code>が重要になってくる。そこでまず<code>ruby</code>の<code>%union</code>を見てみよう。
+</p>
+
+<p class="caption">▼<code>%union</code>宣言</p>
+<pre class="longlist">
+ 170  %union {
+ 171      NODE *node;
+ 172      ID id;
+ 173      int num;
+ 174      struct RVarmap *vars;
+ 175  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>struct RVarmap</code>は評価器の構造体で、ブロックローカル変数を格納する。
+あとはいいだろう。一番使うのはもちろん<code>node</code>である。
+</p>
+
+
+
+<h3>構文木のある風景</h3>
+
+<p>
+まず事実を見る、というのがコード読みのセオリーであった。今はどういう構
+文木ができるのかを知りたいわけだから、まずその答え（構文木）を見ること
+から始めるべきだ。
+</p>
+
+<p>
+いちいちデバッガで見てみるのでもよいが、添付CD-ROMに収録したツール
+<code>nodedump</code>\footnote{<code>nodedump</code>：添付CD-ROMの<code>tools/nodedump.tar.gz</code>}を
+使うともっと手軽に構文木を視覚化することができる。このツールは
+Pragmatic Programmers\footnote{Pragmatic Programmers ^http://www.pragmaticprogrammers.com}作の
+NodeDumpを本書用に改造したものだ。
+オリジナルはかなり説明的な出力をしてくれるのだが、こちらの改造版では
+構文木の姿を徹底的にダイレクトに出力するようにしている。
+</p>
+
+<p>
+例えば<code>m(a)</code>という単純な式をダンプするにはこうすればいい。
+</p>
+
+<pre class="screen">
+% ruby -rnodedump -e 'm(a)'
+NODE_NEWLINE
+nd_file = "-e"
+nd_nth  = 1
+nd_next:
+    NODE_FCALL
+    nd_mid = 9617 (m)
+    nd_args:
+        NODE_ARRAY
+        nd_alen = 1
+        nd_head:
+            NODE_VCALL
+            nd_mid = 9625 (a)
+        nd_next = (null)
+</pre>
+
+<p>
+<code>-r</code>オプションでロードするライブラリを指定し、<code>-e</code>でプログラムを渡す。
+するとそのプログラムの構文木表現がダンプされる。
+</p>
+
+<p>
+中身の見かたを簡単に説明しよう。<code>NODE_NEWLINE</code>や<code>NODE_FCALL</code>というのが
+ノードタイプだ。それと同じインデントに書いてあるものがそのノードのメン
+バの内容である。例えばルートには<code>NODE_NEWLINE</code>があり、そのメンバは
+<code>nd_file nd_nth nd_next </code>の三つ。<code>nd_file</code>はCの文字列<code>"-e"</code>を指し、
+<code>nd_nth</code>はCの整数1を指し、<code>nd_next </code>には次のノード<code>NODE_CALL</code>が格納さ
+れている。と言葉で言ってもわかりにくいだろうから、図4と対照
+してみてほしい。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_stree.jpg" alt="(stree)"><br>
+図4: 構文木
+</p>
+
+<p>
+各ノードの意味を説明すると、<code>NODE_FCALL</code>はFunction CALL。
+<code>NODE_ARRAY</code>はその名前の通り配列のノードで、ここでは引数のリストを
+表している。<code>NODE_VCALL</code>はVariable or CALLで、未定義のローカル変数を
+参照するとこれになる。
+</p>
+
+<p>
+では<code>NODE_NEWLINE</code>はなんだろう。これは、実行時に実行中のファイル名と行
+番号を合わせるためのノードで、<code>stmt</code>一つにつき一つセットされる。だから
+実行の意味を考えるうえではこのノードは無視してもよい。また<code>nodedump</code>の
+かわりに<code>nodedump-short</code>を<code>require</code>するとそもそも<code>NODE_NEWLINE</code>のよ
+うな邪魔なものは省略して表示してくれる。単純なほうが見やすいから、今後
+は特に書かない限り<code>nodedump-short</code>を使う。
+</p>
+
+<p>
+以下では構文木全体の様子をとらえるために三つのタイプの構成要素を
+見ていく。まず最初に構文木の葉（leaf）。次にその組み合わせである式、
+即ち構文木の枝。最後に、文を並べるためのリストつまり構文木の幹だ。
+</p>
+
+
+
+<h3>葉</h3>
+
+<p>
+まずは末端、構文木の葉の部分から見よう。
+リテラルや変数参照など、
+規則で言うと<code>primary</code>の中の特に単純なものがこれに当たる。
+</p>
+
+<pre class="screen">
+% ruby -rnodedump-short -e '1'
+NODE_LIT
+nd_lit = 1:Fixnum
+</pre>
+
+<p>
+数値の1。なんのヒネリもない。ただしここでノードに入っているのは
+Cの1ではなくてRubyの1（<code>Fixnum</code>の1）であることには注意。なぜかと
+言うと……
+</p>
+
+<pre class="screen">
+% ruby -rnodedump-short -e ':sym'
+NODE_LIT
+nd_lit = 9617:Symbol
+</pre>
+
+<p>
+このように、<code>Symbol</code>も構文木になると同じ<code>NODE_LIT</code>で表現されるからだ。
+こうやって常に<code>nd_lit</code>に<code>VALUE</code>を入れるようにしておけば、<code>Symbol</code>だろ
+うと<code>Fixnum</code>だろうと実行するときには全く同じように扱うことができる。つ
+まり、<code>nd_lit</code>の値を取り出して返すだけでよくなる。構文木というのは
+実行するために作るものなのだから、実行に都合がいいように作るのが正しい。
+</p>
+
+<pre class="screen">
+% ruby -rnodedump-short -e '"a"'
+NODE_STR
+nd_lit = "a":String
+</pre>
+
+<p>
+文字列。これもRubyの文字列である。
+文字列リテラルは実際に使うときにはコピーする。
+</p>
+
+<pre class="screen">
+% ruby -rnodedump -e '[0,1]'
+NODE_NEWLINE
+nd_file = "-e"
+nd_nth  = 1
+nd_next:
+    NODE_ARRAY
+    nd_alen = 2
+    nd_head:
+        NODE_LIT
+        nd_lit = 0:Fixnum
+    nd_next:
+        NODE_ARRAY
+        nd_alen = 1
+        nd_head:
+            NODE_LIT
+            nd_lit = 1:Fixnum
+        nd_next = (null)
+</pre>
+
+<p>
+配列。これは葉とは言えないが、リテラルつながりなのでよしとしよう。
+<code>NODE_ARRAY</code>のリストに各要素のノードがぶらさがっている感じだろうか。
+これだけ<code>nodedump-short</code>を使わない理由は……この節を最後まで読めばわかる。
+</p>
+
+
+
+<h3>枝</h3>
+
+<p>
+次は枝にあたる部分……「組み合わせ」に注目する。
+例に取るのは<code>if</code>だ。
+</p>
+
+<h4><code>if</code></h4>
+
+<p>
+なにかと言うと<code>if</code>ばかり例にしているような気がするが、それはなにしろ構造
+が単純だし、<code>if</code>を知らない読者はいないので書くほうからすると便利なのだ。
+</p>
+
+<p>
+それはともあれ<code>if</code>の例。例えばこんなコードを構文木化してみよう。
+</p>
+
+<p class="caption">▼ソースプログラム</p>
+<pre class="longlist">
+if true
+  'true expr'
+else
+  'false expr'
+end
+</pre>
+
+
+<p class="caption">▼その構文木表現</p>
+<pre class="longlist">
+NODE_IF
+nd_cond:
+    NODE_TRUE
+nd_body:
+    NODE_STR
+    nd_lit = "true expr":String
+nd_else:
+    NODE_STR
+    nd_lit = "false expr":String
+</pre>
+
+
+<p>
+ここでは前述の<code>nodedump-short</code>を使っているので<code>NODE_NEWLINE</code>が消えてい
+る。<code>nd_cond</code>が条件、<code>nd_body</code>が真の場合の本体、<code>nd_else</code>が偽
+の場合の本体である。
+</p>
+
+<p>
+では今度はこれを作っているコードを見てみよう。
+</p>
+
+<p class="caption">▼<code>if</code>の規則</p>
+<pre class="longlist">
+1373                  | kIF expr_value then
+1374                    compstmt
+1375                    if_tail
+1376                    kEND
+1377                      {
+1378                          $$ = NEW_IF(cond($2), $4, $5);
+1379                          fixpos($$, $2);
+1380                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>NEW_IF()</code>というのが<code>NODE_IF</code>を生成するマクロらしい。記号の値のうち
+<code>$2 $4 $5</code>を使っているので、規則の記号と<code>$n</code>の対応をとってみると
+</p>
+
+<pre class="emlist">
+kIF    expr_value  then  compstmt  if_tail  kEND
+ $1          $2      $3        $4       $5    $6
+NEW_IF(expr_value,       compstmt, if_tail)
+</pre>
+
+<p>
+となった。つまり<code>expr_value</code>が条件式、<code>compstmt</code>（<code>$4</code>）が真の場合、
+<code>if_tail</code>が偽の場合だろう。
+</p>
+
+<p>
+一方ノードを生成するマクロは全て<code>NEW_xxxx</code>という名前で、<code>node.h</code>で定義され
+ている。<code>NEW_IF()</code>を見てみよう。
+</p>
+
+<p class="caption">▼<code>NEW_IF()</code></p>
+<pre class="longlist">
+ 243  #define NEW_IF(c,t,e) rb_node_newnode(NODE_IF,c,t,e)
+
+(node.h)
+</pre>
+
+
+<p>
+パラメータはそれぞれ<code>c</code>がcondition、<code>t</code>がthen、<code>e</code>がelseを表しているようだ。
+前節で書いたようにノードではメンバの順番にはあまり意味がないので
+こんなところでパラメータ名に凝ってみる必要はない。
+</p>
+
+<p>
+またアクションで条件式のノードを処理している<code>cond()</code>は意味解析関数である。
+これについては後述する。
+</p>
+
+<p>
+それと<code>fixpos()</code>は行番号の補正を行っている。<code>NODE</code>は自分が「生成さ
+れたときに」読み込んでいるファイル名と行番号で初期化される。だが<code>if</code>を
+考えてみると、<code>NODE_IF</code>を作るときにはもう<code>end</code>までパースしているはずだ。
+だからそのままにしておくと行番号がズレる。そこで<code>fixpos()</code>で補正すると
+いうことになる。
+</p>
+
+<pre class="emlist">
+fixpos(dest, src)
+</pre>
+
+<p>
+で、ノード<code>dest</code>の行番号をノード<code>src</code>のものにする。<code>if</code>で言うなら、
+<code>if</code>式全体の行番号は条件式の行番号になるということだ。
+</p>
+
+<h4><code>elsif</code></h4>
+
+<p>
+続いて<code>if_tail</code>の規則も見てみよう。
+</p>
+
+<p class="caption">▼<code>if_tail</code></p>
+<pre class="longlist">
+1543  if_tail         : opt_else
+1544                  | kELSIF expr_value then
+1545                    compstmt
+1546                    if_tail
+1547                      {
+1548                          $$ = NEW_IF(cond($2), $4, $5);
+1549                          fixpos($$, $2);
+1550                      }
+
+1553  opt_else        : none
+1554                  | kELSE compstmt
+1555                      {
+1556                          $$ = $2;
+1557                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+まずこの規則は「ゼロ個以上の<code>elsif</code>節のあと<code>opt_else</code>で終わるリスト」
+を表している。なぜなら、<code>elsif</code>が続いている限り<code>if_tail</code>が再現なく現れ、
+<code>opt_else</code>が来ると消えるからだ。適当な回数だけ規則を展開してみればわか
+る。
+</p>
+
+<pre class="emlist">
+if_tail: kELSIF .... if_tail
+if_tail: kELSIF .... kELSIF .... if_tail
+if_tail: kELSIF .... kELSIF .... kELSIF .... if_tail
+if_tail: kELSIF .... kELSIF .... kELSIF .... opt_else
+if_tail: kELSIF .... kELSIF .... kELSIF .... kELSE compstmt
+</pre>
+
+<p>
+そして次にアクションに注目すると、なんと、<code>elsif</code>では普通の
+<code>if</code>と同じ<code>NEW_IF()</code>を使っている。つまり、以下の二つのプログラムは
+構文木になってしまうと違いがなくなってしまうということだ。
+</p>
+
+<pre class="emlist">
+if cond1                  if cond1
+  body1                     body1
+elsif cond2               else
+  body2                     if cond2
+elsif cond3                   body2
+  body3                     else
+else                          if cond3
+  body4                         body3
+end                           else
+                                body4
+                              end
+                            end
+                          end
+</pre>
+
+<p>
+そう言われてみればC言語などは構文レベルでもこの二つの区別がないわけで、
+当然と言えば当然かもしれない。他には条件演算子（<code>a?b:c</code>）も構文木になる
+と<code>if</code>文と区別がつかなくなる。
+</p>
+
+<p>
+文法上では大きな意味があった優先順位は構文木の構造自体がその情報を含ん
+でいるのでもう必要ない。また<code>if</code>と条件演算子のような見ための違いに至っ
+ては何の意味もなくなり、その意味（振舞い）だけが重要になる。だから<code>if</code>
+と条件演算子の構文木表現が同じでも全く構わないのだ。
+</p>
+
+<p>
+このような例をいくつか挙げてみよう。<code>and</code>と<code>&amp;&amp;</code>は同じになる。
+<code>or</code>と<code>||</code>も同じだ。<code>not</code>と<code>!</code>、<code>if</code>と修飾<code>if</code>、などなども同じである。
+</p>
+
+<h4>左再帰と右再帰</h4>
+
+<p>
+ところで第9章『速習<code>yacc</code>』ではリストを表現するときは常にリストの記号を
+左に書いていたが、<code>if_tail</code>では逆になっていたことに気付いただろうか。
+肝心なところだけ以下に再掲する。
+</p>
+
+<pre class="emlist">
+if_tail: opt_else
+       | kELSIF ... if_tail
+</pre>
+
+<p>
+間違いなく今までと逆だ。リストの記号<code>if_tail</code>が右にある。
+</p>
+
+<p>
+実はリストにはもう一つの定石があって、
+</p>
+
+<pre class="emlist">
+list: END_ITEM
+    | ITEM list
+</pre>
+
+<p>
+と書くと、<code>ITEM</code>ゼロ個以上が続き<code>END_ITEM</code>で終わるリストになるのだ。
+</p>
+
+<p>
+リストの表現としてはどちらだろうとあまり重大な違いはないのだが、アクショ
+ンの実行のされかたが致命的に違う。<code>list</code>を右に書く形式だと後ろの
+<code>ITEM</code>から順番にアクションが実行されるのだ。左が<code>list</code>の場合のスタッ
+クの動きはもうやったから、右に<code>list</code>がある場合を試してみよう。入力は
+<code>ITEM</code>四つと<code>END_ITEM</code>である。
+</p>
+
+<table>
+<tr><td><td><td>最初は空<td></tr>
+<tr><td><code>ITEM</code><td><td><code>ITEM</code>をシフト<td></tr>
+<tr><td><code>ITEM ITEM</code><td><td><code>ITEM</code>をシフト<td></tr>
+<tr><td><code>ITEM ITEM ITEM</code><td><td><code>ITEM</code>をシフト<td></tr>
+<tr><td><code>ITEM ITEM ITEM ITEM</code><td><td><code>ITEM</code>をシフト<td></tr>
+<tr><td><code>ITEM ITEM ITEM ITEM END_ITEM</code><td><td><code>END_ITEM</code>をシフト<td></tr>
+<tr><td><code>ITEM ITEM ITEM ITEM list</code><td><td><code>END_ITEM</code>→<code>list</code>で還元<td></tr>
+<tr><td><code>ITEM ITEM ITEM list</code><td><td><code>ITEM list</code>→<code>list</code>で還元<td></tr>
+<tr><td><code>ITEM ITEM list</code><td><td><code>ITEM list</code>→<code>list</code>で還元<td></tr>
+<tr><td><code>ITEM list</code><td><td><code>ITEM list</code>→<code>list</code>で還元<td></tr>
+<tr><td><code>list</code><td><td><code>ITEM list</code>→<code>list</code>で還元<td></tr>
+<tr><td><td><td>accept.<td></tr>
+</table>
+
+<p>
+「左が<code>list</code>」のときにはシフトと還元が交互に行われていたのに、
+今回は見ての通りずっとシフト、ずっと還元で解析されている。
+</p>
+
+<p>
+なぜ<code>if_tail</code>は「右に<code>list</code>」にしていたかというと、ボトムアップで構文木を
+作るためだ。ボトムアップで作ると最後に<code>if</code>のノードが手元に残る。しかしも
+し「左が<code>list</code>」で<code>if_tail</code>を定義すると、最後に手元に<code>if</code>のノードを残すため
+には<code>elsif</code>を見付けるたびに<code>elsif</code>のリンクを全部辿っていって末尾に追加しな
+ければいけなくなってしまうのだ。これは面倒くさい。ついでに遅い。だから
+<code>if_tail</code>は「右が<code>list</code>」で構築してあるのだ。
+</p>
+
+<p>
+最後に見出しの意味だが、文法用語だと
+「左が<code>list</code>」を左再帰（left recursion）、
+「右が<code>list</code>」を右再帰（right recursion）と言うのである。
+この用語は主に文法処理の論文を読むときや<code>yacc</code>の本を書くときに使う。
+</p>
+
+
+
+<h3>幹</h3>
+
+<p>
+葉、枝と来たら最後は幹だ。
+文のリストをどうつないでいるのか見よう。
+</p>
+
+<p class="caption">▼ソースプログラム</p>
+<pre class="longlist">
+7
+8
+9
+</pre>
+
+
+<p>
+これに対応する構文木をダンプすると次のようになる。
+これは<code>nodedump-short</code>ではなく完全形である。
+</p>
+
+<p class="caption">▼対応する構文木</p>
+<pre class="longlist">
+NODE_BLOCK
+nd_head:
+    NODE_NEWLINE
+    nd_file = "multistmt"
+    nd_nth  = 1
+    nd_next:
+        NODE_LIT
+        nd_lit = 7:Fixnum
+nd_next:
+    NODE_BLOCK
+    nd_head:
+        NODE_NEWLINE
+        nd_file = "multistmt"
+        nd_nth  = 2
+        nd_next:
+            NODE_LIT
+            nd_lit = 8:Fixnum
+    nd_next:
+        NODE_BLOCK
+        nd_head:
+            NODE_NEWLINE
+            nd_file = "multistmt"
+            nd_nth  = 3
+            nd_next:
+                NODE_LIT
+                nd_lit = 9:Fixnum
+        nd_next = (null)
+</pre>
+
+
+<p>
+<code>NODE_BLOCK</code>のリストができており、それに<code>NODE_NEWLINE</code>がヘッダとして
+くっついているのがわかる（図5）。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_blocklist.jpg" alt="(blocklist)"><br>
+図5: <code>NODE_BLOCK</code>と<code>NODE_NEWLINE</code>
+</p>
+
+<p>
+つまり文（<code>stmt</code>）に一つの割合で<code>NODE_NEWLINE</code>が付き、それが複数並ぶと
+<code>NODE_BLOCK</code>でリスト化される。コードも見てみよう。
+</p>
+
+<p class="caption">▼<code>stmts</code></p>
+<pre class="longlist">
+ 354  stmts           : none
+ 355                  | stmt
+ 356                      {
+ 357                          $$ = newline_node($1);
+ 358                      }
+ 359                  | stmts terms stmt
+ 360                      {
+ 361                          $$ = block_append($1, newline_node($3));
+ 362                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>newline_node()</code>で<code>NODE_NEWLINE</code>をかぶせ、
+<code>block_append()</code>でリストをつなぐ。わかりやすい。
+<code>block_append()</code>だけ中身を見ておこう。
+</p>
+
+<h4><code>block_append()</code></h4>
+
+<p>
+この関数はド真ん中にエラーチェックがあって邪魔なので
+その部分は省略して示す。
+</p>
+
+<p class="caption">▼<code>block_append()</code>（省略版）</p>
+<pre class="longlist">
+4285  static NODE*
+4286  block_append(head, tail)
+4287      NODE *head, *tail;
+4288  {
+4289      NODE *end;
+4290
+4291      if (tail == 0) return head;
+4292      if (head == 0) return tail;
+4293
+4294      if (nd_type(head) != NODE_BLOCK) {
+4295          end = NEW_BLOCK(head);
+4296          end-&gt;nd_end = end;    /*（A-1）*/
+4297          fixpos(end, head);
+4298          head = end;
+4299      }
+4300      else {
+4301          end = head-&gt;nd_end;   /*（A-2）*/
+4302      }
+
+          /* ……省略…… */
+
+4325      if (nd_type(tail) != NODE_BLOCK) {
+4326          tail = NEW_BLOCK(tail);
+4327          tail-&gt;nd_end = tail;
+4328      }
+4329      end-&gt;nd_next = tail;
+4330      head-&gt;nd_end = tail-&gt;nd_end;   /*（A-3）*/
+4331      return head;
+4332  }
+
+(parse.y)
+</pre>
+
+
+<p>
+先の構文木ダンプによると<code>NODE_BLOCK</code>は<code>nd_next</code>を使ったリンクリストだった。
+それに注意して読むと、「<code>head</code>と<code>tail</code>のどちらかが<code>NODE_BLOCK</code>でなかったら
+<code>NODE_BLOCK</code>でくるみ、リスト同士を連結する」、と読める。
+</p>
+
+<p>
+それと（A-1〜3）では、リスト先頭の<code>NODE_BLOCK</code>の<code>nd_end</code>が常にリスト末
+尾の<code>NODE_BLOCK</code>を指すようにしている。こうしておけばいちいちリスト
+を全部辿らなくても末尾に要素を連結できるからだろう（図6）。
+逆に言えば、リストを追加する必要があるときは<code>NODE_BLOCK</code>が
+適しているということだ。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_append.jpg" alt="(append)"><br>
+図6: 追加が楽
+</p>
+
+
+
+<h3>二つのリスト</h3>
+
+<p>
+さて、ここまでで大枠は説明した。構文木の構造については第三部でも
+大量に出てくるので、第二部ではこれくらいにしておこう。しかし終わる前に
+もう一つだけ話しておきたい。それは二つの汎用リストのことだ。
+</p>
+
+<p>
+二つのリストとは、<code>BLOCK</code>と<code>LIST</code>である。<code>BLOCK</code>は先程説明した
+<code>NODE_BLOCK</code>のリンクリストで、文をつなぐためにある。<code>LIST</code>は、
+<code>LIST</code>と言いつつもその実体は<code>NODE_ARRAY</code>のリストだ。配列リテラルに
+使われていた奴である。<code>LIST</code>はメソッドの引数や多重代入のリストを
+格納するために使われている。
+</p>
+
+<p>
+この二つのリストの違いはノードの使いかたを見るとわかりやすい。
+</p>
+
+<table>
+<tr><td><code>NODE_BLOCK</code><td><td><code>nd_head</code><td><td>要素を格納する<td></tr>
+<tr><td><td><td><code>nd_end</code><td><td>リスト最後の<code>NODE_BLOCK</code>を指す<td></tr>
+<tr><td><td><td><code>nd_next</code><td><td>次の<code>NODE_BLOCK</code>を指す<td></tr>
+<tr><td><td><td><td><td><td></tr>
+<tr><td><code>NODE_ARRAY</code><td><td><code>nd_head</code><td><td>要素を格納する<td></tr>
+<tr><td><td><td><code>nd_alen</code><td><td>このノード以降のリストの長さ<td></tr>
+<tr><td><td><td><code>nd_next</code><td><td>次の<code>NODE_ARRAY</code>を指す<td></tr>
+</table>
+
+<p>
+使いかたが違うのは二番目の要素、<code>nd_end</code>と<code>nd_alen</code>だけだ。
+そしてこれがそれぞれの存在意義である。<code>NODE_ARRAY</code>はサイズを格納
+できるので、頻繁にリストのサイズが必要になる場合は<code>ARRAY</code>リストを使う。
+そうでない場合は連結が高速な<code>BLOCK</code>リストを使う。このへんは
+使うほうのコードを見ないと意義がわからないので深くは話さないが、
+第三部で登場したら「ああ、長さを使ってる」と思い出してほしい。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>意味解析</h2>
+
+<p>
+第二部の最初で簡単にふれたが、一口にプログラムの解析と言っても見ための
+解析と意味の解析の二つがある。見ための解析は<code>yacc</code>がほぼやってくれるので、
+あとはアクションの中で意味の解析をすればいい。
+</p>
+
+
+<h3>アクション内でのエラー</h3>
+
+<p>
+意味解析とは具体的にどんなことか。例えば型有り言語なら型の検査がある。
+他には、同名の変数を何回も定義していないか、変数を定義前に使っていない
+か、使っている手続きが定義されているか、手続きの外で<code>return</code>を使っていな
+いか、などが意味解析に含まれる。
+</p>
+
+<p>
+現在の<code>ruby</code>ではどんな意味解析を行っているだろうか。先程の例を見てみると
+<code>ruby</code>ではエラーチェックが意味解析のほとんどを占めているので、エラーを出
+しているところを探してみればよさそうだ。<code>yacc</code>のパーサではエラーが起きた
+ときには<code>yyerror()</code>を呼ぶことになっている……逆に言うと<code>yyerror()</code>がある
+ところではエラーが起きているということだ。そこでアクション中で
+<code>yyerror()</code>を呼んでいる場所をリストアップしてみた。
+</p>
+
+<ul>
+<li>値が必要な場所に値を持たない式（void value expression）</li>
+<li><code>$n</code>の<code>alias</code></li>
+<li>メソッド内での<code>BEGIN</code></li>
+<li>メソッド内での<code>END</code></li>
+<li>メソッド外の<code>return</code></li>
+<li>定数を要求されるところでのローカル変数</li>
+<li>メソッド内での<code>class</code>文</li>
+<li>不適切なパラメータ変数（<code>$gvar</code>や<code>CONST</code>など）</li>
+<li>同名のパラメータ変数が二回出てくる</li>
+<li>不適切な特異メソッドのレシーバ（<code>def ().method</code>など）</li>
+<li>リテラルに対する特異メソッド定義</li>
+<li>ハッシュリテラルのリストが奇数</li>
+<li><code>self/nil/true/false/__FILE__/__LINE__</code>への代入</li>
+<li>メソッド内での定数代入</li>
+<li>条件式内での多重代入</li>
+</ul>
+
+<p>
+これらのチェックはだいたい以下のような目的に分類できるだろう。
+</p>
+
+<ul>
+<li>よりよいエラーメッセージを出す</li>
+<li>規則を複雑にしすぎない</li>
+<li>それ以外（純粋な意味解析）</li>
+</ul>
+
+<p>
+例えば「メソッド外の<code>return</code>」は規則を複雑にしすぎないためのチェック
+である。このエラーは構造の問題なのだから文法で対処できないことはない。
+例えばメソッド内と外での文の規則を分割し、許されるものと許されない
+ものをそれぞれ全部並べてやればいい。しかしどう考えても面倒だし、アク
+ションでハネたほうがよほど簡潔だ。
+</p>
+
+<p>
+また「<code>self</code>への代入」は、よいエラーメッセージを出すためのチェック
+だと考えられる。これは「メソッド外<code>return</code>」よりも文法で除外するのは
+ずっと簡単だが、パーサで除外すると単に<code>"parse error"</code>という出力
+で終わってしまう。それよりは今の
+</p>
+
+<pre class="screen">
+% ruby -e 'self = 1'
+-e:1: Can't change the value of self
+self = 1
+      ^
+</pre>
+
+<p>
+というエラーのほうがずっと親切である。
+</p>
+
+<p>
+もちろんキッチリと「この目的」と言えるとは限らない。例えば
+「メソッド外<code>return</code>」にしても、これはよいエラーメッセージを出すための
+チェックだと考えることもできる。目的は重なりあっているものだ。
+</p>
+
+<p>
+さて問題は「純粋な意味解析」だが、Rubyではこの分類に当てはまるものがあ
+まりない。型付き言語だと型の解析が一大イベントなのだが、Rubyは変数が型
+無しなので無意味である。代わりに目立ってくるのが値を持つ式のチェックだ。
+</p>
+
+<p>
+値を持つ、を正確に言うと「評価すると値が得られる」となる。<code>return</code>や
+<code>break</code>はそれ自体値を持たない。もちろん<code>return</code>先には値を渡すわけだが、
+<code>return</code>が書いてある場所それ自体には値が残らない。だから例えば次のような
+式は変だ。
+</p>
+
+<pre class="emlist">
+i = return(1)
+</pre>
+
+<p>
+こういう式は明らかに勘違い、あるいは単純ミスなのでコンパイル時点で
+弾いてしまうほうがよい。以降はこの値を取ることを確認する関数の一つ、
+<code>value_expr()</code>を見ていくことにする。
+</p>
+
+
+
+<h3><code>value_expr()</code></h3>
+
+<p>
+<code>value_expr()</code>は値（value）を持つ<code>expr</code>であることをチェックする関数である。
+</p>
+
+<p class="caption">▼<code>value_expr()</code></p>
+<pre class="longlist">
+4754  static int
+4755  value_expr(node)
+4756      NODE *node;
+4757  {
+4758      while (node) {
+4759          switch (nd_type(node)) {
+4760            case NODE_CLASS:
+4761            case NODE_MODULE:
+4762            case NODE_DEFN:
+4763            case NODE_DEFS:
+4764              rb_warning("void value expression");
+4765              return Qfalse;
+4766
+4767            case NODE_RETURN:
+4768            case NODE_BREAK:
+4769            case NODE_NEXT:
+4770            case NODE_REDO:
+4771            case NODE_RETRY:
+4772              yyerror("void value expression");
+4773              /* or "control never reach"? */
+4774              return Qfalse;
+4775
+4776            case NODE_BLOCK:
+4777              while (node-&gt;nd_next) {
+4778                  node = node-&gt;nd_next;
+4779              }
+4780              node = node-&gt;nd_head;
+4781              break;
+4782
+4783            case NODE_BEGIN:
+4784              node = node-&gt;nd_body;
+4785              break;
+4786
+4787            case NODE_IF:
+4788              if (!value_expr(node-&gt;nd_body)) return Qfalse;
+4789              node = node-&gt;nd_else;
+4790              break;
+4791
+4792            case NODE_AND:
+4793            case NODE_OR:
+4794              node = node-&gt;nd_2nd;
+4795              break;
+4796
+4797            case NODE_NEWLINE:
+4798              node = node-&gt;nd_next;
+4799              break;
+4800
+4801            default:
+4802              return Qtrue;
+4803          }
+4804      }
+4805
+4806      return Qtrue;
+4807  }
+
+(parse.y)
+</pre>
+
+
+<h4>アルゴリズム</h4>
+
+<p>
+要約。ツリーを順番になめてみて「確実に値がない式」にぶちあたったらその
+時点で値を持たないとわかる。<code>rb_warning()</code>で警告して<code>Qfalse</code>を返す。値のな
+い式に当たらないままツリーをなめおわったら値を持つ。<code>Qtrue</code>を返す。
+</p>
+
+<p>
+ここで、必ずしもツリー全体をチェックする必要はないことに注意してほしい。
+例えば<code>value_expr()</code>がメソッドの引数に対して呼ばれたと仮定しよう。
+ここだ。
+</p>
+
+<p class="caption">▼<code>arg</code>の値を<code>value_expr()</code>でチェック</p>
+<pre class="longlist">
+1055  arg_value       : arg
+1056                      {
+1057                          value_expr($1);
+1058                          $$ = $1;
+1059                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+この引数<code>$1</code>の中にはまたメソッド呼び出しがネストしているかもしれない。し
+かしその内側のメソッドの引数は既に<code>value_expr()</code>でチェックされているはず
+なので、もう一度チェックする必要はない。
+</p>
+
+<p>
+もっと一般的に考えよう。とある文法要素<code>A</code>があったとして、その全ての構
+成要素に対して<code>value_expr()</code>を呼んだとしたら、その要素<code>A</code>をまたチェックし
+なおす必要はなくなる。
+</p>
+
+<p>
+では例えば<code>if</code>はどうだろうか。無条件に、全要素に対して<code>value_expr()</code>を
+呼んだものとして扱えるだろうか。結論だけ言うと、そうはいかない。なぜ
+なら文である（値を使わない）<code>if</code>ならば本体は値を返さなくともよいはずだ
+からだ。例えば次のような場合。
+</p>
+
+<pre class="emlist">
+def method
+  if true
+    return 1
+  else
+    return 2
+  end
+  5
+end
+</pre>
+
+<p>
+この<code>if</code>文には値は必要ない。
+しかし次のような場合は値が必要だ。
+</p>
+
+<pre class="emlist">
+def method( arg )
+  tmp = if arg
+        then 3
+        else 98
+        end
+  tmp * tmp / 3.5
+end
+</pre>
+
+<p>
+だからこの場合は代入文全体をチェックするときに初めて<code>if</code>文もチェックする
+ようにしなければいけない。そういうものが<code>value_expr()</code>の<code>switch</code>文に並んで
+いるわけである。
+</p>
+
+<h4>末尾再帰の除去</h4>
+
+<p>
+ところで、<code>value_expr()</code>全体を眺めると以下のようなパターンが頻出しているこ
+とがわかる。
+</p>
+
+<pre class="emlist">
+while (node) {
+    switch (nd_type(node)) {
+      case NODE_XXXX:
+        node = node-&gt;nd_xxxx;
+        break;
+         ：
+         ：
+    }
+}
+</pre>
+
+<p>
+この表現は以下のように変えても同じ意味だ。
+</p>
+
+<pre class="emlist">
+return value_expr(node-&gt;nd_xxxx)
+</pre>
+
+<p>
+このように<code>return</code>直前に再帰呼び出しをするコードをtail recursion、
+末尾再帰と言うのだが、それは一般に<code>goto</code>に変換できることがわかっている。
+最適化ではよく使われる手法だ。Schemeに至っては末尾再帰は必ず言語処理系が
+除去し
+なければならないと規格で定めている。Lisp系言語ではよくループの代わりに
+再帰を使うからだ。
+</p>
+
+<p>
+ただし注意してほしいのは、末尾再帰は「<code>return</code>直前に呼ぶ」場合だけである。
+例えば<code>value_expr()</code>の<code>NODE_IF</code>を見ると
+</p>
+
+<pre class="emlist">
+if (!value_expr(node-&gt;nd_body)) return Qfalse;
+node = node-&gt;nd_else;
+break;
+</pre>
+
+<p>
+というように最初の一回は再帰呼び出ししている。
+<code>return</code>を使う形式に書き換えてみると、
+</p>
+
+<pre class="emlist">
+return value_expr(node-&gt;nd_body) &amp;&amp; value_expr(node-&gt;nd_else);
+</pre>
+
+<p>
+となって、左の<code>value_expr()</code>が偽の場合は右の<code>value_expr()</code>も
+実行される。つまりその場合、左の<code>value_expr()</code>は<code>return</code>「直前」
+ではない。従ってそれは末尾再帰ではない。
+だから<code>goto</code>には展開できない。
+</p>
+
+
+
+<h3>値チェックの全体像</h3>
+
+<p>
+値チェックについて関数を読むのはこれで終わりだ。早すぎると思うかも
+しれないが、他の関数はどれも<code>value_expr()</code>と同じように地道に地道に
+ノードを辿ってチェックするだけなので全く面白くない。ただ全体像は
+押さえておきたいので、関係関数のコールグラフだけ示して終わることに
+する（図7）。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_callgraph.jpg" alt="(callgraph)"><br>
+図7: 値チェック関数のコールグラフ
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>ローカル変数</h2>
+
+<h3>ローカル変数の定義</h3>
+
+<p>
+Rubyの変数定義は種類によって随分といろいろあった。
+定数やクラス変数は最初の代入が定義になっていたし、
+インスタンス変数・グローバル変数はあらゆる名前が定義済みと
+考えることができ、
+（警告は出るけれども）代入せずにいきなり参照できるのだった。
+</p>
+
+<p>
+ローカル変数の定義はそれとはまたまるで違う。ローカル変数は、
+プログラム上に変数への代入が現れた時点で定義される。例えば次のように。
+</p>
+
+<pre class="emlist">
+lvar = nil
+p lvar      # 定義されている
+</pre>
+
+<p>
+この場合、一行目に<code>lvar</code>への代入を書いたのでその時点で<code>lvar</code>が定義
+されている。未定義の場合は次のように実行時例外<code>NameError</code>になる。
+</p>
+
+<pre class="emlist">
+% ruby lvar.rb
+lvar.rb:1: undefined local variable or method `lvar'
+for #&lt;Object:0x40163a9c&gt; (NameError)
+</pre>
+
+<p>
+<code>"local variable or method"</code>と出ているのはなぜだろう。メソッドは呼び出し
+のときに引数の括弧が省略できるので、引数がないときにはローカル変数と見
+分けが付かなくなる。それを解決するために<code>ruby</code>は未定義のローカル変数を発
+見するととりあえずメソッドとして呼んでみるのだ。そういうメソッドがなけ
+れば、上記のようなエラーになる。
+</p>
+
+<p>
+ところで、定義されるのは代入が「現れたとき」なので、実際には代入が行わ
+れなくても定義されるということになる。定義された変数の初期値は<code>nil</code>だ。
+</p>
+
+<pre class="emlist">
+if false
+  lvar = "この代入は決して実行されない"
+end
+p lvar   # nilと表示される
+</pre>
+
+<p>
+またさらに、定義されるのは代入が「現れた」「とき」なので、
+記号列上で参照の前になくてはいけない。例えば次のような場合は
+定義されていない。
+</p>
+
+<pre class="emlist">
+p lvar       # 定義されていない！
+lvar = nil   # ここで現れているのだが……
+</pre>
+
+<p>
+「記号列上で」というところに注意してほしい。評価順とはまるで
+関係がない。例えば次のようなコードなら当然条件式を先に評価するが、
+記号列順だと<code>p</code>の時点では<code>lvar</code>への代入は現れていない。
+従って<code>NameError</code>になる。
+</p>
+
+<pre class="emlist">
+p(lvar) if lvar = true
+</pre>
+
+<p>
+ここまででわかるのは、ローカル変数は非常に見ために影響されるということ
+だ。代入である記号列が現れたときに、その見ための順番で定義される。その
+情報をベースに考えれば、<code>ruby</code>はパースの時点でローカル変数を定義している
+らしいと予想できる。なぜなら記号列の順序などというものはパーサを出てし
+まったらもう存在しないからだ。そして実際にその通りで、<code>ruby</code>ではパーサが
+ローカル変数を定義する。
+</p>
+
+
+
+<h3>ブロックローカル変数</h3>
+
+<p>
+イテレータブロックの中で初めて宣言されたローカル変数を
+ブロックローカル変数またはdynamic variableと言う。
+ブロックローカル変数は言語仕様的には
+ローカル変数と同じものである。しかしこの二つは実装が違うのだ。
+どう違うのかは、これから見ていく。
+</p>
+
+
+
+<h3>データ構造</h3>
+
+<p>
+まずローカル変数のテーブル<code>struct local_vars</code>から話を始める。
+</p>
+
+<p class="caption">▼<code>struct local_vars</code></p>
+<pre class="longlist">
+5174  static struct local_vars {
+5175      ID *tbl;                    /* ローカル変数名のテーブル */
+5176      int nofree;                 /* 外部から使われているか */
+5177      int cnt;                    /* tblの配列のサイズ */
+5178      int dlev;                   /* dyna_varsのネストレベル */
+5179      struct RVarmap* dyna_vars;  /* ブロックローカル変数名 */
+5180      struct local_vars *prev;
+5181  } *lvtbl;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>prev</code>というメンバ名からすると<code>struct local_vars</code>は逆向きリンクリスト
+……そこから想定されるのはスタックだ。同時に宣言されているグローバル変数
+<code>lvtbl</code>がそのスタックの先端の<code>local_vars</code>を指す。
+</p>
+
+<p>
+また<code>struct RVarmap</code>は<code>env.h</code>で定義されていて、評価器でも使われる
+公開構造体である。ブロックローカル変数を格納するために使う。
+</p>
+
+<p class="caption">▼<code>struct RVarmap</code></p>
+<pre class="longlist">
+  52  struct RVarmap {
+  53      struct RBasic super;
+  54      ID id;                  /* 変数名 */
+  55      VALUE val;              /* その値 */
+  56      struct RVarmap *next;
+  57  };
+
+(env.h)
+</pre>
+
+
+<p>
+先頭に<code>struct RBasic</code>があるのでこれはRubyオブジェクトである。
+即ちガーベージコレクタによって管理される。また<code>next</code>メンバで
+つながれているのでリンクリストだろう。
+</p>
+
+<p>
+ここまでの観察結果と、後でわかる情報も加えてパーサ実行中の両者のイメー
+ジを図にすると図8のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_localvars.jpg" alt="(localvars)"><br>
+図8: ローカル変数テーブルの実行時イメージ
+</p>
+
+
+
+<h3>ローカル変数スコープ</h3>
+
+<p>
+<code>parse.y</code>の関数名リストを眺めていると
+<code>local_push() local_pop() local_cnt()</code>といった関数が並んでいるのが見付か
+る。どう考えてもこれはローカル変数っぽい。しかも名前が<code>push pop</code>なので明
+らかにスタックだ。そこでまずはこれらの関数を使っているところを探してみ
+よう。
+</p>
+
+<p class="caption">▼<code>local_push() local_pop()</code>の用例</p>
+<pre class="longlist">
+1475                  | kDEF fname
+1476                      {
+1477                          $&lt;id&gt;$ = cur_mid;
+1478                          cur_mid = $2;
+1479                          in_def++;
+1480                          local_push(0);
+1481                      }
+1482                    f_arglist
+1483                    bodystmt
+1484                    kEND
+1485                      {
+1486                          /* NOEX_PRIVATE for toplevel */
+1487                          $$ = NEW_DEFN($2, $4, $5,
+                                  class_nest?NOEX_PUBLIC:NOEX_PRIVATE);
+1488                          if (is_attrset_id($2))
+                                  $$-&gt;nd_noex = NOEX_PUBLIC;
+1489                          fixpos($$, $4);
+1490                          local_pop();
+1491                          in_def--;
+1492                          cur_mid = $&lt;id&gt;3;
+1493                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>def</code>で使われているのを発見できた。他にはクラス定義や特異クラス定義、特
+異クラス定義にもある。つまりローカル変数のスコープが切れるところである。
+しかも使われかたを見てみると、メソッド定義が始まるところで<code>push</code>して終わっ
+たところで<code>pop</code>している。ということはやはり<code>local_</code>の付く関数がローカル変
+数関係であることはほぼ間違いない。また<code>push</code>から<code>pop</code>までの間が一つの
+ローカル変数スコープだろうということも判明する。
+</p>
+
+<p>
+さらに<code>local_cnt()</code>も探してみた。
+</p>
+
+<p class="caption">▼<code>NEW_LASGN()</code></p>
+<pre class="longlist">
+ 269  #define NEW_LASGN(v,val) rb_node_newnode(NODE_LASGN,v,val,local_cnt(v))
+
+(node.h)
+</pre>
+
+
+<p>
+<code>node.h</code>で見付けてしまった。<code>parse.y</code>にも使っているところがあるのに
+わざわざ別ファイルから見付けてくるあたり、筆者も切羽詰まっているようだ。
+</p>
+
+<p>
+この<code>NEW_LASGN</code>というのはnew local assignmentつまりローカル変数の代入
+のノードに違いない、またこれを使っている場所も考えるとパラメータの
+<code>v</code>がローカル引数名のようだ。<code>val</code>は右辺の値（を表す構文木）だろう。
+</p>
+
+<p>
+以上を勘案すると、ローカル変数スコープの開始地点で<code>local_push()</code>、途中
+でローカル変数の代入があったら<code>local_cnt()</code>でローカル変数追加、スコー
+プ終了で<code>local_pop()</code>。という、完璧な筋書きが浮かんでくる
+（図9）。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_localtbl.jpg" alt="(localtbl)"><br>
+図9: ローカル変数管理の流れ
+</p>
+
+<p>
+では関数の中身を見ていこう。
+</p>
+
+
+<h3><code>push</code>と<code>pop</code></h3>
+
+<p class="caption">▼<code>local_push()</code></p>
+<pre class="longlist">
+5183  static void
+5184  local_push(top)
+5185      int top;
+5186  {
+5187      struct local_vars *local;
+5188
+5189      local = ALLOC(struct local_vars);
+5190      local-&gt;prev = lvtbl;
+5191      local-&gt;nofree = 0;
+5192      local-&gt;cnt = 0;
+5193      local-&gt;tbl = 0;
+5194      local-&gt;dlev = 0;
+5195      local-&gt;dyna_vars = ruby_dyna_vars;
+5196      lvtbl = local;
+5197      if (!top) {
+5198          /* 一つ上のスコープの変数テーブルをvalに保管しておく */
+5199          rb_dvar_push(0, (VALUE)ruby_dyna_vars);
+5200          ruby_dyna_vars-&gt;next = 0;
+5201      }
+5202  }
+
+(parse.y)
+</pre>
+
+
+<p>
+やはり<code>struct local_vars</code>はスタックとして使われるようだ。
+そして<code>lvtbl</code>がそのスタックの先端を指していることがわかる。
+<code>rb_dvar_push()</code>のくだりは後で読むのでとりあえず置いておく。
+</p>
+
+<p>
+続いて<code>local_pop()</code>と<code>local_tbl()</code>をまとめて見てみる。
+</p>
+
+<p class="caption">▼<code>local_tbl local_pop</code></p>
+<pre class="longlist">
+5218  static ID*
+5219  local_tbl()
+5220  {
+5221      lvtbl-&gt;nofree = 1;
+5222      return lvtbl-&gt;tbl;
+5223  }
+
+5204  static void
+5205  local_pop()
+5206  {
+5207      struct local_vars *local = lvtbl-&gt;prev;
+5208
+5209      if (lvtbl-&gt;tbl) {
+5210          if (!lvtbl-&gt;nofree) free(lvtbl-&gt;tbl);
+5211          else lvtbl-&gt;tbl[0] = lvtbl-&gt;cnt;
+5212      }
+5213      ruby_dyna_vars = lvtbl-&gt;dyna_vars;
+5214      free(lvtbl);
+5215      lvtbl = local;
+5216  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>local_tbl()</code>を見てほしい。これは現在のローカル変数テーブル（<code>lvtbl</code>）
+を得る関数である。これを呼ぶと、現在のテーブルの<code>nofree</code>が真になる。
+<code>nofree</code>の意味は当然「<code>free()</code>するな」ということだろう。つまりこれはリ
+ファレンスカウントみたいなもので、「このテーブルは使うから<code>free()</code>しな
+いでね」ということだ。逆に言うと、<code>local_tbl()</code>を一回も呼ばれなかった
+テーブルはポップされるときに解放され、捨てられる。例えばローカル変数が
+全くないメソッドならそういうことになるだろう。
+</p>
+
+<p>
+ただしここで言う「必要なテーブル」とは<code>lvtbl-&gt;tbl</code>のことだ。
+見ての通り<code>lvtbl</code>自体はポップと同時に解放されてしまっている。
+つまり評価器では作った<code>lvtbl-&gt;tbl</code>だけを使うらしい。そうすると
+この<code>lvtbl-&gt;tbl</code>の構造がどうなっているのか、ということが重要に
+なってくる。変数を追加する（らしい）関数<code>local_cnt()</code>を見れば
+どうなっているのかわかるだろう。
+</p>
+
+<p>
+それとその前に、<code>lvtbl-&gt;tbl</code>のインデックス0に<code>lvtbl-&gt;cnt</code>を入れて
+いるのは覚えておいてほしい。
+</p>
+
+
+
+<h3>変数の追加</h3>
+
+<p>
+ローカル変数を追加する（らしい）関数は<code>local_cnt()</code>である。
+</p>
+
+<p class="caption">▼<code>local_cnt()</code></p>
+<pre class="longlist">
+5246  static int
+5247  local_cnt(id)
+5248      ID id;
+5249  {
+5250      int cnt, max;
+5251
+5252      if (id == 0) return lvtbl-&gt;cnt;
+5253
+5254      for (cnt=1, max=lvtbl-&gt;cnt+1; cnt&lt;max;cnt++) {
+5255          if (lvtbl-&gt;tbl[cnt] == id) return cnt-1;
+5256      }
+5257      return local_append(id);
+5258  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>lvtbl-&gt;tbl</code>をスキャンして、<code>id</code>と等しいものを探している。見付かったと
+きはそのまま<code>cnt-1</code>を返し、見付からないときは<code>local_append()</code>するよう
+だ。<code>local_append()</code>は<code>append</code>と言うくらいだから追加する作業に決まって
+いる。つまり<code>local_cnt()</code>では既に変数が登録されているかどうか確認し、
+登録されていなければ<code>local_append()</code>で追加して返すのだとわかる。
+</p>
+
+<p>
+この関数の返り値は何を意味しているのだろうか。<code>lvtbl-&gt;tbl</code>は変数名の
+配列のようなので、変数名と「そのインデックス-1（<code>cnt-1</code>）」は一対一に
+対応する（図10）。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_lvtbltbl.jpg" alt="(lvtbltbl)"><br>
+図10: 変数名と返り値の対応関係
+</p>
+
+<p>
+しかもこの返り値は0起点になるように計算されているから、恐らくローカル
+変数の領域は配列なのだろう。そしてそれにアクセスするためのインデックス
+を返しているのだと考えられる。そうでないのならインスタンス変数や定数の
+ように最初から変数名（の<code>ID</code>）をキーにすればいいはずだ。
+</p>
+
+<p>
+なぜかインデックス0を避けている（<code>cnt=1</code>からループを回している）のが気
+になるが、そこにはきっと<code>local_pop()</code>で値を入れるからだろう。
+
+<p>
+以上のことから<code>local_append()</code>の役割は中身を見なくてもわかる。ローカル
+変数を登録し、その変数の「<code>lvtbl-&gt;tbl</code>でのインデックス-1」を返すことだ。
+以下、確認しよう。
+</p>
+
+<p class="caption">▼<code>local_append()</code></p>
+<pre class="longlist">
+5225  static int
+5226  local_append(id)
+5227      ID id;
+5228  {
+5229      if (lvtbl-&gt;tbl == 0) {
+5230          lvtbl-&gt;tbl = ALLOC_N(ID, 4);
+5231          lvtbl-&gt;tbl[0] = 0;
+5232          lvtbl-&gt;tbl[1] = '_';
+5233          lvtbl-&gt;tbl[2] = '~';
+5234          lvtbl-&gt;cnt = 2;
+5235          if (id == '_') return 0;
+5236          if (id == '~') return 1;
+5237      }
+5238      else {
+5239          REALLOC_N(lvtbl-&gt;tbl, ID, lvtbl-&gt;cnt+2);
+5240      }
+5241
+5242      lvtbl-&gt;tbl[lvtbl-&gt;cnt+1] = id;
+5243      return lvtbl-&gt;cnt++;
+5244  }
+
+(parse.y)
+</pre>
+
+
+<p>
+間違いないようだ。<code>lvtbl-&gt;tbl</code>がローカル変数名の配列になっており、
+「そのインデックス-1」を返り値（ローカル変数ID）にしている。
+</p>
+
+<p>
+また注意すべきは<code>lvtbl-&gt;cnt</code>を増やしていることである。<code>lvtbl-&gt;cnt</code>を増
+やすコードはここにしかなかったので、ここのコードだけから<code>lvtbl-&gt;cnt</code>の
+意味を決定できる。それではどういう意味かと言えば、「新しい変数が追加さ
+れるときに<code>lvtbl-&gt;cnt</code>が1増える」のだから、「<code>lvtbl-&gt;cnt</code>はこのスコー
+プに存在するローカル変数の数を表す」のである。
+
+<p>
+それと最後に<code>tbl[1]</code>と<code>tbl[2]</code>について説明しておこう。この<code>'_'</code>と
+<code>'~'</code>というのは、Rubyに慣れていると予想が付くのだが、<code>$_</code>と<code>$~</code>という
+特殊変数である。この二つの変数はグローバル変数な見掛けとは裏腹にロー
+カル変数なのだ。そして明示的に使っていなくとも<code>Kernel#gets</code>などのメソッ
+ドを呼ぶと暗黙のうちにこの変数への代入が起こるので、領域は常に割り当て
+ておく必要がある。
+</p>
+
+
+
+<h3>ローカル変数まとめ</h3>
+
+<p>
+ローカル変数の話はいろいろとややこしかったので一度まとめよう。
+</p>
+
+<p>
+まず、ローカル変数は他の変数と違って<code>st_table</code>管理ではないようだという
+ことが一点。では何に入っているかと言うとそれは配列らしい。しかもスコープ
+単位で配列に入っている。
+</p>
+
+<p>
+その配列とは<code>lvtbl-&gt;tbl</code>のことで、インデックス0には<code>local_pop()</code>でセッ
+トした<code>lvtbl-&gt;cnt</code>即ちローカル変数の数が入っている。インデックス1以降
+にはそのスコープで定義されているローカル変数名が保存されている。従って
+最終的な姿は図11のようになるはずだ。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_tbl.jpg" alt="(tbl)"><br>
+図11: 変数名と返り値の対応関係
+</p>
+
+
+
+<h3>ブロックローカル変数</h3>
+
+<p>
+残る問題は<code>struct local_vars</code>のメンバ<code>dyna_vars</code>である。つまりブロック
+ローカル変数だ。これを何かする関数があるはず、と思って関数名リストを眺
+めてみると、やはりあった。<code>dyna_push() dyna_pop() dyna_in_block()</code>とい
+う怪しげな関数がある。しかもそれを使っているところがここだ。
+</p>
+
+<p class="caption">▼<code>dyna_push dyna_pop</code>の用例</p>
+<pre class="longlist">
+1651  brace_block     : '{'
+1652                      {
+1653                          $&lt;vars&gt;$ = dyna_push();
+1654                      }
+1655                    opt_block_var
+1656                    compstmt '}'
+1657                      {
+1658                          $$ = NEW_ITER($3, 0, $4);
+1659                          fixpos($$, $4);
+1660                          dyna_pop($&lt;vars&gt;2);
+1661                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+イテレータブロックの開始で<code>push</code>、終了で<code>pop</code>。これがブロックローカル変数
+の処理に違いない。
+
+<p>
+では関数を見ていく。
+</p>
+
+<p class="caption">▼<code>dyna_push()</code></p>
+<pre class="longlist">
+5331  static struct RVarmap*
+5332  dyna_push()
+5333  {
+5334      struct RVarmap* vars = ruby_dyna_vars;
+5335
+5336      rb_dvar_push(0, 0);
+5337      lvtbl-&gt;dlev++;
+5338      return vars;
+5339  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>lvtbl-&gt;dlev</code>を上げているのがブロックローカル変数が存在する印のようだ。
+そして<code>rb_dvar_push()</code>はと言うと……
+</p>
+
+<p class="caption">▼<code>rb_dvar_push()</code></p>
+<pre class="longlist">
+ 691  void
+ 692  rb_dvar_push(id, value)
+ 693      ID id;
+ 694      VALUE value;
+ 695  {
+ 696      ruby_dyna_vars = new_dvar(id, value, ruby_dyna_vars);
+ 697  }
+
+(eval.c)
+</pre>
+
+
+<p>
+変数名<code>id</code>、値<code>val</code>をメンバに持つ<code>struct RVarmap</code>を生成し、それをグロー
+バル変数<code>ruby_dyna_vars</code>の先頭に追加する。これはまたまたconsの形だ。
+<code>dyna_push()</code>では<code>ruby_dyna_vars</code>を退避していないので、上のスコープの
+<code>ruby_dyna_vars</code>にそのまま追加してしまうようである。
+</p>
+
+<p>
+しかもここで追加している<code>RVarmap</code>は<code>id</code>メンバの値が0だ。本書では真面目
+にやらなかったが、<code>ruby</code>の<code>ID</code>は普通に<code>rb_intern()</code>で作っている限りは
+絶対に0にはならない。つまりこの<code>RVarmap</code>は<code>NUL</code>や<code>NULL</code>のような番兵
+（sentinel）の役割を果たすのではないかと考えられる。そう考えれば、変数が
+追加されてもいないのに変数のホルダ（<code>RVarmap</code>）を追加する理由にも説明が
+付く。
+
+<p>
+次に<code>dyna_pop()</code>。
+</p>
+
+<p class="caption">▼<code>dyna_pop()</code></p>
+<pre class="longlist">
+5341  static void
+5342  dyna_pop(vars)
+5343      struct RVarmap* vars;
+5344  {
+5345      lvtbl-&gt;dlev--;
+5346      ruby_dyna_vars = vars;
+5347  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>lvtbl-&gt;dlev</code>を戻してブロック変数スコープが終わったことを記録する。
+引数を使って何かしているようだが、これは後でまとめて見よう。
+
+<p>
+これだけではブロックローカル変数を追加するところがない。ローカル変数で
+言う<code>local_cnt()</code>にあたるものがないとまずい。そこで<code>dvar</code>と<code>dyna</code>で
+<code>grep</code>しまくってみたところ、こんなコードがあった。
+</p>
+
+<p class="caption">▼<code>assignable()</code>（一部）</p>
+<pre class="longlist">
+4599  static NODE*
+4600  assignable(id, val)
+4601      ID id;
+4602      NODE *val;
+4603  {
+                            ：
+4634              rb_dvar_push(id, Qnil);
+4635              return NEW_DASGN_CURR(id, val);
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>assignable()</code>は代入系のノードを作る関数で、引用したのはそのうちブロッ
+クローカル変数を扱う部分である。先程見たばかりの<code>rb_dvar_push()</code>で新し
+い変数を（<code>ruby_dyna_vars</code>に）追加しているようだ。
+</p>
+
+
+
+<h3>パーサでの<code>ruby_dyna_vars</code></h3>
+
+<p>
+さて以上を考慮に入れて、ローカル変数スコープ一つをパースしおわった
+時点での<code>ruby_dyna_vars</code>の姿を想像してみよう。
+</p>
+
+<p>
+まず先程言ったとおり、ブロックスコープの始まりで追加される<code>id=0</code>の
+<code>RVarmap</code>はブロックスコープの切れめを表す番兵である。これを
+「<code>ruby_dyna_vars</code>のヘッダ」と呼ぶことにしよう。
+</p>
+
+<p>
+次に、さっき見せたイテレータブロックの規則のアクションのうち
+この部分に注目してほしい。
+</p>
+
+<pre class="emlist">
+$&lt;vars&gt;$ = dyna_push();    /* $&lt;vars&gt;$に入れたものは…… */
+        ：
+        ：
+dyna_pop($&lt;vars&gt;2);        /* ……$&lt;vars&gt;2に出てくる */
+</pre>
+
+<p>
+<code>dyna_push()</code>はそのときの<code>ruby_dyna_vars</code>を返す。<code>dyna_pop()</code>は
+引数を<code>ruby_dyna_vars</code>に入れる。つまりブロックの切れめごとに
+<code>ruby_dyna_vars</code>が保存・復帰されるわけだ。
+ということは以下のプログラムをパースすると、
+</p>
+
+<pre class="emlist">
+iter {
+    a = nil
+    iter {
+        b = nil
+        iter {
+            c = nil
+            # ネストレベル3
+        }
+        bb = nil
+        # ネストレベル2
+        iter {
+            e = nil
+        }
+    }
+    # ネストレベル1
+}
+</pre>
+
+<p>
+<code>ruby_dyna_vars</code>は図12のようになるはずだ。
+</p>
+
+<p class="image">
+<img src="images/ch_syntree_dynavars.jpg" alt="(dynavars)"><br>
+図12: スコープをパースし終わったときの<code>ruby_dyna_vars</code>
+</p>
+
+<p>
+この構造はなかなかうまい。どのあたりがうまいかと言うと、ネストレベルが
+深い時にもリストを全部辿っていけば自然と上のレベルの変数も見えてしまう
+ところである。レベルごとにテーブルを作るよりこちらのほうが検索過程が
+単純で済む。
+</p>
+
+<p>
+また絵では<code>bb</code>が変なところにぶらさがっているように見えるが、これで正し
+い。ネストレベルが上がって下がった後に変数が見付かったら、元のレベルの
+リンクの続きに連結されるからである。しかもこうなっていると「記号列上で
+先に存在する変数だけが定義されている」というローカル変数の仕様を自然な
+形で表現できる。
+</p>
+
+<p>
+それと最後に、（ブロックローカル変数でなく）ローカル変数スコープの
+切れめではこのリンク全体が<code>lvtbl-&gt;dyna_vars</code>に保存・復帰されている。
+少し戻って<code>local_push()</code>と<code>local_pop()</code>を確認してきてほしい。
+
+<p>
+ところでこんなに苦労して作った<code>ruby_dyna_vars</code>のリストだが、これ自体は
+評価器では使わない。このリストは変数の存在チェックをするのに使うだけで、
+パース終了と同時にGCされてしまう。そして評価器に入ってからもう一度別
+の鎖を作るようになっている。それにはかなり深い理由があるのだが……その
+あたりは改めて第三部で見ることにしよう。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

@@ -1,0 +1,1534 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第2章 オブジェクト</title></head>
+<body>
+
+<h1>第2章 オブジェクト</h1>
+
+<h2>Rubyオブジェクトの構造</h2>
+
+<h3>指針</h3>
+
+<p>
+この章からはいよいよ実際に<code>ruby</code>のソースコードを探索していく。
+まずは当初の宣言通りオブジェクトの構造から始めるとしよう。
+</p>
+
+<p>
+さて、オブジェクトがオブジェクトとして成立するにはどういう条件が必要だ
+ろうか。オブジェクトというものの説明は何通りもありうるが、本当に欠かせ
+ない条件は三つだ。即ち、
+</p>
+
+<ul>
+<li>自分とその外を区別できる（アイデンティティを持つ）</li>
+<li>働きかけに反応することができる（メソッド）</li>
+<li>内部状態を持つ（インスタンス変数）</li>
+</ul>
+
+<p>
+である。本章ではこの三つの特徴をこの順番で確認していく。
+</p>
+
+<p>
+対象となるファイルは主に<code>ruby.h</code>であるが、それに加え<code>object.c</code>、
+<code>class.c</code>、<code>variable.c</code>なども軽く眺めつつ進むことになる。
+</p>
+
+
+
+<h3><code>VALUE</code>とオブジェクト構造体</h3>
+
+<p>
+<code>ruby</code>ではオブジェクトの実体を構造体で表現し、扱うときは常に
+ポインタ経由で扱う。構造体のほうはクラスごとに違う型を使うが、
+ポインタのほうはどのクラスの構造体でも常に<code>VALUE</code>型だ
+（図1）。
+</p>
+
+<p class="image">
+<img src="images/ch_object_value.jpg" alt="(value)"><br>
+図1: <code>VALUE</code>と構造体
+</p>
+
+<p>
+<code>VALUE</code>の定義はこうだ。
+</p>
+
+<p class="caption">▼<code>VALUE</code></p>
+<pre class="longlist">
+  71  typedef unsigned long VALUE;
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>VALUE</code>は実際には各種オブジェクト構造体へのポインタにキャストして使
+う。だからポインタと<code>unsigned long</code>のサイズが違うと<code>ruby</code>はうまく動か
+ない。厳密に言えば、<code>sizeof(unsigned long)</code>よりも大きいサイズのポイン
+タ型があると動かない。さすがに最近はこの条件が成立しないシステムはまず
+ないが、昔はそういうマシンが結構あったようだ。
+</p>
+
+<p>
+一方の構造体、これには何種類かあり、オブジェクトのクラスによって次のよ
+うに使い分ける。
+</p>
+
+<table>
+<tr><td><code>struct RObject</code><td><td>以下にあてはまらないもの全て<td></tr>
+<tr><td><code>struct RClass</code><td><td>クラスオブジェクト<td></tr>
+<tr><td><code>struct RFloat</code><td><td>小数<td></tr>
+<tr><td><code>struct RString</code><td><td>文字列<td></tr>
+<tr><td><code>struct RArray</code><td><td>配列<td></tr>
+<tr><td><code>struct RRegexp</code><td><td>正規表現<td></tr>
+<tr><td><code>struct RHash</code><td><td>ハッシュテーブル<td></tr>
+<tr><td><code>struct RFile</code><td><td><code>IO</code>、<code>File</code>、<code>Socket</code>など<td></tr>
+<tr><td><code>struct RData</code><td><td>上記以外の、Cレベルで定義されたクラス全て<td></tr>
+<tr><td><code>struct RStruct</code><td><td>Rubyの構造体<code>Struct</code>クラス<td></tr>
+<tr><td><code>struct RBignum</code><td><td>大きな整数<td></tr>
+</table>
+
+<p>
+例えば文字列オブジェクトなら<code>struct RString</code>を使うので
+図2のようになる。
+</p>
+
+<p class="image">
+<img src="images/ch_object_string.jpg" alt="(string)"><br>
+図2: 文字列オブジェクトの表現
+</p>
+
+<p>
+オブジェクト構造体の定義をいくつか見てみよう。
+</p>
+
+<p class="caption">▼オブジェクト構造体の例</p>
+<pre class="longlist">
+      /* 一般のオブジェクトのための構造体 */
+ 295  struct RObject {
+ 296      struct RBasic basic;
+ 297      struct st_table *iv_tbl;
+ 298  };
+
+      /* 文字列（Stringのインスタンス）のための構造体 */
+ 314  struct RString {
+ 315      struct RBasic basic;
+ 316      long len;
+ 317      char *ptr;
+ 318      union {
+ 319          long capa;
+ 320          VALUE shared;
+ 321      } aux;
+ 322  };
+
+      /* 配列（Arrayのインスタンス）のための構造体 */
+ 324  struct RArray {
+ 325      struct RBasic basic;
+ 326      long len;
+ 327      union {
+ 328          long capa;
+ 329          VALUE shared;
+ 330      } aux;
+ 331      VALUE *ptr;
+ 332  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+個別に詳しく見るのは後回しにして、全体的な話から始めよう。
+</p>
+
+<p>
+まず、<code>VALUE</code>は<code>unsigned long</code>と定義されているので、ポインタとして使う
+ときはキャストしないといけない。そのために<code>Rxxxx()</code>というマクロがオブ
+ジェクト構造体ごとに用意されている。例えば<code>struct RString</code>なら<code>RSTRING()</code>、
+<code>struct RArray</code>なら<code>RARRAY()</code>というように。このマクロは次のように使う。
+</p>
+
+<pre class="emlist">
+VALUE str = ....;
+VALUE arr = ....;
+RSTRING(str)-&gt;len;   /* ((struct RString*)str)-&gt;len */
+RARRAY(arr)-&gt;len;    /* ((struct RArray*)arr)-&gt;len */
+</pre>
+
+<p>
+そして次に、全てのオブジェクト構造体が最初に<code>struct RBasic</code>型
+のメンバ<code>basic</code>を持っていることに注目してほしい。この結果として、
+<code>VALUE</code>がどの構造体へのポインタだろうと<code>struct RBasic*</code>にキャストすれ
+ば<code>basic</code>メンバの内容にアクセスできる（図3）。
+</p>
+
+<p class="image">
+<img src="images/ch_object_rbasic.jpg" alt="(rbasic)"><br>
+図3: <code>struct RBasic</code>
+</p>
+
+<p>
+わざわざこういう工夫をしているのだから、<code>struct RBasic</code>にはRubyの
+オブジェクトにとってかなり重要な情報が入っているに違いない。
+その<code>struct RBasic</code>の定義はこうだ。
+</p>
+
+<p class="caption">▼<code>struct RBasic</code></p>
+<pre class="longlist">
+ 290  struct RBasic {
+ 291      unsigned long flags;
+ 292      VALUE klass;
+ 293  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>flags</code>は多目的のフラグだが、最も重要な用途は構造体の型
+（<code>struct RObject</code>だとか）を記憶しておくことである。型を示すフラグは
+<code>T_xxxx</code>という名前で定義されていて、<code>VALUE</code>からはマクロ<code>TYPE()</code>で
+得ることができる。例えばこのように。
+
+<pre class="emlist">
+VALUE str;
+str = rb_str_new();    /* Rubyの文字列（構造体はRString）を生成 */
+TYPE(str)              /* 返り値はT_STRING */
+</pre>
+
+<p>
+このフラグはどれも<code>T_xxxx</code>という名前で、<code>struct RString</code>なら
+<code>T_STRING</code>、<code>struct RArray</code>なら<code>T_ARRAY</code>、というように
+非常に素直に型名と対応している。
+
+<p>
+<code>struct RBasic</code>のもう一つのメンバ<code>klass</code>はそのオブジェクトが属するクラスを
+格納している。<code>klass</code>メンバは<code>VALUE</code>型なので、格納されるのはRubyのオブジェ
+クト（へのポインタ）だ。つまりこれはクラスオブジェクトである（図4）。
+</p>
+
+<p class="image">
+<img src="images/ch_object_class.jpg" alt="(class)"><br>
+図4: オブジェクトとクラス
+</p>
+
+<p>
+オブジェクトとクラスの関係についてはこの章の「メソッド」の節で詳しく説明する。
+</p>
+
+<p>
+ちなみにメンバ名が<code>class</code>でないのはC++コンパイラでコンパイルするときに
+C++の予約語<code>class</code>と衝突しないようにするためである。
+</p>
+
+<h4>構造体の型について</h4>
+
+<p>
+<code>struct Basic</code>のメンバ<code>flags</code>には構造体の型が保存されていると言った。なぜ
+構造体の型を保存しておかなければならないのだろうか。それは全ての型の構
+造体を<code>VALUE</code>経由で扱うためである。<code>VALUE</code>にキャストしてしまったら変数に型
+の情報が残らないのでもうコンパイラは面倒を見てくれない。それゆえ自分で
+型を管理しないといけないのだ。これは全ての構造体型を統一的に扱えるこ
+との裏返しである。
+</p>
+
+<p>
+では、使う構造体はクラスで決まるはずなのに、構造体の型とクラスを
+別々に記憶しておくのはどうしてだろうか。クラスから構造体型を求めれば
+いいのではないだろうか。そうしない理由は二つある。
+</p>
+
+<p>
+一つめは、言ったことをいきなり否定して申し訳ないが、実は
+<code>struct RBasic</code>を持たない（即ち<code>klass</code>メンバがない）構造体があるのだ。
+例えば第二部で登場する<code>struct RNode</code>である。しかしこのような特別な構造体
+でも<code>flags</code>だけは最初のメンバに確保されているので、<code>flags</code>に構造体の型を入
+れておけば（今度こそ）全てのオブジェクト構造体を統一的に区分することが
+できる。
+</p>
+
+<p>
+二つめは、クラスと構造体は一対一に対応しないからだ。例えばユーザが
+Rubyレベルで定義したクラスのインスタンスは全て<code>struct RObject</code>を使うので、
+クラスから構造体型を求めるには結局全てのクラスと構造体の対応を記録して
+おかなければならない。それならば構造体に型情報を直接入れておいたほうが
+楽で、速い。
+</p>
+
+<h4><code>basic.flags</code>の用途</h4>
+
+<p>
+<code>basic.flags</code>の使い道だが、構造体型「など」という表現では気持ち悪いので
+いちおうここで全て図示しておく（図5）。先に進んで気になったとき
+使うために用意しただけなので、すぐに全部理解する必要はない。
+</p>
+
+<p class="image">
+<img src="images/ch_object_flags.jpg" alt="(flags)"><br>
+図5: <code>basic.flags</code>の使われかた
+</p>
+
+<p>
+図を見ると、32ビットマシンなら21ビットの余りがあるようだ。その部分には
+<code>FL_USER0</code>〜<code>FL_USER8</code>というフラグが定義されており、構造体ごとに
+いろいろな目的に使っている。
+図にはその例として<code>FL_USER0</code>（<code>FL_SINGLETON</code>）も入れておいた。
+</p>
+
+
+
+<h3><code>VALUE</code>埋め込みオブジェクト</h3>
+
+<p>
+話したとおり<code>VALUE</code>は<code>unsigned long</code>である。<code>VALUE</code>はポインタなのだから
+<code>void*</code>でもよさそうなものだが、そうなっていないのには理由がある。実は<code>VALUE</code>は
+ポインタでないこともあるのだ。ポインタでない<code>VALUE</code>は以下の六つである。
+</p>
+
+<ul>
+<li>小さな整数</li>
+<li>シンボル</li>
+<li><code>true</code></li>
+<li><code>false</code></li>
+<li><code>nil</code></li>
+<li><code>Qundef</code></li>
+</ul>
+
+<p>
+順番に話していこう。
+</p>
+
+<h4>小さな整数</h4>
+
+<p>
+Rubyでは全データがオブジェクトなので整数もオブジェクトである。
+しかし整数のインスタンスは非常に種類が多いので、これを構造体として
+表現すると非常に実行が遅くなってしまう恐れがある。例えば0から
+50000までインクリメントするような場合、それだけのために50000個の
+オブジェクトを生成するのはちょっとためらってしまう。
+</p>
+
+<p>
+そこで<code>ruby</code>ではある程度小さな整数は特別扱いして<code>VALUE</code>の
+中に直接埋め込むようになっている。「小さな」は、
+<code>sizeof(VALUE)*8-1</code>ビットに収まる符号付き整数を指す。つまり32ビット
+マシンなら符号1ビット、整数部分30ビットの整数だ。この範囲の整数なら
+<code>Fixnum</code>クラス、それ以外の整数なら<code>Bignum</code>クラスに所属することになる。
+</p>
+
+<p>
+ではCの<code>int</code>を<code>Fixnum</code>に変換するマクロ<code>INT2FIX()</code>を実際に見て、
+<code>Fixnum</code>が<code>VALUE</code>に直接埋め込まれていることを確認してみよう。
+</p>
+
+<p class="caption">▼<code>INT2FIX</code></p>
+<pre class="longlist">
+ 123  #define INT2FIX(i) ((VALUE)(((long)(i))&lt;&lt;1 | FIXNUM_FLAG))
+ 122  #define FIXNUM_FLAG 0x01
+
+(ruby.h)
+</pre>
+
+
+<p>
+1ビット左シフトして、1をbit orする。ということはつまり、
+</p>
+
+<table>
+<tr><td><code> 110100001000</code><td><td>変換前<td></tr>
+<tr><td><code>1101000010001</code><td><td>変換後<td></tr>
+</table>
+
+<p>
+こんなふうになるわけだ。つまり<code>Fixnum</code>である<code>VALUE</code>は常に奇数
+になる。一方Rubyのオブジェクト構造体は<code>malloc()</code>で確保されるので、
+普通は4の倍数アドレスに配置される。だから<code>Fixnum</code>である<code>VALUE</code>の値と
+範囲が重なることはない。
+</p>
+
+<p>
+また<code>int</code>や<code>long</code>を<code>VALUE</code>に変換するにはこの他に<code>INT2NUM()</code>・
+<code>LONG2NUM()</code>などのマクロも使える。どれも「○○2○○」という名前で、
+<code>NUM</code>が入っていると<code>Fixnum</code>と<code>Bignum</code>の両方を扱える。例えば
+<code>INT2NUM()</code>なら<code>Fixnum</code>に収まらないときは勝手に<code>Bignum</code>に変換してくれる。
+<code>NUM2INT()</code>なら<code>Fixnum</code>と<code>Bignum</code>の両方を<code>int</code>に変換してくれる。
+<code>int</code>の範囲に収まらなければ例外を発生するので、こちらで範囲チェックを
+したりする必要もない。
+</p>
+
+<h4>シンボル</h4>
+
+<p>
+シンボルとは何か。
+</p>
+
+<p>
+という問いは厄介なので、シンボルが必要になる理由から述べよう。
+そもそも<code>ruby</code>の内部で使っている<code>ID</code>という型がある。これだ。
+</p>
+
+<p class="caption">▼<code>ID</code></p>
+<pre class="longlist">
+  72  typedef unsigned long ID;
+
+(ruby.h)
+</pre>
+
+
+<p>
+この<code>ID</code>は任意の文字列と一対一対応する整数だ。とは言っても、この世に存在
+する全ての文字列と数値の一対一対応が決められるわけはない。「<code>ruby</code>の
+プロセス一つの中に限って一対一対応」ということである。<code>ID</code>を求める方法
+については次章『名前と名前表』で話す。
+</p>
+
+<p>
+言語処理系では名前をたくさん扱うことに
+なる。メソッド名や変数名、定数名、クラス名にファイル名。そのたくさんあ
+る名前を全て文字列（<code>char*</code>）として扱っていたのでは大変だ。何が大変かと
+言えばメモリ管理とかメモリ管理とかメモリ管理とかである。それに名前の比
+較もきっとたくさん必要になるはずだが、いちいち文字列の比較をしていたの
+では速度が落ちる。そこで文字列を直接扱うのではなく、対応する何かを使お
+うということになるわけだ。そしてたいてい「何か」は整数になる。一番扱い
+が簡単だからだ。
+</p>
+
+<p>
+その<code>ID</code>をRubyの世界に出したのがシンボルだ。<code>ruby 1.4</code>までは<code>ID</code>の値を
+そのまま<code>Fixnum</code>に変換したものがシンボルとして使われていた。今も
+<code>Symbol#to_i</code>でその値を得ることができる。しかし実績を積み重ねてきてど
+うも<code>Fixnum</code>とシンボルを同じにするのはよろしくないということがわかって
+きたので、1.6からは独立したクラス<code>Symbol</code>が作られたのである。
+</p>
+
+<p>
+<code>Symbol</code>オブジェクトもよくハッシュテーブルのキーに使われたりするためオ
+ブジェクト数が多い。そこで<code>Symbol</code>も<code>Fixnum</code>と同じように<code>VALUE</code>に埋め
+込まれることになった。<code>ID</code>を<code>Symbol</code>オブジェクトに変換するマクロ
+<code>ID2SYM()</code>を見てみよう。
+</p>
+
+<p class="caption">▼<code>ID2SYM</code></p>
+<pre class="longlist">
+ 158  #define SYMBOL_FLAG 0x0e
+ 160  #define ID2SYM(x) ((VALUE)(((long)(x))&lt;&lt;8|SYMBOL_FLAG))
+
+(ruby.h)
+</pre>
+
+
+<p>
+8ビット左シフトすれば<code>x</code>は256の倍数、つまり4の倍数になる。それに
+<code>0x0e</code>（十進で14）をbit orする（この場合足すのと同じ）のだからシンボルを
+表す<code>VALUE</code>が4の倍数になることはない。しかも奇数でもない。だから他の
+<code>VALUE</code>の範囲と重なることはない。なかなかうまい方法だ。
+</p>
+
+<p>
+最後に<code>ID2SYM()</code>の逆変換、<code>SYM2ID()</code>も見ておこう。
+</p>
+
+<p class="caption">▼<code>SYM2ID()</code></p>
+<pre class="longlist">
+ 161  #define SYM2ID(x) RSHIFT((long)x,8)
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>RSHIFT</code>は右へのビットシフトである。右シフトはプラットフォームによって
+整数の符号が残る・残らないなどの微妙な違いがあるので、マクロになっている。
+</p>
+
+<h4><code>true false nil</code></h4>
+
+<p>
+この三つはRubyの特殊オブジェクトである。
+それぞれ<code>true</code>は真の、<code>false</code>は偽の、代表的な値。
+<code>nil</code>は「オブジェクトがない」ことを示すために使われるオブジェクトだ。
+これらのCレベルでの値は以下のように定義されている。
+
+<p class="caption">▼<code>true false nil</code></p>
+<pre class="longlist">
+ 164  #define Qfalse 0        /* Rubyのfalse */
+ 165  #define Qtrue  2        /* Rubyのtrue */
+ 166  #define Qnil   4        /* Rubyのnil */
+
+(ruby.h)
+</pre>
+
+
+<p>
+今度は偶数だが、0だの2だのがポインタとして使われることはありえないので
+他の<code>VALUE</code>の範囲と重なることはない。仮想メモリ空間の最初のブロックは
+通常割り当てないからだ。<code>NULL</code>ポインタを逆参照したときにプログラムが
+すぐに落ちるようにするためである。
+</p>
+
+<p>
+それと<code>Qfalse</code>は0なのでCレベルでも偽として使える。実際<code>ruby</code>では
+真偽値を返す関数の返り値を<code>VALUE</code>や<code>int</code>にして<code>Qtrue</code>/<code>Qfalse</code>を返す、
+ということをよくやる。
+</p>
+
+<p>
+また<code>Qnil</code>のためには、<code>VALUE</code>が<code>Qnil</code>かどうか判定する専用のマクロ、
+<code>NIL_P()</code>がある。
+</p>
+
+<p class="caption">▼<code>NIL_P()</code></p>
+<pre class="longlist">
+ 170  #define NIL_P(v) ((VALUE)(v) == Qnil)
+
+(ruby.h)
+</pre>
+
+
+<p>
+〜<code>p</code>という名前はLisp由来の記法で、真偽値を返す手続きであること
+を示している。つまり<code>NIL_P</code>なら「引数は<code>nil</code>か？」ということだ。
+<code>p</code>の字はpredicate（断言する／述語）から来ているらしい。この命名規則は
+<code>ruby</code>ではいろいろなところで使われている。
+</p>
+
+<p>
+それと、Rubyでは<code>false</code>と<code>nil</code>が偽で他のオブジェクトは真なのであった。
+だがCでは<code>nil</code>（<code>Qnil</code>）は真になってしまう。
+そこで、C言語でRuby式の真偽判定をするためのマクロ<code>RTEST()</code>も用意されている。
+</p>
+
+<p class="caption">▼<code>RTEST()</code></p>
+<pre class="longlist">
+ 169  #define RTEST(v) (((VALUE)(v) &amp; ~Qnil) != 0)
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>Qnil</code>は下位2ビットめだけが1なので、<code>~Qnil</code>は下位2ビットめだけが0。
+それとbit andして真になるのは<code>Qfalse</code>と<code>Qnil</code>だけである。
+</p>
+
+<p>
+<code>!=0</code>を付け加えているのは確実に0か1にするためである。
+glibというライブラリが真偽値に0か1のみを要求するためにこうなっている
+（[ruby-dev:11049]）。
+
+<p>
+ところで<code>Qnil</code>の「<code>Q</code>」は何だろう。<code>R</code>ならわかるがなぜ<code>Q</code>なのか。
+聞いてみたところ答えは「Emacsがそうだったから」だそうだ。意外に
+楽しくなかった。
+</p>
+
+<h4><code>Qundef</code></h4>
+
+<p class="caption">▼<code>Qundef</code></p>
+<pre class="longlist">
+ 167  #define Qundef 6                /* undefined value for placeholder */
+
+(ruby.h)
+</pre>
+
+
+<p>
+この値はインタプリタ内部で「値が未定義（undefined）である」ことを表すた
+めに使われる。Rubyレベルには絶対に出てこない（出してはいけない）。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>メソッド</h2>
+
+<p>
+Rubyのオブジェクトの重要な性質として、アイデンティティがあること、
+メソッドが呼べること、インスタンスごとにデータを保持できること、
+の三点を挙げた。この節ではその第二点、オブジェクトとメソッドを
+結び付ける仕組みについて簡単に説明する。
+</p>
+
+
+<h3><code>struct RClass</code></h3>
+
+<p>
+Rubyではクラスもまたオブジェクトとして実行時に存在しているのであった。
+ということは当然、クラスオブジェクトの実体となる構造体があるはずだ。
+それが<code>struct RClass</code>である。その構造体型フラグは<code>T_CLASS</code>だ。
+</p>
+
+<p>
+またクラスとモジュールはほとんど同じものなので実体を区別する必要はない。
+従ってモジュールも構造体には<code>struct RClass</code>を使っており、
+構造体フラグを<code>T_MODULE</code>にすることで区別している。
+</p>
+
+<p class="caption">▼<code>struct RClass</code></p>
+<pre class="longlist">
+ 300  struct RClass {
+ 301      struct RBasic basic;
+ 302      struct st_table *iv_tbl;
+ 303      struct st_table *m_tbl;
+ 304      VALUE super;
+ 305  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+まず<code>m_tbl</code>（Method TaBLe）メンバに注目しよう。<code>struct st_table</code>は
+<code>ruby</code>の随所で使われているハッシュテーブルだ。詳細は次章『名前と名前表』で
+解説するが、とにかく一対一対応の関係を記録するものである。<code>m_tbl</code>の場
+合なら、このクラスの持つメソッドの名前（<code>ID</code>）とそのメソッドの実体の対
+応を記録している。メソッドの実体のつくりについては第二部・第三部で解説する。
+</p>
+
+<p>
+次に、四つめのメンバ<code>super</code>はその名の通りスーパークラスを保持している。
+<code>VALUE</code>なのでスーパークラスのクラスオブジェクト（へのポインタ）である。
+Rubyではスーパークラスがないクラス（ルートクラス）は唯一<code>Object</code>だけである。
+</p>
+
+<p>
+しかし実際には<code>Object</code>のメソッドは全て<code>Kernel</code>というモジュールで定義
+されており、<code>Object</code>はそれをインクルードしているだけ、ということは
+既に話した。モジュールは機能的には多重継承とほぼ同等なので<code>super</code>だけ
+ではうまくいかないように思えるのだが、<code>ruby</code>ではうまく変換をかけて
+単一継承に見せかけている。この操作の詳細は第4章『クラスとモジュール』で説明する。
+</p>
+
+<p>
+またこの変換の影響で<code>Object</code>の構造体の<code>super</code>には<code>Kernel</code>の実体の
+<code>struct RClass</code>が入っており、そしてそのまた<code>super</code>は<code>NULL</code>になっている。
+逆に言うと、<code>super</code>が<code>NULL</code>ならばその<code>RClass</code>は<code>Kernel</code>の実体である
+（図6）。
+</p>
+
+<p class="image">
+<img src="images/ch_object_classtree.jpg" alt="(classtree)"><br>
+図6: Cレベルでのクラスツリー
+</p>
+
+
+
+<h3>メソッドの探索</h3>
+
+<p>
+クラスがこのような構造になっているとすればメソッド呼び出しの手順は容易
+に想像できる。オブジェクトのクラスの<code>m_tbl</code>を探索し、見つからなかったら
+次々と<code>super</code>の<code>m_tbl</code>を探索していく。<code>super</code>がなくなったら……つまり
+<code>Object</code>でも見つからなかったら、そのメソッドは定義されていないということ
+だ。
+</p>
+
+<p>
+以上の手順のうち<code>m_tbl</code>の順次検索をやっているのが<code>search_method()</code>だ。
+</p>
+
+<p class="caption">▼<code>search_method()</code></p>
+<pre class="longlist">
+ 256  static NODE*
+ 257  search_method(klass, id, origin)
+ 258      VALUE klass, *origin;
+ 259      ID id;
+ 260  {
+ 261      NODE *body;
+ 262
+ 263      if (!klass) return 0;
+ 264      while (!st_lookup(RCLASS(klass)-&gt;m_tbl, id, &amp;body)) {
+ 265          klass = RCLASS(klass)-&gt;super;
+ 266          if (!klass) return 0;
+ 267      }
+ 268
+ 269      if (origin) *origin = klass;
+ 270      return body;
+ 271  }
+
+(eval.c)
+</pre>
+
+
+<p>
+この関数はクラスオブジェクト<code>klass</code>から<code>id</code>という名前のメソッドを探す。
+</p>
+
+<p>
+<code>RCLASS(value)</code>は
+</p>
+
+<pre class="emlist">
+((struct RClass*)(value))
+</pre>
+
+<p>
+を表すマクロである。
+</p>
+
+<p>
+<code>st_lookup()</code>は<code>st_table</code>からキーに対応する値を検索する関数だ。値が見
+付かれば関数全体が真を返し、見付かった値が第三引数に渡したアドレス
+（<code>&amp;body</code>）に書き込まれる。このあたりの関数は巻末の関数リファレンスに
+載っているので気になったら確認してほしい。
+
+<p>
+それにしても、毎回この探索をしていたのではいくらなんでも遅すぎるだろう。
+そこで現実には一度呼ばれたメソッドはキャッシュされ、二回目からはいちい
+ち<code>super</code>を辿らずに見付けられるようになっている。そのキャッシュも含めた
+探索は第15章『メソッド』で話すことにする。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>インスタンス変数</h2>
+
+<p>
+この節ではオブジェクトの必須条件の第三点、
+インスタンス変数の実装について解説する。
+</p>
+
+
+<h3><code>rb_ivar_set()</code></h3>
+
+<p>
+インスタンス変数はオブジェクトごとに固有のデータを保持する仕組みだ。オ
+ブジェクトに固有と言うからにはオブジェクト自体に（即ちオブジェクト
+構造体に）保存しておくのがよさそうだが、実際にはどうなのだろうか。イン
+スタンス変数にオブジェクトを代入する関数<code>rb_ivar_set()</code>を見てみよう。
+</p>
+
+<p class="caption">▼<code>rb_ivar_set()</code></p>
+<pre class="longlist">
+      /* objのインスタンス変数idにvalを代入する */
+ 984  VALUE
+ 985  rb_ivar_set(obj, id, val)
+ 986      VALUE obj;
+ 987      ID id;
+ 988      VALUE val;
+ 989  {
+ 990      if (!OBJ_TAINTED(obj) &amp;&amp; rb_safe_level() &gt;= 4)
+ 991          rb_raise(rb_eSecurityError,
+                       "Insecure: can't modify instance variable");
+ 992      if (OBJ_FROZEN(obj)) rb_error_frozen("object");
+ 993      switch (TYPE(obj)) {
+ 994        case T_OBJECT:
+ 995        case T_CLASS:
+ 996        case T_MODULE:
+ 997          if (!ROBJECT(obj)-&gt;iv_tbl)
+                  ROBJECT(obj)-&gt;iv_tbl = st_init_numtable();
+ 998          st_insert(ROBJECT(obj)-&gt;iv_tbl, id, val);
+ 999          break;
+1000        default:
+1001          generic_ivar_set(obj, id, val);
+1002          break;
+1003      }
+1004      return val;
+1005  }
+
+(variable.c)
+</pre>
+
+
+<p>
+<code>rb_raise()</code>と<code>rb_error_frozen()</code>はどちらもエラーチェックだ。これからずっ
+と言えることだが、エラーチェックというものは現実には必要だが、処理の
+本筋ではない。従って初めて読むときにはエラー処理は全て無視するべきで
+ある。
+</p>
+
+<p>
+エラー処理を削ると残るのは<code>switch</code>文だけだが、この
+</p>
+
+<pre class="emlist">
+switch (TYPE(obj)) {
+  case T_aaaa:
+  case T_bbbb:
+     ：
+}
+</pre>
+
+<p>
+というかたちは<code>ruby</code>のイディオムである。<code>TYPE()</code>はオブジェクト構造体の
+型フラグ（<code>T_OBJECT</code>や<code>T_STRING</code>）を返すマクロで、型フラグはつまり整数
+定数なので<code>switch</code>で分岐できる。<code>Fixnum</code>や<code>Symbol</code>は構造体を持たなかっ
+たが、<code>TYPE()</code>の中で特別扱いにしてちゃんと<code>T_FIXNUM</code>や<code>T_SYMBOL</code>を返し
+てくれるのでこちらで心配する必要はない。
+</p>
+
+<p>
+さて<code>rb_ivar_set()</code>に戻ろう。<code>T_OBJECT T_CLASS T_MODULE</code>の三つだけ処理
+を分けているようだ。
+この三つが選ばれた基準は、構造体の第二メンバが
+<code>iv_tbl</code>だということである。実際に見て確かめよう。
+</p>
+
+<p class="caption">▼第二メンバが<code>iv_tbl</code>であるオブジェクト構造体</p>
+<pre class="longlist">
+      /* TYPE(val) == T_OBJECT */
+ 295  struct RObject {
+ 296      struct RBasic basic;
+ 297      struct st_table *iv_tbl;
+ 298  };
+
+      /* TYPE(val) == T_CLASS or T_MODULE */
+ 300  struct RClass {
+ 301      struct RBasic basic;
+ 302      struct st_table *iv_tbl;
+ 303      struct st_table *m_tbl;
+ 304      VALUE super;
+ 305  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>iv_tbl</code>はInstance Variable TaBLe、つまりインスタンス変数の
+テーブルである。インスタンス変数名とその値の対応を記録している。
+</p>
+
+<p>
+<code>rb_ivar_set()</code>のうち、<code>iv_tbl</code>がある構造体の場合のコードを再掲しよう。
+</p>
+
+<pre class="emlist">
+if (!ROBJECT(obj)-&gt;iv_tbl)
+    ROBJECT(obj)-&gt;iv_tbl = st_init_numtable();
+st_insert(ROBJECT(obj)-&gt;iv_tbl, id, val);
+break;
+</pre>
+
+<p>
+<code>ROBJECT()</code>は<code>VALUE</code>を<code>struct RObject*</code>にキャストするマクロである。
+<code>obj</code>が指しているのが実は<code>struct RClass</code>ということもありうるが、第二メ
+ンバにだけアクセスしている限り問題は起こらない。
+</p>
+
+<p>
+また<code>st_init_numtable()</code>は新しい<code>st_table</code>を作る関数。
+<code>st_insert()</code>は<code>st_table</code>の中で関連付けを行う関数である。
+</p>
+
+<p>
+まとめるとこのコードでやっているのは、<code>iv_tbl</code>が存在しなければ作り、
+その後「変数名→オブジェクト」の対応を記録する、ということだ。
+</p>
+
+<p>
+一つ注意。<code>struct RClass</code>はクラスオブジェクトの構造体だから、
+このインスタンス変数テーブルはクラスオブジェクト自身のための
+ものだということだ。Rubyプログラムで言えば次のような場合にあたる。
+</p>
+
+<pre class="emlist">
+class C
+  @ivar = "content"
+end
+</pre>
+
+
+
+<h3><code>generic_ivar_set()</code></h3>
+
+<p>
+<code>T_OBJECT T_MODULE T_CLASS</code>以外の構造体を使うオブジェクトに対して
+インスタンス変数への代入が起きたときはどうなるのだろうか。
+</p>
+
+<p class="caption">▼<code>rb_ivar_set()</code>−<code>iv_tbl</code>がない場合</p>
+<pre class="longlist">
+1000  default:
+1001    generic_ivar_set(obj, id, val);
+1002    break;
+
+(variable.c)
+</pre>
+
+
+<p>
+<code>generic_ivar_set()</code>に委譲されている。
+関数を見る前にまず大枠を説明しておこう。
+</p>
+
+<p>
+<code>T_OBJECT T_MODULE T_CLASS</code>以外の構造体だと構造体に<code>iv_tbl</code>メンバがない
+（なぜないのかは後で説明する）。しかし構造体メンバがなくともそれ以外の
+手段でインスタンスと<code>struct st_table</code>を対応付けてやればインスタンス変数
+を持てる。<code>ruby</code>ではその対応付けをグローバルな<code>st_table</code>、
+<code>generic_iv_table</code>を使って解決している（図7）。
+</p>
+
+<p class="image">
+<img src="images/ch_object_givtable.jpg" alt="(givtable)"><br>
+図7: <code>generic_iv_table</code>
+</p>
+
+<p>
+では実際に見てみよう。
+</p>
+
+<p class="caption">▼<code>generic_ivar_set()</code></p>
+<pre class="longlist">
+ 801  static st_table *generic_iv_tbl;
+
+ 830  static void
+ 831  generic_ivar_set(obj, id, val)
+ 832      VALUE obj;
+ 833      ID id;
+ 834      VALUE val;
+ 835  {
+ 836      st_table *tbl;
+ 837
+          /* とりあえず無視してよい */
+ 838      if (rb_special_const_p(obj)) {
+ 839          special_generic_ivar = 1;
+ 840      }
+          /* generic_iv_tblがなければ作る */
+ 841      if (!generic_iv_tbl) {
+ 842          generic_iv_tbl = st_init_numtable();
+ 843      }
+ 844
+          /* 本処理 */
+ 845      if (!st_lookup(generic_iv_tbl, obj, &amp;tbl)) {
+ 846          FL_SET(obj, FL_EXIVAR);
+ 847          tbl = st_init_numtable();
+ 848          st_add_direct(generic_iv_tbl, obj, tbl);
+ 849          st_add_direct(tbl, id, val);
+ 850          return;
+ 851      }
+ 852      st_insert(tbl, id, val);
+ 853  }
+
+(variable.c)
+</pre>
+
+
+<p>
+<code>rb_special_const_p()</code>は引数がポインタではないときに真になる。
+なるのだが、この<code>if</code>文でやっていることはガーベージコレクションについて
+知ってからでないと説明できないので、ここでは省略する。
+第5章『ガ−ベージコレクション』を読んでから各自探ってみてほしい。
+</p>
+
+<p>
+<code>st_init_numtable()</code>は先程も登場した。新しいハッシュテーブルを作る。
+</p>
+
+<p>
+<code>st_lookup()</code>はキーに対応する値を検索する。この場合、<code>obj</code>に関連付けられて
+いるインスタンス変数テーブルを探す。関連付けられている値があれば関数全体は
+真を返し、第三引数のアドレス（<code>&amp;tbl</code>）に格納される。
+つまり<code>!st_lookup(...)</code>で「値が見付からなかったら」と読むことができる。
+</p>
+
+<p>
+<code>st_insert()</code>も既に説明した。テーブルに新しい対応関係を記録する。
+</p>
+
+<p>
+<code>st_add_direct()</code>は<code>st_insert()</code>とほとんど同じだが、対応関係を追加する前に
+キーが既に記録されているかどうか検査しないところが違う。つまり
+<code>st_add_direct()</code>の場合、もし既に登録されているキーを使ってしまうと同
+じキーに関する対応関係が二つ記録されてしまうことになる。
+<code>st_add_direct()</code>が使えるのは既に存在チェックをした場合とか、
+新しいテーブルを作ったばかりのときである。このコードはその条件を
+確かに満たす。
+</p>
+
+<p>
+<code>FL_SET(obj, FL_EXIVAR)</code>は<code>obj</code>の<code>basic.flags</code>にフラグ<code>FL_EXIVAR</code>を
+立てるマクロである。<code>basic.flags</code>用のフラグは全て<code>FL_xxxx</code>という
+名前になっていて、<code>FL_SET()</code>でフラグを立てられる。その逆のフラグを
+落とす操作は<code>FL_UNSET()</code>だ。
+また<code>FL_EXIVAR</code>の<code>EXIVAR</code>とはexternal instance variableの略と思われる。
+</p>
+
+<p>
+このフラグを立てるのはインスタンス変数の参照を高速化するためだ。
+もし<code>FL_EXIVAR</code>が立っていなかったら<code>generic_iv_tbl</code>を索かなくとも
+インスタンス変数は存在しないことがすぐにわかる。そして当然
+ビット検査のほうが<code>struct st_table</code>の検索よりも圧倒的に速い。
+</p>
+
+
+
+<h3>構造体の隙間</h3>
+
+<p>
+これでインスタンス変数を格納する仕組みはわかったが、どうして<code>iv_tbl</code>のな
+い構造体があるのだろうか。例えば<code>struct RString</code>や<code>struct RArray</code>には
+<code>iv_tbl</code>がないが、なぜないのだろうか。いっそのこと<code>RBasic</code>のメンバにして
+しまってはだめなのか。
+</p>
+
+<p>
+結論から言うと、そういうことはできるが、やるべきではない。実はこの問題
+は<code>ruby</code>のオブジェクト管理の仕組みと深く関係している。
+</p>
+
+<p>
+<code>ruby</code>では文字列のデータ（<code>char[]</code>）などに使うメモリは直接<code>malloc()</code>で確保す
+るが、オブジェクト構造体だけは特別扱いで、<code>ruby</code>がま
+とめて割り当て、そこからもらうようになっている。そのとき構造体型の
+種類（というかサイズ）がバラバラだと管理するのが大変なので、全ての構
+造体の共用体<code>RVALUE</code>を宣言してその配列を管理しているのだ。共
+用体のサイズはそのメンバのなかで最大サイズのものと同じになるから、一つ
+だけ大きい構造体があったりすると非常に無駄が多くなる。だからできるだけ
+構造体の大きさは揃っているのが望ましい。
+</p>
+
+<p>
+一番使う構造体とは普通、<code>struct RString</code>（文字列）だろう。その次がプログ
+ラムによって<code>struct RArray</code>（配列）、<code>RHash</code>（ハッシュ）、<code>RObject</code>（ユーザ
+定義クラス全部）などが来る。ところが困ったことに、この<code>struct RObject</code>が
+<code>struct RBasic</code> + ポインタ一つ分しか使わない。その一方で<code>struct RString</code>や
+<code>RArray</code>や<code>RHash</code>は既に<code>struct Basic</code> + ポインタ三つ分を使っている。つまり
+<code>struct RObject</code>が増えるほどポインタ二つ分のメモリが無駄になっていくわけ
+である。このうえさらに<code>RString</code>がポインタ四つ分になったりすると、
+<code>RObject</code>は実に共用体のサイズの半分以下しか使わなくなるのだ。これはさすが
+にもったいない。
+</p>
+
+<p>
+一方<code>iv_tbl</code>を配置することによって得られるメリットは多少のメモリ
+節約とスピードアップであり、しかも頻繁に使われるかどうかはわからない機
+能だ。現実に<code>ruby</code> 1.2までは<code>generic_iv_tbl</code>が導入されておらず、従って
+<code>String</code>や<code>Array</code>ではインスタンス変数を使うことはできなかったのだが、それで
+もたいして問題にはなっていなかった。その程度の機能のために大量のメモリ
+を無駄にするのはバカげている。
+</p>
+
+<p>
+以上のことを勘案すると、<code>iv_tbl</code>のためにオブジェクト構造体のサイズを増や
+すことは得にならないと結論できる。
+</p>
+
+
+
+<h3><code>rb_ivar_get()</code></h3>
+
+<p>
+変数にセットする<code>rb_ivar_set()</code>を見たので、参照するほうも軽く見ておこう。
+</p>
+
+<p class="caption">▼<code>rb_ivar_get()</code></p>
+<pre class="longlist">
+ 960  VALUE
+ 961  rb_ivar_get(obj, id)
+ 962      VALUE obj;
+ 963      ID id;
+ 964  {
+ 965      VALUE val;
+ 966
+ 967      switch (TYPE(obj)) {
+      /*（A）*/
+ 968        case T_OBJECT:
+ 969        case T_CLASS:
+ 970        case T_MODULE:
+ 971          if (ROBJECT(obj)-&gt;iv_tbl &amp;&amp;
+                  st_lookup(ROBJECT(obj)-&gt;iv_tbl, id, &amp;val))
+ 972              return val;
+ 973          break;
+      /*（B）*/
+ 974        default:
+ 975          if (FL_TEST(obj, FL_EXIVAR) || rb_special_const_p(obj))
+ 976              return generic_ivar_get(obj, id);
+ 977          break;
+ 978      }
+      /*（C）*/
+ 979      rb_warning("instance variable %s not initialized", rb_id2name(id));
+ 980
+ 981      return Qnil;
+ 982  }
+
+(variable.c)
+</pre>
+
+
+<p>
+構造は全く同じだ。
+</p>
+
+<p>
+（A）<code>struct RObject</code>か<code>RClass</code>の場合は<code>iv_tbl</code>を検索する。先程見たように、
+そもそも<code>iv_tbl</code>が<code>NULL</code>であることもあるので先にチェックしないと落ちる。
+そして<code>st_lookup()</code>は対応が見付かったときに真を返すのでこの<code>if</code>式はまとめて
+「インスタンス変数に既に代入されていたらその値を返す」と読める。
+</p>
+
+<p>
+（C）対応が見付からなかったら……つまり代入していないインスタンス変数
+を参照したら、<code>if</code>を抜けて<code>switch</code>も抜けてその次に行くことになる。そのとき
+は<code>rb_warning()</code>で実行時警告を出し、<code>nil</code>を返す。Rubyのインスタンス変数は
+代入しなくても参照できるからだ。
+</p>
+
+<p>
+（B）一方、構造体が<code>struct RObject</code>でも<code>RClass</code>でもないときは、まず
+<code>generic_iv_tbl</code>からオブジェクトのインスタンス変数テーブルを検索すること
+になる。その関数<code>generic_ivar_get()</code>は、想像が付いてしまうので省略する。
+それより注目したいのは<code>if</code>文の条件のほうだ。
+</p>
+
+<p>
+<code>generic_ivar_set()</code>したオブジェクトにフラグ<code>FL_EXIVAR</code>が立つということは
+先程話した。ここでそのフラグが高速化する役に立っているわけである。
+</p>
+
+<p>
+<code>rb_special_const_p()</code>はなんだろう。この関数が真になるのは引数の<code>obj</code>が
+構造体を持たないときである。構造体を持たないのなら<code>basic.flags</code>メンバもない
+からそもそもフラグが立てられない。だから<code>FL_xxxx()</code>はそういうオブジェクト
+に対しては常に偽を返すようになっているのだ。それゆえここでは
+<code>rb_special_const_p()</code>であるオブジェクトを特別扱いしなければならない。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>オブジェクト構造体</h2>
+
+<p>
+この節ではオブジェクト構造体のうち重要なものの具体的な姿と
+扱いかたを簡単に見ていくことにする。
+</p>
+
+
+<h3><code>struct RString</code></h3>
+
+<p>
+<code>struct RString</code>は文字列クラス<code>String</code>とその下位クラスのインスタンスの
+ための構造体である。
+</p>
+
+<p class="caption">▼<code>struct RString</code></p>
+<pre class="longlist">
+ 314  struct RString {
+ 315      struct RBasic basic;
+ 316      long len;
+ 317      char *ptr;
+ 318      union {
+ 319          long capa;
+ 320          VALUE shared;
+ 321      } aux;
+ 322  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>ptr</code>が文字列へのポインタ（PoinTeR）で、
+<code>len</code>がその長さ（LENgth）だ。非常に素直である。
+</p>
+
+<p>
+Rubyの文字列は文字列というよりバイト列で、<code>NUL</code>を含む任意のバイトを含む
+ことができる。だからRubyレベルだけ考えるなら<code>NUL</code>で終端しても意味がない
+のだが、Cの関数が<code>NUL</code>を要求するので便宜をはかるためとりあえず<code>NUL</code>終端は
+してある。ただしその分は<code>len</code>には含まれない。
+</p>
+
+<p>
+またインタプリタや拡張ライブラリから文字列オブジェクトを扱うときは
+<code>RSTRING(str)-&gt;ptr</code>や<code>RSTRING(str)-&gt;len</code>と書くことで<code>ptr</code>と<code>len</code>に
+アクセスできるし、そうしてよい。ただしいくつ注意点がある。
+</p>
+
+<ul>
+<li><code>str</code>が本当に<code>struct RString</code>を指しているかどうかは先に自分でチェックしなければならない</li>
+<li>メンバの参照はよいが変更してはならない</li>
+<li><code>RSTRING(str)-&gt;ptr</code>をローカル変数などに保存して後で使ってはいけない</li>
+</ul>
+
+<p>
+どうしてだろうか。一つにはもちろんソフトウェア工学上の原則がある。人の
+データを勝手にいじるなということだ。インターフェイス関数があるならそれ
+を使うべきである。しかしその他にも<code>ruby</code>の作りには具体的にポインタを参
+照したり保存したりしてはいけない理由があり、それは第四メンバ<code>aux</code>と関係
+がある。しかし<code>aux</code>の使われかたをちゃんと説明するにはRubyの文字列の特徴
+をもう少し説明してからでないといけない。
+</p>
+
+<p>
+Rubyの文字列はそれ自体が変化可能（mutable）である。
+変化する、とは、
+</p>
+
+<pre class="emlist">
+s = "str"        # 文字列を生成しaに代入
+s.concat("ing")  # その文字列オブジェクトに"ing"を追加する
+p(s)             # "string"が表示される
+</pre>
+
+<p>
+というように<code>s</code>の指すオブジェクトそれ自体の内容が「<code>string</code>」になる
+いうことである。JavaやPythonの文字列オブジェクトだとこういうことは
+ない。強いて言うとJavaの<code>StringBuffer</code>が近い。
+</p>
+
+<p>
+さてこれがどう関係あるのだろう。まず、変化可能ということは文字列のサイ
+ズ（<code>len</code>）が変わる可能性がある。サイズが変わるならその都度メモリ割り当
+て量も増やしたり減らしたりしなければならない。それには当然<code>realloc()</code>を使
+えばいいが、一般的に<code>malloc()</code>や<code>realloc()</code>はかなり重い操作である。文字列を変
+更するたびに<code>realloc()</code>がかかっていたのでは負荷がデカすぎる。
+</p>
+
+<p>
+そこで<code>ptr</code>の指すメモリは常に<code>len</code>よりもいくらか長く確保してある。
+これによって追加分が余りのメモリで収まるときは<code>realloc()</code>を呼ばずに済み、
+速度を向上できるわけだ。構造体メンバの<code>aux.capa</code>がその余りも含めた
+長さを保持している。
+</p>
+
+<p>
+ではもう一つの<code>aux.shared</code>は何だろう。これは文字列リテラルによる文字列
+オブジェクトの生成を高速化するための仕組みだ。
+次のRubyプログラムを見てほしい。
+</p>
+
+<pre class="emlist">
+while true do  # 永遠に繰り返す
+  a = "str"        # 内容が「str」である文字列を生成しaに代入
+  a.concat("ing")  # aの指すオブジェクトに直接"ing"を追加する
+  p(a)             # "string"と表示される
+end
+</pre>
+
+<p>
+何回ループを廻ったとしても四行目の<code>p</code>では<code>"string"</code>と表示されなければな
+らない。そのためには<code>"str"</code>という式では毎回別々の<code>char[]</code>を持つ文字列オブ
+ジェクトを作らないといけないはずだ。しかし文字列に対しては全く変更を行
+わないことも多いはずで、その場合は<code>char[]</code>の無駄なコピーがいくつもいくつ
+もできることになる。できれば一つの<code>char[]</code>を共有したいものだ。
+</p>
+
+<p>
+その共有を行う仕掛けが<code>aux.shared</code>である。リテラル式を使って生成された文
+字列オブジェクトはどれも一つの<code>char[]</code>を共有して作成される。そして変更
+が起こったときに初めて専用のメモリを割り当てるようにすればいいのである。
+共有<code>char[]</code>を使っている時はオブジェクト構造体の<code>basic.flags</code>にフラグ
+<code>ELTS_SHARED</code>が立ち、<code>aux.shared</code>にオリジナルのオブジェクトが入る。
+<code>ELTS</code>は<code>elements</code>の略のようだ。
+</p>
+
+<p>
+というところで<code>RSTRING(str)-&gt;ptr</code>の話に戻ろう。
+ポインタを参照してもよいのに代入してはいけないのは、
+まず<code>len</code>や<code>capa</code>の値が実体と合わなくなること。
+それに、リテラルとして作られた文字列を変更するときは
+<code>aux.shared</code>を切り離す必要があるからだ。
+</p>
+
+<p>
+最後に<code>RString</code>を扱う例をいくつか書いておく。<code>str</code>が<code>RString</code>を
+指す<code>VALUE</code>だと思って読んでほしい。
+</p>
+
+<pre class="emlist">
+RSTRING(str)-&gt;len;               /* 長さ */
+RSTRING(str)-&gt;ptr[0];            /* 一文字目 */
+str = rb_str_new("content", 7);  /* 内容が「content」の文字列を生成。
+                                    第二引数は長さ */
+str = rb_str_new2("content");    /* 内容が「content」の文字列を生成。
+                                    長さはstrlen()で計算してくれる */
+rb_str_cat2(str, "end");         /* Rubyの文字列にCの文字列を連結 */
+</pre>
+
+
+
+<h3><code>struct RArray</code></h3>
+
+<p>
+<code>struct RArray</code>はRubyの配列クラス<code>Array</code>のインスタンスのための構造体である。
+</p>
+
+<p class="caption">▼<code>struct RArray</code></p>
+<pre class="longlist">
+ 324  struct RArray {
+ 325      struct RBasic basic;
+ 326      long len;
+ 327      union {
+ 328          long capa;
+ 329          VALUE shared;
+ 330      } aux;
+ 331      VALUE *ptr;
+ 332  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>ptr</code>の型以外は<code>struct RString</code>とほとんど同じ構造だ。<code>ptr</code>が指す先に配
+列の内容があり、<code>len</code>がその長さ。<code>aux</code>は<code>struct RString</code>の場合と全く同
+じである。<code>aux.capa</code>が<code>ptr</code>の指すメモリの「本当の」長さであり、
+<code>aux.shared</code>は<code>ptr</code>を共有している場合に共有元の配列オブジェクトを格納
+する。
+</p>
+
+<p>
+この構造から明らかなとおりRubyの<code>Array</code>は配列であって「リスト」ではない。
+だから要素数が大きく変われば<code>realloc()</code>がかかるし、末尾以外に要素を挿入
+すれば<code>memmove()</code>が起こる。こんなことをやっていても全くわからないくらい
+高速に動いてくれるのだから最近のマシンもたいしたものだ。
+</p>
+
+<p>
+それからメンバアクセスの方法も<code>RString</code>と似ている。
+<code>RARRAY(arr)-&gt;ptr</code>や<code>RARRAY(arr)-&gt;len</code>でメンバを参照できるし、してよい、
+しかし代入はしてはならない、などなど以下同文。簡単な例だけ載せておく。
+</p>
+
+<pre class="emlist">
+/* Cから配列を操作する */
+VALUE ary;
+ary = rb_ary_new();             /* 空の配列を作成 */
+rb_ary_push(ary, INT2FIX(9));   /* Rubyの9をpush */
+RARRAY(ary)-&gt;ptr[0];            /* インデックス0を参照 */
+rb_p(RARRAY(ary)-&gt;ptr[0]);      /* ary[0]をpする（結果は9） */
+
+# Rubyから配列を操作する
+ary = []      # 空の配列を生成
+ary.push(9)   # 9をpush
+ary[0]        # インデックス0を参照
+p(ary[0])     # ary[0]をpする（結果は9）
+</pre>
+
+
+
+<h3><code>struct RRegexp</code></h3>
+
+<p>
+正規表現のクラス<code>Regexp</code>のインスタンスのための構造体。
+</p>
+
+<p class="caption">▼<code>struct RRegexp</code></p>
+<pre class="longlist">
+ 334  struct RRegexp {
+ 335      struct RBasic basic;
+ 336      struct re_pattern_buffer *ptr;
+ 337      long len;
+ 338      char *str;
+ 339  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>ptr</code>はコンパイル済みの正規表現。
+<code>str</code>がコンパイル前の文字列（正規表現のソースコード）で、
+<code>len</code>はその長さだ。
+</p>
+
+<p>
+<code>Regexp</code>オブジェクトを扱うコードは本書では登場しないので使いかたは省略
+する。拡張ライブラリから使うにしても、よほど特殊な使いかたをしない限り
+インターフェイス関数で十分なのでリファレンスがあれば済むだろう。<code>ruby</code>
+のC APIリファレンスは添付CD-ROMに入っている
+\footnote{<code>ruby</code> C APIリファレンス……添付CD-ROMの<code>archives/ruby-apiref.tar.gz</code>}。
+</p>
+
+
+
+<h3><code>struct RHash</code></h3>
+
+<p>
+<code>struct RHash</code>はRubyのハッシュテーブル、
+<code>Hash</code>オブジェクトのための構造体である。
+</p>
+
+<p class="caption">▼<code>struct RHash</code></p>
+<pre class="longlist">
+ 341  struct RHash {
+ 342      struct RBasic basic;
+ 343      struct st_table *tbl;
+ 344      int iter_lev;
+ 345      VALUE ifnone;
+ 346  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>struct st_table</code>のラッパーである。<code>st_table</code>については
+次章『名前と名前表』で詳しく解説する。
+</p>
+
+<p>
+<code>ifnone</code>は対応付けられていなかったキーを検索したときの値で、デフォルトは
+<code>nil</code>。<code>iter_lev</code>はハッシュテーブル自体をリエントラント（マルチスレッドセー
+フ）にするための仕掛けである。
+</p>
+
+
+
+<h3><code>struct RFile</code></h3>
+
+<p>
+<code>struct RFile</code>は組み込みクラス<code>IO</code>と、
+その下位クラスのインスタンスのための構造体である。
+</p>
+
+<p class="caption">▼<code>struct RFile</code></p>
+<pre class="longlist">
+ 348  struct RFile {
+ 349      struct RBasic basic;
+ 350      struct OpenFile *fptr;
+ 351  };
+
+(ruby.h)
+</pre>
+
+
+<p class="caption">▼<code>OpenFile</code></p>
+<pre class="longlist">
+  19  typedef struct OpenFile {
+  20      FILE *f;                    /* stdio ptr for read/write */
+  21      FILE *f2;                   /* additional ptr for rw pipes */
+  22      int mode;                   /* mode flags */
+  23      int pid;                    /* child's pid (for pipes) */
+  24      int lineno;                 /* number of lines read */
+  25      char *path;                 /* pathname for file */
+  26      void (*finalize) _((struct OpenFile*)); /* finalize proc */
+  27  } OpenFile;
+
+(rubyio.h)
+</pre>
+
+
+<p>
+メンバが盛大に<code>struct OpenFile</code>に移されている。<code>IO</code>オブジェクトは
+あまりインスタンス数が多くないのでこういうことをしてもよいわけだ。
+それぞれのメンバの用途はコメントに書いてある。基本的にCの<code>stdio</code>の
+ラッパーである。
+</p>
+
+
+
+<h3><code>struct RData</code></h3>
+
+<p>
+<code>struct RData</code>はいままでのものとは趣が違う。
+これは拡張ライブラリの実装のために用意されている構造体である。
+</p>
+
+<p>
+拡張ライブラリで作成するクラスにもやはり実体としての構造体が必要になる
+はずだが、その構造体の型は作成されるクラスによって決まるので、あらかじ
+めサイズや構造を知ることができない。そのため<code>ruby</code>側では「ユーザー定義
+の構造体へのポインタを管理するための構造体」を作成し、それを管理する
+ようになっている。その構造体が<code>struct RData</code>だ。
+</p>
+
+<p class="caption">▼<code>struct RData</code></p>
+<pre class="longlist">
+ 353  struct RData {
+ 354      struct RBasic basic;
+ 355      void (*dmark) _((void*));
+ 356      void (*dfree) _((void*));
+ 357      void *data;
+ 358  };
+
+(ruby.h)
+</pre>
+
+
+<p>
+<code>data</code>がユーザ定義の構造体へのポインタ、
+<code>dfree</code>がその構造体を解放するために使う関数で、
+<code>dmark</code>はマーク&amp;スイープの「マーク」を行う関数である。
+</p>
+
+<p>
+<code>struct RData</code>についてはどうにもまだ説明しづらいので、
+とりあえずイメージ図だけ見ておいてもらおう（図8）。
+メンバの詳しいことについては第5章『ガ−ベージコレクション』を読んでから改めて
+紹介することにする。
+</p>
+
+<p class="image">
+<img src="images/ch_object_rdata.jpg" alt="(rdata)"><br>
+図8: <code>struct RData</code>のイメージ図
+</p>
+
+
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

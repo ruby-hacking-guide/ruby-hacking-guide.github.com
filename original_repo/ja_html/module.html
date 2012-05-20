@@ -1,0 +1,2121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>$BBh(B14$B>O(B $B%3%s%F%-%9%H(B</title></head>
+<body>
+
+<h1>$BBh(B14$B>O(B $B%3%s%F%-%9%H(B</h1>
+
+<p>
+$BK\>O$NHO0O$O?oJ,$H9-$$!#$^$::G=i$KI>2A4o$NFbIt>uBV$,$I$&$d$C$FI=8=$5$l(B
+$B$F$$$k$+$H$$$&OC$r$9$k!#$=$N8e!"$=$N<BNc$H$7$F%/%i%9Dj5AJ8$G$N$=$N>uBV(B
+$B$NJQ2=$rFI$`!#B3$$$FFbIt>uBV$,%a%=%C%IDj5AJ8$K$I$&1F6A$rM?$($k$+$r8+$k!#(B
+$B:G8e$K!"$=$NAPJ}$K$h$C$FJQ?t$NDj5A$H;2>H$N5sF0$,JQ$o$kMM;R$r4Q;!$7$F$$$/!#(B
+</p>
+
+
+
+<h2>Ruby$B%9%?%C%/(B</h2>
+
+<h3>$B%3%s%F%-%9%H$H%9%?%C%/(B</h3>
+
+<p>
+$BE57?E*$J<jB3$-7?8@8l$N%$%a!<%8$@$H!"<jB3$-8F$S=P$7$N$?$S$K!"%m!<%+%kJQ(B
+$B?tNN0h$dLa$k>l=j$J$I<jB3$-0l$D$N<B9T$N$?$a$KI,MW$J>pJs$r9=B$BN(B
+$B!J%9%?%C%/%U%l!<%`!K$K3JG<$7!"(B
+$B$=$l$r%9%?%C%/$K@Q$`!#<jB3$-$+$iLa$k$H%9%?%C%/$N(B
+$B@hF,$N9=B$BN$,%]%C%W$5$l$FA0$N%a%=%C%I$KLa$k!#Nc$($P(B
+$BBh(B5$B>O!X%,!]%Y!<%8%3%l%/%7%g%s!Y$G2r@b$7$?(B
+C$B%W%m%0%i%`$N<B9T%$%a!<%8$O$=$l$K%T%C%?%jEv$F$O$^$k!#(B
+</p>
+
+<p>
+$B$3$3$GCm0U$7$?$$$N$O!"%W%m%0%i%`$N<B9TCf$KJQ$o$k$N$O%9%?%C%/$@$1$G!"%W(B
+$B%m%0%i%`$N$[$&$O>l=j$K$h$C$FJQ$o$C$?$j$7$J$$$3$H$@!#Nc$($P!V%m!<%+%kJQ(B
+$B?t(B<code>i</code>$B$N;2>H!W$J$i!"!V$$$^$N%U%l!<%`$N(B<code>i</code>$B$r$/$@$5$$!W$H$$$&L?Na$,$"(B
+$B$k$@$1$G!"!V$3$N%U%l!<%`$N(B<code>i</code>$B$r$/$@$5$$!W$H$O=q$+$J$$!#$D$^$j%9%?%C%/$N(B
+$B>uBV!V$@$1!W$K$h$C$F7k2L$,JQ$o$C$F$/$k$o$1$G$"$k!#$@$+$i$3$=<jB3$-$,$I(B
+$B$s$J$H$-$K2?2s8F$P$l$h$&$H$b!"$=$N%3!<%I$O0l$D$@$1$G:Q$`!J?^(B1$B!K!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_stack.jpg" alt="(stack)"><br>
+$B?^(B1: $BJQ$o$k$N$O%9%?%C%/$@$1(B
+</p>
+
+<p>
+Ruby$B$N<B9T$b4pK\E*$K$O%a%=%C%I$D$^$j<jB3$-$N8F$S=P$7$NO":?$KB>$J$i$J$$(B
+$B$+$i!"K\<AE*$K$O$3$l$HF1$8<B9T%$%a!<%8$r;}$C$F$$$k!#$D$^$j%3!<%I$OF1$8(B
+$B$G!"%"%/%;%9$5$l$kB&$N%m!<%+%kJQ?t%9%3!<%W$d%V%m%C%/%m!<%+%kJQ?t%9%3!<(B
+$B%W$N$[$&$,JQ2=$9$k!#$=$7$F$=$&$$$&%9%3!<%W$O%9%?%C%/$GI=8=$5$l$k!#(B
+</p>
+
+<p>
+$B$?$@$7(BRuby$B$G$O%$%F%l!<%?$d(B<code>Proc</code>$B$r;H$&$H0JA0$K;H$C$?%9%3!<%W$K0l;~E*$KLa(B
+$B$l$?$j$9$k$+$i%9%?%C%/$NC1=c$J%W%C%7%e!&%]%C%W$@$1$G$O<BAu$G$-$J$$!#$=(B
+$B$N$?$a(BRuby$B%9%?%C%/$O<B9TCf$KJ#;($K@Q$_JQ$($i$l$k!#$@$+$i$$$A$*$&%9%?%C%/(B
+$B$H$O8@$C$F$O$$$k$,C1$J$k%j%9%H$H9M$($?$[$&$,$$$$$+$b$7$l$J$$!#(B
+</p>
+
+<p>
+$B$^$?%a%=%C%I8F$S=P$70J30$K%/%i%9Dj5A$G$b%m!<%+%kJQ?t%9%3!<%W$,JQ$o$C$?(B
+$B$j$9$k$N$G!"%a%=%C%I8F$S=P$7$H%m!<%+%kJQ?t%9%3!<%W$NA+0\$,0lCW$7$J$$!#(B
+$BB>$K%V%m%C%/$b$"$k$N$G$=$l$bJ,3d$7$J$$$H$$$1$J$$!#$=$s$J$3$s$J$GM}M3$,(B
+$B$$$m$$$m$"$C$F!"%9%?%C%/$O$J$s$H<7K\$b$"$k!#(B
+</p>
+
+<table>
+<tr><td>$B%9%?%C%/%]%$%s%?(B<td><td>$B%9%?%C%/%U%l!<%`7?(B<td><td>$B@bL@(B<td></tr>
+<tr><td><code>ruby_frame</code><td><td><code>struct FRAME</code><td><td>$B%a%=%C%I8F$S=P$75-O?(B<td></tr>
+<tr><td><code>ruby_scope</code><td><td><code>struct SCOPE</code><td><td>$B%m!<%+%kJQ?t%9%3!<%W(B<td></tr>
+<tr><td><code>ruby_block</code><td><td><code>struct BLOCK</code><td><td>$B%V%m%C%/%9%3!<%W(B<td></tr>
+<tr><td><code>ruby_iter</code><td><td><code>struct iter</code><td><td>$B8=:_$N(B<code>FRAME</code>$B$,%$%F%l!<%?$+(B<td></tr>
+<tr><td><code>ruby_dyna_vars</code><td><td><code>struct Varmap</code><td><td>$B%V%m%C%/%m!<%+%kJQ?t%9%3!<%W(B<td></tr>
+<tr><td><code>ruby_class</code><td><td><code>VALUE</code><td><td>$B%a%=%C%IDj5A@h%/%i%9(B<td></tr>
+<tr><td><code>ruby_cref</code><td><td><code>NODE</code>$B!J(B<code>NODE_CREF</code>$B!K(B<td><td>$B%/%i%9$N%M%9%H>pJs(B<td></tr>
+</table>
+
+<p>
+C$B$O%9%?%C%/0lK\$G(BRuby$B$,<7K\$H$$$&$3$H$O!"C1=c7W;;$9$k$H(BRuby$B$N<B9T%$%a!<(B
+$B%8$O(BC$B$h$j<7G\$O<j6/$$$O$:$G$"$k!#$@$,<B:]$K$O<7G\$J$s$F$3$H$OA4$/$J(B
+$B$/$F!"(BRuby$B$N$[$&$,Fs==G\$O<j6/$$!#(B
+</p>
+
+<p>
+$B$G$O$^$:$3$l$i$N%9%?%C%/$H!"$=$N%9%?%C%/%U%l!<%`!J$G$"$k!K9=B$BN$K$D$$$F(B
+$B4JC1$K2r@b$7$F$$$3$&!#Dj5A$5$l$F$$$k%U%!%$%k$O(B<code>eval.c</code>$B$+(B<code>env.h</code>$B$@!#4pK\E*(B
+$B$K$O$3$l$i$N%9%?%C%/%U%l!<%`$r$5$o$k$N$O(B<code>eval.c</code>$B$@$1!D!D$K$7$?$$$o$1$@$,!"(B
+<code>gc.c</code>$B$G%^!<%/$9$k$H$-$K9=B$BN7?$rCN$kI,MW$,$"$k$?$a(B<code>env.h</code>$B$K=P$5$l$F$$$k(B
+$B$b$N$b$"$k!#(B
+</p>
+
+<p>
+$B$b$A$m$s%^!<%/$9$k$N$O(B<code>gc.c</code>$B$G$J$/$F$b2DG=$@$,!"$=$&$9$k$H4X?t$rJ,$1$kI,(B
+$BMW$,$"$k!#$9$k$HEvA3CY$/$J$k!#IaDL$N%W%m%0%i%`$G$O$=$s$J$3$H$r5$$K$7$F(B
+$B$O$$$1$J$$$1$l$I$b!"%,!<%Y!<%8%3%l%/%?$dI>2A4o$N3K?4It$O(B<code>ruby</code>$B:GBg$N%\%H(B
+$B%k%M%C%/$J$N$G!"$?$H$(4X?t8F$S=P$70l2s$H8@$($I$b%P%+$K$J$i$J$$$N$@!#(B
+</p>
+
+
+
+<h3><code>ruby_frame</code></h3>
+
+<p>
+<code>ruby_frame</code>$B$O%a%=%C%I8F$S=P$7$r5-O?$9$k%9%?%C%/$G$"$k!#%9%?%C%/%U%l!<%`(B
+$B9=B$BN$O(B<code>struct FRAME</code>$B$@!#$A$g$C$HMQ8l$,J6$i$o$7$$$,!"0lHLE*$JL>;l$N!V%9(B
+$B%?%C%/%U%l!<%`!W$N$3$H$rC1$K%U%l!<%`!"(B<code>struct FRAME</code>$B$N$3$H$r(B<code>FRAME</code>$B$H=q$-(B
+$BJ,$1$k$N$GCm0U$7$F$[$7$$!#(B
+</p>
+
+<p class="caption">$B"'(B<code>ruby_frame</code></p>
+<pre class="longlist">
+  16  extern struct FRAME {
+  17      VALUE self;          /* self */
+  18      int argc;            /* $B0z?t$N8D?t(B */
+  19      VALUE *argv;         /* $B0z?t$NCM$NG[Ns(B */
+  20      ID last_func;        /* $B$3$N(BFRAME$B$N%a%=%C%IL>!J8F$s$@L>A0!K(B */
+  21      ID orig_func;        /* $B$3$N(BFRAME$B$N%a%=%C%IL>!JDj5A;~$NL>A0!K(B */
+  22      VALUE last_class;    /* last_func$B$N%l%7!<%P$N%/%i%9(B */
+  23      VALUE cbase;         /* $BDj?t!&%/%i%9JQ?t$N8!:w$N5/E@(B */
+  24      struct FRAME *prev;
+  25      struct FRAME *tmp;   /* GC$BHr$1!#8e=R(B */
+  26      struct RNode *node;  /* $B<B9TCf$N9T$N%U%!%$%kL>$H9THV9f(B */
+  27      int iter;            /* $B%V%m%C%/IU$-8F$S=P$7$+!)(B */
+  28      int flags;           /* $B0J2<$NFs$D(B */
+  29  } *ruby_frame;
+
+  33  #define FRAME_ALLOCA 0   /* FRAME$B$O%9%?%C%/>e$K3NJ]$5$l$F$$$k(B */
+  34  #define FRAME_MALLOC 1   /* FRAME$B$O(Bmalloc$B$G3NJ]$5$l$F$$$k(B */
+
+(env.h)
+</pre>
+
+
+<p>
+$B$^$:!"(B<code>prev</code>$B%a%s%P$,$"$k$3$H$+$i$3$N%9%?%C%/$O%j%s%/%j%9%H$G:n$i$l$F$$$k(B
+$B$H$o$+$k!J?^(B2$B!K!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_framestack.jpg" alt="(framestack)"><br>
+$B?^(B2: <code>ruby_frame</code>
+</p>
+
+<p>
+<code>ruby_xxxx</code>$B$,@hC<$N%9%?%C%/%U%l!<%`$r;X$9$H$$$&$N$O0J8eA4$F$N%9%?%C%/$K(B
+$B6&DL$J$N$G$$$A$$$A=q$+$J$$!#(B
+
+<p>
+$B9=B$BN$N:G=i$N%a%s%P$O(B<code>self</code>$B$@!#(B<code>rb_eval()</code>$B$N0z?t$K$b(B<code>self</code>$B$,$"$C$?$N(B
+$B$K$3$A$i$G$^$?JL$K(B<code>self</code>$B$r5-21$7$F$$$k$N$O$J$<$@$m$&!#$=$l$O(BC$B%l%Y%k$N(B
+$B4X?t$N$?$a$G$"$k!#$b$C$H8@$&$H(B<code>super</code>$B$KBP1~$9$k(B<code>rb_call_super()</code>$B$H$$$&(B
+$B4X?t$N$?$a$G$"$k!#(B<code>super</code>$B$r<B9T$9$k$K$O8=:_$N%a%=%C%I$N%l%7!<%P$,I,MW(B
+$B$@$,!"(B<code>rb_call_super()</code>$B$r8F$VB&$K$O$=$s$J>pJs$,$"$k$O$:$,$J$$!#$+$H8@$C(B
+$B$F%f!<%6$N(BC$B%3!<%I$K@)8f$,0\$C$F$$$k;~E@$G(B<code>rb_eval()</code>$B$NO":?$O$b$&ES@Z$l(B
+$B$F$$$k!#$@$+$i>pJs%<%m$N>uBV$+$i(B<code>self</code>$B$N>pJs$rF@$i$l$k$h$&$K$7$F$*$+$J(B
+$B$1$l$P$J$i$J$$$H$$$&7kO@$K$J$k!#$=$7$F(B<code>FRAME</code>$B$O$=$NCV$->l=j$H$7$F$A$g(B
+$B$&$I$$$$!#(B
+</p>
+
+<p>
+$B$b$&>/$79M$($F$_$k$H!"(B<code>argc</code>$B$d(B<code>argv</code>$B$,$"$k$N$bIT;W5D$@!#%Q%i%a!<%?JQ?t(B
+$B$J$s$F$N$O7k6I%m!<%+%kJQ?t$J$N$@$+$i!"%a%=%C%I3+;O;~$KF1L>$N%m!<%+%kJQ(B
+$B?t$KBeF~$7$F$7$^$($P$=$N8e$O$b$i$C$?0z?t$r$H$C$F$*$/I,MW$J$I$J$$$N$G$O(B
+$B$J$$$@$m$&$+!#$G$O$3$l$O2?$K;H$&$N$+$H8@$($P!"<B$O$3$l$^$?(B<code>super</code>$B$N$?(B
+$B$a$J$N$@!#(BRuby$B$G$O0z?t$J$7$G(B<code>super</code>$B$r8F$V$H%a%=%C%I$N%Q%i%a!<%?JQ?t$N(B
+$BCM$,%9!<%Q!<%/%i%9$N%a%=%C%I$K0z$-EO$5$l$k$3$H$K$J$C$F$$$k!#$=$N$?$a$K(B
+$B$O$I$&$7$F$b%Q%i%a!<%?JQ?t!J$KAjEv$9$k%m!<%+%kJQ?t$NNN0h!K$r$H$C$F$*$+(B
+$B$J$1$l$P$J$i$J$$$N$@!#(B
+</p>
+
+<p>
+$B$=$l$H(B<code>last_func</code>$B$H(B<code>orig_func</code>$B$N0c$$$O(B<code>alias</code>$B$7$?%a%=%C%I$J$I$G=P$F$/$k!#(B
+$BNc$($P(B
+</p>
+
+<pre class="emlist">
+class C
+  def orig() end
+  alias ali orig
+end
+C.new.ali
+</pre>
+
+<p>
+$B$H$$$&>l9g$J$i!"(B<code>last_func=ali</code>$B$G(B<code>orig_func=orig</code>$B$@!#(B
+$B$3$N%a%s%P$K$b$d$C$Q$j(B<code>super</code>$B$,$+$i$s$G$$$?$j$9$k!#(B
+</p>
+
+
+
+<h3><code>ruby_scope</code></h3>
+
+<p>
+<code>ruby_scope</code>$B$O%m!<%+%kJQ?t%9%3!<%W$rI=$9%9%?%C%/$G$"$k!#(B
+$B%a%=%C%I!&%/%i%9Dj5AJ8!&%b%8%e!<%kDj5AJ8!&FC0[%/%i%9Dj5AJ8$J$I$,(B
+$BFHN)$7$?%9%3!<%W$@!#%9%?%C%/%U%l!<%`9=B$BN$O(B<code>struct SCOPE</code>$B$G$"$k!#(B
+$B$3$N%U%l!<%`$O(B<code>SCOPE</code>$B$H8F$\$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>ruby_scope</code></p>
+<pre class="longlist">
+  36  extern struct SCOPE {
+  37      struct RBasic super;
+  38      ID *local_tbl;        /* $B%m!<%+%kJQ?tL>$NG[Ns(B */
+  39      VALUE *local_vars;    /* $B%m!<%+%kJQ?t$N3JG<NN0h(B */
+  40      int flags;            /* $B0J2<$N;M$D(B */
+  41  } *ruby_scope;
+
+  43  #define SCOPE_ALLOCA  0         /* local_vars$B$O(Balloca$B3d$jEv$F(B */
+  44  #define SCOPE_MALLOC  1         /* local_vars$B$O(Bmalloc$B3d$jEv$F(B */
+  45  #define SCOPE_NOSTACK 2         /* POP_SCOPE$B$5$l$F$$$k(B */
+  46  #define SCOPE_DONT_RECYCLE 4    /* $B$3$N(BSCOPE$B$G(BProc$B$,@8@.$5$l$?(B */
+
+(env.h)
+</pre>
+
+
+<p>
+$B:G=i$NMWAG$,(B<code>struct RBasic</code>$B$@$+$i$3$l$O(BRuby$B%*%V%8%'%/%H$G$"$k!#$=$&$J$C(B
+$B$F$$$k$N$O(B<code>Proc</code>$B%*%V%8%'%/%H$KBP=h$9$k$?$a$@!#Nc$($P<!$N$h$&$J>l9g$r9M(B
+$B$($F$_$h$&!#(B
+</p>
+
+<pre class="emlist">
+def make_counter
+  lvar = 0
+  return Proc.new { lvar += 1 }
+end
+
+cnt = make_counter()
+p cnt.call    # 1
+p cnt.call    # 2
+p cnt.call    # 3
+cnt = nil  # $B;2>H$r@Z$k!#:n$C$?(BProc$B$O$3$3$G$d$C$HITMW$K$J$k(B
+</pre>
+
+<p>
+$B$3$N%a%=%C%I$G:n$C$?(B<code>Proc</code>$B%*%V%8%'%/%H$O:n@.85$N%a%=%C%I<+BN$h$j$b(B
+$BD9@8$-$9$k!#$=$7$F$=$N(B<code>Proc</code>$B$+$i$b%m!<%+%kJQ?t(B<code>lvar</code>$B$,;2>H$G$-$k$N$G!"(B
+$B:n$C$?(B<code>Proc</code>$B$,>CLG$9$k$^$G%m!<%+%kJQ?t$OJ];}$7$F$*$+$M$P$J$i$J$$!#(B
+$B$@$+$i%,!<%Y!<%8%3%l%/%?$G07$&$h$&$K$7$J$$$H2rJ|$N;~4|$,$o$+$i$J$$(B
+$B$N$G$"$k!#(B
+</p>
+
+<p>
+$B$^$?$o$6$o$6(B<code>struct SCOPE</code>$B$,(B<code>struct FRAME</code>$B$+$i@Z$jN%$5$l$F$$$kM}M3$OFs(B
+$BE@$"$k!#0l$D$a$O!"%/%i%9Dj5AJ8$J$I$O%a%=%C%I8F$S=P$7$G$O$J$$$,%m!<%+%k(B
+$BJQ?t%9%3!<%W$,FHN)$7$F$$$k$3$H!#Fs$D$a$O!"(BC$B$GDj5A$7$?%a%=%C%I$r8F$S=P(B
+$B$9$H$-$K$O(BRuby$B$N%m!<%+%kJQ?tNN0h$,I,MW$J$$$3$H$@!#(B
+</p>
+
+
+
+<h3><code>ruby_block</code></h3>
+
+<p>
+<code>struct BLOCK</code>$B$O(BRuby$B$N%$%F%l!<%?%V%m%C%/$d(B<code>Proc</code>$B%*%V%8%'%/%H$N<BBN$G!"(B
+$B$"$k;~E@$G$NI>2A4o$N%9%J%C%W%7%g%C%H$N$h$&$J$b$N$G$"$k!#$3$N%U%l!<(B
+$B%`$b(B<code>FRAME</code>$B!&(B<code>SCOPE</code>$B$HF1$8$h$&$K(B<code>BLOCK</code>$B$HN,5-$7$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>ruby_block</code></p>
+<pre class="longlist">
+ 580  static struct BLOCK *ruby_block;
+
+ 559  struct BLOCK {
+ 560      NODE *var;               /* $B%V%m%C%/%Q%i%a!<%?!J(Bmlhs$B!K(B */
+ 561      NODE *body;              /* $B%V%m%C%/K\BN$N%3!<%I(B */
+ 562      VALUE self;              /* BLOCK$B@8@.;~$N(Bself */
+ 563      struct FRAME frame;      /* BLOCK$B@8@.;~$N(Bruby_frame$B$N%3%T!<(B */
+ 564      struct SCOPE *scope;     /* BLOCK$B@8@.;~$N(Bruby_scope */
+ 565      struct BLOCKTAG *tag;    /* BLOCK$B$N%"%$%G%s%F%#%F%#(B */
+ 566      VALUE klass;             /* BLOCK$B@8@.;~$N(Bruby_class */
+ 567      int iter;                /* BLOCK$B@8@.;~$N(Bruby_iter */
+ 568      int vmode;               /* BLOCK$B@8@.;~$N(Bscope_vmode */
+ 569      int flags;               /* BLOCK_D_SCOPE, BLOCK_DYNAMIC */
+ 570      struct RVarmap *dyna_vars;   /* $B%V%m%C%/%m!<%+%kJQ?tNN0h(B */
+ 571      VALUE orig_thread;       /* $B%V%m%C%/$r@8@.$7$?%9%l%C%I(B */
+ 572      VALUE wrapper;           /* $B%V%m%C%/@8@.;~$N(Bruby_wrapper */
+ 573      struct BLOCK *prev;
+ 574  };
+
+ 553  struct BLOCKTAG {
+ 554      struct RBasic super;
+ 555      long dst;                /* destination$B$D$^$jLa$j@h$N$3$H(B */
+ 556      long flags;              /* BLOCK_DYNAMIC, BLOCK_ORPHAN */
+ 557  };
+
+ 576  #define BLOCK_D_SCOPE 1      /* $BFHN)$7$?%V%m%C%/JQ?t%9%3!<%W$r;}$D(B */
+ 577  #define BLOCK_DYNAMIC 2      /* BLOCK$B$,(BRuby$B%W%m%0%i%`$+$i<h$j=P$5$l$?(B */
+ 578  #define BLOCK_ORPHAN  4      /* $B@8@.85$N(BFRAME$B$,=*N;$7$F$$$k(B */
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>frame</code>$B$,%]%$%s%?$G$O$J$$$3$H$KCmL\!#$3$l$O$D$^$j(B<code>struct FRAME</code>$B$NFbMF$r$^(B
+$B$k$4$H%3%T!<$7$FJ];}$9$k$H$$$&$3$H$G$"$k!#(B<code>struct FRAME</code>$B$O!JB.EY$N$?$a$K!K(B
+$B%^%7%s%9%?%C%/>e$K%Y%?CV$-$G3NJ]$5$l$k$N$@$,!"(B<code>BLOCK</code>$B$O@8@.85(B<code>FRAME</code>$B$h$j$b(B
+$BD9@8$-$9$k2DG=@-$,$"$k$N$G!"$=$N>l9g$KHw$($F%3%T!<$7$F$"$k!#(B
+</p>
+
+<p>
+$B$^$?(B<code>struct BLOCKTAG</code>$B$,J,N%$5$l$F$$$k$N$O!"0l$D$N%V%m%C%/$+$iJ#?t$N(B
+<code>Proc</code>$B$r@8@.$7$?>l9g$K$bF1$8%V%m%C%/$G$"$k$3$H$rH=Dj$9$k$?$a$@!#F1$8%V(B
+$B%m%C%/$+$i@8@.$7$?(B<code>Proc</code>$B$OF1$8(B<code>BLOCKTAG</code>$B$r;}$D!#(B
+</p>
+
+
+
+<h3><code>ruby_iter</code></h3>
+
+<p>
+$B%9%?%C%/(B<code>ruby_iter</code>$B$O8=:_8F$S=P$7Cf$N%a%=%C%I$,%$%F%l!<%?$G$"$k$+(B
+$B!J%V%m%C%/IU$-8F$S=P$7$+$I$&$+!K$r<($9!#%U%l!<%`$O(B<code>struct iter</code>$B$G$"$k!#(B
+$B$@$,B>$N%9%?%C%/%U%l!<%`$H$NE}0l46$r9M$($F(B<code>ITER</code>$B$H8F$V$3$H$K$7$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>ruby_iter</code></p>
+<pre class="longlist">
+ 767  static struct iter *ruby_iter;
+
+ 763  struct iter {
+ 764      int iter;           /* $B0J2<$N;0$D(B */
+ 765      struct iter *prev;
+ 766  };
+
+ 769  #define ITER_NOT 0      /* $B8=:_I>2ACf$N%a%=%C%I$O%$%F%l!<%?$G$J$$(B */
+ 770  #define ITER_PRE 1      /* $B$3$l$+$i8F$V%a%=%C%I$,%$%F%l!<%?$G$"$k(B */
+ 771  #define ITER_CUR 2      /* $B8=:_I>2ACf$N%a%=%C%I$O%$%F%l!<%?$G$"$k(B */
+
+(eval.c)
+</pre>
+
+
+<p>
+$B%$%F%l!<%?$G$"$k$+$=$&$G$J$$$+$O%a%=%C%IC10L$G7h$^$k$O$:$J$N$K!"(B
+$B$3$&$7$F(B<code>struct FRAME</code>$B$H$OJL$N9=B$BN$,MQ0U$5$l$F$$$k$N$O$J$<$@$m$&$+!#(B
+</p>
+
+<p>
+$B%a%=%C%I$K!V%$%F%l!<%?$G$"$k!W>l9g$K$=$l$rCN$i$;$kI,MW$,$"$k$N$OEvA3$H(B
+$B$7$F!"!V%$%F%l!<%?$G$O$J$$!W>l9g$K$b$=$N;v<B$rCN$i$;$J$1$l$P$J$i$J$$!#(B
+$B$7$+$7$=$N$?$a$K(B<code>BLOCK</code>$B$r$^$k$4$H@Q$`$N$O$H$F$b=E$$!#8F$S=P$7B&$NJQ?t(B
+$B;2>H$J$I$N=hM}$bL5BL$KA}$($F$7$^$&!#$=$3$G(B<code>BLOCK</code>$B$NBe$o$j$K$b$C$H>.$5(B
+$B$/$F7Z$$(B<code>ITER</code>$B$r@Q$b$&!"$H$$$&$o$1$@!#>\$7$$$3$H$O(B
+$BBh(B16$B>O!X%V%m%C%/!Y$G2r@b$9$k!#(B
+</p>
+
+
+
+<h3><code>ruby_dyna_vars</code></h3>
+
+<p>
+$B%V%m%C%/%m!<%+%kJQ?tNN0h!#%U%l!<%`9=B$BN$OBhFsIt$G$b8+$?(B
+<code>struct RVarmap</code>$B$G$"$k!#:#8e$OC1$K(B<code>VARS</code>$B$H8F$V!#(B
+</p>
+
+<p class="caption">$B"'(B<code>struct RVarmap</code></p>
+<pre class="longlist">
+  52  struct RVarmap {
+  53      struct RBasic super;
+  54      ID id;                  /* $BJQ?tL>(B */
+  55      VALUE val;              /* $B$=$NCM(B */
+  56      struct RVarmap *next;
+  57  };
+
+(env.h)
+</pre>
+
+
+<p>
+$BCm0U$7$F$[$7$$$N$O!"(B<code>struct RVarmap</code>$B$O%j%9%H$K$J$C$F=i$a$F0l$D$N%U%l!<(B
+$B%`$J$N$@$H$$$&$3$H$@!J?^(B3$B!K!#$=$7$F0l$D$N%U%l!<%`$,0l$D$N%m!<(B
+$B%+%kJQ?t%9%3!<%W$KBP1~$7$F$$$k!#!V%m!<%+%kJQ?t%9%3!<%W!W$G$"$C$F!V%V%m%C(B
+$B%/%m!<%+%kJQ?t%9%3!<%W!W$G$O$J$$$N$G!"%V%m%C%/$,%M%9%H$7$F$$$k$h$&$J>l(B
+$B9g$O%j%9%H0l$D$GI=8=$5$l$k!#%V%m%C%/$N6h@Z$j$O%Q!<%5$N$H$-$H;w$F$$$F!"(B
+<code>id=0</code>$B$N(B<code>RVarmap</code>$B!J%X%C%@!K$GI=8=$5$l$k!#>\$7$$$3$H$O$3$l$^$?@hAw$j$@!#(B
+$BBh(B16$B>O!X%V%m%C%/!Y$G2r@b$9$k!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_vars.jpg" alt="(vars)"><br>
+$B?^(B3: <code>ruby_dyna_vars</code>
+</p>
+
+
+
+<h3><code>ruby_class</code></h3>
+
+<p>
+<code>ruby_class</code>$B$O(B<code>def</code>$B$G%a%=%C%I$rDj5A$9$k$H$-$KBP>]$H$J$k%/%i%9$rI=$9!#(B
+$BIaDL$N%/%i%9Dj5AJ8$G$O(B<code>self</code>$B$,$=$N%/%i%9$K$J$k$N$G(B<code>ruby_class == self</code>$B$@(B
+$B$,!"%H%C%W%l%Y%k$d(B<code>eval</code>$B!"(B<code>instance_eval</code>$B$H$$$&FC<l$J%a%=%C%I$NESCf$G$O(B
+<code>self != ruby_class</code>$B$K$J$k$3$H$,$"$k!#(B
+</p>
+
+<p>
+<code>ruby_class</code>$B$N%U%l!<%`$OC1=c$J(B<code>VALUE</code>$B$G!"%U%l!<%`9=B$BN$O$J$$!#$G$O$I(B
+$B$&$d$C$F%9%?%C%/$]$/$9$k$N$@$m$&$+!#$$$d$=$l$h$j$b!":#$^$G$b(B<code>prev</code>$B%](B
+$B%$%s%?$,$J$$9=B$BN$,$?$/$5$s$"$C$?$N$@$,!"0lBN$I$&$d$C$F%9%?%C%/$K$7$F(B
+$B$$$k$N$@$m$&!#Ez$($O<!$N@a$G!#(B
+</p>
+
+<p>
+$B0J8e$3$N%U%l!<%`$O(B<code>CLASS</code>$B$H8F$V$3$H$K$9$k!#(B
+</p>
+
+
+
+<h3><code>ruby_cref</code></h3>
+
+<p>
+<code>ruby_cref</code>$B$O%/%i%9$N%M%9%H4X78$rI=$7$F$$$k!#(B
+$B%U%l!<%`$O$3$l$^$G$HF1$8L?L>K!$G(B<code>CREF</code>$B$H$9$k!#(B
+$B$=$N9=B$BN$O!D!D(B
+</p>
+
+<p class="caption">$B"'(B<code>ruby_cref</code></p>
+<pre class="longlist">
+ 847  static NODE *ruby_cref = 0;
+
+(eval.c)
+</pre>
+
+
+<p>
+$B!D!D$J$<$+(B<code>NODE</code>$B$@!#$3$l$OC1$K!V?7$7$/Dj5A$9$kI,MW$N$J$$!"(B<code>VALUE</code>$B$G;X(B
+$B$;$k9=B$BN!W$H$7$F;H$o$l$F$$$k$K$9$.$J$$!#%N!<%I%?%$%W$O(B<code>NODE_CREF</code>$B$G!"(B
+$B%a%s%P3d$jEv$F$O0J2<$N$h$&$K$J$C$F$$$k!#(B
+</p>
+
+<table>
+<tr><td>$B6&MQBN%a%s%P(B<td><td>$B%"%/%;%9%^%/%m(B<td><td>$B;H$o$l$+$?(B<td></tr>
+<tr><td><code>u1.value</code><td><td><code>nd_clss</code><td><td>$B30$N%/%i%9!J(B<code>VALUE</code>$B!K(B<td></tr>
+<tr><td><code>u2</code><td><td>-<td><td>-<td></tr>
+<tr><td><code>u3.node</code><td><td><code>nd_next</code><td><td>$BA0$N(B<code>CREF</code>$B$rJ];}(B<td></tr>
+</table>
+
+<p>
+$B%a%s%PL>$,(B<code>nd_next</code>$B$G$b<B:]$KJ];}$9$k$N$O!VA0!J(Bprev$B!K!W$N(B<code>CREF</code>$B$G$"$k!#(B
+$BNc$($P0J2<$N%W%m%0%i%`$rNc$K$7$F<B:]$N;Q$r@bL@$7$h$&!#(B
+</p>
+
+<pre class="emlist">
+class A
+  class B
+    class C
+      nil   # $B!J(BA$B!K(B
+    end
+  end
+end
+</pre>
+
+<p>
+$B!J(BA$B!K$N%3!<%I$rI>2A$7$F$$$k$H$-!"(B<code>ruby_cref</code>$B$O?^(B4$B$N(B
+$B$h$&$K$J$C$F$$$k!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_crefstack.jpg" alt="(crefstack)"><br>
+$B?^(B4: <code>ruby_cref</code>
+</p>
+
+<p>
+$B$@$,Kh2s$3$N?^$r=q$/$N$OHK;($J$&$($K0U?^$,ITL@NF$K$J$k!#$=$3$G0J2<$G$O(B
+$B?^(B4$B$HF1$8>uBV$r<!$N$h$&$KI=5-$9$k$3$H$K$7$h$&!#(B
+</p>
+
+<pre class="emlist">
+A $B"+(B B $B"+(B C
+</pre>
+
+
+
+<h3><code>PUSH</code>/<code>POP</code>$B%^%/%m(B</h3>
+
+<p>
+$B0J>e$N%9%?%C%/%U%l!<%`9=B$BN$K$O$I$l$b%W%C%7%e!&%]%C%W$N$?$a$N%^%/%m$,(B
+$BMQ0U$5$l$F$$$k!#Nc$($P(B<code>FRAME</code>$B$J$i(B<code>PUSH_FRAME()</code>$B$H(B<code>POP_FRAME()</code>$B!"$H$$$&(B
+$B$h$&$K!#$9$0$K<BJ*$,EP>l$9$k$N$G;H$$$+$?$dFbMF$O$=$N$H$-$K@bL@$7$F$$$/(B
+$B$3$H$K$9$k!#(B
+</p>
+
+
+
+<h3>$B$=$NB>$N>uBV(B</h3>
+
+<p>
+$B$3$l$i$N%a%$%s%9%?%C%/$[$I$O=EMW$G$O$J$$$b$N$N!"(B<code>ruby</code>$B$NI>2A4o$K$OB>(B
+$B$K$b$$$/$D$+>uBV$,$"$k!#4JC1$K0lMw$7$F$*$3$&!#$?$@$7$3$l$i$O%9%?%C%/$H(B
+$B$O8B$i$J$$!#$`$7$m$=$&$G$J$$$3$H$N$[$&$,B?$$!#(B
+</p>
+
+<table>
+<tr><td>$BJQ?tL>(B<td><td>$B7?(B<td><td>$B0UL#(B<td></tr>
+<tr><td><code>scope_vmode</code><td><td><code>int</code><td><td>$B%a%=%C%IDj5A;~$N%G%U%)%k%H$N2D;k@-(B<td></tr>
+<tr><td><code>ruby_in_eval</code><td><td><code>int</code><td><td>$BI>2A3+;O8e$N%Q!<%9$G$"$k$+(B<td></tr>
+<tr><td><code>ruby_current_node</code><td><td><code>NODE*</code><td><td>$B8=:_I>2ACf$N%U%!%$%kL>$H9THV9f(B<td></tr>
+<tr><td><code>ruby_safe_level</code><td><td><code>int</code><td><td><code>$SAFE</code><td></tr>
+<tr><td><code>ruby_errinfo</code><td><td><code>VALUE</code><td><td>$B8=:_=hM}Cf$NNc30(B<td></tr>
+<tr><td><code>ruby_wrapper</code><td><td><code>VALUE</code><td><td>$B4D6-$r3VN%$9$k$?$a$N%i%C%Q!<%b%8%e!<%k(B<td></tr>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>$B%b%8%e!<%kDj5A(B</h2>
+
+<p>
+<code>class</code>$BJ8$H(B<code>module</code>$BJ8!"$=$l$KFC0[%/%i%9Dj5AJ8$O$I$l$b<BAu$,(B
+$B;w$F$$$k!#(B
+$B;w$F$$$k$b$N$r;0$DB3$1$F8+$F$$$C$F$bLLGr$/$J$$$N$G!":#2s$O0lHV(B
+$BMWAG?t$,>/$J$$!J=>$C$F4JC1$J!K(B<code>module</code>$BJ8$r8+$F$$$/$3$H$K$7$h$&!#(B
+</p>
+
+<p>
+$B$G$O$^$:!"(B<code>module</code>$BJ8$H$O$J$s$@$m$&$+!#5U$K8@$&$H!"2?$,5/$3$k$Y$-$J$N$,(B
+<code>module</code>$BJ8$J$N$@$m$&$+!#$$$/$D$+FCD'$r5s$2$F$_$h$&!#(B
+</p>
+
+<ul>
+<li>$B?7$7$$%b%8%e!<%k%*%V%8%'%/%H$,@8@.$5$l$k(B</li>
+<li>$B$=$N%b%8%e!<%k%*%V%8%'%/%H$,(B<code>self</code>$B$K$J$k(B</li>
+<li>$BFHN)$7$?%m!<%+%kJQ?t%9%3!<%W$r;}$D(B</li>
+<li>$BDj?t$NBeF~$r=q$/$H$=$N%b%8%e!<%k$KDj?t$,Dj5A$5$l$k(B</li>
+<li>$B%/%i%9JQ?t$NBeF~$r=q$/$H$=$N%b%8%e!<%k$K%/%i%9JQ?t$,Dj5A$5$l$k(B</li>
+<li><code>def</code>$BJ8$r=q$/$H$=$N%b%8%e!<%k$K%a%=%C%I$,Dj5A$5$l$k!#(B</li>
+</ul>
+
+<p>
+$B$3$&$$$&$3$H$r$I$&$d$C$F5/$3$7$F$$$k$N$+!"$=$l$,:#2s$N%]%$%s%H$@!#(B
+$B$=$l$G$O%3!<%I$r8+$F$$$/$3$H$K$7$h$&!#(B
+</p>
+
+
+
+<h3>$BD4::(B</h3>
+
+<p class="caption">$B"'%=!<%9%W%m%0%i%`(B</p>
+<pre class="longlist">
+module M
+  a = 1
+end
+</pre>
+
+
+<p class="caption">$B"'BP1~$9$k9=J8LZ(B</p>
+<pre class="longlist">
+NODE_MODULE
+nd_cname = 9621 (M)
+nd_body:
+    NODE_SCOPE
+    nd_rval = (null)
+    nd_tbl = 3 [ _ ~ a ]
+    nd_next:
+        NODE_LASGN
+        nd_cnt = 2
+        nd_value:
+            NODE_LIT
+            nd_lit = 1:Fixnum
+</pre>
+
+
+<p>
+<code>nd_cname</code>$B$,%b%8%e!<%kL>$i$7$$!#(B<code>cname</code>$B$O(BConst NAME$B$+(BClass NAME$B$+!"$I(B
+$B$A$i$+$@$m$&!#$^$?$$$/$D$+%@%s%W$7$F$_$?$,(B<code>nd_body</code>$B$K$OI,$:(B
+<code>NODE_SCOPE</code>$B$,F~$C$F$$$k!#$=$N%a%s%P(B<code>nd_tbl</code>$B$K%m!<%+%kJQ?t$N%F!<%V%k$,(B
+$BF~$C$F$$$k$7!"(B<code>struct SCOPE</code>$B$HL>A0$,;w$F$$$k$H$3$m$r9M$($F$b!"$3$N(B
+<code>NODE_SCOPE</code>$B$,%m!<%+%kJQ?t%9%3!<%W$r:n$j=P$9$?$a$K=EMW$JLr3d$r2L$?$9$N(B
+$B$O4V0c$$$J$$$h$&$@(B
+</p>
+
+
+
+<h3><code>NODE_MODULE</code></h3>
+
+<p>
+$B$G$O(B<code>rb_eval()</code>$B$N(B<code>NODE_MODULE</code>$B$N%O%s%I%i$r8+$F$_$h$&!#(B<code>rb_raise()</code>$B4X78!"(B
+$B%(%i!<=hM}!"K\6Z$H4X78$NGv$$$H$3$m$O%P%C%5%j:o$C$F$"$k!#$3$3$^$G(B200$B%Z!<%80J(B
+$B>e$b:o$k:n6H$r$d$C$F$-$?$o$1$@$+$i!"$b$&$$$A$$$A85$N%3!<%I$r<($5$J$/$F$b(B
+$B$$$$$@$m$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_MODULE</code>$B!J4JLsHG!K(B</p>
+<pre class="longlist">
+case NODE_MODULE:
+  {
+      VALUE module;
+
+      if (rb_const_defined_at(ruby_class, node-&gt;nd_cname)) {
+          /* $B4{$K:n@.:Q$N%b%8%e!<%k$rF@$k$@$1(B */
+          module = rb_const_get(ruby_class, node-&gt;nd_cname);
+      }
+      else {
+          /* $B?7$7$$%b%8%e!<%k$r:n@.$7Dj?t$K%;%C%H$9$k(B */
+          module = rb_define_module_id(node-&gt;nd_cname);
+          rb_const_set(ruby_cbase, node-&gt;nd_cname, module);
+          rb_set_class_path(module,ruby_class,rb_id2name(node-&gt;nd_cname));
+      }
+
+      result = module_setup(module, node-&gt;nd_body);
+  }
+  break;
+</pre>
+
+
+<p>
+$B$^$:%b%8%e!<%k$,(B<code>ruby_class</code>$B!J$KF~$C$F$$$k%b%8%e!<%k!K$N>e$K%M%9%H$7$F(B
+$BDj5A$5$l$F$$$k$H$$$&$3$H$r3NG'$7$?$$!#$=$l$O(B<code>ruby_class</code>$B$KBP$7$F(B
+<code>rb_const_xxxx()</code>$B$r8F$s$G$$$k$3$H$+$i$o$+$k!#0l2s$@$1(B<code>ruby_cbase</code>$B$H$$$&$N$b(B
+$BEP>l$7$F$$$k$N$@$,!"IaDL$O(B<code>ruby_class</code>$B$HF1$8$J$N$GL5;k$7$F9=$o$J$$!#(B
+$B$3$N0c$$$,LdBj$K$J$k$3$H$b$^$:$J$$!#(B
+</p>
+
+<p>
+$BA0H>!"(B<code>if</code>$B$GJ,$+$l$F$$$k$N$O!"4{$KDj5A:Q$N%b%8%e!<%k$G$"$k$+$I$&$+$N(B
+$B%A%'%C%/$@!#(BRuby$B$G$O0l$D$N%b%8%e!<%k$KBP$7$F2?EY$G$b!VDI2C!WDj5A$,(B
+$B$G$-$k$+$i$G$"$k!#(B
+</p>
+
+<pre class="emlist">
+module M
+  def a    # M#a$B$rDj5A(B
+  end
+end
+module M   # $BDj5A$NDI2C!J:FDj5A$d>e=q$-$G$O$J$$!K(B
+  def b    # M#b$B$rDj5A(B
+  end
+end
+</pre>
+
+<p>
+$B$3$N%W%m%0%i%`$G$O%b%8%e!<%k(B<code>M</code>$B$K(B<code>a</code>$B$H(B<code>b</code>$BFs$D$N%a%=%C%I$,Dj5A$5$l$k!#(B
+</p>
+
+<p>
+$B$3$N$h$&$J>l9g!"Fs2sL\$N(B<code>M</code>$B$NDj5A$G$O%b%8%e!<%k(B<code>M</code>$B$O4{$KDj?t$KF~$C$F$$$k$+(B
+$B$i!"$=$l$r<h$j=P$7$F;H$&$@$1$G$$$$!#Dj?t(B<code>M</code>$B$,$J$$>l9g$O=i$a$F$NDj5A$J$N(B
+$B$G!J(B<code>rb_define_module_id()</code>$B$G!K%b%8%e!<%k$r:n$k!#(B
+</p>
+
+<p>
+$B:G8e$K(B<code>module_setup()</code>$B$@$,!"$3$N4X?t$,%b%8%e!<%kJ8K\BN$N<B9T$r9T$C$F$$$k!#(B
+$B%b%8%e!<%kJ8$@$1$G$J$/%/%i%9J8$dFC0[%/%i%9J8$b(B<code>module_setup()</code>$B$G<B9T$9$k!#(B
+$B!V;0$D$NJ8$O$I$l$b;w$?$h$&$J$b$N!W$H8@$C$?$N$O$=$l$,M}M3$@!#(B
+$B$H$j$"$($:0z?t$K(B<code>node-&gt;nd_body</code>$B!J(B<code>NODE_SCOPE</code>$B!K$rEO$7$F$$$k$H$$$&$3$H$K(B
+$BCmL\$7$F$*$$$F$[$7$$!#(B
+</p>
+
+
+
+<h3><code>module_setup()</code></h3>
+
+<p>
+$B%b%8%e!<%kJ8!"%/%i%9J8!"FC0[%/%i%9J8$NK\BN$N<B9T$r9T$&$N$,(B
+<code>module_setup()</code>$B$@!#$$$h$$$h(BRuby$B%9%?%C%/$NA`:n$,BgNL$KEP>l$7$F$/$k!#(B
+</p>
+
+<p class="caption">$B"'(B<code>module_setup()</code></p>
+<pre class="longlist">
+3424  static VALUE
+3425  module_setup(module, n)
+3426      VALUE module;
+3427      NODE *n;
+3428  {
+3429      NODE * volatile node = n;
+3430      int state;
+3431      struct FRAME frame;
+3432      VALUE result;               /* OK */
+3433      TMP_PROTECT;
+3434
+3435      frame = *ruby_frame;
+3436      frame.tmp = ruby_frame;
+3437      ruby_frame = &amp;frame;
+3438
+3439      PUSH_CLASS();
+3440      ruby_class = module;
+3441      PUSH_SCOPE();
+3442      PUSH_VARS();
+3443
+          /* $B!J(BA$B!K(Bruby_scope-&gt;local_vars$B$N=i4|2=(B */
+3444      if (node-&gt;nd_tbl) {
+3445          VALUE *vars = TMP_ALLOC(node-&gt;nd_tbl[0]+1);
+3446          *vars++ = (VALUE)node;
+3447          ruby_scope-&gt;local_vars = vars;
+3448          rb_mem_clear(ruby_scope-&gt;local_vars, node-&gt;nd_tbl[0]);
+3449          ruby_scope-&gt;local_tbl = node-&gt;nd_tbl;
+3450      }
+3451      else {
+3452          ruby_scope-&gt;local_vars = 0;
+3453          ruby_scope-&gt;local_tbl  = 0;
+3454      }
+3455
+3456      PUSH_CREF(module);
+3457      ruby_frame-&gt;cbase = (VALUE)ruby_cref;
+3458      PUSH_TAG(PROT_NONE);
+3459      if ((state = EXEC_TAG()) == 0) {
+3460          if (trace_func) {
+3461              call_trace_func("class", ruby_current_node, ruby_class,
+3462                              ruby_frame-&gt;last_func,
+3463                              ruby_frame-&gt;last_class);
+3464          }
+3465          result = rb_eval(ruby_class, node-&gt;nd_next);
+3466      }
+3467      POP_TAG();
+3468      POP_CREF();
+3469      POP_VARS();
+3470      POP_SCOPE();
+3471      POP_CLASS();
+3472
+3473      ruby_frame = frame.tmp;
+3474      if (trace_func) {
+3475          call_trace_func("end", ruby_last_node, 0,
+3476                          ruby_frame-&gt;last_func, ruby_frame-&gt;last_class);
+3477      }
+3478      if (state) JUMP_TAG(state);
+3479
+3480      return result;
+3481  }
+
+(eval.c)
+</pre>
+
+
+<p>
+$B0lB)$GFI$`$K$O$d$dBg$-$9$.$k!#(B
+$B$$$i$J$=$&$J$H$3$m$+$i:o$C$F$$$/$3$H$K$7$h$&!#(B
+</p>
+
+<p>
+$B$^$:(B<code>trace_func</code>$B<~JU$OL5>r7o$K>C$;$k!#(B
+</p>
+
+<p>
+$B%?%04X78$N%$%G%#%*%`$,8+$($k$N$G!"$3$l$b$b$C$H$o$+$j$d$9$/(B
+Ruby$B$N(B<code>ensure</code>$B$GI=8=$7$F$7$^$*$&!#(B
+</p>
+
+<p>
+$B4X?t3+;OD>8e!"$o$6$o$60z?t$N(B<code>n</code>$B$r%m!<%+%kJQ?t(B<code>node</code>$B$KBeF~$7$F$$$k$,!"(B
+<code>node</code>$B$K$O(B<code>volatile</code>$B$,IU$$$F$*$j$7$+$b$=$N$"$HA4$/BeF~$7$F$$$J$$(B
+$B$3$H$+$i$3$l$O(BGC$BHr$1$H$o$+$k!#$h$C$F:G=i$+$i0z?t$r(B<code>node</code>$B$K$7$F$b(B
+$B0UL#$OJQ$o$i$J$$!#(B
+</p>
+
+<p>
+$B4X?tA0H>!"(B<code>ruby_frame</code>$B$r%0%A%c%0%A%c$H$$$8$C$F$k$H$3$m$H(B
+$B8eH>$N(B<code>ruby_frame = frame.tmp</code>$B$O$I$&8+$F$bBP$K$J$C$F$$$k!#(B
+$B$3$3$K$O8e$GCmL\$9$k$H$7$F!"$H$j$"$($:(B<code>ruby_frame</code>$B$N(B<code>push pop</code>$B$H(B
+$B9M$($F$*$/!#(B
+</p>
+
+<p>
+$B$^$?!J(BA$B!K$N%3!<%I$O%3%a%s%H$NDL$j(B<code>ruby_scope-&gt;local_vars</code>$B$N=i4|2=!"$H$^(B
+$B$H$a$i$l$=$&$@!#8e$G>\=R$9$k!#(B
+</p>
+
+<p>
+$B7k2LE*$K0J2<$@$1$K$^$H$a$i$l$?!#(B
+</p>
+
+<p class="caption">$B"'(B<code>module_setup</code>$B!J4JLsHG!K(B</p>
+<pre class="longlist">
+static VALUE
+module_setup(module, node)
+    VALUE module;
+    NODE *node;
+{
+    struct FRAME frame;
+    VALUE result;
+
+    push FRAME
+    PUSH_CLASS();
+    ruby_class = module;
+    PUSH_SCOPE();
+    PUSH_VARS();
+    ruby_scope-&gt;local_vars$B$N=i4|2=(B
+    PUSH_CREF(module);
+    ruby_frame-&gt;cbase = (VALUE)ruby_cref;
+    begin
+        result = rb_eval(ruby_class, node-&gt;nd_next);
+    ensure
+        POP_TAG();
+        POP_CREF();
+        POP_VARS();
+        POP_SCOPE();
+        POP_CLASS();
+        pop FRAME
+    end
+    return result;
+}
+</pre>
+
+
+<p>
+<code>node-&gt;nd_next</code>$B$r(B<code>rb_eval()</code>$B$7$F$$$k$N$G$3$l$,%b%8%e!<%kJ8K\BN$N%3!<%I$G(B
+$B$"$k$3$H$O$$$$$H$7$h$&!#LdBj$O$=$l0J30$@!#8+$k$Y$-%]%$%s%H$O8^$D$"$k!#(B
+</p>
+
+<ul>
+<li><code>PUSH_SCOPE() PUSH_VARS()</code>$B$G5/$3$k$3$H(B</li>
+<li>$B$I$&$d$C$F%m!<%+%kJQ?tNN0h$r3d$jEv$F$F$$$k$+(B</li>
+<li><code>PUSH_CLASS()</code>$B$N8z2L(B</li>
+<li><code>ruby_cref</code>$B$H(B<code>ruby_frame-&gt;cbase</code>$B$N4X78(B</li>
+<li><code>ruby_frame</code>$B$r$$$8$C$F2?$r$7$F$$$k$N$+(B</li>
+</ul>
+
+<p>
+$B=gHV$KD4::$7$F$$$3$&!#(B
+</p>
+
+
+
+<h3>$B%m!<%+%kJQ?t%9%3!<%W$N@8@.(B</h3>
+
+<p>
+<code>PUSH_SCOPE()</code>$B$,%m!<%+%kJQ?tNN0h$r@Q$_!"(B<code>PUSH_VARS()</code>$B$,%V%m%C%/%m!<%+%k(B
+$BJQ?tNN0h$r@Q$`$o$1$@$+$i!"$3$NFs$D$G?7$7$$%m!<%+%kJQ?t%9%3!<%W$,:n$j(B
+$B=P$5$l$k$3$H$K$J$k!#$3$l$i$N%^%/%m$NCf?H$rDI$C$F!"<B:]$K2?$r$7$F(B
+$B$$$k$N$+8+$F$_$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>PUSH_SCOPE() POP_SCOPE()</code></p>
+<pre class="longlist">
+ 852  #define PUSH_SCOPE() do {               \
+ 853      volatile int _vmode = scope_vmode;  \
+ 854      struct SCOPE * volatile _old;       \
+ 855      NEWOBJ(_scope, struct SCOPE);       \
+ 856      OBJSETUP(_scope, 0, T_SCOPE);       \
+ 857      _scope-&gt;local_tbl = 0;              \
+ 858      _scope-&gt;local_vars = 0;             \
+ 859      _scope-&gt;flags = 0;                  \
+ 860      _old = ruby_scope;                  \
+ 861      ruby_scope = _scope;                \
+ 862      scope_vmode = SCOPE_PUBLIC
+
+ 869  #define POP_SCOPE()                                      \
+ 870      if (ruby_scope-&gt;flags &amp; SCOPE_DONT_RECYCLE) {        \
+ 871         if (_old) scope_dup(_old);                        \
+ 872      }                                                    \
+ 873      if (!(ruby_scope-&gt;flags &amp; SCOPE_MALLOC)) {           \
+ 874          ruby_scope-&gt;local_vars = 0;                      \
+ 875          ruby_scope-&gt;local_tbl  = 0;                      \
+ 876          if (!(ruby_scope-&gt;flags &amp; SCOPE_DONT_RECYCLE) &amp;&amp; \
+ 877              ruby_scope != top_scope) {                   \
+ 878              rb_gc_force_recycle((VALUE)ruby_scope);      \
+ 879          }                                                \
+ 880      }                                                    \
+ 881      ruby_scope-&gt;flags |= SCOPE_NOSTACK;                  \
+ 882      ruby_scope = _old;                                   \
+ 883      scope_vmode = _vmode;                                \
+ 884  } while (0)
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>SCOPE</code>$B$b%?%0$H0l=o$G!"%^%7%s%9%?%C%/$HF14|$5$;$F%9%?%C%/$r:n$j=P$7$F$$(B
+$B$k$h$&$@!#$?$@HyL/$K0c$&$N$O!"$3$A$i$O%9%?%C%/%U%l!<%`$NNN0h<+BN$O%R!<(B
+$B%W$+$i3NJ]$7$F$*$j!"%9%?%C%/9=B$$r:n$j=P$9$?$a$K%^%7%s%9%?%C%/$r;H$C(B
+$B$F$$$k$H$$$&$H$3$m$@$m$&!J?^(B5$B!K!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_scopestack.jpg" alt="(scopestack)"><br>
+$B?^(B5: $B%^%7%s%9%?%C%/$H(BSCOPE$B%9%?%C%/(B
+</p>
+
+<p>
+$B$=$l$H%^%/%m$NCf$G2?EY$b=P$F$/$k(B<code>SCOPE_</code>$B$J$s$?$i$H$$$&%U%i%0$K$D$$$F$O!"(B
+$B3F%9%?%C%/%U%l!<%`$N5-217A<0$H%V%m%C%/$N$3$H$rA4$FOC$7$F$+$i$G$J$$$H(B
+$B@bL@$G$-$J$$!#Bh(B16$B>O!X%V%m%C%/!Y$G$^$H$a$F$d$k$3$H$K$9$k!#(B
+</p>
+
+
+
+<h3>$B%m!<%+%kJQ?tNN0h$N3NJ](B</h3>
+
+<p>
+$B2?EY$b8@$C$F$$$kDL$j%m!<%+%kJQ?t%9%3!<%W$O(B<code>struct SCOPE</code>$B$GI=$5$l$k$N(B
+$B$@$,!"(B<code>struct SCOPE</code>$B$OJ8;zDL$j!V%9%3!<%W!W$G$"$C$F!"%m!<%+%kJQ?t$r(B
+$B3JG<$9$k<BBN$,$J$$!#$b$&$A$g$C$HD>Y#E*$K8@$&$H!"NN0h$X$N%]%$%s%?$O(B
+$B$"$C$F$b$=$N@h$NG[Ns$,$J$$$N$@!#$=$NG[Ns$r=`Hw$7$F$$$k$N$,(B
+<code>module_setup()</code>$B$N<!$NItJ,$G$"$k!#(B
+</p>
+
+<p class="caption">$B"'%m!<%+%kJQ?t%9%m%C%H$N=`Hw(B</p>
+<pre class="longlist">
+3444  if (node-&gt;nd_tbl) {
+3445      VALUE *vars = TMP_ALLOC(node-&gt;nd_tbl[0]+1);
+3446      *vars++ = (VALUE)node;
+3447      ruby_scope-&gt;local_vars = vars;
+3448      rb_mem_clear(ruby_scope-&gt;local_vars, node-&gt;nd_tbl[0]);
+3449      ruby_scope-&gt;local_tbl = node-&gt;nd_tbl;
+3450  }
+3451  else {
+3452      ruby_scope-&gt;local_vars = 0;
+3453      ruby_scope-&gt;local_tbl  = 0;
+3454  }
+
+(eval.c)
+</pre>
+
+
+<p>
+$BKAF,$N(B<code>TMP_ALLOC()</code>$B$O<!$N9`$G8+$k!#0l8@$G8@$&$H!V3N<B$K%9%?%C%/$K(B
+$B3d$jEv$F$F$/$l$k!J=>$C$F(BGC$B$r9MN8$7$J$/$F$h$$!K(B<code>alloca()</code>$B!W$@!#(B
+</p>
+
+<p>
+$B$=$l$G(B<code>node-&gt;nd_tbl</code>$B$K$O<B$OBh(B12$B>O!X9=J8LZ$N9=C[!Y$G$d$C$?%m!<%+%kJQ?tL>$N(B
+$B%F!<%V%k$,F~$C$F$$$k!#$D$^$j(B<code>nd_tbl[0]</code>$B$K%F!<%V%k%5%$%:$,F~$C$F$$$F!"(B
+$B;D$j$O(B<code>ID</code>$B$NG[Ns$K$J$C$F$$$k!#$=$N%F!<%V%k$O(B<code>SCOPE</code>$B$N(B<code>local_tbl</code>$B$K$=$N(B
+$B$^$^0\?"$7!"$^$?%m!<%+%kJQ?t$NCM$r3JG<$9$k$?$a$K(B<code>local_vars</code>$B$r3d$jEv$F(B
+$B$F$$$k$h$&$@!#$3$N$"$?$j$OJ6$i$o$7$$$N$G!V$3$C$A$,JQ?tL>!W!V$3$C$A$,CM!W(B
+$B$H=q$-9~$s$G$*$/$H$$$$!#(B<code>tbl</code>$B$,IU$/$[$&$,L>A0$G$"$k!#(B
+</p>
+
+<p>
+$B$5$F!"(B<code>local_vars</code>$B$N3d$jEv$F$r:Y$+$/8+$F$_$h$&!#(B<code>local_tbl[0]</code>$B$,%m!<%+(B
+$B%kJQ?t$N?t$@$+$i!"$J$<$+%5%$%:$r(B+1$B$7$F3d$jEv$F$F$$$k!#$3$3$K$O:#EY$O(B
+<code>module_setup()</code>$B$N0z?t(B<code>node</code>$B!J(B<code>NODE_SCOPE</code>$B!K$rF~$l$F$$$k$h$&$@!#(B
+$B$D$^$j$3$NJ8$,=*$o$C$?$H$3$m$G?^(B6$B$N$h$&$K$J$k!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_localvars.jpg" alt="(localvars)"><br>
+$B?^(B6: <code>ruby_scope-&gt;local_vars</code>
+</p>
+
+<p>
+$B$3$N(B<code>node</code>$B$O$I$3$G;H$o$l$F$$$k$N$@$m$&!#(B
+<code>local_vars</code>$B%a%s%P$r@v$C$F$_$?$,(B<code>eval.c</code>$B$G$O%$%s%G%C%/%9(B<code>-1</code>$B$X$N%"%/%;%9$O(B
+$B8+Ev$?$i$J$$!#BP>]%U%!%$%k$r9-$2$F$_$k$H!"(B<code>gc.c</code>$B$G%"%/%;%9$7$F$$$?!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_gc_mark_children()</code>$B!=(B<code>T_SCOPE</code></p>
+<pre class="longlist">
+ 815  case T_SCOPE:
+ 816    if (obj-&gt;as.scope.local_vars &amp;&amp;
+            (obj-&gt;as.scope.flags &amp; SCOPE_MALLOC)) {
+ 817        int n = obj-&gt;as.scope.local_tbl[0]+1;
+ 818        VALUE *vars = &amp;obj-&gt;as.scope.local_vars[-1];
+ 819
+ 820        while (n--) {
+ 821            rb_gc_mark(*vars);
+ 822            vars++;
+ 823        }
+ 824    }
+ 825    break;
+
+(gc.c)
+</pre>
+
+
+<p>
+$B$D$^$j$I$&$d$i$3$l$O(B<code>node</code>$B$r(BGC$B$+$iJ]8n$9$k$?$a$N;E3]$1$i$7$$!#$@$,$J$<%^!<(B
+$B%/$7$J$$$H$$$1$J$$$N$@$m$&!#(B<code>node</code>$B$O$o$6$o$6(B<code>volatile</code>$B$J%m!<%+%kJQ?t$KF~$l(B
+$B$F$"$k$N$@$+$i!"(B<code>module_setup()</code>$B$N<B9TCf$O(BGC$B$5$l$J$$$O$:$G$"$k!#(B
+</p>
+
+<p>
+$B@5D>$K8@$&$HI.<T$O$7$P$i$/$OC1$J$k4V0c$$$@$m$&$H;W$C$F$$$?$N$@$,!"(B
+$B<B$O$H$F$b0UL#$,$"$k$3$H$,$o$+$C$?!#LdBj$O$=$N<!$N<!$N9T$N$3$l$@!#(B
+</p>
+
+<p class="caption">$B"'(B<code>ruby_scope-&gt;local_tbl</code></p>
+<pre class="longlist">
+3449  ruby_scope-&gt;local_tbl = node-&gt;nd_tbl;
+
+(eval.c)
+</pre>
+
+
+<p>
+$B%Q!<%5$GMQ0U$7$?%m!<%+%kJQ?tL>$N%F!<%V%k$r$=$N$^$^;H$C$F$$$k!#$3$N%F!<(B
+$B%V%k$O$$$D2rJ|$5$l$k$N$@$m$&!#$=$l$O$3$N(B<code>node</code>$B$,;2>H$5$l$J$/$J$C$?$H$-$G(B
+$B$"$k!#$G$O(B<code>node</code>$B$O$$$D2rJ|$5$l$k$Y$-$@$m$&!#$=$l$O$3$N9T$GBeF~$r9T$C$?(B
+<code>SCOPE</code>$B$,A4$F>C$($F$+$i$G$"$k!#$G$O$=$l$O$$$D$N$3$H$@$m$&$+!#(B
+</p>
+
+<p>
+<code>SCOPE</code>$B$O$=$l$,@8@.$5$l$k860x$K$J$C$?J8$h$j$bD9@8$-$9$k$3$H$,$"$k!#(B
+$BBh(B16$B>O!X%V%m%C%/!Y$G@bL@$9$k$H$*$j!"(B<code>Proc</code>$B%*%V%8%'%/%H$r@8@.$9$k$H$=(B
+$B$3$+$i(B<code>SCOPE</code>$B$,;2>H$5$l$k$+$i$@!#$D$^$j(B<code>module_setup()</code>$B$,=*$o$C$F$b$=(B
+$B$3$G:n$C$?(B<code>SCOPE</code>$B$,MQ:Q$_$K$J$k$H$O8B$i$J$$!#$@$+$i(B<code>node</code>$B$O(B
+<code>module_setup()</code>$B!J$N%9%?%C%/%U%l!<%`!K$+$i;2>H$5$l$F$$$k$@$1$G$OIT==J,(B
+$B$G!"(B<code>SCOPE</code>$B$+$i!VD>@\$K!W;2>H$5$l$F$$$J$/$F$O$J$i$J$$$N$@!#(B
+</p>
+
+<p>
+$B$^$?$=$N0lJ}$G%m!<%+%kJQ?t$N(B<code>volatile node</code>$B$b30$;$J$$!#$G$J$$$H(B
+<code>local_vars</code>$B$KBeF~$9$k$^$G$N$"$$$@(B<code>node</code>$B$,Ch$KIb$$$F$7$^$&!#(B
+
+<p>
+$B$7$+$7!"$=$l$J$i:#EY$O(B<code>SCOPE</code>$B$N(B<code>local_vars</code>$B$,$^$:$$$N$G$O$J$$$@$m$&$+!#(B
+<code>TMP_ALLOC()</code>$B$O8@$C$?$H$*$j%9%?%C%/3d$jEv$F$J$N$G!"(B<code>module_setup()</code>$B$N(B
+$B=*N;$HF1;~$KL58z$K$J$C$F$7$^$&!#$3$l$,<B$O!"(B<code>Proc</code>$B$r@8@.$7$?;~E@$G(B
+$B$$$-$J$j(B<code>malloc()</code>$B3d$jEv$F$K@Z$jBX$($k$h$&$K$J$C$F$$$k$N$@!#>\$7$$$3$H$O(B
+$BBh(B16$B>O!X%V%m%C%/!Y$G2r@b$9$k!#(B
+
+<p>
+$B$=$7$F:G8e$K!"(B<code>rb_mem_clear()</code>$B$O(B0$B=<E6$+$H;W$$$-$d<B$O(B<code>VALUE</code>$B$NG[Ns$K(B
+$BBP$9$k(B<code>Qnil</code>$B=<E6$G$"$k!J(B<code>array.c</code>$B!K!#$3$l$GA4$F$NDj5A:Q$_%m!<%+%kJQ?t$,(B
+<code>nil</code>$B$K=i4|2=$5$l$k!#(B
+</p>
+
+
+
+<h3><code>TMP_ALLOC()</code></h3>
+
+<p>
+$B<!$K%m!<%+%kJQ?t$NNN0h$r<B:]$K3d$jEv$F$F$$$?(B<code>TMP_ALLOC()</code>$B$rFI$b$&!#(B
+$B$3$N%^%/%m$O<B$O(B<code>module_setup()</code>$B$N:G=i$N$[$&$K$R$C$=$j$HB8:_$9$k(B
+<code>TMP_PROTECT</code>$B$HAH$K$J$C$F$$$k!#E57?E*$J;H$$$+$?$O$3$&$@!#(B
+</p>
+
+<pre class="emlist">
+VALUE *ptr;
+TMP_PROTECT;
+
+ptr = TMP_ALLOC(size);
+</pre>
+
+<p>
+$B$J$<(B<code>TMP_PROTECT</code>$B$,%m!<%+%kJQ?tDj5A$N0LCV$K$"$k$+$H$$$&$H!D!D(B
+$BDj5A$r8+$F$_$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>TMP_ALLOC()</code></p>
+<pre class="longlist">
+1769  #ifdef C_ALLOCA
+1770  # define TMP_PROTECT NODE * volatile tmp__protect_tmp=0
+1771  # define TMP_ALLOC(n) \
+1772      (tmp__protect_tmp = rb_node_newnode(NODE_ALLOCA,                 \
+1773                               ALLOC_N(VALUE,n), tmp__protect_tmp, n), \
+1774       (void*)tmp__protect_tmp-&gt;nd_head)
+1775  #else
+1776  # define TMP_PROTECT typedef int foobazzz
+1777  # define TMP_ALLOC(n) ALLOCA_N(VALUE,n)
+1778  #endif
+
+(eval.c)
+</pre>
+
+
+<p>
+$B!D!D%m!<%+%kJQ?t$rDj5A$7$F$$$k$+$i!#$H$$$&$N$,Ez$($@!#(B
+</p>
+
+<p>
+$BBh(B5$B>O!X%,!]%Y!<%8%3%l%/%7%g%s!Y$G2r@b$7$?$H$*$j!"(B<code>#ifdef C_ALLOCA</code>$B$N!J%M%$%F%#%V$N(B
+<code>alloca()</code>$B$,$J$$!K4D6-$G$O(B<code>malloc()</code>$B$G(B<code>alloca()</code>$B$r%(%_%e%l!<%H$7$F$$$k!#(B
+$B$7$+$7%a%=%C%I$N0z?t$H$$$&$N$OEvA3(B<code>VALUE</code>$B$G$"$j!"%R!<%W$K(B<code>VALUE</code>$B$rCV$$(B
+$B$F$7$^$&$H(BGC$B$G8!=P$G$-$J$/$J$C$F$7$^$&!#$=$3$G(B<code>NODE</code>$B$r7PM3$7$FL5M}LpM}(B
+GC$B$NBP>]$K$9$k!J?^(B7$B!K!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_tmpprotecttmp.jpg" alt="(tmpprotecttmp)"><br>
+$B?^(B7: <code>NODE</code>$B7PM3$GNN0h$r%9%?%C%/$KHK$.;_$a$k(B
+</p>
+
+<p>
+$B0lJ}!"??$N(B<code>alloca()</code>$B$,$"$k4D6-$G$OIaDL$K(B<code>alloca()</code>$B$r;H$($P$$$$$N$G(B
+<code>TMP_PROTECT</code>$B$OI,MW$J$$!#$=$3$GL532$J<0$rE,Ev$KF~$l$F$*$/!#(B
+
+<p>
+$B$H$3$m$G!"$J$<$3$3$^$G$7$F(B<code>alloca()</code>$B$r;H$$$?$,$k$N$@$m$&$+!#(B
+$B$=$NM}M3$OC1$K!V(B<code>alloca()</code>$B$N$[$&$,(B<code>malloc()</code>$B$h$jB.$$$+$i!W$@$=$&$@!#(B
+$B$=$N$/$i$$$N0c$$$O$I$&$G$b$$$$$h$&$J5$$b$9$k$N$@$,!"$J$K$7$m(B
+$BI>2A4o%3%"$O(B<code>ruby</code>$B:GBg$N%\%H%k%M%C%/$J$N$G!"0J2<F1J8!#(B
+</p>
+
+
+
+<h3>$B%a%=%C%IDj5A@h$NJQ99(B</h3>
+
+<p>
+$B%9%?%C%/(B<code>ruby_class</code>$B$NCM$,$=$N$H$-$N%a%=%C%I$NDj5A@h%/%i%9$K$J$k!#5U$K8@(B
+$B$&$H(B<code>ruby_class</code>$B$KCM$r%W%C%7%e$9$k$HDj5A@h%/%i%9$,JQ$o$k!#$=$l$3$=$,%/%i(B
+$B%9J8$KI,MW$J$3$H$@!#=>$C$F(B<code>module_setup()</code>$B$G$b(B<code>PUSH_CLASS()</code>$B$7$J$1$l$P$J$i(B
+$B$J$$!#$=$l$,$3$N%3!<%I$@!#(B
+</p>
+
+<pre class="emlist">
+PUSH_CLASS();
+ruby_class = module;
+     $B!'(B
+     $B!'(B
+POP_CLASS();
+</pre>
+
+<p>
+$B$J$<(B<code>PUSH_CLASS()</code>$B$7$F$+$i(B<code>ruby_class</code>$B$K2~$a$FBeF~$7$F$$$k$N$@$m$&!#(B
+$B$3$l$ODj5A$r8+$k$H0U30$H$"$C$5$j$o$+$k!#(B
+</p>
+
+<p class="caption">$B"'(B<code>PUSH_CLASS() POP_CLASS()</code></p>
+<pre class="longlist">
+ 841  #define PUSH_CLASS() do { \
+ 842      VALUE _class = ruby_class
+
+ 844  #define POP_CLASS() ruby_class = _class; \
+ 845  } while (0)
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>PUSH_CLASS()</code>$B$7$F$b(B<code>ruby_class</code>$B$,=q$-49$o$k$o$1$G$O$J$$$N$G!"$=$N$"$H$K<j(B
+$B$G%;%C%H$7$J$$$HK\Ev$K%W%C%7%e$7$?$3$H$K$J$i$J$$$N$@!#$@$+$i$3$NFs$D$O(B
+$B!V%W%C%7%e!&%]%C%W!W$H$$$&$h$j$O!VJ]B8!&I|5"!W$K6a$$!#(B
+</p>
+
+<p>
+<code>PUSH_CLASS()</code>$B$N0z?t$K%/%i%9$rEO$9$h$&$K$9$l$P$b$C$H$-$l$$$J%^%/%m$K$J(B
+$B$k$8$c$J$$$+!D!D$H$$$&$N$OA4$/$=$NDL$j$J$N$@$,!"%W%C%7%e$9$kA0$K%/%i%9(B
+$B$,F@$i$l$J$$>l=j$,$"$k$?$a$K$3$&$$$&$3$H$K$J$C$F$$$k!#(B
+</p>
+
+
+
+<h3>$B%/%i%9$N%M%9%H(B</h3>
+
+<p>
+<code>ruby_cref</code>$B$O<B9TCf$N%/%i%9%M%9%H>pJs$rI=8=$7$F$$$k$N$@$C$?!#(B
+$B$@$+$i%b%8%e!<%kJ8$d%/%i%9J8$G(B<code>ruby_cref</code>$B$,@Q$^$l$k$N$OEvA3M=A[$G$-$k!#(B
+<code>module_setup()</code>$B$G$O$3$s$J$U$&$K@Q$s$G$$$?!#(B
+</p>
+
+<pre class="emlist">
+PUSH_CREF(module);
+ruby_frame-&gt;cbase = (VALUE)ruby_cref;
+   $B!'(B
+   $B!'(B
+POP_CREF();
+</pre>
+
+<p>
+$B$3$3$G!"(B<code>module</code>$B$ODj5ACf$N%b%8%e!<%k$G$"$k!#(B
+<code>PUSH_CREF()</code>$B$H(B<code>POP_CREF()</code>$B$NDj5A$b8+$F$*$3$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>PUSH_CREF() POP_CREF()</code></p>
+<pre class="longlist">
+ 849  #define PUSH_CREF(c) \
+          ruby_cref = rb_node_newnode(NODE_CREF,(c),0,ruby_cref)
+ 850  #define POP_CREF() ruby_cref = ruby_cref-&gt;nd_next
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>PUSH_SCOPE()</code>$B$J$I$N$h$&$J$H$s$G$b$J$$9)IW$,$"$k$o$1$G$b$J$/!"(B
+$BHs>o$K07$$$d$9$$!#$d$O$j$?$^$K$O$3$&$$$&$N$b$J$$$H:$$k!#(B
+</p>
+
+<p>
+$B$9$k$H;D$kLdBj$O(B<code>ruby_frame-&gt;cbase</code>$B$,2?$r0UL#$7$F$$$k$N$+$H$$$&$3$H$@$,!"(B
+$B$3$l$O8=:_$N(B<code>FRAME</code>$BFb$+$iDj?t$d%/%i%9JQ?t$r;2>H$9$k$N$K;H$&>pJs$G$"$k!#(B
+$B>\$7$$$3$H$OK\>O$N:G8e$N@a$G8+$F$$$/!#(B
+</p>
+
+
+
+<h3>$B%U%l!<%`$N$9$j$+$((B</h3>
+
+<p>
+$B:G8e$K(B<code>ruby_frame</code>$B$NA`:n$KCmL\$9$k!#$^$:$ODj5A$N$H$3$m$+$i!#(B
+</p>
+
+<pre class="emlist">
+struct FRAME frame;
+</pre>
+
+<p>
+$B%]%$%s%?$G$O$J$$!#$D$^$j$3$l$O%^%7%s%9%?%C%/>e$K(B<code>FRAME</code>$B$r%Y%?CV$-$G3NJ](B
+$B$9$k$H$$$&0UL#$G$"$k!#(BRuby$B%9%?%C%/$N4IM}9=B$$b%m!<%+%kJQ?tNN0h$b%^%7%s(B
+$B%9%?%C%/>e$@$C$?$,!"$J$s$H(B<code>FRAME</code>$B$K;j$C$F$O9=B$BN$^$k$4$H%9%?%C%/>e$KCV(B
+$B$$$F$7$^$*$&$H$$$&$N$@!#(B<code>ruby</code>$B$,%^%7%s%9%?%C%/$r%P%+?)$$$9$k$N$b$3$&$$$&(B
+$B!V>.$5$J9)IW!W$,@Q$_=E$J$C$?@.2L$J$N$G$"$k!#(B
+</p>
+
+<p>
+$B$=$7$F<!$K(B<code>frame</code>$B$r2?$d$i$$$m$$$m$7$F$$$k$H$3$m$r8+$h$&!#(B
+</p>
+
+<pre class="emlist">
+frame = *ruby_frame;      /* $B9=B$BN$^$k$4$H%3%T!<(B */
+frame.tmp = ruby_frame;   /* $B85$N(BFRAME$B$r(BGC$B$+$iJ]8n$9$k(B */
+ruby_frame = &amp;frame;      /* ruby_frame$B$r:9$7BX$($k(B */
+       $B!'(B
+       $B!'(B
+ruby_frame = frame.tmp;   /* $BLa$9(B */
+</pre>
+
+<p>
+$B$D$^$j(B<code>ruby_frame</code>$B$r0l;~E*$K:9$7BX$($F$$$k!J%W%C%7%e$G$O$J$$!K$h$&$@!#$I(B
+$B$&$7$F$3$s$J$3$H$r$7$F$$$k$N$@$m$&!#(B
+</p>
+
+<p>
+<code>FRAME</code>$B$H$$$&$N$O!V%a%=%C%I8F$S=P$7$G@Q$^$l$k!W$H@bL@$7$?$,!"$h$j87L)$K(B
+$B8@$&$H!V(BRuby$B%W%m%0%i%`$r<B9T$9$k$&$($G$N<g$J4D6-!W$rI=$9%9%?%C%/%U%l!<%`(B
+$B$J$N$@!#Nc$($P@hDx=P$F$-$?(B<code>ruby_frame-&gt;cbase</code>$B$J$I$r8+$k$H$=$&$$$&0UL#9g$$$,(B
+$B8+$F<h$l$k!#B>$K$b!V:G8e$K8F$s$@%a%=%C%IL>!W$rI=$9(B<code>last_func</code>$B$J$I$b$=$&$@!#(B
+</p>
+
+<p>
+$B$G$O$I$&$7$F$3$3$GAGD>$K(B<code>FRAME</code>$B$r@Q$^$J$$$+$H$$$&$H!"$3$3$O(B<code>FRAME</code>$B$r@Q$s$G(B
+$B$$$$>l=j$G$O$J$$$+$i$G$"$k!#;EAH$_$+$i8@$($PK\Ev$O(B<code>FRAME</code>$B$r@Q$_$?$$$o$1(B
+$B$@$,!"(B<code>FRAME</code>$B$r@Q$`$HNc30$,H/@8$7$?$H$-$K%W%m%0%i%`$N%P%C%/%H%l!<%9$K$=(B
+$B$l$,=P$F$7$^$&!#%P%C%/%H%l!<%9$H$$$&$N$O<!$N$h$&$JI=<($N$3$H$@!#(B
+</p>
+
+<pre class="screen">
+% ruby t.rb
+t.rb:11:in `c': some error occured (ArgumentError)
+        from t.rb:7:in `b'
+        from t.rb:3:in `a'
+        from t.rb:14
+</pre>
+
+<p>
+$B$7$+$7%b%8%e!<%kJ8$d%/%i%9J8$O%a%=%C%I8F$S=P$7$G$O$J$$$+$i$3$NCf$K$O(B
+$B=P$F$-$F$[$7$/$J$$!#$@$+$i!V@Q$^$:$K!W!"!V:9$7BX$($k!W$o$1$@!#(B
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>$B%a%=%C%I$NDj5A(B</h2>
+
+<p>
+$B%b%8%e!<%kDj5A$N<!$O%a%=%C%I$NDj5A$r8+$F$$$/$3$H$K$7$h$&!#(B
+</p>
+
+<h3>$BD4::(B</h3>
+
+<p class="caption">$B"'%=!<%9%W%m%0%i%`(B</p>
+<pre class="longlist">
+def m(a, b, c)
+  nil
+end
+</pre>
+
+
+<p class="caption">$B"'BP1~$9$k9=J8LZ(B</p>
+<pre class="longlist">
+NODE_DEFN
+nd_mid  = 9617 (m)
+nd_noex = 2 (NOEX_PRIVATE)
+nd_defn:
+    NODE_SCOPE
+    nd_rval = (null)
+    nd_tbl = 5 [ _ ~ a b c ]
+    nd_next:
+        NODE_ARGS
+        nd_cnt  = 3
+        nd_rest = -1
+        nd_opt = (null)
+        NODE_NIL
+</pre>
+
+
+<p>
+$B$$$/$D$+%@%s%W$7$F$_$?$H$3$m!"(B<code>nd_defn</code>$B$K$O>o$K(B<code>NODE_SCOPE</code>$B$,F~$C$F(B
+$B$$$k$h$&$@!#(B<code>NODE_SCOPE</code>$B$H8@$($P%b%8%e!<%kJ8$N$H$3$m$G$b8+$?$h$&$K%m!<(B
+$B%+%kJQ?t%9%3!<%W$r@Q$`$?$a$N>pJs$r3JG<$9$k%N!<%I$G$"$k!#(B
+</p>
+
+
+
+<h3><code>NODE_DEFN</code></h3>
+
+<p>
+$BB3$$$F(B<code>rb_eval()</code>$B$N3:Ev%3!<%I$r8+$F$$$/!#%(%i!<=hM}$,$d$?$iB?$/$F(B
+$BLLE]$@$C$?$N$G:F$SA4It$^$H$a$F>JN,$7$?!#(B
+$B$=$NJ}K!$O$$$D$b$HF1$8$G$"$k!#B($A(B<code>rb_raise() rb_warn() rb_warning()</code>$B$r8F$V(B
+$B$@$1$N$b$N!"$*$h$S4V@\E*$K$=$l$r8F$V$b$N$rA4It>C$7$?!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_DEFN</code>$B!J4JLsHG!K(B</p>
+<pre class="longlist">
+NODE *defn;
+int noex;
+
+if (SCOPE_TEST(SCOPE_PRIVATE) || node-&gt;nd_mid == init) {
+    noex = NOEX_PRIVATE;                 $B!J(BA$B!K(B
+}
+else if (SCOPE_TEST(SCOPE_PROTECTED)) {
+    noex = NOEX_PROTECTED;               $B!J(BB$B!K(B
+}
+else if (ruby_class == rb_cObject) {
+    noex =  node-&gt;nd_noex;               $B!J(BC$B!K(B
+}
+else {
+    noex = NOEX_PUBLIC;                  $B!J(BD$B!K(B
+}
+
+defn = copy_node_scope(node-&gt;nd_defn, ruby_cref);
+rb_add_method(ruby_class, node-&gt;nd_mid, defn, noex);
+result = Qnil;
+</pre>
+
+
+<p>
+$BA0H>$K$O(B<code>private</code>$B$@$N(B<code>protected</code>$B$@$N$H$$$&C18l$,=P$F$/$k$N$G2D;k(B
+$B@-4X78$@$m$&!#%U%i%0$NL>A0$K;H$o$l$F$$$k(B<code>noex</code>$B$O(B<code>NOde EXposure</code>$B!J%N!<(B
+$B%I$N2D;k@-!K$@$H;W$o$l$k!#(B<code>if</code>$BJ8$N@a$r=gHV$K8+$F$$$3$&!#(B
+</p>
+
+<p>
+$B!J(BA$B!K(B<code>SCOPE_TEST()</code>$B$O(B<code>scope_vmode</code>$B$K0z?t$N%U%i%0$,N)$C$F$$$k$+3NG'$9$k(B
+$B%^%/%m$G$"$k!#=>$C$F$3$N>r7oJ8$NA0H>$O!V(B<code>private</code>$B%9%3!<%W$G$"$k$+!W$H(B
+$B$$$&0UL#$@!#8eH>$O!V(B<code>initialize</code>$B$NDj5A$J$i(B<code>private</code>$B!W$G$"$k!#%*%V%8%'(B
+$B%/%H$N=i4|2=MQ%a%=%C%I(B<code>initialize</code>$B$OLdEzL5MQ$G(B<code>private</code>$B$K$J$k$N$@!#(B
+</p>
+
+<p>
+$B!J(BB$B!K(B<code>protected</code>$B%9%3!<%W$@$C$?$i(B<code>protected</code>$B!J$"$?$j$^$(!K!#(B
+Ruby$B$G$O(B<code>protected</code>$B$O$$$^$$$A;H$$<j$,$J$$$h$&$J5$$,$9$k!#(B
+</p>
+
+<p>
+$B!J(BC$B!K$3$3$O%P%0$C$F$$$k!#K\=q$NF~9FD>A0$KH/8+$7$?$N$G=$@5$O4V$K9g$o$J(B
+$B$+$C$?!#:G?7$N%3!<%I$G$O$J$/$J$C$F$$$k$O$:$@!#%H%C%W%l%Y%k$GDj5A$5$l$?(B
+$B%a%=%C%I$r3N<B$K(B<code>private</code>$B$K$7$h$&$H$7$?!"$H$$$&$N$,85!9$N0U?^$G$"$k!#(B
+</p>
+
+<p>
+$B!J(BD$B!K$3$l$^$G$N$I$l$G$b$J$+$C$?$i!"(B<code>public</code>$B$@!#(B
+
+<p>
+$B$5$F!"<B$O$3$3$^$G$O$I$&$G$b$$$$!#=EMW$J$N$O$=$N<!$NFs9T$G$"$k!#(B
+</p>
+
+<pre class="emlist">
+defn = copy_node_scope(node-&gt;nd_defn, ruby_cref);
+rb_add_method(ruby_class, node-&gt;nd_mid, defn, noex);
+</pre>
+
+<p>
+<code>copy_node_scope()</code>$B$O%a%=%C%IK\BN$N@hF,$KIU$$$F$$$k(B
+<code>NODE_SCOPE</code>$B!J$@$1!K$r(B
+$B%3%T!<$9$k4X?t$@!#(B<code>ruby_cref</code>$B$rEO$7$F$$$k$H$3$m$,%]%$%s%H$J$N$@(B
+$B$,!D!D>\$7$/$O$9$08e$G8+$F$$$/!#(B
+</p>
+
+<p>
+$B%3%T!<$7$?$"$H!"$=$l$r(B<code>rb_add_method()</code>$B$GDI2C$9$l$PDj5A$O40N;$G$"$k!#(B
+$BDj5A$9$k@h$O$b$A$m$s(B<code>ruby_class</code>$B$@!#(B
+</p>
+
+
+
+<h3><code>copy_node_scope()</code></h3>
+
+<p>
+<code>copy_node_scope()</code>$B$O(B<code>rb_eval()</code>$B$N%a%=%C%IDj5A!J(B<code>NODE_DEFN</code>$B!K$H(B
+$BFC0[%a%=%C%IDj5A!J(B<code>NODE_DEFS</code>$B!K$@$1$+$i8F$P$l$k$N$G!"$=$NFs%v=j$@$1(B
+$B8+$l$P;H$o$l$+$?$rFCDj$G$-$k!#$=$7$F$=$NFs%v=j$G$N;H$$$+$?$O$[$\(B
+$BF1$8$@!#(B
+</p>
+
+<p class="caption">$B"'(B<code>copy_node_scope()</code></p>
+<pre class="longlist">
+1752  static NODE*
+1753  copy_node_scope(node, rval)
+1754      NODE *node;
+1755      VALUE rval;
+1756  {
+1757      NODE *copy = rb_node_newnode(NODE_SCOPE,0,rval,node-&gt;nd_next);
+1758
+1759      if (node-&gt;nd_tbl) {
+1760          copy-&gt;nd_tbl = ALLOC_N(ID, node-&gt;nd_tbl[0]+1);
+1761          MEMCPY(copy-&gt;nd_tbl, node-&gt;nd_tbl, ID, node-&gt;nd_tbl[0]+1);
+1762      }
+1763      else {
+1764          copy-&gt;nd_tbl = 0;
+1765      }
+1766      return copy;
+1767  }
+
+(eval.c)
+</pre>
+
+
+<p>
+$B0z?t$N(B<code>rval</code>$B$O%a%=%C%I$,Dj5A$5$l$?;~$N%/%i%9$N%M%9%H>pJs!J(B<code>ruby_cref</code>$B!K(B
+$B$@$C$?!#(B<code>nd_rval</code>$B$K%;%C%H$5$l$k$+$i(B<code>rval</code>$B$H$$$&$3$H$@$m$&!#(B
+</p>
+
+<p>
+$BK\BN$N(B<code>if</code>$BJ8$G$O(B<code>NODE_SCOPE</code>$B$N(B<code>nd_tbl</code>$B$r%3%T!<$7$F$$$k!#$D$^$j%m!<%+%k(B
+$BJQ?tL>$N%F!<%V%k$G$"$k!#(B<code>ALLOC_N()</code>$B$G(B+1$B$7$F$$$k$N$O(B<code>nd_tbl[0]</code>$B$NJ,$b9g(B
+$B$o$;$F3NJ]$9$k$?$a$@!#BhFsIt$G8+$?$H$*$j(B<code>nd_tbl[0]</code>$B$K$O%m!<%+%kJQ?t$N(B
+$B?t$,F~$C$F$*$j!"$=$l$O$D$^$j!V(B<code>nd_tbl</code>$B$N<B:]$ND9$5(B-1$B!W$@$C$?!#(B
+</p>
+
+<p>
+$B$^$H$a$k$H!"(B<code>copy_node_scope()</code>$B$O%a%=%C%IK\BN$N%X%C%@$G$"$k(B<code>NODE_SCOPE</code>$B$r(B
+$BJ#@=$9$k!"$?$@$7(B<code>nd_rval</code>$B$,DI2C$G%;%C%H$5$l$k!#$=$7$F$=$l$O%/%i%9$rDj5A(B
+$B$7$?$H$-$N(B<code>ruby_cref</code>$B!J%/%i%9$N%M%9%H>pJs!K$G$"$k!#$3$N>pJs$O8e$GDj?t$d(B
+$B%/%i%9JQ?t$N;2>H$N$H$-$K;H$o$l$k!#(B
+</p>
+
+
+
+<h3><code>rb_add_method()</code></h3>
+
+<p>
+$B<!$K%a%=%C%I%(%s%H%j$rEPO?$9$k4X?t(B<code>rb_add_method()</code>$B$@!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_add_method()</code></p>
+<pre class="longlist">
+ 237  void
+ 238  rb_add_method(klass, mid, node, noex)
+ 239      VALUE klass;
+ 240      ID mid;
+ 241      NODE *node;
+ 242      int noex;
+ 243  {
+ 244      NODE *body;
+ 245
+ 246      if (NIL_P(klass)) klass = rb_cObject;
+ 247      if (ruby_safe_level &gt;= 4 &amp;&amp;
+              (klass == rb_cObject || !OBJ_TAINTED(klass))) {
+ 248          rb_raise(rb_eSecurityError, "Insecure: can't define method");
+ 249      }
+ 250      if (OBJ_FROZEN(klass)) rb_error_frozen("class/module");
+ 251      rb_clear_cache_by_id(mid);
+ 252      body = NEW_METHOD(node, noex);
+ 253      st_insert(RCLASS(klass)-&gt;m_tbl, mid, body);
+ 254  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>NEW_METHOD()</code>$B$O(B<code>NODE</code>$B$r@8@.$9$k%^%/%m$@!#(B
+<code>rb_clear_cache_by_id()</code>$B$O%a%=%C%I%-%c%C%7%e$rA`:n$9$k4X?t$G$"$k!#(B
+$B<!>O!X%a%=%C%I!Y$G@bL@$9$k!#(B
+</p>
+
+<p>
+$B$G$O!":G=*E*$K%/%i%9$N(B<code>m_tbl</code>$B$K3JG<$5$l$k9=J8LZ$r8+$F$_$h$&!#(B
+$B$3$&$$$&$H$-$N$?$a$KMQ0U$7$F$*$$$?(B
+<code>nodedump-method</code>\footnote{<code>nodedump-method</code>$B!'(B<code>nodedump</code>$B$KF1:-!#(B<code>nodedump</code>$B$OE:IU(BCD-ROM$B$N(B<code>tools/nodedump.tar.gz</code>}$B$r(B
+$B;H$&!#(B
+</p>
+
+<pre class="screen">
+% ruby -e '
+class C
+  def m(a)
+    puts "ok"
+  end
+end
+require "nodedump-method"
+NodeDump.dump C, :m        # $B%/%i%9(BC$B$N%a%=%C%I(Bm$B$r%@%s%W$9$k(B
+'
+NODE_METHOD
+nd_noex = 0 (NOEX_PUBLIC)
+nd_cnt = 0
+nd_body:
+    NODE_SCOPE
+    nd_rval = Object &lt;- C
+    nd_tbl = 3 [ _ ~ a ]
+    nd_next:
+        NODE_ARGS
+        nd_cnt  = 1
+        nd_rest = -1
+        nd_opt = (null)
+        U$B2g&n(BS$BprCx(B
+
+
+** unhandled**
+
+
+</pre>
+
+<p>
+$B62$i$/%a%=%C%I$N%X%C%@$r0UL#$9$k$N$@$m$&!"(B<code>NODE_METHOD</code>$B$,@hF,$KIU$$$F(B
+$B$*$j!"$=$N<!$K@hDx(B<code>copy_node_scope()</code>$B$G%3%T!<$7$?(B<code>NODE_SCOPE</code>$B$,IU$/!#(B
+$B$$$/$D$+%@%s%W$7$F$_$?$H$3$m(BC$B$GDj5A$7$?%a%=%C%I$K$O(B<code>NODE_SCOPE</code>$B$OIU$$$F(B
+$B$$$J$+$C$?$N$G!"$3$l$,(BRuby$B%l%Y%k$GDj5A$7$?%a%=%C%I$N0u$i$7$$!#(B
+</p>
+
+<p>
+$B$^$?(B<code>NODE_SCOPE</code>$B$N(B<code>nd_tbl</code>$B$K%a%=%C%I$N%Q%i%a!<%?JQ?tL>!J(B<code>a</code>$B!K$,EP>l$7(B
+$B$F$$$k!#0JA0!"%Q%i%a!<%?JQ?t$OIaDL$N%m!<%+%kJQ?t$HF1$8$@$H8@$C$?$,!"$=(B
+$B$l$,$3$3$KC<E*$K=P$F$$$k$o$1$@!#(B
+</p>
+
+<p>
+<code>NODE_ARGS</code>$B$K$D$$$F$O<!$N<!>O!X%a%=%C%I!Y$G07$&$N$G>JN,!#(B
+</p>
+
+<p>
+$B$=$l$H:G8e$K(B<code>NODE_METHOD</code>$B$N(B<code>nd_cnt</code>$B$@$,!"$3$l$O:#2s$O$"$^$j5$$K$7$J$/(B
+$B$F$$$$!#(B<code>alias</code>$B$,$+$i$s$@$H$-$K;H$&$b$N$@!#(B
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>$BBeF~$H;2>H(B</h2>
+
+<p>
+$B9M$($F$_$l$P%9%?%C%/$N$[$H$s$I$O3F<oJQ?t$r<B8=$9$k$?$a$KB8:_$9$k$o$1(B
+$B$@!#$3$3$^$G$G$$$m$$$m%9%?%C%/$r@Q$a$k$h$&$K$J$C$?$N$G!":#EY$OJQ?t;2>H(B
+$B$N%3!<%I$r8+$F$$$3$&!#(B
+</p>
+
+
+<h3>$B%m!<%+%kJQ?t(B</h3>
+
+<p>
+$B%m!<%+%kJQ?t$NBeF~!&;2>H$KI,MW$J>pJs$O$3$3$^$G$GA4$F(B
+$BEP>l$7$F$$$k$N$GM=B,$,IU$/$@$m$&!#%]%$%s%H$O0J2<$NFsE@$@!#(B
+</p>
+
+<ol>
+<li>$B%m!<%+%kJQ?tNN0h$O(B<code>ruby_scope-&gt;local_vars</code>$B$,;X$9G[Ns$G$"$k!#(B</li>
+<li>$B%m!<%+%kJQ?tL>$HG[Ns%$%s%G%C%/%9$NBP1~$O%Q!<%5%l%Y%k$G2r7h:Q$_!#(B</li>
+</ol>
+
+<p>
+$B$H$$$&$3$H$G%m!<%+%kJQ?t;2>H$N%N!<%I(B<code>NODE_LVAR</code>$B$N%3!<%I$O$3$&$J$k!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_LVAR</code></p>
+<pre class="longlist">
+2975  case NODE_LVAR:
+2976    if (ruby_scope-&gt;local_vars == 0) {
+2977        rb_bug("unexpected local variable");
+2978    }
+2979    result = ruby_scope-&gt;local_vars[node-&gt;nd_cnt];
+2980    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+$B8@$&$^$G$b$J$$$H;W$&$,(B<code>node-&gt;nd_cnt</code>$B$,(B
+$B%Q!<%5$N(B<code>local_cnt()</code>$B$GJV$7$F$$$?CM$G$"$k!#(B
+</p>
+
+
+
+<h3>$BDj?t(B</h3>
+
+<h4>$B40A4;EMM(B</h4>
+
+<p>
+$BBh(B6$B>O!XJQ?t$HDj?t!Y$GDj?t$N3JG<7A<0$H(BAPI$B$K$D$$$F$OOC$7$?!#Dj?t$O%/%i(B
+$B%9$K=jB0$7!"%a%=%C%I$HF1$8$h$&$K7Q>5$9$k!#$^$?8=<B$N;Q$H$7$F$O(B
+<code>struct RClass</code>$B$N(B<code>iv_tbl</code>$B$K%$%s%9%?%s%9JQ?t$d%/%i%9JQ?t$H0l=o$KEPO?(B
+$B$5$l$F$$$k$N$G$"$C$?!#(B
+</p>
+
+<p>
+$B$7$+$7Dj?t$N8!:w%Q%9$O$^$:30$N%/%i%9!"<!$K%9!<%Q!<%/%i%9$rC5$9$O$:$J$N(B
+$B$K!"(B<code>rb_const_get()</code>$B$G$O%9!<%Q!<%/%i%9$7$+8!:w$7$F$$$J$+$C$?!#$=$l$O$I$&(B
+$B$7$F$@$m$&$+!#$=$l$K$D$$$FOC$9$K$ODj?t$K1#$5$l$?:G8e$N;EMM$K$D$$$FOC$5(B
+$B$J$/$F$O$J$i$J$$!#<!$N%3!<%I$r8+$F$[$7$$!#(B
+</p>
+
+<pre class="emlist">
+class A
+  C = 5
+  def A.new
+    puts C
+    super
+  end
+end
+</pre>
+
+<p>
+<code>A.new</code>$B$O(B<code>A</code>$B$NFC0[%a%=%C%I$J$N$G=jB0%/%i%9$OFC0[%/%i%9(B<code>(A)</code>$B$G$"$k!#(B
+$B$@$+$i5,B'DL$j$K2r<a$9$k$J$i$P(B<code>A</code>$B$K=jB0$9$kDj?t(B<code>C</code>$B$r<h$l$k$o$1$,$J$$!#(B
+</p>
+
+<p>
+$B$7$+$7$3$&6a$/$K=q$$$F$"$l$PDj?t(B<code>C</code>$B$r;2>H$7$?$/$J$k$N$,?M>p$H$$$&$b$N$@!#(B
+$B$=$l$f$((BRuby$B$G$O$3$&$$$&;2>H$b$G$-$F$7$^$&!#$3$N$h$&$J;EMM$O!V%=!<%9%3!<(B
+$B%I$N8+$?$a$r=E;k$9$k!W$H$$$&(BRuby$B$N@-3J$rH?1G$7$F$$$k$H8@$($k$@$m$&!#(B
+</p>
+
+<p>
+$B$3$N5,B'$r0lHL2=$9$k$H$3$&$J$k!#B($A%a%=%C%I$NFbIt$+$iDj?t$r;2>H$7$?>l(B
+$B9g!"%a%=%C%IDj5A$r!V=q$$$?!W>l=j$N%/%i%9$r5/E@$K$7$F30$N%/%i%9$NDj?t$r(B
+$B;2>H$9$k!#$=$7$F!V%a%=%C%I$r=q$$$?>l=j$N%/%i%9!W$O%3%s%F%-%9%H0MB8$G$"(B
+$B$j%Q!<%5$HI>2A4oN>J}$N>pJs$,$J$1$l$P07$($J$$!#$=$l$,(B<code>rb_const_get()</code>$B$K30(B
+$B$N%/%i%9$N8!:w%Q%9$,$J$+$C$?M}M3$G$"$k!#(B
+</p>
+
+<h4><code>cbase</code></h4>
+
+<p>
+$B$=$3$G30$N%/%i%9$^$G4^$a$?Dj?t;2>H$N%3!<%I$r8+$F$_$h$&!#(B
+<code>::</code>$B$,IU$+$J$$IaDL$NDj?t;2>H$O9=J8LZ$G$O(B<code>NODE_CONST</code>$B$K$J$k!#(B
+<code>rb_eval()</code>$B$G$N$=$N%3!<%I$O$H8@$&$H!D!D(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_CONST</code></p>
+<pre class="longlist">
+2994  case NODE_CONST:
+2995    result = ev_const_get(RNODE(ruby_frame-&gt;cbase), node-&gt;nd_vid, self);
+2996    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+$B$^$:(B<code>nd_vid</code>$B$,(B<code>Variable ID</code>$B$GDj?tL>$@$m$&!#$=$7$F(B<code>ruby_frame-&gt;cbase</code>$B$,(B
+$B!V%a%=%C%IDj5A$r=q$$$?>l=j$N%/%i%9!W$G$"$k!#$3$NCM$O%a%=%C%I$r5/F0$7$?(B
+$B$H$-$K%;%C%H$5$l$k$b$N$J$N$G$^$@$=$N%3!<%I$OEP>l$7$F$$$J$$$,!"$=$N%;%C(B
+$B%H$9$kCM$,$5$i$K$I$3$+$iMh$F$$$k$+$H8@$&$H!"$3$l$,%a%=%C%IDj5A$N(B
+<code>copy_node_scope()</code>$B$G=P$F$-$?(B<code>nd_rval</code>$B$J$N$G$"$k!#>/$7La$C$F$-$F8+$F$[(B
+$B$7$$$N$@$,!"$3$N%a%s%P$K$O%a%=%C%IDj5A;~$N(B<code>ruby_cref</code>$B$,F~$C$F$$$k$O$:(B
+$B$@!#(B
+</p>
+
+<p>
+$B$D$^$j!"$^$:%/%i%9$d%b%8%e!<%kDj5A$N$H$-$K(B<code>ruby_cref</code>$B$N%j%s%/$,(B
+$B7A@.$5$l$k!#$$$^Dj5A$7$?%/%i%9$r(B<code>C</code>$B$H$7$h$&!J?^(B81$B!K!#(B
+</p>
+
+<p>
+$B$3$3$G%a%=%C%I(B<code>m</code>$B$rDj5A$9$k$H!J$?$V$s(B<code>C#m</code>$B!K!"(B
+$B$=$N$H$-$N(B<code>ruby_cref</code>$B$,%a%=%C%I%(%s%H%j$K5-21$5$l$k!J?^(B82$B!K!#(B
+</p>
+
+<p>
+$B$=$N8e%/%i%9J8$,=*$o$l$P(B<code>ruby_cref</code>$B$OJL$N%N!<%I$r;X$7$F$$$/$o$1$@$,!"(B
+<code>node-&gt;nd_rval</code>$B$OEvA3F1$8$b$N$r;X$7B3$1$k!J?^(B83$B!K!#(B
+</p>
+
+<p>
+$B$=$7$F%a%=%C%I(B<code>C#m</code>$B$r5/F0$9$k$H$-$K$O(B<code>node-&gt;nd_rval</code>$B$r<h$j=P$7$F!"(B
+$B@Q$s$@$P$+$j$N(B<code>ruby_frame-&gt;cbase</code>$B$KF~$l$k!J?^(B84$B!K!#(B
+</p>
+
+<p>
+$B!D!D$H$$$&;EAH$_$J$N$G$"$k!#$d$d$3$7$$!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_cbase.jpg" alt="(cbase)"><br>
+$B?^(B8: CREF$B$NEAC#(B
+</p>
+
+
+<h4><code>ev_const_get()</code></h4>
+
+<p>
+$B$G$O(B<code>NODE_CONST</code>$B$N%3!<%I$KLa$k$H$7$h$&!#(B
+$B;D$j$O(B<code>ev_const_get()</code>$B$@$1$@$+$i!"$=$l$r8+$k!#(B
+</p>
+
+<p class="caption">$B"'(B<code>ev_const_get()</code></p>
+<pre class="longlist">
+1550  static VALUE
+1551  ev_const_get(cref, id, self)
+1552      NODE *cref;
+1553      ID id;
+1554      VALUE self;
+1555  {
+1556      NODE *cbase = cref;
+1557      VALUE result;
+1558
+1559      while (cbase &amp;&amp; cbase-&gt;nd_next) {
+1560          VALUE klass = cbase-&gt;nd_clss;
+1561
+1562          if (NIL_P(klass)) return rb_const_get(CLASS_OF(self), id);
+1563          if (RCLASS(klass)-&gt;iv_tbl &amp;&amp;
+                  st_lookup(RCLASS(klass)-&gt;iv_tbl, id, &amp;result)) {
+1564              return result;
+1565          }
+1566          cbase = cbase-&gt;nd_next;
+1567      }
+1568      return rb_const_get(cref-&gt;nd_clss, id);
+1569  }
+
+(eval.c)
+</pre>
+
+
+<p>
+$B0z?t$N(B<code>cref</code>$B!"$D$^$j85$O(B<code>ruby_cref</code>$B!"$O(B<code>NODE</code>$B$rMxMQ$7$?%j%s%/%j%9%H$G$"$C$?!#(B
+$B$=$N%j%9%H$rC)$j$J$,$iD>@\(B<code>st_lookup()</code>$B$G(B<code>iv_tbl</code>$B$rD4$Y$k!#30$N%/%i%9$N%9!<(B
+$B%Q!<%/%i%9$^$G$OD4$Y$J$$$N$,;EMM$@$+$i!"(B<code>rb_const_get()</code>$B$G$O$$$1$J$$!#(B
+</p>
+
+<p>
+$B$=$7$F(B<code>klass</code>$B$,(B<code>nil</code>$B$K$J$C$?$i!D!D$D$^$j%H%C%W%l%Y%k$r1[$($?$i!"$b$&%M%9%H(B
+$B$7$F$$$k%/%i%9$O$J$$$N$G%9!<%Q!<%/%i%9J}8~$rD4$Y$k!#$3$A$i$O(B
+<code>rb_const_get()</code>$B0lH/$G$h$$!#(B
+</p>
+
+<p>
+$B$5$i$K!"%9!<%Q!<%/%i%9J}8~$rD4$Y$k$H$-$O0lE>$7$F(B<code>self</code>$B$,5/E@$K$J$k!#(B
+$BK\Ev$K$d$d$3$7$$!#(B
+</p>
+
+
+
+<h3>$B%/%i%9JQ?t(B</h3>
+
+<p>
+$B%/%i%9JQ?t$N;2>H@h$b(B<code>ruby_cref</code>$B$G$"$k!#$?$@$7$b$A$m$s!"Dj?t$N$h$&$K30$N(B
+$B%/%i%9$r<!!9$HC5$7$?$j$O$7$J$$$N$G;H$&$N$O:G=i$N0l$D$@$1$@!#%/%i%9JQ?t(B
+$B;2>H$N%N!<%I!"(B<code>NODE_CVAR</code>$B$N%3!<%I$r8+$F$_$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_CVAR</code></p>
+<pre class="longlist">
+2998        case NODE_CVAR:
+2999          result = rb_cvar_get(cvar_cbase(), node-&gt;nd_vid);
+3000          break;
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>cvar_cbase()</code>$B$H$$$&$N$O$J$s$@$m$&$+!#(B<code>cbase</code>$B$HIU$/$H$3$m$r8+$k$H(B
+<code>ruby_frame-&gt;cbase</code>$B$H4X78$,$"$j$=$&$@$,!"$I$&0c$&$N$@$m$&$+!#8+$F$_$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>cvar_cbase()</code></p>
+<pre class="longlist">
+1571  static VALUE
+1572  cvar_cbase()
+1573  {
+1574      NODE *cref = RNODE(ruby_frame-&gt;cbase);
+1575
+1576      while (cref &amp;&amp; cref-&gt;nd_next &amp;&amp;
+                 FL_TEST(cref-&gt;nd_clss, FL_SINGLETON)) {
+1577          cref = cref-&gt;nd_next;
+1578          if (!cref-&gt;nd_next) {
+1579    rb_warn("class variable access from toplevel singleton method");
+1580          }
+1581      }
+1582      return cref-&gt;nd_clss;
+1583  }
+
+(eval.c)
+</pre>
+
+
+<p>
+$BFC0[%/%i%9$G$J$$$H$3$m$^$G(B<code>cbase</code>$B$rAL$k!"$i$7$$!#(B
+$B$3$l$O<!$N$h$&$J%3!<%IBP:v$N$?$a$KIU$12C$($i$l$?$b$N$@!#(B
+</p>
+
+<pre class="emlist">
+class C                           class C
+  @@cvar = 1                        @@cvar = 1
+  class &lt;&lt; C                        def C.m
+    def m                             @@cvar
+      @@cvar                        end
+    end                             def C.m2
+    def m2                            @@cvar + @@cvar
+      @@cvar + @@cvar               end
+    end                           end
+  end
+end
+</pre>
+
+<p>
+$B$3$N%W%m%0%i%`$O:81&$I$A$i$N$h$&$K=q$$$F$bDj5A$5$l$k%a%=%C%I$OF1$8$@!#(B
+$B$@$,1&$N=q$-$+$?$O%a%=%C%I$,A}$($F$/$k$H2?EY$b%/%i%9L>$r=q$+$J$/$F$O$$(B
+$B$1$J$$$N$GLLE]$/$5$$!#$@$+$iFC0[%a%=%C%I$rJ#?tDj5A$9$k$H$-$O:8$N$h$&$K(B
+$BFC0[%/%i%9Dj5AJ8$G$^$H$a$F$7$^$&?M$bB?$$$N$@!#(B
+</p>
+
+<p>
+$B$H$3$m$,$3$NFs$D$N=q$-J}$G$O(B<code>ruby_cref</code>$B$NCM$,0c$&!#FC0[%/%i%9Dj5A$r;H$&(B
+$B$[$&$O(B<code>ruby_cref=(C)</code>$B$G$"$j!"%P%i%P%i$KFC0[%a%=%C%I$rDj5A$9$k$[$&$G$O(B
+<code>ruby_cref=C</code>$B$G$"$k!#$3$l$G$O%/%i%9JQ?t$N;2>H@h$,JQ$o$C$F$7$^$$ITJX$@!#(B
+</p>
+
+<p>
+$B$=$3$G!"FC0[%/%i%9$K%/%i%9JQ?t$rDj5A$9$k$3$H$O$"$^$j$J$$$@$m$&$HH=CG$7(B
+$B$FFC0[%/%i%9$OHt$S1[$($k$h$&$K$J$C$F$$$k$N$G$"$k!#$3$3$G$b$^$?0l4S@-$h(B
+$B$j;H$$$d$9$5=E;k$N;EMM$K$J$C$F$$$k$o$1$@!#(B
+</p>
+
+<p>
+$B$A$J$_$KDj?t;2>H$N>l9g$O30$N%/%i%9$rA4$FC5$9$+$i$I$A$i$N=q$-$+$?$G$b(B
+<code>C</code>$B$,8!:w%Q%9$KF~$k$N$GLdBj$J$$!#$^$?BeF~$N$[$&$O$=$b$=$b%a%=%C%ICf$K(B
+$B=q$1$J$$$N$G$3$l$b4X78$J$$!#(B
+</p>
+
+
+
+<h3>$BB?=EBeF~(B</h3>
+
+<p>
+Ruby$B$G0lHVJ#;($J;EMM$O$I$3$@!"$HLd$o$l$l$PI.<T$OB(:B$KB?=EBeF~$HEz$($k!#(B
+$BB?=EBeF~$NA4BNA|$rGD0.$9$k$J$s$FL5M}$@!#$=$&;W$&:,5r$b$"$k!#$h$&$9$k$K!"(B
+$BB?=EBeF~$N;EMM$O;EMMA4BN$r$-$l$$$K@_7W$7$h$&$J$s$F$3$l$C$Q$+$7$b;W$o$:(B
+$B$K:n$i$l$F$$$k$N$@!#;EMM$N4p=`$K$J$k$N$O>o$K!V$$$/$D$+$NE57?E*$J;HMQ%Q(B
+$B%?!<%s$GJXMx$@$H;W$o$l$k5sF0!W$G$"$k!#$3$N$3$H$O(BRuby$BA4BN$K8@$($k$,!"B?(B
+$B=EBeF~$OFC$K$=$l$,82Cx$@!#(B
+</p>
+
+<p>
+$B$G$O$I$&$9$l$P%3!<%I$NL)NS$GLB$o$:$K:Q$`$@$m$&$+!#$3$l$O>uBVIU$-%9%-%c%J(B
+$B$rFI$`$N$H;w$F$$$F!"A4BN$r8+$J$$$3$H$G$"$k!#$=$b$=$bA4BNA|$,$J$$$N$@$+(B
+$B$i!"A4BNA|$rGD0.$9$k$3$H$b$G$-$J$$$N$@!#%3!<%I$r%V%D@Z$j$K$7$F!"$3$N%3!<(B
+$B%I$O$3$N;EMM$N$?$a$K$"$k!"$3$3$N%3!<%I$O$3$N;EMM$N$?$a$K$"$k!D!D$H$$$&(B
+$B$U$&$KC`0lBP1~$r<h$C$F$$$/$7$+$J$$!#(B
+</p>
+
+<p>
+$B$?$@K\=q$O(B<code>ruby</code>$B$N9=B$$rJq3gE*$KM}2r$9$kK\$G$"$C$F!X(BRuby$B%W%m%0%i%_%s%0(B
+$B>e5iJT!Y$G$O$J$$$N$G!"$"$^$j$K:Y$+$$$3$H$r$d$C$F$b;EJ}$,$J$$!#$=$3$G$3$3(B
+$B$G$OB?=EBeF~$N4pK\E*$J;EAH$_$H!"$4$/4JC1$J!VB?BPB?!W$N>l9g$@$1$r9M$($k(B
+$B$3$H$K$9$k!#(B
+</p>
+
+<p>
+$B$G$O$^$:DjHVDL$j9=J8LZ$+$i8+$F$$$/$3$H$K$9$k!#(B
+</p>
+
+<p class="caption">$B"'%=!<%9%W%m%0%i%`(B</p>
+<pre class="longlist">
+a, b = 7, 8
+</pre>
+
+
+<p class="caption">$B"'BP1~$9$k9=J8LZ(B</p>
+<pre class="longlist">
+NODE_MASGN
+nd_head:
+    NODE_ARRAY [
+    0:
+        NODE_LASGN
+        nd_cnt = 2
+        nd_value:
+    1:
+        NODE_LASGN
+        nd_cnt = 3
+        nd_value:
+    ]
+nd_value:
+    NODE_REXPAND
+    nd_head:
+        NODE_ARRAY [
+        0:
+            NODE_LIT
+            nd_lit = 7:Fixnum
+        1:
+            NODE_LIT
+            nd_lit = 8:Fixnum
+        ]
+</pre>
+
+
+<p>
+$B1&JU!&:8JU$,$H$b$K(B<code>NODE_ARRAY</code>$B$N%j%9%H$K$J$j!"(B
+$B1&JU$K$O(B<code>NODE_REXPAND</code>$B$bIU$/!#(B<code>REXPAND</code>$B$O(BRight value EXPAND$B$@$m$&$+!#(B
+$B$3$N%N!<%I$,2?$r$d$C$F$$$k$N$+5$$K$J$k!#8+$F$_$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_REXPAND</code></p>
+<pre class="longlist">
+2575  case NODE_REXPAND:
+2576    result = avalue_to_svalue(rb_eval(self, node-&gt;nd_head));
+2577    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>avalue_to_svalue()</code>$B$OL5;k$7$F$$$$!#(B
+<code>rb_eval()</code>$B$G(B<code>NODE_ARRAY</code>$B$,I>2A$5$l!"!J$=$l$OG[Ns%j%F%i%k$N%N!<%I$J$N$G!"!K(B
+Ruby$B$NG[Ns$K$J$C$FJV$C$F$/$k!#$D$^$j:8JU$r07$&A0$K1&JU$OA4$FI>2A$5$l$F(B
+$B$7$^$&$o$1$@!#$@$+$i$3$=<!$N$h$&$J$3$H$b$G$-$k!#(B
+</p>
+
+<pre class="emlist">
+a, b = b, a    # $B0l9T$G=q$/JQ?t%9%o%C%W(B
+</pre>
+
+<p>
+$B$G$O:8JUB&$N(B<code>NODE_MASGN</code>$B$b8+$F$_$h$&!#(B
+</p>
+
+<p class="caption">$B"'(B<code>rb_eval()</code>$B!](B<code>NODE_MASGN</code></p>
+<pre class="longlist">
+2923  case NODE_MASGN:
+2924    result = massign(self, node, rb_eval(self, node-&gt;nd_value),0);
+2925    break;
+
+(eval.c)
+</pre>
+
+
+<p>
+$B$3$3$G$O1&JU$NI>2A$@$1$G;D$j$O(B<code>massign()</code>$B$K0Q>y$@!#(B
+</p>
+
+<h4><code>massign()</code></h4>
+
+<p class="caption">$B"'(B<code>massi</code>$B!D!D(B</p>
+<pre class="longlist">
+3917  static VALUE
+3918  massign(self, node, val, pcall)
+3919      VALUE self;
+3920      NODE *node;
+3921      VALUE val;
+3922      int pcall;
+3923  {
+
+(eval.c)
+</pre>
+
+
+<p>
+$B%j%9%H$NESCf$G?=$7Lu$J$$$,!"$3$3$G;_$^$C$FBh;M0z?t$KCmL\$7$F$[$7$$!#(B
+<code>pcall</code>$B$O(B<code>Proc CALL</code>$B!"$D$^$j$3$N4X?t$,(B<code>Proc</code>$B%*%V%8%'%/%H$N8F$S=P$7$N$?$a$K;H(B
+$B$o$l$F$$$k$N$+$I$&$+$r<($7$F$$$k!#(B<code>Proc</code>$B8F$S=P$7$H$=$NB>$G$OB?=EBeF~$N(B
+$B%A%'%C%/$N87$7$5$,>/$70c$&$N$G!"$3$3$G%U%i%0$r$b$i$C$F%A%'%C%/$7$F$$$k(B
+$B$o$1$@!#EvA3!"CM$O(B0$B$+(B1$B$N$I$A$i$+$H7h$^$C$F$$$k!#(B
+</p>
+
+<p>
+$B$=$3$G@hDx$N(B<code>massign()</code>$B$N8F$S=P$7%3!<%I$r8+$F$[$7$$$N$@$,!"(B<code>pcall=0</code>$B$@!#$=(B
+$B$l$J$i$H$j$"$($:(B<code>pcall=0</code>$B$H7h$aBG$A$K$7$FJQ?t$rE83+$7$F$7$^$C$F$b9=$o$J(B
+$B$$$N$G$O$J$$$@$m$&$+!#$H$$$&$N$b!"(B<code>pcall</code>$B$N$h$&$KF0:n$rHyL/$KJQ$($k0z?t(B
+$B$,$"$k$H>o$KFsDL$j$N6Z=q$-$r9M$($J$,$iFI$^$J$$$H$J$i$:!"Hs>o$KLLE]$/$5(B
+$B$$$+$i$@!#$?$H$(<B:]$N4X?t(B<code>massign()</code>$B$O0l$D$@$H$7$F$b!"FI$`$H$-$K$O(B
+<code>pcall=0</code>$B$H(B<code>pcall=1</code>$B$N>l9g$NFs$D$N4X?t$,$"$k$H9M$($?$[$&$,$:$C$HFI$_$d$9$$!#(B
+</p>
+
+<p>
+$B%W%m%0%i%`$r=q$/$H$-$K$OFs=E2=$O@'Hs$H$bHr$1$J$1$l$P$J$i$J$$$,!"FI$`$H$-(B
+$B$K8B$C$F$O$=$N86B'$OL54X78$G$"$k!#%Q%?!<%s$,8B$i$l$F$$$k$J$i$`$7$m%3%T!<(B
+$B$7$F>iD92=$9$k$[$&$,@5$7$$!#!VB.EY$K4X$7$F:GE,2=!W!V%3!<%I%5%$%:$K4X$7$F(B
+$B:GE,2=!W$H$$$&8@MU$,$"$k$,!"$3$N>l9g$O!VFI$_$d$9$5$K4X$7$F:GE,2=!W$9$k(B
+$B$N$G$"$k!#(B
+</p>
+
+<p>
+$B$=$3$G(B<code>pcall=0</code>$B$H$7$F:o$l$k$H$3$m$rA4It:o$C$?;Q$r0J2<$K<($9!#(B
+</p>
+
+<p class="caption">$B"'(B<code>massign()</code>$B!J4JLsHG!K(B</p>
+<pre class="longlist">
+static VALUE
+massign(self, node, val  /* , pcall=0 */)
+    VALUE self;
+    NODE *node;
+    VALUE val;
+{
+    NODE *list;
+    long i = 0, len;
+
+    val = svalue_to_mvalue(val);
+    len = RARRAY(val)-&gt;len;
+    list = node-&gt;nd_head;
+    /* $B!J(BA$B!K(B */
+    for (i=0; list &amp;&amp; i&lt;len; i++) {
+        assign(self, list-&gt;nd_head, RARRAY(val)-&gt;ptr[i], pcall);
+        list = list-&gt;nd_next;
+    }
+    /* $B!J(BB$B!K(B */
+    if (node-&gt;nd_args) {
+        if (node-&gt;nd_args == (NODE*)-1) {
+            /* no check for mere `*' */
+        }
+        else if (!list &amp;&amp; i&lt;len) {
+            assign(self, node-&gt;nd_args,
+                   rb_ary_new4(len-i, RARRAY(val)-&gt;ptr+i), pcall);
+        }
+        else {
+            assign(self, node-&gt;nd_args, rb_ary_new2(0), pcall);
+        }
+    }
+
+    /* $B!J(BC$B!K(B */
+    while (list) {
+        i++;
+        assign(self, list-&gt;nd_head, Qnil, pcall);
+        list = list-&gt;nd_next;
+    }
+    return val;
+}
+</pre>
+
+
+<p>
+<code>val</code>$B$,1&JU$NCM$@!#$^$?(B<code>svalue_to_mvalue()</code>$B$H$$$&2x$7$$JQ49$r$+$1$F$$$k$,!"(B
+$B@hDx$,(B<code>mvalue_to_svalue()</code>$B!":#2s$,(B<code>svalue_to_mvalue()</code>$B$@$+$i!V$-$C$H85$KLa$C(B
+$B$F$$$k$O$:$@!W$H9M$($i$l$k!#=>$C$FN>J}$^$H$a$F>C$9!#$^$?<!$N9T$G(B
+<code>RARRAY()</code>$B$r;H$C$F$$$k$+$i!"1&JU$NCM$O(BRuby$B$N(B<code>Array</code>$B$K$J$C$F$$$k$i$7$$$H$o(B
+$B$+$k!#0lJ}:8JU$O(B<code>node-&gt;nd_head</code>$B!"$D$^$j%m!<%+%kJQ?t(B<code>list</code>$B$KBeF~$5$l$F$$$k(B
+$BCM$G$"$k!#$3$N(B<code>list</code>$B$b$^$?%N!<%I!J(B<code>NODE_ARRAY</code>$B!K$@!#(B
+</p>
+
+<p>
+$B0J2<$O%3!<%I$r@a$4$H$KDI$C$F$$$/!#(B
+</p>
+
+<p>
+$B!J(BA$B!K(B<code>assign()</code>$B$O$=$NL>A0DL$j!"0lBP0l$NBeF~$r9T$&4X?t$G$"$k!#:8JU$O%N!<(B
+$B%I$GI=8=$5$l$F$$$k$+$i!"Nc$($P(B<code>NODE_IASGN</code>$B!J%$%s%9%?%s%9JQ?t$X$NBeF~!K$J(B
+$B$i(B<code>rb_ivar_set()</code>$B$GBeF~$9$k!"$H$$$&$h$&$K$9$l$P$$$$!#$D$^$j$3$3$G$O(B
+<code>list</code>$B$H(B<code>val</code>$B$NC;$$$[$&$K9g$o$;$F0lBP0l$NBeF~$r9T$C$F$$$k(B
+$B!J?^(B9$B!K!#(B
+</p>
+
+<p class="image">
+<img src="images/ch_module_massign.jpg" alt="(massign)"><br>
+$B?^(B9: $BBP1~$9$k$b$N$OBeF~(B
+</p>
+
+<p>
+$B!J(BB$B!K1&JU$,M>$C$F$$$?$i;D$j$r(BRuby$B$NG[Ns$K$7$F(B<code>node-&gt;nd_args</code>$B!J$,I=8=(B
+$B$7$F$$$k:8JU!K$KBeF~$9$k!#(B
+</p>
+
+<p>
+$B!J(BC$B!K:8JU$,M>$C$F$$$?$i$=$NA4It$K(B<code>nil</code>$B$rBeF~$9$k!#(B
+</p>
+
+<p>
+$B$H$3$m$G!"(B<code>pcall=0</code>$B$K$7$F:o$k!"$H$$$&:n6H$O%3%s%Q%$%i$N:GE,2=%U%'%$%:(B
+$B$G;H$&%G!<%?%U%m!<2r@O!?Dj?t>v$_9~$_$H$=$C$/$j$@!#$D$^$j$"$kDxEY<+F02=(B
+$B$G$-$k$N$G$O$J$$$+$H9M$($i$l$k!#(B
+</p>
+
+
+<hr>
+<p>
+$B8f0U8+!&8f46A[!&8m?#$N;XE&$J$I$O(B
+<a href="mailto:aamine@loveruby.net">$B@DLZJvO:(B &lt;aamine@loveruby.net&gt;</a>
+$B$^$G$*4j$$$7$^$9!#(B
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">$B!X(BRuby$B%=!<%9%3!<%I40A42r@b!Y(B
+$B$O%$%s%W%l%9%@%$%l%/%H$G8fM=Ls!&8f9XF~$$$?$@$1$^$9(B ($B=q@R>R2p%Z!<%8$XHt$S$^$9(B)$B!#(B</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

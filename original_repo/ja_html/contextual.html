@@ -1,0 +1,2766 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第11章 状態付きスキャナ</title></head>
+<body>
+
+<h1>第11章 状態付きスキャナ</h1>
+
+<h2>概要</h2>
+
+<p>
+理論のように、スキャナはただひたすらトークンに区切り、パーサはその並び
+だけを扱い、両者は完璧に独立している……という段階で済むならば、それは
+とてもありがたいことだ。しかし現実はそううまくはいかない。プログラムの
+文脈によってトークンの切りかたや記号を変えなければならないということは
+よくある。この章ではスキャナとパーサの連携について見ていくことにする。
+</p>
+
+
+<h3>具体例</h3>
+
+<p>
+普通のプログラム言語なら、空白は単語の区切りになる以外はたいし
+て意味を持たない。しかしRubyは普通ではないので空白のあるなしで全く意味
+が変わってしまうことがある。例えば次のような場合だ。
+</p>
+
+<pre class="emlist">
+a[i] = 1      # a[i] = (1)
+a [i]         # a([i])
+</pre>
+
+<p>
+前者はインデックス代入であり、後者はメソッド呼び出しの括弧を省略して引
+数に配列の要素を渡している。
+</p>
+
+<p>
+また次のような場合もある。
+</p>
+
+<pre class="emlist">
+a  +  1    # (a) + (1)
+a  +1      # a(+1)
+</pre>
+
+<p>
+このあたりの仕様は一部の地域でやたらと嫌われているようだ。
+</p>
+
+<p>
+しかしこのままだとメソッド括弧の省略だけが悪いかのような印象を
+与えてしまいそうなので別の例も挙げておこう。
+</p>
+
+<pre class="emlist">
+`cvs diff parse.y`          # コマンド呼び出し文字列
+obj.`("cvs diff parse.y")   # 通常形式のメソッド呼び出し
+</pre>
+
+<p>
+これは、前者がリテラルの形を取ったメソッド呼び出しであるのに対し、
+後者は通常形式のメソッド呼び出しである（「<code>`</code>」がメソッド名）。
+コンテキストによって随分と扱いが違う。
+</p>
+
+<p>
+次の例もかなり激しく働きが変わる。
+</p>
+
+<pre class="emlist">
+print(&lt;&lt;EOS)   # ヒアドキュメント
+......
+EOS
+
+list = []
+list &lt;&lt; nil    # list.push(nil)
+</pre>
+
+<p>
+前者はヒアドキュメントで、後者は演算子形式のメソッド呼び出しである。
+</p>
+
+<p>
+このようにRubyの文法には実装するのには不都合なところがたくさん
+存在する。とてもではないが丁寧にやっていたら一章で全部紹介しき
+れるような量ではない。そこでこの章では根本原理と、難易度の高いところに
+限って見ていくことにする。
+</p>
+
+
+
+<h3><code>lex_state</code></h3>
+
+<p>
+<code>lex_state</code>という変数がある。<code>lex</code>はもちろんlexerのlexだから、これは
+スキャナの状態（state）を示す変数だ。
+</p>
+
+<p>
+どういう状態があるのだろうか。定義を見てみよう。
+</p>
+
+<p class="caption">▼<code>enum lex_state</code></p>
+<pre class="longlist">
+  61  static enum lex_state {
+  62      EXPR_BEG,      /* ignore newline, +/- is a sign. */
+  63      EXPR_END,      /* newline significant, +/- is a operator. */
+  64      EXPR_ARG,      /* newline significant, +/- is a operator. */
+  65      EXPR_CMDARG,   /* newline significant, +/- is a operator. */
+  66      EXPR_ENDARG,   /* newline significant, +/- is a operator. */
+  67      EXPR_MID,      /* newline significant, +/- is a operator. */
+  68      EXPR_FNAME,    /* ignore newline, no reserved words. */
+  69      EXPR_DOT,      /* right after `.' or `::', no reserved words. */
+  70      EXPR_CLASS,    /* immediate after `class', no here document. */
+  71  } lex_state;
+
+(parse.y)
+</pre>
+
+
+<p>
+プリフィクスの<code>EXPR_</code>はexpression、「式」だろう。<code>EXPR_BEG</code>なら「式の頭」
+だし<code>EXPR_DOT</code>は「式の中の、ドットの後」だ。
+</p>
+
+<p>
+具体的に説明しよう。<code>EXPR_BEG</code>は「式の先頭にいる」ことを示している。
+<code>EXPR_END</code>は「式の最後にいる」ことを示す。<code>EXPR_ARG</code>は「メソッドの引数の前」
+を示す。<code>EXPR_FNAME</code>は「（<code>def</code>などの）メソッド名の前」を示す。説明を飛ば
+したものはあとで詳しく解析していく。
+</p>
+
+<p>
+ところで、<code>lex_state</code>が示しているものは「括弧のあと」「文の頭」というよ
+うな情報なのだから、これはスキャナの状態ではなくてパーサの状態のような
+気がする。だが普通はスキャナの状態と呼ぶ。なぜだろうか。
+</p>
+
+<p>
+実はこの場合の「状態」は普段使う「状態」とちょっと意味が違うのだ。
+<code>lex_state</code>のような「状態」とは、「スキャナがこういう振舞いをする状態」
+という意味である。例えば<code>EXPR_BEG</code>を正確に言えば「いまスキャナを働かせ
+たら文頭にいるかのように動く状態」である。
+</p>
+
+<p>
+また専門用語を使うと、スキャナをステートマシンと見たときの状態、と言え
+る。しかしそこまで説明するのはさすがに骨が折れるしあまりに話題が離れす
+ぎる。詳しいことはデータ構造に関する教科書を適当に見繕って読んでいただ
+きたい。
+</p>
+
+
+
+<h3>状態付きスキャナの読解</h3>
+
+<p>
+状態付きスキャナを読むコツは、一度に全部をつかもうとしないことだ。パー
+サを書く人間にとっては、状態付きスキャナはあまり使いたくないものである。
+ということは当然、それを処理の本筋にはしたくないはずだ。だからスキャナ
+の状態管理というのは「その他の本筋部分に付随したおまけ部分」であること
+が多い。つまりスキャナの状態遷移全体の美しい全体像なんてものは最初から
+存在しないのである。
+</p>
+
+<p>
+ではどうするかというと、徹底的に目的指向で読んでいくのがよい。「これを
+解決するためにこの部分がある」「この問題を解消するためのこのコードがあ
+る」というふうに、目的に沿ってコードを切り刻む。問題の相互関連なんても
+のを考え始めると絶対に行き詰まる。もう一度言うが、そんなものは元からな
+いのだ。
+</p>
+
+<p>
+とは言えそれにしたってある程度の目標は必要だ。状態付きスキャナを読むと
+きの目標は、何よりも各状態がどういう状態かを知ることに置く
+べきである。例えば<code>EXPR_BEG</code>はどういう状態か。それはパーサが式の頭にい
+るということである。というように。
+</p>
+
+<h4>静的な方法</h4>
+
+<p>
+ではそれはどうやったらわかるだろうか。三通りの方法がある。
+</p>
+
+<ul>
+<li>状態の名前を見る</li>
+</ul>
+
+<p>
+もっとも簡単であたりまえの方法。例えば<code>EXPR_BEG</code>なら当然なにかの先頭
+（beginning）なんだろうというのは予測が付く。
+</p>
+
+<ul>
+<li>その状態においてどう挙動が変わるか見る</li>
+</ul>
+
+<p>
+状態によってトークンの切りかたがどう変わるか見る。そして現実の動きと比
+べて当たりをつける。
+</p>
+
+<ul>
+<li>どういう状態から遷移してくるか見る</li>
+</ul>
+
+<p>
+どの状態からどういうトークンで遷移してくるか見る。例えば<code>'\n'</code>の後に必
+ず<code>HEAD</code>という状態に遷移しているとしたら、それはきっと行頭を表しているに
+違いない。
+</p>
+
+<p>
+<code>EXPR_BEG</code>を例にして考えてみよう。
+<code>ruby</code>の場合は状態遷移は全て<code>lex_state</code>への代入で表現されているので、ま
+ず<code>EXPR_BEG</code>の代入を<code>grep</code>して洗う。次にそれがどこにあるか書き出す。例えば
+<code>yylex()</code>の<code>'#'</code>と<code>'*'</code>と<code>'!'</code>と……のように。そして遷移する前の状態を考慮して
+それがどういう場合にあてはまるか考える（図1）。
+</p>
+
+<p class="image">
+<img src="images/ch_contextual_transittobeg.jpg" alt="(transittobeg)"><br>
+図1: <code>EXPR_BEG</code>への遷移
+</p>
+
+<p>
+ああなるほど、これはいかにも文の先頭っぽいな。とわかる。
+特に<code>'\n'</code>や<code>';'</code>のあたりがそれっぽい。そして開き括弧やカンマも
+あることから、これは文だけではなくて式の先頭だろうと言える。
+</p>
+
+<h4>動的な方法</h4>
+
+<p>
+もっとお手軽に現実の挙動を確かめる方法もある。例えばデバッガで
+<code>yylex()</code>にフックをかけて<code>lex_state</code>を見ると簡単だ。
+</p>
+
+<p>
+あるいはソースコードを書き換えて状態遷移を出力するようにしてしまっても
+いい。<code>lex_state</code>の場合は代入や比較が数パターンしかないので、それをテキ
+ストのパターンでとらえて遷移を出力するように書き換えればよい。今回は添
+付CD-ROMに<code>rubylex-analyser</code>というツールを付け
+た\footnote{<code>rubylex-analyser</code>：添付CD-ROMの<code>tools/rubylex-analyser.tar.gz</code>}。
+本書でも必要に応じてこのツールを使いつつ説明していく。
+</p>
+
+<p>
+全体的な手順としては、まずデバッガやツールを使ってなんとなくの動きを
+確認する。そしてその情報をソースコードを見て確認・敷衍していくという
+のがよいだろう。
+</p>
+
+
+
+<h3>各状態について</h3>
+
+<p>
+<code>lex_state</code>の状態について簡単に説明しておく。
+</p>
+
+<ul>
+<li><code>EXPR_BEG</code></li>
+</ul>
+
+<p>
+式の先端。<code>\n ( { [ ! ? : ,</code> 演算子 <code>op=</code>などの直後。
+最も一般的な状態である。
+</p>
+
+<ul>
+<li><code>EXPR_MID</code></li>
+</ul>
+
+<p>
+予約語の<code>return break next rescue</code>の直後。
+二項演算子の<code>*</code>や<code>&amp;</code>が無効になる。
+挙動は<code>EXPR_BEG</code>と似ている。
+</p>
+
+<ul>
+<li><code>EXPR_ARG</code></li>
+</ul>
+
+<p>
+メソッド呼び出しのメソッド名部分である可能性がある要素の直後、
+または<code>'['</code>の直後。
+ただし<code>EXPR_CMDARG</code>である場所を除く。
+</p>
+
+<ul>
+<li><code>EXPR_CMDARG</code></li>
+</ul>
+
+<p>
+通常形式のメソッド呼び出しの最初の引数の前。
+詳しくは「<code>do</code>の衝突」の節を参照。
+</p>
+
+<ul>
+<li><code>EXPR_END</code></li>
+</ul>
+
+<p>
+文が終端可能なところ。例えばリテラルや括弧のあと。ただし<code>EXPR_ENDARG</code>で
+ある場所は除く。
+</p>
+
+<ul>
+<li><code>EXPR_ENDARG</code></li>
+</ul>
+
+<p>
+<code>EXPR_END</code>の特殊版。<code>tLPAREN_ARG</code>に対応する閉じ括弧の直後。
+「括弧でくくられた第一引数」の項を参照。
+</p>
+
+<ul>
+<li><code>EXPR_FNAME</code></li>
+</ul>
+
+<p>
+メソッド名の前。具体的には<code>def</code>・<code>alias</code>・<code>undef</code>・シンボルの<code>':'</code>の
+直後である。「<code>`</code>」が単独で名前になる。
+</p>
+
+<ul>
+<li><code>EXPR_DOT</code></li>
+</ul>
+
+<p>
+メソッド呼び出しのドットのあと。<code>EXPR_FNAME</code>と扱いは似ている。
+あらゆる予約語がただの識別子として扱われる。
+<code>'`'</code>が単独で名前になる。
+</p>
+
+<ul>
+<li><code>EXPR_CLASS</code></li>
+</ul>
+
+<p>
+予約語<code>class</code>の後ろ。この状態だけはかなり限定的である。
+</p>
+
+<p>
+まとめると、
+</p>
+
+<ul>
+<li><code>BEG MID</code></li>
+<li><code>END ENDARG</code></li>
+<li><code>ARG CMDARG</code></li>
+<li><code>FNAME DOT</code></li>
+</ul>
+
+<p>
+はそれぞれ似たような状況を表す。<code>EXPR_CLASS</code>だけはちょっと特殊だが、
+出てくる場所が非常に限定されているのでそもそもあまり考えなくて済む。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>改行の制御</h2>
+
+<h3>問題</h3>
+
+<p>
+Rubyの文には必ずしも終端が必要なかった。例えばCやJavaでは必ず文末に
+セミコロンを置かないといけないが、Rubyではそういうものは必要ない。
+一行一文が基本なので、行末で勝手に文が終わるのである。
+</p>
+
+<p>
+ところがその一方で「明らかに続きがある」場合は自動的に文が継続すること
+になっている。「明らかに続きがある」状態とは、
+</p>
+
+<ul>
+<li>カンマのあと</li>
+<li>インフィックス演算子のあと</li>
+<li>括弧がバランスしていない</li>
+<li>予約語<code>if</code>の直後</li>
+</ul>
+
+<p>
+などである。
+</p>
+
+
+<h3>実装</h3>
+
+<p>
+このような文法を実現するためにはどうしたらいいのだろう。単にスキャナで
+改行を読み飛ばすだけではだめである。Rubyのように文の両端が予約語で区切
+られている文法ならC言語ほどは衝突しないが、軽く試してみたところ、<code>return</code>、
+<code>next</code>、<code>break</code>、メソッド呼び出しの括弧省略は全て削らないと通らなかった。
+そういうものを残しておくには文末にはなんらかの終端記号がないといけない。
+それが<code>\n</code>であるか<code>';'</code>であるかは問わないが、とにかくなんらかの終端記号は
+必要なのだ。
+</p>
+
+<p>
+そこで解決策は二つある。即ちパーサで解決するかスキャナで解決するかだ。
+パーサで解決するとしたら、<code>\n</code>が許されるところ全てにオプションで<code>\n</code>を置
+けるような文法を書いてしまえばよい。スキャナで解決するなら、<code>\n</code>に意味の
+あるところでだけ<code>\n</code>をパーサに渡せばよい（その他の場所で読み飛ばす）。
+</p>
+
+<p>
+どちらを使うかは趣味の問題だが、普通はスキャナで対応する。そのほうがた
+いていコードがコンパクトになるし、どうでもいい記号で規則がぐちゃぐちゃ
+になってしまったらパーサジェネレータを使う意味がなくなってしまうからだ。
+</p>
+
+<p>
+そういうわけで結論から言うと<code>ruby</code>でも改行にはスキャナで対応する。行を継
+続したいときは<code>\n</code>を読み飛ばし、終端したいときは<code>\n</code>をトークンとして送る。
+それが<code>yylex()</code>のここだ。
+</p>
+
+<p class="caption">▼<code>yylex()</code>−<code>'\n'</code></p>
+<pre class="longlist">
+3155        case '\n':
+3156          switch (lex_state) {
+3157            case EXPR_BEG:
+3158            case EXPR_FNAME:
+3159            case EXPR_DOT:
+3160            case EXPR_CLASS:
+3161              goto retry;
+3162            default:
+3163              break;
+3164          }
+3165          command_start = Qtrue;
+3166          lex_state = EXPR_BEG;
+3167          return '\n';
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>EXPR_BEG</code>・<code>EXPR_FNAME</code>・<code>EXPR_DOT</code>・<code>EXPR_CLASS</code>では<code>goto retry</code>、
+つまり意味がないので読み飛ばす。ラベル<code>retry</code>は<code>yylex()</code>の巨大<code>switch</code>の
+前にある。
+</p>
+
+<p>
+その他のところでは改行が意味を持つのでパーサに渡し、ついでに
+<code>lex_state</code>を<code>EXPR_BEG</code>に戻す。改行が意味のあるところは即ち<code>expr</code>の切れめ
+だからだ。
+</p>
+
+<p>
+また<code>command_start</code>は当面無視しておくべきである。最初に言ったように、
+一度にいろいろなところを追うと必ず混乱する。
+</p>
+
+<p>
+具体的な例を少し見てみよう。さっそく添付の解析ツール
+<code>rubylex-analyser</code>を使う。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e '
+m(a,
+  b, c) unless i
+'
++EXPR_BEG
+EXPR_BEG     C      "\nm"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           "("  '('                  EXPR_BEG
+                                              0:cond push
+                                              0:cmd push
+EXPR_BEG     C        "a"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           ","  ','                  EXPR_BEG
+EXPR_BEG    S     "\n  b"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG    S         "c"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                              0:cmd lexpop
+EXPR_END    S    "unless"  kUNLESS_MOD          EXPR_BEG
+EXPR_BEG    S         "i"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+EXPR_BEG     C       "\n"  '                    EXPR_BEG
+</pre>
+
+<p>
+いろいろ出力が出ているが、ここで必要なのは左と真ん中の欄だけである。左
+の欄は<code>yylex()</code>に入るの前の<code>lex_state</code>を示し、真ん中の欄はトークンとそ
+の記号を示す。
+</p>
+
+<p>
+まず最初のトークン<code>m</code>の前と第二引数<code>b</code>の前では、改行しているが<code>\n</code>がトー
+クンの前にくっついていて終端記号として出てきていない。<code>lex_state</code>が
+<code>EXPR_BEG</code> だからだ。
+</p>
+
+<p>
+しかし下から二行目では<code>\n</code>が終端記号としても出てきている。<code>EXPR_ARG</code>だ
+からだ。
+</p>
+
+<p>
+というように、使っていけばいい。もうちょっとだけ例を見てみる。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e 'class
+C &lt; Object
+end'
++EXPR_BEG
+EXPR_BEG     C    "class"  kCLASS               EXPR_CLASS
+EXPR_CLASS          "\nC"  tCONSTANT            EXPR_END
+EXPR_END    S         "&lt;"  '&lt;'                  EXPR_BEG
++EXPR_BEG
+EXPR_BEG    S    "Object"  tCONSTANT            EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+EXPR_BEG     C      "end"  kEND                 EXPR_END
+EXPR_END             "\n"  \n                   EXPR_BEG
+</pre>
+
+<p>
+予約語<code>class</code>のあとは<code>EXPR_CLASS</code>なので改行が無視される。
+しかしスーパークラス式<code>Object</code>のあとは<code>EXPR_ARG</code>なので<code>\n</code>が出てきた。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e 'obj.
+class'
++EXPR_BEG
+EXPR_BEG     C      "obj"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           "."  '.'                  EXPR_DOT
+EXPR_DOT        "\nclass"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+</pre>
+
+<p>
+<code>'.'</code>の後は<code>EXPR_DOT</code>なので<code>\n</code>が無視された。
+</p>
+
+<p>
+ところで、<code>class</code>は予約語のはずなのに、なんで<code>tIDENTIFIER</code>になるのだろう。
+次の節に続く。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>予約語と同じメソッド名</h2>
+
+<h3>問題</h3>
+
+<p>
+Rubyでは予約語をメソッド名に使うことができる。ただしメソッド名に使える
+と一口に言ってもコンテキストがいくつかあって、
+</p>
+
+<ul>
+<li>メソッド定義（<code>def xxxx</code>）</li>
+<li>呼び出し（<code>obj.xxxx</code>）</li>
+<li>シンボルリテラル（<code>:xxxx</code>）</li>
+</ul>
+
+<p>
+という三つが考えられる。Rubyではこの全てが可能である。以下それぞれに
+考えてみよう。
+</p>
+
+<p>
+まずメソッド定義は、専用の予約語<code>def</code>が先行するのでなんとかなりそうだ。
+</p>
+
+<p>
+メソッド呼び出しについては、レシーバを省略されるとかなり面倒なことにな
+るのだが、実はさらに仕様が限定されていて、そういうのは許可されない。つ
+まりメソッド名が予約語の場合は決してレシーバを省略できないのだ。あるい
+は、ちゃんとパースできるようにそういう仕様になっていると言うべきかもし
+れない。
+</p>
+
+<p>
+そしてシンボルの場合は、やはり終端記号<code>':'</code>が先行するのでなんとか通せそう
+である。ただしこの場合は予約語とは関係なく<code>':'</code>が<code>a?b:c</code>のコロンと衝突する
+という問題がある。これさえ解決できればなんとかなる。
+</p>
+
+<p>
+いずれのケースにしてもやはり方法は二つ考えられる。即ちスキャナで解決す
+るかパーサで解決するかだ。スキャナで解決する場合、<code>def</code>や<code>.</code>や<code>:</code>の次に来る
+予約語を<code>tIDENTIFIER</code>（など）にすればよい。パーサで解決するなら、そうい
+う規則を書けばよい。<code>ruby</code>では三つそれぞれに両方を使い分けている。
+</p>
+
+
+
+<h3>メソッド定義</h3>
+
+<p>
+メソッド定義の名前部分。ここではパーサ側で対処する。
+</p>
+
+<p class="caption">▼メソッド定義の規則</p>
+<pre class="longlist">
+                | kDEF fname
+                  f_arglist
+                  bodystmt
+                  kEND
+                | kDEF singleton dot_or_colon  fname
+                  f_arglist
+                  bodystmt
+                  kEND
+</pre>
+
+
+<p>
+メソッド定義を表す規則は二つだけで、それぞれ通常のメソッド定義と特異メ
+ソッド定義に対応する。いずれも<code>fname</code>が名前部分で、その<code>fname</code>は次のように
+定義されている。
+</p>
+
+<p class="caption">▼<code>fname</code></p>
+<pre class="longlist">
+fname           : tIDENTIFIER
+                | tCONSTANT
+                | tFID
+                | op
+                | reswords
+</pre>
+
+
+<p>
+<code>reswords</code>が予約語で<code>op</code>が二項演算子だ。どちらの規則も単に終端記号を全部並
+べてあるだけなので省略する。それから<code>tFID</code>は<code>gsub!</code>や<code>include?</code>のように語尾
+に記号が付くものである。
+</p>
+
+
+
+<h3>メソッド呼び出し</h3>
+
+<p>
+予約語と同名のメソッド呼び出しに対してはスキャナで対処する。
+予約語のスキャンのコードはこうなっていた。
+</p>
+
+<pre class="emlist">
+識別子をスキャン
+result = (tIDENTIFIERまたはtCONSTANT)
+
+if (lex_state != EXPR_DOT) {
+    struct kwtable *kw;
+
+    /* See if it is a reserved word.  */
+    kw = rb_reserved_word(tok(), toklen());
+    予約語を処理する
+}
+</pre>
+
+<p>
+<code>EXPR_DOT</code>がメソッド呼び出しドットの後を表す。<code>EXPR_DOT</code>のときには無条件で
+予約語の処理を抜かすから、ドットの後の予約語の記号は<code>tIDENTIFIER</code>か
+<code>tCONSTANT</code>になる。
+</p>
+
+
+
+<h3>シンボル</h3>
+
+<p>
+予約語のシンボルはパーサとスキャナの両方で対処される。
+まず規則から。
+</p>
+
+<p class="caption">▼<code>symbol</code></p>
+<pre class="longlist">
+symbol          : tSYMBEG sym
+
+sym             : fname
+                | tIVAR
+                | tGVAR
+                | tCVAR
+
+fname           : tIDENTIFIER
+                | tCONSTANT
+                | tFID
+                | op
+                | reswords
+</pre>
+
+
+<p>
+このように、パーサで明示的に予約語（<code>reswords</code>）を通すようにしている。こ
+うできるのはあくまで<code>tSYMBEG</code>という専用の終端記号が前にあるからで、記号
+が<code>':'</code>だったりしたらこううまくはいかない。条件演算子（<code>a?b:c</code>）と衝突して
+おしまいだ。つまりスキャナレベルで<code>tSYMBEG</code>を見分けるのがポイントである
+ことに変わりはない。
+</p>
+
+<p>
+ではその区別はどうやっているのだろうか。スキャナの実装を見てみよう。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>':'</code></p>
+<pre class="longlist">
+3761        case ':':
+3762          c = nextc();
+3763          if (c == ':') {
+3764              if (lex_state == EXPR_BEG ||  lex_state == EXPR_MID ||
+3765                  (IS_ARG() &amp;&amp; space_seen)) {
+3766                  lex_state = EXPR_BEG;
+3767                  return tCOLON3;
+3768              }
+3769              lex_state = EXPR_DOT;
+3770              return tCOLON2;
+3771          }
+3772          pushback(c);
+3773          if (lex_state == EXPR_END ||
+                  lex_state == EXPR_ENDARG ||
+                  ISSPACE(c)) {
+3774              lex_state = EXPR_BEG;
+3775              return ':';
+3776          }
+3777          lex_state = EXPR_FNAME;
+3778          return tSYMBEG;
+
+(parse.y)
+</pre>
+
+
+<p>
+前半の<code>if</code>は<code>':'</code>が二つ続いた場合。このときは最左最長一致原則で
+優先的に<code>'::'</code>をスキャンする。
+</p>
+
+<p>
+その次の<code>if</code>は先程言った条件演算子の<code>':'</code>だ。<code>EXPR_END</code>と<code>EXPR_ENDARG</code>は
+どちらも式の終わりだから、引数が来ない……つまりシンボルはありえないので
+条件演算子の<code>':'</code>にする。
+また次の文字がスペースだった（<code>ISSPACE(c)</code>）ときもシンボルでは
+なさそうなので条件演算子だ。
+</p>
+
+<p>
+そして上記のどちらでもない場合は全てシンボルである。そのときは
+<code>EXPR_FNAME</code>に遷移してあらゆるメソッド名に備える。パースではなんでも困ら
+ないのだが、これを忘れるとスキャナが予約語に対して値を渡してくれないの
+で値の計算が変になる。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2>修飾子</h2>
+
+<h3>問題</h3>
+
+<p>
+例えば<code>if</code>には通常の記法と後置修飾するものがある。
+</p>
+
+<pre class="emlist">
+# 通常記法
+if cond then
+  expr
+end
+
+# 後置
+expr if cond
+</pre>
+
+<p>
+これも衝突の原因になる。なぜかというと、これまたやっぱりメソッド括弧の
+省略が原因である。例えばこんな場合だ。
+</p>
+
+<pre class="emlist">
+call if cond then a else b end
+</pre>
+
+<p>
+この式は<code>if</code>まで読んだところで次の二通りに解釈できる。
+</p>
+
+<pre class="emlist">
+call((if ....))
+call() if ....
+</pre>
+
+<p>
+よくわからなければものは試しで、衝突するかどうかやってみよう。文法の中
+の<code>kIF_MOD</code>を<code>kIF</code>に変えて<code>yacc</code>で処理してみる。
+</p>
+
+<pre class="screen">
+% yacc parse.y
+parse.y contains 4 shift/reduce conflicts and 13 reduce/reduce conflicts.
+</pre>
+
+<p>
+目論見通り衝突しまくっている。興味があれば<code>yacc</code>に<code>-v</code>オプションを
+付けてログを取り、中を読んでみよう。どう衝突したのか詳細に書いてある。
+</p>
+
+
+<h3>実装</h3>
+
+<p>
+さてどうしたらいいだろうか。<code>ruby</code>では普通の<code>if</code>を<code>kIF</code>、後置の<code>if</code>を
+<code>kIF_MOD</code>というように記号レベルで（つまりスキャナレベルで）区別してし
+まう。他の後置系演算子も全く同じで、
+<code>kUNLESS_MOD kUNTIL_MOD kWHILE_MOD</code> <code>kRESCUE_MOD</code>に<code>kIF_MOD</code>の
+合わせて五種類がある。この判断を行っているのは次のところだ。
+</p>
+
+<p class="caption">▼<code>yylex</code>−予約語</p>
+<pre class="longlist">
+4173                  struct kwtable *kw;
+4174
+4175                  /* See if it is a reserved word.  */
+4176                  kw = rb_reserved_word(tok(), toklen());
+4177                  if (kw) {
+4178                      enum lex_state state = lex_state;
+4179                      lex_state = kw-&gt;state;
+4180                      if (state == EXPR_FNAME) {
+4181                          yylval.id = rb_intern(kw-&gt;name);
+4182                      }
+4183                      if (kw-&gt;id[0] == kDO) {
+4184                          if (COND_P()) return kDO_COND;
+4185                          if (CMDARG_P() &amp;&amp; state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+4187                          if (state == EXPR_ENDARG)
+4188                              return kDO_BLOCK;
+4189                          return kDO;
+4190                      }
+4191                      if (state == EXPR_BEG)  /*** ここ ***/
+4192                          return kw-&gt;id[0];
+4193                      else {
+4194                          if (kw-&gt;id[0] != kw-&gt;id[1])
+4195                              lex_state = EXPR_BEG;
+4196                          return kw-&gt;id[1];
+4197                      }
+4198                  }
+
+(parse.y)
+</pre>
+
+
+<p>
+これがあるのは<code>yylex</code>の末尾、識別子をスキャンしたあとだ。最後の（一番内
+側の）<code>if</code>〜<code>else</code>が修飾子を扱う部分である。<code>EXPR_BEG</code>かどうかで返り値を
+変えていることがわかる。ここが修飾子かどうかの判定だ。つまり変数<code>kw</code>が
+カギである。そして<code>kw</code>は……とずっと上を見ていくと、<code>struct kwtable</code>だと
+わかる。
+</p>
+
+<p>
+<code>struct kwtable</code>は<code>keywords</code>内で定義されている構造体で、
+ハッシュ関数<code>rb_reserved_word()</code>は<code>gperf</code>が作ってくれるということは
+前章で話した。もう一度構造体を紹介しよう。
+</p>
+
+<p class="caption">▼<code>keywords </code>― <code>struct kwtable</code></p>
+<pre class="longlist">
+   1  struct kwtable {char *name; int id[2]; enum lex_state state;};
+
+(keywords)
+</pre>
+
+
+<p>
+<code>name</code>と<code>id[0]</code>については説明済みである。予約語名とその記号だ。
+今回は残りのメンバについて話す。
+</p>
+
+<p>
+まず<code>id[1]</code>がいま問題の修飾子に対応する記号である。例えば<code>if</code>なら
+<code>kIF_MOD</code>だ。
+修飾子版がない予約語だと<code>id[0]</code>と<code>id[1]</code>には同じものが入っている。
+</p>
+
+<p>
+そして<code>state</code>は<code>enum lex_state</code>だから、予約語を読んだあとに遷移すべき状態だ。
+とりあえずその組み合わせを一覧しておく。この出力は筆者の自作
+ツール<code>kwstat.rb</code>で得られる。これも添付CD-ROMに収録し
+た\footnote{<code>kwstat</code>：添付CD-ROMの<code>tools/kwstat.rb</code>}。
+</p>
+
+<pre class="screen">
+% kwstat.rb ruby/keywords
+---- EXPR_ARG
+defined?  super     yield
+
+---- EXPR_BEG
+and     case    else    ensure  if      module  or      unless  when
+begin   do      elsif   for     in      not     then    until   while
+
+---- EXPR_CLASS
+class
+
+---- EXPR_END
+BEGIN     __FILE__  end       nil       retry     true
+END       __LINE__  false     redo      self
+
+---- EXPR_FNAME
+alias  def    undef
+
+---- EXPR_MID
+break   next    rescue  return
+
+---- modifiers
+if      rescue  unless  until   while
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>do</code>の衝突</h2>
+
+<h3>問題</h3>
+
+
+<p>
+イテレータの書式には<code>do</code>〜<code>end</code>と<code>{</code>〜<code>}</code>の二種類があるのだった。この二つの
+違いは優先順で、<code>{</code>〜<code>}</code>のほうがずっと高い。優先順位が高いということは
+文法として単位が「小さい」ということで、より小さい規則に入れることが
+できる。例えば<code>stmt</code>でなく<code>expr</code>や<code>primary</code>に入れることができる。例えば
+昔は<code>{</code>〜<code>}</code>イテレータが<code>primary</code>で<code>do</code>〜<code>end</code>イテレータが<code>stmt</code>にあった。
+</p>
+
+<p>
+ところが途中で次のような式に対する要求が出てきた。
+</p>
+
+<pre class="emlist">
+m do .... end + m do .... end
+</pre>
+
+<p>
+これを許すには<code>do</code>〜<code>end</code>イテレータを<code>arg</code>や<code>primary</code>に入れればいい。
+ところが<code>while</code>の条件式は<code>expr</code>、つまり<code>arg</code>や<code>primary</code>を含むので、
+ここで<code>do</code>が衝突してしまう。具体的には次のようなときだ。
+</p>
+
+<pre class="emlist">
+while m do
+  ....
+end
+</pre>
+
+<p>
+ちょっと見では<code>do</code>は<code>while</code>の<code>do</code>になるのが正しそうである。しか
+しよくよく見ると<code>m do</code>〜<code>end</code>というくくりも考えられる。人間が混同でき
+るということは<code>yacc</code>なら確実に衝突する。実際にやってみよう。
+</p>
+
+<pre class="emlist">
+/* doの衝突の実験 */
+%token kWHILE kDO tIDENTIFIER kEND
+%%
+expr: kWHILE expr kDO expr kEND
+    | tIDENTIFIER
+    | tIDENTIFIER kDO expr kEND
+</pre>
+
+<p>
+<code>while</code>、変数参照、イテレータだけに問題を単純化した。この規則は条件式の
+冒頭に<code>tIDENTIFIER</code>が来るとshift/reduce conflictを起こす。<code>tIDENTIFIER</code>を
+変数参照にして<code>do</code>を<code>while</code>に付けるのが還元、イテレータの<code>do</code>にするのが
+シフトだ。
+</p>
+
+<p>
+悪いことにshift/reduce conflictはシフト優先なので放置しておくと<code>do</code>はイ
+テレータの<code>do</code>になる。かと言って演算子優先順位その他で還元に倒すと<code>do</code>が全
+くシフトされなくなり、<code>do</code>それ自体が使えなくなる。つまり全ての問題を矛
+盾なく解決するには、<code>do</code>〜<code>end</code>イテレータを<code>expr</code>にすることなく演算子が使え
+る規則を書くか、スキャナレベルで解決するしかない。
+</p>
+
+<p>
+しかし<code>do</code>〜<code>end</code>イテレータを<code>expr</code>に入れないというのはとても非現実的である。
+<code>expr</code>のための規則（ということは<code>arg</code>と<code>primary</code>もだ）を全て繰り返さないと
+いけなくなる。従ってこの問題はスキャナで解決するのが適切だ。
+</p>
+
+
+<h3>規則レベルの解決</h3>
+
+<p>
+以下に関連規則を簡約化したものを示す。
+</p>
+
+<p class="caption">▼<code>do</code>の記号</p>
+<pre class="longlist">
+primary         : kWHILE expr_value do compstmt kEND
+
+do              : term
+                | kDO_COND
+
+primary         : operation brace_block
+                | method_call brace_block
+
+brace_block     : '{' opt_block_var compstmt '}'
+                | kDO opt_block_var compstmt kEND
+</pre>
+
+
+<p>
+見てのとおり、<code>while</code>の<code>do</code>とイテレータの<code>do</code>で終端記号が違う。
+<code>while</code>が<code>kDO_COND</code>、イテレータが<code>kDO</code>だ。あとはスキャナでこの
+区別をすればよい。
+</p>
+
+
+
+<h3>記号レベルの解決</h3>
+
+<p>
+以下は、何度も見てきた<code>yylex</code>の予約語の処理部分の一部である。
+<code>do</code>の処理をしているのはここだけなので、ここのコードを
+調べれば判断基準がわかるはずだ。
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子−予約語</p>
+<pre class="longlist">
+4183                      if (kw-&gt;id[0] == kDO) {
+4184                          if (COND_P()) return kDO_COND;
+4185                          if (CMDARG_P() &amp;&amp; state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+4187                          if (state == EXPR_ENDARG)
+4188                              return kDO_BLOCK;
+4189                          return kDO;
+4190                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+ぐちゃぐちゃとあるが、<code>kDO_COND</code>に関係するところだけ見ればよい。なぜなら、
+<code>kDO_COND</code>と<code>kDO</code>/<code>kDO_BLOCK</code>という比較、<code>kDO</code>と<code>kDO_BLOCK</code>という
+比較は意味があるが、それ以外の比較は意味がないからだ。いまは条件の
+<code>do</code>さえ区別できればよいのであって、他の条件を一緒に追ってはいけない。
+</p>
+
+<p>
+つまり<code>COND_P()</code>が鍵となる。
+</p>
+
+
+
+<h3><code>COND_P()</code></h3>
+
+<h4><code>cond_stack</code></h4>
+
+<p>
+<code>COND_P()</code>は<code>parse.y</code>の先頭近くで定義されている。
+</p>
+
+<p class="caption">▼<code>cond_stack</code></p>
+<pre class="longlist">
+  75  #ifdef HAVE_LONG_LONG
+  76  typedef unsigned LONG_LONG stack_type;
+  77  #else
+  78  typedef unsigned long stack_type;
+  79  #endif
+  80
+  81  static stack_type cond_stack = 0;
+  82  #define COND_PUSH(n) (cond_stack = (cond_stack&lt;&lt;1)|((n)&amp;1))
+  83  #define COND_POP() (cond_stack &gt;&gt;= 1)
+  84  #define COND_LEXPOP() do {\
+  85      int last = COND_P();\
+  86      cond_stack &gt;&gt;= 1;\
+  87      if (last) cond_stack |= 1;\
+  88  } while (0)
+  89  #define COND_P() (cond_stack&amp;1)
+
+(parse.y)
+</pre>
+
+
+<p>
+型<code>stack_type</code>は<code>long</code>（32ビット以上）か<code>long long</code>（64ビット以上）だ。
+<code>cond_stack</code>はパース開始時に<code>yycompile()</code>で初期化され、後は常にマクロ
+経由で扱われるので、そのマクロを把握すればよい。
+</p>
+
+<p>
+そのマクロ<code>COND_PUSH</code>/<code>POP</code>を見ると、どうやら整数をビット単位のスタック
+として使うようである。
+</p>
+
+<pre class="emlist">
+MSB←   →LSB
+...0000000000         初期値0
+...0000000001         COND_PUSH(1)
+...0000000010         COND_PUSH(0)
+...0000000101         COND_PUSH(1)
+...0000000010         COND_POP()
+...0000000100         COND_PUSH(0)
+...0000000010         COND_POP()
+</pre>
+
+<p>
+そして<code>COND_P()</code>はというと、最下位ビット（LSB）が1かどうか
+判定しているから、スタックの先頭が1かどうかの判定ということになる。
+</p>
+
+<p>
+残る<code>COND_LEXPOP()</code>はちょっと不思議な動きだ。現在の<code>COND_P()</code>を
+スタック先頭に残したまま右シフトしている。つまり下から2ビットめを
+1ビットめで踏み潰すようになる。
+</p>
+
+<pre class="emlist">
+MSB←   →LSB
+...0000000000         初期値0
+...0000000001         COND_PUSH(1)
+...0000000010         COND_PUSH(0)
+...0000000101         COND_PUSH(1)
+...0000000011         COND_LEXPOP()
+...0000000100         COND_PUSH(0)
+...0000000010         COND_LEXPOP()
+</pre>
+
+<p>
+これがどういう意味を持つのかは後で説明しよう。
+</p>
+
+<h4>目的の調査</h4>
+
+<p>
+ではこのスタックの目的を調べるために、
+<code>COND_PUSH() COND_POP()</code>を使っているところを全部リストアップしてみよう。
+</p>
+
+<pre class="emlist">
+        | kWHILE {COND_PUSH(1);} expr_value do {COND_POP();}
+--
+        | kUNTIL {COND_PUSH(1);} expr_value do {COND_POP();}
+--
+        | kFOR block_var kIN {COND_PUSH(1);} expr_value do {COND_POP();}
+--
+      case '(':
+                ：
+                ：
+        COND_PUSH(0);
+        CMDARG_PUSH(0);
+--
+      case '[':
+                ：
+                ：
+        COND_PUSH(0);
+        CMDARG_PUSH(0);
+--
+      case '{':
+                ：
+                ：
+        COND_PUSH(0);
+        CMDARG_PUSH(0);
+--
+      case ']':
+      case '}':
+      case ')':
+        COND_LEXPOP();
+        CMDARG_LEXPOP();
+</pre>
+
+<p>
+ここから次のような法則を発見できる。
+</p>
+
+<ul>
+<li>条件式の最初で<code>PUSH(1)</code></li>
+<li>開き括弧で<code>PUSH(0)</code></li>
+<li>条件式の終わりで<code>POP()</code></li>
+<li>閉じ括弧で<code>LEXPOP()</code></li>
+</ul>
+
+<p>
+とすると、なんとなく
+使い道が見えてくる。<code>cond_stack</code>という名前も考えると、条件式と同じレベルに
+いるかどうか判定するマクロに違いない（図2）。
+</p>
+
+<p class="image">
+<img src="images/ch_contextual_condp.jpg" alt="(condp)"><br>
+図2: <code>COND_P()</code>の移り変わり
+</p>
+
+<p>
+この仕掛けによって次のような場合にもうまく対処できるようになる。
+</p>
+
+<pre class="emlist">
+while (m do .... end)   # doはイテレータのdo（kDO）
+  ....
+end
+</pre>
+
+<p>
+ということは、32ビットマシンで<code>long long</code>がない場合には括弧か条件式が
+32レベルネストしたあたりで変なことになる可能性がある。とはいえ普通は
+そんなにネストしないから実害は出ない。
+</p>
+
+<p>
+また<code>COND_LEXPOP()</code>の定義がちょっと不思議なことになっていたのは、どうやら
+先読み対策らしい。ただ現在はうまいこと先読みが起こらないような規則に
+なっているために<code>POP</code>と<code>LEXPOP</code>を分ける意味がなくなっている。つまり
+現時点では「<code>COND_LEXPOP()</code>は無意味」という解釈が正しい。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>tLPAREN_ARG</code>（1）</h2>
+
+<h3>問題</h3>
+
+<p>
+この問題は、非常にややこしい。これが通るようになったのは<code>ruby</code> 1.7に
+なってから、それもごく最近の話である。どういうことかというと……
+</p>
+
+<pre class="emlist">
+call (expr) + 1
+</pre>
+
+<p>
+を
+</p>
+
+<pre class="emlist">
+(call(expr)) + 1
+call((expr) + 1)
+</pre>
+
+<p>
+のどちらに解釈するか、という話だ。以前は全て前者のように処理されてい
+た。つまり括弧は常に「メソッド引数の括弧」だった。しかし
+<code>ruby</code> 1.7では後者のように処理されるようになったのである。
+つまり空白が入ると括弧は「<code>expr</code>の括弧」になる。
+</p>
+
+<p>
+なぜ解釈が変わったのか、例を紹介しておこう。まず次のような文を書いた。
+</p>
+
+<pre class="emlist">
+p m() + 1
+</pre>
+
+<p>
+ここまでなら問題はない。しかし<code>m</code>の返す値が実は小数で、桁数が多す
+ぎたとしよう。そこで表示するときは整数にしてしまうことにする。
+</p>
+
+<pre class="emlist">
+p m() + 1 .to_i   # ??
+</pre>
+
+<p>
+しまった、括弧が必要だ。
+</p>
+
+<pre class="emlist">
+p (m() + 1).to_i
+</pre>
+
+<p>
+これはどう解釈されるだろうか？ 1.6までなら、これは
+</p>
+
+<pre class="emlist">
+(p(m() + 1)).to_i
+</pre>
+
+<p>
+となる。つまりせっかく付けた<code>to_i</code>が何の意味もなくなってしまう。これは困る。
+そこで括弧との間に空白がある場合だけは特別扱いして<code>expr</code>の括弧にすることに
+したのである。
+</p>
+
+<p>
+自分で調査してみたい人のために書いておくと、
+この変更が実装されたのは<code>parse.y</code>のリビジョン1.100（2001-05-31）である。
+だから1.99との差分を見ていくと比較的わかりやすい。
+差分を取るコマンドはこうだ。
+</p>
+
+<pre class="screen">
+~/src/ruby % cvs diff -r1.99 -r1.100 parse.y
+</pre>
+
+
+
+<h3>調査</h3>
+
+<p>
+まず現実に仕組みがどう動いているか見てみることにしよう。添付の
+ツール<code>ruby-lexer</code>\footnote{<code>ruby-lexer</code>：添付CD-ROMの<code>tools/ruby-lexer.tar.gz</code>}を
+使うとプログラムに対応する記号列を調べられる。
+</p>
+
+<pre class="screen">
+% ruby-lexer -e 'm(a)'
+tIDENTIFIER '(' tIDENTIFIER ')' '\n'
+</pre>
+
+<p>
+<code>-e</code>は<code>ruby</code>と同じくプログラムをコマンドラインから直接渡すオプションだ。
+これを使っていろいろ試してみよう。
+まず問題の、第一引数が括弧でくくられている場合。
+</p>
+
+<pre class="screen">
+% ruby-lexer -e 'm  (a)'
+tIDENTIFIER tLPAREN_ARG tIDENTIFIER ')' '\n'
+</pre>
+
+<p>
+スペースを入れたら開き括弧の記号が<code>tLPAREN_ARG</code>になった。
+ついでに普通の式括弧も見ておこう。
+</p>
+
+<pre class="screen">
+% ruby-lexer -e '(a)'
+tLPAREN tIDENTIFIER ')' '\n'
+</pre>
+
+<p>
+普通の式括弧は<code>tLPAREN</code>らしい。
+</p>
+
+<p>
+まとめるとこうなる。
+</p>
+
+<table>
+<tr><td>入力<td><td>開き括弧の記号<td></tr>
+<tr><td><code>m(a)</code><td><td><code>'('</code><td></tr>
+<tr><td><code>m  (a)</code><td><td><code>tLPAREN_ARG</code><td></tr>
+<tr><td><code>(a)</code><td><td><code>tLPAREN</code><td></tr>
+</table>
+
+<p>
+つまりこの三つをどう区別するかが焦点となる。
+今回は特に<code>tLPAREN_ARG</code>が重要だ。
+</p>
+
+
+
+<h3>一引数の場合</h3>
+
+<p>
+まずは素直に<code>yylex()</code>の<code>'('</code>の項を見てみよう。
+</p>
+
+<p class="caption">▼<code>yylex</code>−<code>'('</code></p>
+<pre class="longlist">
+3841        case '(':
+3842          command_start = Qtrue;
+3843          if (lex_state == EXPR_BEG || lex_state == EXPR_MID) {
+3844              c = tLPAREN;
+3845          }
+3846          else if (space_seen) {
+3847              if (lex_state == EXPR_CMDARG) {
+3848                  c = tLPAREN_ARG;
+3849              }
+3850              else if (lex_state == EXPR_ARG) {
+3851                  c = tLPAREN_ARG;
+3852                  yylval.id = last_id;
+3853              }
+3854          }
+3855          COND_PUSH(0);
+3856          CMDARG_PUSH(0);
+3857          lex_state = EXPR_BEG;
+3858          return c;
+
+(parse.y)
+</pre>
+
+
+<p>
+最初の<code>if</code>は<code>tLPAREN</code>だから、通常の式括弧だ。その判断基準は<code>lex_state</code>が
+<code>BEG</code>か<code>MID</code>、つまり確実に式の始まりにいるときである。
+</p>
+
+<p>
+その次の<code>space_seen</code>は括弧の前に「空白があるかどうか」を表している。
+空白があり、かつ<code>lex_state</code>が<code>ARG</code>か<code>CMDARG</code>のとき……つまり第一引数の
+前なら、記号は<code>'('</code>でなく<code>tLPAREN_ARG</code>になる。これで例えば次のような
+場合を排除できるわけだ。
+</p>
+
+<pre class="emlist">
+m(              # 括弧の前に空白がない……メソッド括弧（'('）
+m arg, (        # 第一引数以外……式括弧（tLPAREN）
+</pre>
+
+<p>
+<code>tLPAREN</code>でも<code>tLPAREN_ARG</code>でもなければ入力文字の<code>c</code>がそのまま
+使われて<code>'('</code>になる。これはきっとメソッド呼び出しの括弧になるのだろう。
+</p>
+
+<p>
+記号レベルでこのようにキッパリと区別されていれば、普通に規則を書いても
+衝突しなくて済む。簡略化して書けば次のようになるだろう。
+</p>
+
+<pre class="emlist">
+stmt         : command_call
+
+method_call  : tIDENTIFIER '(' args ')'    /* 通常メソッド */
+
+command_call : tIDENTIFIER command_args    /* 括弧省略メソッド */
+
+command_args : args
+
+args         : arg
+             : args ',' arg
+
+arg          : primary
+
+primary      : tLPAREN compstmt ')'        /* 通常の式括弧 */
+             | tLPAREN_ARG expr ')'        /* 括弧でくくられた第一引数 */
+             | method_call
+</pre>
+
+<p>
+<code>method_call</code>と<code>command_call</code>に注目してほしい。もし<code>tLPAREN_ARG</code>を導入せず
+<code>'('</code>のままにすると、<code>command_args</code>から<code>args</code>が出る、<code>args</code>から<code>arg</code>が出る、
+<code>arg</code>から<code>primary</code>が出る、そして<code>tLPAREN_ARG</code>のところから<code>'('</code>が出て
+<code>method_call</code>と衝突してしまう（図3）。
+</p>
+
+<p class="image">
+<img src="images/ch_contextual_trees.jpg" alt="(trees)"><br>
+図3: <code>method_call</code>と<code>command_call</code>
+</p>
+
+
+
+<h3>二引数以上の場合</h3>
+
+<p>
+さてうまいこと括弧が<code>tLPAREN_ARG</code>になってこれでバッチリか、と思いきや
+実はそうではない。例えば次のような場合はどうなるのだろう。
+</p>
+
+<pre class="emlist">
+m  (a, a, a)
+</pre>
+
+<p>
+このような式はこれまではメソッド呼び出しとして扱われてきたので
+エラーにならなかった。しかし<code>tLPAREN_ARG</code>が導入されると開き括弧が
+<code>expr</code>括弧になってしまうので二個以上の引数があるとパースエラーになる。
+互換性を考えるとなんとか配慮しなければならない。
+</p>
+
+<p>
+しかし何も考えずに
+</p>
+
+<pre class="emlist">
+command_args : tLPAREN_ARG args ')'
+</pre>
+
+<p>
+などという規則を追加してしまうとあっさり衝突する。全体を見てよく考えて
+みよう。
+</p>
+
+<pre class="emlist">
+stmt         : command_call
+             | expr
+
+expr         : arg
+
+command_call : tIDENTIFIER command_args
+
+command_args : args
+             | tLPAREN_ARG args ')'
+
+args         : arg
+             : args ',' arg
+
+arg          : primary
+
+primary      : tLPAREN compstmt ')'
+             | tLPAREN_ARG expr ')'
+             | method_call
+
+method_call  : tIDENTIFIER '(' args ')'
+</pre>
+
+<p>
+<code>command_args</code>の一つめの規則を見てほしい。<code>args</code>からは<code>arg</code>が出る。
+<code>arg</code>からは<code>primary</code>が出る。そこからは<code>tLPAREN_ARG</code>の規則が出る。
+そして<code>expr</code>は<code>arg</code>を含むから、展開の方法次第で
+</p>
+
+<pre class="emlist">
+command_args : tLPAREN_ARG arg ')'
+             | tLPAREN_ARG arg ')'
+</pre>
+
+<p>
+という状況になる。即ちreduce/reduce conflictであり非常にまずい。
+</p>
+
+<p>
+ではどうやったら衝突させずに二引数以上にだけ対処できるだろうか。
+やはりそのむね限定して書くしかない。現実には次のように解決された。
+</p>
+
+<p class="caption">▼<code>command_args</code></p>
+<pre class="longlist">
+command_args    : open_args
+
+open_args       : call_args
+                | tLPAREN_ARG   ')'
+                | tLPAREN_ARG call_args2  ')'
+
+call_args       : command
+                | args opt_block_arg
+                | args ',' tSTAR arg_value opt_block_arg
+                | assocs opt_block_arg
+                | assocs ',' tSTAR arg_value opt_block_arg
+                | args ',' assocs opt_block_arg
+                | args ',' assocs ',' tSTAR arg opt_block_arg
+                | tSTAR arg_value opt_block_arg
+                | block_arg
+
+call_args2      : arg_value ',' args opt_block_arg
+                | arg_value ',' block_arg
+                | arg_value ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' tSTAR arg_value opt_block_arg
+                | assocs opt_block_arg
+                | assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' assocs opt_block_arg
+                | arg_value ',' args ',' assocs opt_block_arg
+                | arg_value ',' assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' assocs ','
+                                  tSTAR arg_value opt_block_arg
+                | tSTAR arg_value opt_block_arg
+                | block_arg
+
+
+primary         : literal
+                | strings
+                | xstring
+                       ：
+                | tLPAREN_ARG expr  ')'
+</pre>
+
+
+<p>
+こちらでは<code>command_args</code>の次にもう一段、<code>open_args</code>がはさまっているが
+規則上はなくても同じだ。この<code>open_args</code>の二つめ三つめの規則がカギであ
+る。この形は先程書いた例と似てはいるが、微妙に違う。それは
+<code>call_args2</code>というのを導入していることだ。この<code>call_args2</code>の特徴はと言
+うと、引数が必ず二つ以上あることである。その証拠にほとんどの規則が
+<code>','</code>を含んでいる。例外は<code>assocs</code>の規則だが、<code>expr</code>からは<code>assocs</code>が出
+てこないので<code>assocs</code>はそもそも衝突しない。
+</p>
+
+<p>
+やや説明がわかりにくかった。もうちょっと平易に言うと、
+</p>
+
+<pre class="emlist">
+command_args    : call_args
+</pre>
+
+<p>
+では通らない文法だけを、その次の規則でもって追加しているのである。
+だから「この規則で通らない文法」とはどういうものか考えればいい。
+また衝突するのは<code>call_args</code>の先頭に<code>tLPAREN_ARG</code>の<code>primary</code>が来るときだけ
+なのだから、さらに限定して
+「<code>tIDENTIFIER tLPAREN_ARG</code>という並びが来たとして、この規則だけでは
+通らない文法」を考えればいい。その例をいくつか挙げる。
+</p>
+
+<pre class="emlist">
+m (a, a)
+</pre>
+
+<p>
+これは<code>tLPAREN_ARG</code>リストの中に二つ以上の要素があるもの。
+</p>
+
+<pre class="emlist">
+m ()
+</pre>
+
+<p>
+その逆に、<code>tLPAREN_ARG</code>リストの中が空であるもの。
+</p>
+
+<pre class="emlist">
+m (*args)
+m (&amp;block)
+m (k =&gt; v)
+</pre>
+
+<p>
+<code>tLPAREN_ARG</code>リストの中に、メソッド呼び出し特有の（<code>expr</code>にはない）
+表現があるもの。
+</p>
+
+<p>
+というあたりでだいたいカバーできるだろう。実装と照らし合わせて
+見てみよう。
+</p>
+
+<p class="caption">▼<code>open_args</code>（1）</p>
+<pre class="longlist">
+open_args       : call_args
+                | tLPAREN_ARG   ')'
+</pre>
+
+
+<p>
+まずこの規則が空リストに対応する。
+</p>
+
+<p class="caption">▼<code>open_args</code>（2）</p>
+<pre class="longlist">
+                | tLPAREN_ARG call_args2  ')'
+
+call_args2      : arg_value ',' args opt_block_arg
+                | arg_value ',' block_arg
+                | arg_value ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' tSTAR arg_value opt_block_arg
+                | assocs opt_block_arg
+                | assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' assocs opt_block_arg
+                | arg_value ',' args ',' assocs opt_block_arg
+                | arg_value ',' assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' assocs ','
+                                  tSTAR arg_value opt_block_arg
+                | tSTAR arg_value opt_block_arg
+                | block_arg
+</pre>
+
+
+<p>
+そして<code>call_args2</code>では、二つ以上の要素のリストと、<code>assocs</code>や
+配列渡し、ブロック渡しなどの特殊型を含むものを扱う。
+これでかなりの範囲に対応できるようになった。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>tLPAREN_ARG</code>（2）</h2>
+
+<h3>問題</h3>
+
+<p>
+前の節でメソッド呼び出し特有の表現が「だいたい」カバーできると言ったの
+には訳がある。これだけではまだイテレータがカバーされていないからだ。
+例えば以下のような文が通らない。
+</p>
+
+<pre class="emlist">
+m (a) {....}
+m (a) do .... end
+</pre>
+
+<p>
+この節ではさらにこの点を解決すべく導入された部分を突っこんで見ていこう。
+</p>
+
+<h3>規則レベルの解決</h3>
+
+<p>
+まず規則から見ていく。
+前のほうは既に登場した規則ばかりなので<code>do_block</code>のあたりに注目してほしい。
+</p>
+
+<p class="caption">▼<code>command_call</code></p>
+<pre class="longlist">
+command_call    : command
+                | block_command
+
+command         : operation command_args
+
+command_args    : open_args
+
+open_args       : call_args
+                | tLPAREN_ARG ')'
+                | tLPAREN_ARG call_args2 ')'
+
+block_command   : block_call
+
+block_call      : command do_block
+
+do_block        : kDO_BLOCK opt_block_var compstmt '}'
+                | tLBRACE_ARG opt_block_var compstmt '}'
+</pre>
+
+
+<p>
+<code>do</code>、<code>{</code>の両方ともが全く新しい記号<code>kDO_BLOCK</code>と<code>tLBRACE_ARG</code>になっている。
+なぜ<code>kDO</code>や<code>'{'</code>ではいけないのだろう。そういうときはとりあえず試してみろ、
+ということで、<code>kDO_BLOCK</code>を<code>kDO</code>に、<code>tLBRACE_ARG</code>を<code>'{'</code>にして<code>yacc</code>で
+処理してみた。すると……
+</p>
+
+<pre class="screen">
+% yacc parse.y
+conflicts:  2 shift/reduce, 6 reduce/reduce
+</pre>
+
+<p>
+思い切り衝突する。調べてみると、次のような文が原因であった。
+</p>
+
+<pre class="emlist">
+m (a), b {....}
+</pre>
+
+<p>
+なぜなら、この形の文は既に通るようになっているからだ。<code>b{....}</code>が
+<code>primary</code>になる。そこにブロックが<code>m</code>と連結する規則を追加してしまったので、
+</p>
+
+<pre class="emlist">
+m((a), b) {....}
+m((a), (b {....}))
+</pre>
+
+<p>
+の二通りの解釈ができてしまい、衝突するのだ。
+これが2 shift/reduce conflict。
+</p>
+
+<p>
+もう一方は<code>do</code>〜<code>end</code>がらみだ。こっちは
+</p>
+
+<pre class="emlist">
+m((a)) do .... end     # block_callでdo〜end追加
+m((a)) do .... end     # primaryでdo〜end追加
+</pre>
+
+<p>
+の二つが衝突する。これが6 reduce/reduce conflict。
+</p>
+
+
+<h3><code>{</code>〜<code>}</code>イテレータ</h3>
+
+<p>
+ここからが本番である。先程見たように、<code>do</code>と<code>'{'</code>の記号を変えることで
+衝突は回避できる。<code>yylex()</code>の<code>'{'</code>の項を見てみよう。
+</p>
+
+<p class="caption">▼<code>yylex</code>―<code>'{'</code></p>
+<pre class="longlist">
+3884        case '{':
+3885          if (IS_ARG() || lex_state == EXPR_END)
+3886              c = '{';          /* block (primary) */
+3887          else if (lex_state == EXPR_ENDARG)
+3888              c = tLBRACE_ARG;  /* block (expr) */
+3889          else
+3890              c = tLBRACE;      /* hash */
+3891          COND_PUSH(0);
+3892          CMDARG_PUSH(0);
+3893          lex_state = EXPR_BEG;
+3894          return c;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>IS_ARG()</code>は
+</p>
+
+<p class="caption">▼<code>IS_ARG</code></p>
+<pre class="longlist">
+3104  #define IS_ARG() (lex_state == EXPR_ARG || lex_state == EXPR_CMDARG)
+
+(parse.y)
+</pre>
+
+
+<p>
+と定義されているから、<code>EXPR_ENDARG</code>のときには確実に偽になる。
+つまり<code>lex_state</code>が<code>EXPR_ENDARG</code>のときは常に<code>tLBRACE_ARG</code>になるのだから、
+<code>EXPR_ENDARG</code>に遷移することこそが全ての鍵である。
+</p>
+
+<h4><code>EXPR_ENDARG</code></h4>
+
+<p>
+では<code>EXPR_ENDARG</code>はどうやってセットされているのだろうか。
+代入しているところを<code>grep</code>してみた。
+</p>
+
+<p class="caption">▼<code>EXPR_ENDARG</code>への遷移</p>
+<pre class="longlist">
+open_args       : call_args
+                | tLPAREN_ARG  {lex_state = EXPR_ENDARG;} ')'
+                | tLPAREN_ARG call_args2 {lex_state = EXPR_ENDARG;} ')'
+
+primary         : tLPAREN_ARG expr {lex_state = EXPR_ENDARG;} ')'
+</pre>
+
+
+<p>
+おかしい。<code>tLPAREN_ARG</code>に対応する閉じ括弧のあとで<code>EXPR_ENDARG</code>に遷移すると
+いうのならわかるが、実際には<code>')'</code>の前で代入
+している。他に<code>EXPR_ENDARG</code>をセットしている個所があるのかと思って<code>grep</code>し
+まくってみたが、やはりない。
+</p>
+
+<p>
+もしかするとどこかで道を誤ったのだろうか。何か全く別の方法で
+<code>lex_state</code>が変更されているのかもしれない。確認のため、
+<code>rubylex-analyser</code>で<code>lex_state</code>の遷移を視覚化してみよう。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e 'm (a) { nil }'
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "("  tLPAREN_ARG          EXPR_BEG
+                                              0:cond push
+                                              0:cmd push
+                                              1:cmd push-
+EXPR_BEG     C        "a"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                              1:cmd lexpop
++EXPR_ENDARG
+EXPR_ENDARG S         "{"  tLBRACE_ARG          EXPR_BEG
+                                              0:cond push
+                                             10:cmd push
+                                              0:cmd resume
+EXPR_BEG    S       "nil"  kNIL                 EXPR_END
+EXPR_END    S         "}"  '}'                  EXPR_END
+                                              0:cond lexpop
+                                              0:cmd lexpop
+EXPR_END             "\n"  \n                   EXPR_BEG
+</pre>
+
+<p>
+大きく三つに分かれている行が<code>yylex()</code>による状態遷移を表している。
+左が<code>yylex()</code>前の状態、真ん中の二つが単語のテキストとその記号、
+右が<code>yylex()</code>後の<code>lex_state</code>だ。
+</p>
+
+<p>
+問題は単独の行に<code>+EXPR_ENDARG</code>のように出ている部分である。これはパーサ
+のアクション中で遷移が起こっていることを示す。これによると、なぜか
+<code>')'</code>を読んだあとにアクションが実行されて<code>EXPR_ENDARG</code>に遷移し
+ており、うまいこと<code>'{'</code>が<code>tLBRACE_ARG</code>に変わっている。実はこれは
+LALR(1)の(1)までを惜しみなく活用（逆用）したかなりの上級技なの
+である。
+</p>
+
+<h4>先読み逆用</h4>
+
+<p>
+<code>ruby -y</code>を使うと<code>yacc</code>のパーサエンジンの動きを逐一表示させることができる。
+今度はこれを使ってさらに詳しくパーサをトレースしてみよう。
+</p>
+
+<pre class="screen">
+% ruby -yce 'm (a) {nil}' 2&gt;&amp;1 | egrep '^Reading|Reducing'
+Reducing via rule 1 (line 303),  -&gt; @1
+Reading a token: Next token is 304 (tIDENTIFIER)
+Reading a token: Next token is 340 (tLPAREN_ARG)
+Reducing via rule 446 (line 2234), tIDENTIFIER  -&gt; operation
+Reducing via rule 233 (line 1222),  -&gt; @6
+Reading a token: Next token is 304 (tIDENTIFIER)
+Reading a token: Next token is 41 (')')
+Reducing via rule 392 (line 1993), tIDENTIFIER  -&gt; variable
+Reducing via rule 403 (line 2006), variable  -&gt; var_ref
+Reducing via rule 256 (line 1305), var_ref  -&gt; primary
+Reducing via rule 198 (line 1062), primary  -&gt; arg
+Reducing via rule 42 (line 593), arg  -&gt; expr
+Reducing via rule 260 (line 1317),  -&gt; @9
+Reducing via rule 261 (line 1317), tLPAREN_ARG expr @9 ')'  -&gt; primary
+Reading a token: Next token is 344 (tLBRACE_ARG)
+                         ：
+                         ：
+</pre>
+
+<p>
+コンパイルだけで中断する<code>-c</code>オプションと、コマンドラインからプログラムを
+与える<code>-e</code>を併用している。そして<code>grep</code>でトークンの読み込みと還元の報告だけ
+を抜き出す。
+</p>
+
+<p>
+そこでまずリストの真ん中あたりを見てほしい。<code>')'</code>が読み込まれている。そ
+して次に最後のほうを見ると……なんと、ここでようやく埋め込みアクション
+（<code>@9</code>）の還元が起こっている（実行されている）。確かにこれなら<code>')'</code>の後・
+<code>'{'</code>の前に<code>EXPR_ENDARG </code>をセットできそうだ。しかし、これは常に起こることな
+のだろうか。もう一度セットしているところを見てみよう。
+</p>
+
+<pre class="emlist">
+規則1    tLPAREN_ARG  {lex_state = EXPR_ENDARG;} ')'
+規則2    tLPAREN_ARG call_args2 {lex_state = EXPR_ENDARG;} ')'
+規則3    tLPAREN_ARG expr {lex_state = EXPR_ENDARG;} ')'
+</pre>
+
+<p>
+埋め込みアクションは空の規則で代用することができるのだった。例えば
+規則1を例に取ると、全く意味を変えずに次のように書き換えられる。
+</p>
+
+<pre class="emlist">
+target  : tLPAREN_ARG tmp ')'
+tmp     :
+            {
+                lex_state = EXPR_ENDARG;
+            }
+</pre>
+
+<p>
+いま<code>tmp</code>の前にいるとすると、終端記号一つ分は先読みされる可能性が
+あるので（空の）<code>tmp</code>をすりぬけて次を読むことは確かにありうる。
+そして、確実に先読みが起こるとわかっていれば、<code>lex_state</code>への代入が
+<code>')'</code>の後で<code>EXPR_ENDARG</code>に変わることを保証できる。
+ではこの規則では<code>')'</code>の先読みは確実に起こるだろうか。
+</p>
+
+<h4>先読みの保証</h4>
+
+<p>
+これが、実は確かなのである。次のような三通りの入力で考えよう。
+</p>
+
+<pre class="emlist">
+m () { nil }        # A
+m (a) { nil }       # B
+m (a,b,c) { nil }   # C
+</pre>
+
+<p>
+ついでに規則も少し見やすく（しかし状況は変えずに）書き直した。
+</p>
+
+<pre class="emlist">
+rule1: tLPAREN_ARG             e1  ')'
+rule2: tLPAREN_ARG  one_arg    e2  ')'
+rule3: tLPAREN_ARG  more_args  e3  ')'
+
+e1:   /* empty */
+e2:   /* empty */
+e3:   /* empty */
+</pre>
+
+<p>
+ではまず入力Aの場合。
+</p>
+
+<pre class="emlist">
+m (         # ... tLPAREN_ARG
+</pre>
+
+<p>
+まで読んだところで<code>e1</code>の前に来る。もしここで<code>e1</code>を還元してしまったら
+もう別の規則は選べないので、このまま<code>e1</code>を還元して<code>rule1</code>と心中するか、
+それとも他の規則を選ぶのか確認するためにここで先読みが起こる。
+従って入力が<code>rule1</code>に合致する場合は必ず<code>')'</code>が先読みされる。
+</p>
+
+<p>
+次に入力Bの場合。まず
+</p>
+
+<pre class="emlist">
+m (         # ... tLPAREN_ARG
+</pre>
+
+<p>
+まで読んだところで先程と同じ理由で先読みがかかる。そしてさらに
+</p>
+
+<pre class="emlist">
+m (a        # ... tLPAREN_ARG '(' tIDENTIFIER
+</pre>
+
+<p>
+まで読んだところでまた先読みする。なぜなら次が<code>','</code>か<code>')'</code>かで<code>rule2</code>と
+<code>rule3</code>に分かれるからだ。もし<code>','</code>だったらこれは引数区切りのカンマとしか
+考えられないので即座に二引数以上、即ち<code>rule3</code>と確定する。もし入力が
+単なる<code>a</code>ではなく<code>if</code>だったりリテラルの「93」だったりしても同じことである。
+その入力が完了したところで<code>rule2</code>と<code>rule3</code>を区別するために、即ち
+一引数か二引数以上かを区別するために先読みが起こる。
+</p>
+
+<p>
+この場合、全ての規則で<code>')'</code>の前に（別々の）埋め込みアクションがあると
+いうことが重要なのだ。アクションというものは一回実行してしまうともう取
+り返しが付かないので、パーサは「絶対確実」な状況になるまでアクションの
+実行を先延ばししようとする。だからこそ先読み一つでそういう状況が作れな
+いの場合はパーサ生成時に排除する必要があり、つまりそれが「衝突」である。
+</p>
+
+<p>
+入力Cはどうだろうか。
+</p>
+
+<pre class="emlist">
+m (a, b, c
+</pre>
+
+<p>
+ここまで来た時点でもう<code>rule3</code>しか可能性がないので、先読みはなさそうな気
+がする。
+</p>
+
+<p>
+ところがそうはいかない。次が<code>'('</code>ならメソッド呼び出しだし、<code>','</code>か<code>')'</code>なら
+変数参照にしないといけない。つまり今度は埋め込みアクションの還元ではな
+くて、引数の要素を確定するために先読みが起こる。
+</p>
+
+<p>
+では他の入力ではどうなのだろうか。例えば第三引数がメソッド呼び出し
+だったらどうだろう。
+</p>
+
+<pre class="emlist">
+m (a, b, c(....)    # ... ',' method_call
+</pre>
+
+<p>
+これもやっぱり先読みが必要なのだ。なぜなら、次が<code>','</code>か<code>')'</code>かでシフトと還
+元に分かれる。だから、この規則では結局あらゆる場合に埋め込みアクション
+の実行よりも早く<code>')'</code>が読まれる。実にややこしい。よく思い付いたなあと感
+動してしまう。
+</p>
+
+<p>
+ところで埋め込みアクションではなく通常のアクションで<code>lex_state</code>をセット
+してはいけないのだろうか。例えばこのように。
+</p>
+
+<pre class="emlist">
+                | tLPAREN_ARG ')' { lex_state = EXPR_ENDARG; }
+</pre>
+
+<p>
+これは、いけない。なぜならアクションの還元の前に（また）先読みが起こる
+可能性があるからだ。今度は先読みが裏目に出てしまうのである。このことか
+らもわかるように、LALRパーサの先読みを逆用するなんてのは相当な裏技である。
+素人にはお勧めできない。
+</p>
+
+
+
+<h3><code>do</code>〜<code>end</code>イテレータ</h3>
+
+<p>
+ここまでで<code>{</code>〜<code>}</code>イテレータには対処できたがまだ<code>do</code>〜<code>end</code>イテレータが残って
+いる。同じイテレータなら同じ方法で対処できそうだが、それは違う。
+<code>{</code>〜<code>}</code>と<code>do</code>〜<code>end</code>では優先順位が違うのだ。例えば次のように。
+</p>
+
+<pre class="emlist">
+m a, b {....}          # m(a, (b{....}))
+m a, b do .... end     # m(a, b) do....end
+</pre>
+
+<p>
+だから当然対処の方法も違って然るべきである。
+</p>
+
+<p>
+とは言え、もちろん同じ対処で済む場合もある。例えば次のような場合は
+どちらでも同じになるだろう。
+</p>
+
+<pre class="emlist">
+m (a) {....}
+m (a) do .... end
+</pre>
+
+<p>
+とにかく現物を見てみることにする。
+<code>do</code>だから、<code>yylex()</code>の予約語のところを見ればいい。
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子−予約語−<code>do</code></p>
+<pre class="longlist">
+4183                      if (kw-&gt;id[0] == kDO) {
+4184                          if (COND_P()) return kDO_COND;
+4185                          if (CMDARG_P() &amp;&amp; state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+4187                          if (state == EXPR_ENDARG)
+4188                              return kDO_BLOCK;
+4189                          return kDO;
+4190                      }
+
+(parse.y)
+</pre>
+
+
+<p>
+今回注目するのは<code>kDO_BLOCK</code>と<code>kDO</code>を区別する部分だけだ。<code>kDO_COND</code>のことは考
+えてはいけない。状態付きスキャナでは常に関係するところだけ見るのだ。
+</p>
+
+<p>
+まず<code>EXPR_ENDARG</code>を使った判定の部分が<code>tLBRACE_ARG</code>と同じ状況である。
+このときは優先順位の違いは関係しないので<code>'{'</code>と同じで<code>kDO_BLOCK</code>に
+するのが適切だろう。
+</p>
+
+<p>
+問題はその前の<code>CMDARG_P()</code>と<code>EXPR_CMDARG</code>だ。順番に見ていこう。
+</p>
+
+<h4><code>CMDARG_P()</code></h4>
+
+<p class="caption">▼<code>cmdarg_stack</code></p>
+<pre class="longlist">
+  91  static stack_type cmdarg_stack = 0;
+  92  #define CMDARG_PUSH(n) (cmdarg_stack = (cmdarg_stack&lt;&lt;1)|((n)&amp;1))
+  93  #define CMDARG_POP() (cmdarg_stack &gt;&gt;= 1)
+  94  #define CMDARG_LEXPOP() do {\
+  95      int last = CMDARG_P();\
+  96      cmdarg_stack &gt;&gt;= 1;\
+  97      if (last) cmdarg_stack |= 1;\
+  98  } while (0)
+  99  #define CMDARG_P() (cmdarg_stack&amp;1)
+
+(parse.y)
+</pre>
+
+
+<p>
+このように<code>cmdarg_stack</code>の構造とインターフェイス（マクロ）は
+<code>cond_stack</code>と全く同じだ。ビット単位のスタックである。モノが同じという
+ことは調査方法も同じ手が通用する。使っている場所をリストアップしてみよ
+う。まずアクション中に
+</p>
+
+<pre class="emlist">
+command_args    :  {
+                        $&lt;num&gt;$ = cmdarg_stack;
+                        CMDARG_PUSH(1);
+                    }
+                  open_args
+                    {
+                        /* CMDARG_POP() */
+                        cmdarg_stack = $&lt;num&gt;1;
+                        $$ = $2;
+                    }
+</pre>
+
+<p>
+というのがあった。
+</p>
+
+<p>
+<code>$&lt;num&gt;$</code>は強制キャスト付きで左辺の
+値を意味するのだった。この場合はそれが埋め込みアクション自体の値となっ
+て出てくるから、その次のアクションでは<code>$&lt;num&gt;1</code>で取り出せる。つまり
+<code>cmdarg_stack</code>を<code>open_args</code>の前で<code>$$</code>に退避して、アクションで復帰する、と
+いう構造になっているわけだ。
+</p>
+
+<p>
+なぜ単純なプッシュ・ポップではなくて退避・復帰にするのだろう。
+それはこの節の最後で解説する。
+</p>
+
+<p>
+また<code>yylex()</code>の中で<code>CMDARG</code>関係を探すと次のものが見付かった。
+</p>
+
+<table>
+<tr><td><code>'('  '['  '{'</code><td><td><code>CMDARG_PUSH(0)</code><td></tr>
+<tr><td><code>')'  ']'  '}'</code><td><td><code>CMDARG_LEXPOP()</code><td></tr>
+</table>
+
+<p>
+つまり括弧にくくられていたらその括弧の中にいるあいだ<code>CMDARG_P()</code>は偽、
+ということだ。
+</p>
+
+<p>
+両方を合わせて考えると、<code>command_args</code>つまり括弧省略のメソッド呼び出し引
+数中で、括弧にくくられていないときに<code>CMDARG_P()</code>が真になると言える。
+</p>
+
+<h4><code>EXPR_CMDARG</code></h4>
+
+<p>
+次にもう一つの条件、<code>EXPR_CMDARG</code>について調べる。
+まず定石通り<code>EXPR_CMDARG</code>に遷移している場所を探すことにする。
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子−状態遷移</p>
+<pre class="longlist">
+4201              if (lex_state == EXPR_BEG ||
+4202                  lex_state == EXPR_MID ||
+4203                  lex_state == EXPR_DOT ||
+4204                  lex_state == EXPR_ARG ||
+4205                  lex_state == EXPR_CMDARG) {
+4206                  if (cmd_state)
+4207                      lex_state = EXPR_CMDARG;
+4208                  else
+4209                      lex_state = EXPR_ARG;
+4210              }
+4211              else {
+4212                  lex_state = EXPR_END;
+4213              }
+
+(parse.y)
+</pre>
+
+
+<p>
+これは<code>yylex()</code>の中の識別子を扱うコードだ。
+うじゃうじゃと<code>lex_state</code>のテストがあるのはまあ置いておくとして、
+<code>cmd_state</code>は初めて見る。これはなんだろう。
+</p>
+
+<p class="caption">▼<code>cmd_state</code></p>
+<pre class="longlist">
+3106  static int
+3107  yylex()
+3108  {
+3109      static ID last_id = 0;
+3110      register int c;
+3111      int space_seen = 0;
+3112      int cmd_state;
+3113
+3114      if (lex_strterm) {
+              /* ……略…… */
+3132      }
+3133      cmd_state = command_start;
+3134      command_start = Qfalse;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>yylex</code>のローカル変数だった。しかも<code>grep</code>して調べたところ、値を変えている
+のはここしかない。つまりこれは<code>command_start</code>を<code>yylex</code>一回の間だけ保存して
+おく一時変数にすぎない。
+</p>
+
+<p>
+では<code>command_start</code>はどういうときに真になるのだろうか。
+</p>
+
+<p class="caption">▼<code>command_start</code></p>
+<pre class="longlist">
+2327  static int command_start = Qtrue;
+
+2334  static NODE*
+2335  yycompile(f, line)
+2336      char *f;
+2337      int line;
+2338  {
+                   ：
+2380      command_start = 1;
+
+      static int
+      yylex()
+      {
+                   ：
+            case '\n':
+              /* ……略…… */
+3165          command_start = Qtrue;
+3166          lex_state = EXPR_BEG;
+3167          return '\n';
+
+3821        case ';':
+3822          command_start = Qtrue;
+
+3841        case '(':
+3842          command_start = Qtrue;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>command_start</code>は<code>parse.y</code>のスタティック変数で、
+「<code>\n ; (</code>」のいずれかをスキャンすると真になる、とわかる。
+</p>
+
+<p>
+ここまでをまとめる。まず「<code>\n ; (</code>」を読むと<code>command_start</code>が真になり、
+次の<code>yylex()</code>のあいだ<code>cmd_state</code>が真になる。
+</p>
+
+<p>
+そして<code>yylex()</code>で<code>cmd_state</code>を使うコードはこうだったから、
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子−状態遷移</p>
+<pre class="longlist">
+4201              if (lex_state == EXPR_BEG ||
+4202                  lex_state == EXPR_MID ||
+4203                  lex_state == EXPR_DOT ||
+4204                  lex_state == EXPR_ARG ||
+4205                  lex_state == EXPR_CMDARG) {
+4206                  if (cmd_state)
+4207                      lex_state = EXPR_CMDARG;
+4208                  else
+4209                      lex_state = EXPR_ARG;
+4210              }
+4211              else {
+4212                  lex_state = EXPR_END;
+4213              }
+
+(parse.y)
+</pre>
+
+
+<p>
+「<code>\n ; (</code>の後で<code>EXPR_BEG MID DOT ARG CMDARG</code>の状態にあるときに識別子を読
+むと<code>EXPR_CMDARG</code>に遷移する」ということになる。しかし<code>\n ; (</code>の後にはそも
+そも<code>lex_state</code>は<code>EXPR_BEG</code>にしかならないので、<code>EXPR_CMDARG</code>へ遷移する場合に
+は<code>lex_state</code>はあまり意味がない。<code>lex_state</code>の限定は<code>EXPR_ARG</code>に対する遷移に
+とってだけ重要なのだ。
+</p>
+
+<p>
+さて、以上を踏まえると<code>EXPR_CMDARG</code>である状況が考えられる。
+例えば以下のような場合だ。アンダーバーが現在位置である。
+</p>
+
+<pre class="emlist">
+m _
+m(m _
+m m _
+</pre>
+
+<h4>まとめ</h4>
+
+<p>
+ここで<code>do</code>の判定コードに戻ろう。
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子−予約語−<code>kDO</code>−<code>kDO_BLOCK</code></p>
+<pre class="longlist">
+4185                          if (CMDARG_P() &amp;&amp; state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+
+(parse.y)
+</pre>
+
+
+<p>
+括弧を省略したメソッド呼び出しの引数の中で、かつ第一引数の前でないとき。
+ということは<code>command_call</code>の第二引数以降だ。つまりこういう場面だ。
+</p>
+
+<pre class="emlist">
+m arg, arg do .... end
+m (arg), arg do .... end
+</pre>
+
+<p>
+なぜ<code>EXPR_CMDARG</code>の場合を排除するかと言えば……例を書いてみればわかる。
+</p>
+
+<pre class="emlist">
+m do .... end
+</pre>
+
+<p>
+このパターンは既に<code>primary</code>で定義されている、<code>kDO</code>を使う<code>do</code>〜<code>end</code>イテ
+レータでカバーできる。よってこの場合を含めるとまた衝突してしまうのである。
+</p>
+
+
+
+<h3>事実と真実</h3>
+
+<p>
+終わりだと思っただろうか。まだ終わりではない。
+確かに論理は完結しているのだが、それは書いたことが正しければの話だ。
+実はこの節の中には一つ嘘がある。
+</p>
+
+<p>
+正しくは嘘というより厳密でないと言うべきだろうか。それは
+<code>CMDARG_P()</code>について書いたこの部分だ。
+</p>
+
+<p class="center">
+どうやら、<code>command_args</code>つまり括弧省略のメソッド呼び出し引数中に
+いるときは<code>CMDARG_P()</code>が真になるようだ。
+</p>
+
+<p>
+「括弧省略のメソッド呼び出し引数中にいるときは……」と言ったが、
+引数「中」とはどこのことだろうか。再び<code>rubylex-analyser</code>を使って
+厳密なところを確かめてみる。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e  'm a,a,a,a;'
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "a"  tIDENTIFIER          EXPR_ARG
+                                              1:cmd push-
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ";"  ';'                  EXPR_BEG
+                                              0:cmd resume
+EXPR_BEG     C       "\n"  '                    EXPR_BEG
+</pre>
+
+<p>
+右側の欄に「<code>1:cmd push-</code>」と出ているところが<code>cmd_stack</code>へのプッシュだ。そ
+の行の数字の下一桁が1のときに<code>CMDARG_P()</code>は真になる。つまり<code>CMDARG_P()</code>で
+ある期間は
+</p>
+
+<p class="center">
+括弧を省略したメソッド呼び出しの第一引数の直後から
+最後の引数のその次の終端記号まで
+</p>
+
+<p>
+と言うべきらしい。
+</p>
+
+<p>
+だが本当に本当のことを言えばまだこれでも厳密ではない。
+例えば次のような例がある。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e  'm a(),a,a;'
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "a"  tIDENTIFIER          EXPR_ARG
+                                              1:cmd push-
+EXPR_ARG              "("  '('                  EXPR_BEG
+                                              0:cond push
+                                             10:cmd push
+EXPR_BEG     C        ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                              1:cmd lexpop
+EXPR_END              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ";"  ';'                  EXPR_BEG
+                                              0:cmd resume
+EXPR_BEG     C       "\n"  '                    EXPR_BEG
+</pre>
+
+<p>
+第一引数の中の、その最初の終端記号を読んだ時点で<code>CMDARG_P()</code>は真に
+なっている。従って
+</p>
+
+<p class="center">
+括弧を省略したメソッド呼び出しの第一引数の
+最初の終端記号の直後から、最後の引数のその次の終端記号まで
+</p>
+
+<p>
+が完全な答えである。
+</p>
+
+<p>
+この事実は何を意味だろうか。思い出してほしいのだが、<code>CMDARG_P()</code>を
+使うのはこういうコードだった。
+</p>
+
+<p class="caption">▼<code>yylex</code>−識別子−予約語−<code>kDO</code>−<code>kDO_BLOCK</code></p>
+<pre class="longlist">
+4185                          if (CMDARG_P() &amp;&amp; state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>EXPR_CMDARG</code>は「<code>command_call</code>の最初の引数の前」という意味で、それを除外
+している。ところが、<code>CMDARG_P()</code>は既にその意味をも含んでいるではないか。
+つまりこの節最後の結論はこうである。
+</p>
+
+<p class="center">
+EXPR_CMDARGはあるだけ無駄。
+</p>
+
+<p>
+本当に、これがわかったときは筆者のほうが泣きそうになってしまった。「絶
+対意味がある、何かおかしい」と思ってひたすらソースを解析しまくってみ
+ても全然わからないのだ。だが最終的に<code>rubylex-analyser</code>でいろいろなコー
+ドを試しまくってやっぱり効果がないので、これは無意味なのだと結論した。
+</p>
+
+<p>
+意味がないことをえんえんとやってきたのは別に単なるページ稼ぎというわけ
+ではなく、現実に起こりうる状況をシミュレートしたつもりである。この世に
+あるプログラムはどれも完全ではなく、間違いが含まれている。特に今回のよ
+うな微妙なところでは間違いが起こりやすい。そのとき原本を「絶対に正しい
+もの」として読んでいるとこのような間違いに出会ったときにハマる。結局ソー
+スコードを読むとき最後に信じられるのはそこで起こった事実だけなのだ。
+</p>
+
+<p>
+こういう点からも動的な解析の大切さがわかってもらえると思う。調査すると
+きはまず事実を見るべきなのである。ソースコードは決して事実を語らない。
+そこにあるのは読む人間の推測だけだ。
+</p>
+
+<p>
+などといかにももっともらしい教訓を垂れたところで長く辛かった本章を終わ
+りとする。
+
+
+<h4>終わりじゃなかった</h4>
+
+<p>
+一つ忘れていた。<code>CMDARG_P()</code>がなぜそういう値を取るのかを
+説明しなければこの章は終われないのだ。問題はここだ。
+</p>
+
+<p class="caption">▼<code>command_args</code></p>
+<pre class="longlist">
+1209  command_args    :  {
+1210                          $&lt;num&gt;$ = cmdarg_stack;
+1211                          CMDARG_PUSH(1);
+1212                      }
+1213                    open_args
+1214                      {
+1215                          /* CMDARG_POP() */
+1216                          cmdarg_stack = $&lt;num&gt;1;
+1217                          $$ = $2;
+1218                      }
+
+1221  open_args       : call_args
+
+(parse.y)
+</pre>
+
+
+<p>
+結論から言うと、またもや先読みの影響である。<code>command_args</code>は常に
+次のようなコンテキストにある。
+</p>
+
+<pre class="emlist">
+tIDENTIFIER _
+</pre>
+
+<p>
+ということは、これは変数参照にも見えるしメソッド呼び出しにも見える。も
+し変数参照だとしたら<code>variable</code>に、メソッド呼び出しなら<code>operation</code>に還元し
+なければいけない。だから先読みをしなければ進む方向を決定できないのであ
+る。それゆえ<code>command_args</code>の先頭では必ず先読みが起こり、第一引数の
+最初の終端記号を読んだ後に<code>CMDARG_PUSH()</code>が実行されるのだ。
+</p>
+
+<p>
+<code>cmdarg_stack</code>で<code>POP</code>と<code>LEXPOP</code>が分かれている理由もここにある。
+次の例を見てほしい。
+</p>
+
+<pre class="screen">
+% rubylex-analyser -e 'm m (a), a'
+-e:1: warning: parenthesize argument(s) for future version
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "m"  tIDENTIFIER          EXPR_ARG
+                                              1:cmd push-
+EXPR_ARG    S         "("  tLPAREN_ARG          EXPR_BEG
+                                              0:cond push
+                                             10:cmd push
+                                            101:cmd push-
+EXPR_BEG     C        "a"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                             11:cmd lexpop
++EXPR_ENDARG
+EXPR_ENDARG           ","  ','                  EXPR_BEG
+EXPR_BEG    S         "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+                                             10:cmd resume
+                                              0:cmd resume
+</pre>
+
+<p>
+<code>cmd</code>関係だけを見て対応関係を取っていくと……
+</p>
+
+<pre class="emlist">
+  1:cmd push-       パーサpush(1)
+ 10:cmd push        スキャナpush
+101:cmd push-       パーサpush(2)
+ 11:cmd lexpop      スキャナpop
+ 10:cmd resume      パーサpop(2)
+  0:cmd resume      ハーサpop(1)
+</pre>
+
+<p>
+「<code>cmd push-</code>」というように末尾にマイナスが付いているものがパーサでの
+<code>push</code>だ。つまり<code>push</code>と<code>pop</code>の対応関係がずれている。本来は
+<code>push-</code>が二回連続で起きてスタックは110になるはずなのに、先読みのせいで
+101になってしまった。<code>CMDARG_LEXPOP()</code>が用意してあるのはこの現象に対応する
+ための苦肉の策だ。そもそもスキャナではいつも0を<code>push</code>するのだから、スキャ
+ナが<code>pop</code>するのも常に0であるはずなのだ。そこが0にならないのならば、パー
+サの<code>push</code>が遅くなって1になっていると考えるしかない。だからその値を残す。
+</p>
+
+<p>
+逆に言うと、パーサの<code>pop</code>に来たところではスタックはもう正常な状態に戻っ
+ているはずである。だから本当は普通に<code>pop</code>しても問題ない。そうしていない
+のは、とにかく正しく動けばいい、という理由からではないかと思われる。ポッ
+プしようが<code>$$</code>に保存して復帰しようが動きは同じなのだ。特にこれからいろい
+ろ変更していくことを考えると先読みの挙動がどう変わるかわからない。しか
+もこの問題が起こるのは、将来禁止されることが決まっている文法だ（だから
+警告が出ている）。そんなものを通すためにいろいろな場合を考え対処するの
+は骨である。だから現実の<code>ruby</code>はこういう実装でいいのだと、筆者は思う。
+</p>
+
+<p>
+これで本当に解決である。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>

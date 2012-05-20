@@ -1,0 +1,868 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja-JP">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-2022-jp">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <link rev="made" href="mailto:aamine@loveruby.net">
+<title>第17章 動的評価</title></head>
+<body>
+
+<h1>第17章 動的評価</h1>
+
+<h2>概略</h2>
+
+<p>
+評価器の仕組みそれ自体については前章までで既に完結している。本章ではそ
+の全てにパーサまでを加えた「広義の評価器」としての全体像を検証しよう。
+対象となるのは<code>eval</code>・<code>Module#module_eval</code>・<code>Object#instance_eval</code>の三つであ
+る。
+</p>
+
+
+<h3><code>eval</code></h3>
+
+<p>
+<code>eval</code>については既に話したが、ここではより細かい話をしようと思う。
+</p>
+
+<p>
+<code>eval</code>を使うと実行時にその場で文字列をコンパイルし、評価することができる。
+返り値はそのプログラムの最後の式の値だ。
+</p>
+
+<pre class="emlist">
+p eval("1 + 1")   # 2
+</pre>
+
+<p>
+<code>eval</code>する文字列の中からはそのスコープの変数も参照できる。
+</p>
+
+<pre class="emlist">
+lvar = 5
+@ivar = 6
+p eval("lvar + @ivar")   # 11
+</pre>
+
+<p>
+ここまで読んできた読者なら「そのスコープ」という言葉を安直に読み飛ばせ
+なくなっているだろう。例えば定数の「スコープ」はどうなっているんだ、な
+んてことが気にならないだろうか。筆者は気になる。結論から言うと、基本的
+に<code>eval</code>の外の環境をそのまま引き継ぐと思っていい。
+</p>
+
+<p>
+またメソッド定義もクラス定義もできる。
+</p>
+
+<pre class="emlist">
+def a
+  eval('class C;  def test() puts("ok") end   end')
+end
+
+a()          # クラスCとC#testを定義する
+C.new.test   # okと表示される
+</pre>
+
+<p>
+さらに、前章で少し言及したが、第二引数に<code>Proc</code>を渡すとその環境で評価できる、
+</p>
+
+<pre class="emlist">
+def new_env
+  n = 5
+  Proc.new { nil }   # このメソッドの環境をオブジェクトにして返す
+end
+
+p eval('n * 3', new_env())   # 15
+</pre>
+
+
+
+<h3><code>module_eval</code>と<code>instance_eval</code></h3>
+
+<p>
+<code>Proc</code>を<code>eval</code>の第二引数に渡すとその環境で評価できた。<code>module_eval</code>と
+<code>instance_eval</code>はその限定版（あるいはショートカット）である。
+<code>module_eval</code>ではモジュール文やクラス文の内部にいるかのような環境で
+評価できる。
+</p>
+
+<pre class="emlist">
+lvar = "toplevel lvar"   # スコープ確認用のローカル変数
+
+module M
+end
+M.module_eval(&lt;&lt;'EOS')   # こういうときこそヒアドキュメント
+    p lvar   # 参照できる
+    p self   # Mと表示される
+    def ok   # M#okを定義する
+      puts 'ok'
+    end
+EOS
+</pre>
+
+<p>
+<code>instance_eval</code>は特異クラス文で<code>self</code>がそのオブジェクトになった環境で
+評価できる。
+</p>
+
+<pre class="emlist">
+lvar = "toplevel lvar"   # スコープ確認用のローカル変数
+
+obj = Object.new
+obj.instance_eval(&lt;&lt;'EOS')
+    p lvar   # 参照できる
+    p self   # #&lt;Object:0x40274f5c&gt;と表示される
+    def ok   # obj.okを定義する
+      puts 'ok'
+    end
+EOS
+</pre>
+
+<p>
+またこの<code>module_eval</code>と<code>instance_eval</code>はイテレータとして使うことも
+できて、その場合はブロックがそれぞれの環境で評価される。例えば
+</p>
+
+<pre class="emlist">
+obj = Object.new
+p obj                 # #&lt;Object:0x40274fac&gt;
+obj.instance_eval {
+    p self            # #&lt;Object:0x40274fac&gt;
+}
+</pre>
+
+<p>
+というように。
+</p>
+
+<p>
+ただ文字列を使う場合とブロックを使う場合とでは
+ローカル変数まわりの挙動が違う。例えばメソッド<code>a</code>でブロックを作り
+メソッド<code>b</code>で<code>instance_eval</code>したら、ブロックは<code>a</code>のローカル変数を
+参照する。メソッド<code>a</code>で文字列を作りメソッド<code>b</code>で<code>instance_eval</code>したら、
+その文字列の中からは<code>b</code>のローカル変数を参照する。ローカル変数の
+スコープはあくまで「コンパイル時に」決まるので、毎回コンパイルする
+文字列と、ファイルロード時にコンパイルされてしまうブロックでは結果が
+違うわけだ。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>eval</code></h2>
+
+<h3><code>eval()</code></h3>
+
+<p>
+Rubyの<code>eval</code>は引数のあるなしで場合分けが多いので、呼び出し形式は
+</p>
+
+<pre class="emlist">
+eval(prog_string, some_block)
+</pre>
+
+<p>
+と限定しよう。すると実際のインターフェイス関数<code>rb_f_eval()</code>はほとんど意味
+がなくなるので、もう一つ下の関数の<code>eval()</code>から見ていくことにする。
+<code>eval()</code>の関数プロトタイプは
+</p>
+
+<pre class="emlist">
+static VALUE
+eval(VALUE self, VALUE src, VALUE scope, char *file, int line);
+</pre>
+
+<p>
+で、<code>scope</code>が第二引数の<code>Proc</code>。<code>file</code>と<code>line</code>は<code>eval</code>する文字列が
+置いてあると仮定するファイル名・行番号である。では中身を見てみよう。
+</p>
+
+<p class="caption">▼<code>eval()</code>（簡約版）</p>
+<pre class="longlist">
+4984  static VALUE
+4985  eval(self, src, scope, file, line)
+4986      VALUE self, src, scope;
+4987      char *file;
+4988      int line;
+4989  {
+4990      struct BLOCK *data = NULL;
+4991      volatile VALUE result = Qnil;
+4992      struct SCOPE * volatile old_scope;
+4993      struct BLOCK * volatile old_block;
+4994      struct RVarmap * volatile old_dyna_vars;
+4995      VALUE volatile old_cref;
+4996      int volatile old_vmode;
+4997      volatile VALUE old_wrapper;
+4998      struct FRAME frame;
+4999      NODE *nodesave = ruby_current_node;
+5000      volatile int iter = ruby_frame-&gt;iter;
+5001      int state;
+5002
+5003      if (!NIL_P(scope)) {  /* 今は常に真 */
+5009          Data_Get_Struct(scope, struct BLOCK, data);
+5010          /* dataからBLOCKを積む */
+5011          frame = data-&gt;frame;
+5012          frame.tmp = ruby_frame; /* GCよけ */
+5013          ruby_frame = &amp;(frame);
+5014          old_scope = ruby_scope;
+5015          ruby_scope = data-&gt;scope;
+5016          old_block = ruby_block;
+5017          ruby_block = data-&gt;prev;
+5018          old_dyna_vars = ruby_dyna_vars;
+5019          ruby_dyna_vars = data-&gt;dyna_vars;
+5020          old_vmode = scope_vmode;
+5021          scope_vmode = data-&gt;vmode;
+5022          old_cref = (VALUE)ruby_cref;
+5023          ruby_cref = (NODE*)ruby_frame-&gt;cbase;
+5024          old_wrapper = ruby_wrapper;
+5025          ruby_wrapper = data-&gt;wrapper;
+5032          self = data-&gt;self;
+5033          ruby_frame-&gt;iter = data-&gt;iter;
+5034      }
+5045      PUSH_CLASS();
+5046      ruby_class = ruby_cbase;  /* == ruby_frame-&gt;cbase */
+5047
+5048      ruby_in_eval++;
+5049      if (TYPE(ruby_class) == T_ICLASS) {
+5050          ruby_class = RBASIC(ruby_class)-&gt;klass;
+5051      }
+5052      PUSH_TAG(PROT_NONE);
+5053      if ((state = EXEC_TAG()) == 0) {
+5054          NODE *node;
+5055
+5056          result = ruby_errinfo;
+5057          ruby_errinfo = Qnil;
+5058          node = compile(src, file, line);
+5059          if (ruby_nerrs &gt; 0) {
+5060              compile_error(0);
+5061          }
+5062          if (!NIL_P(result)) ruby_errinfo = result;
+5063          result = eval_node(self, node);
+5064      }
+5065      POP_TAG();
+5066      POP_CLASS();
+5067      ruby_in_eval--;
+5068      if (!NIL_P(scope)) {  /* 今は常に真 */
+5069          int dont_recycle = ruby_scope-&gt;flags &amp; SCOPE_DONT_RECYCLE;
+5070
+5071          ruby_wrapper = old_wrapper;
+5072          ruby_cref  = (NODE*)old_cref;
+5073          ruby_frame = frame.tmp;
+5074          ruby_scope = old_scope;
+5075          ruby_block = old_block;
+5076          ruby_dyna_vars = old_dyna_vars;
+5077          data-&gt;vmode = scope_vmode; /* 可視性スコープの変更を保存 */
+5078          scope_vmode = old_vmode;
+5079          if (dont_recycle) {
+                  /* ……SCOPE・BLOCK・VARSをコピーする…… */
+5097          }
+5098      }
+5104      if (state) {
+5105          if (state == TAG_RAISE) {
+                  /* ……例外オブジェクトを準備…… */
+5121              rb_exc_raise(ruby_errinfo);
+5122          }
+5123          JUMP_TAG(state);
+5124      }
+5125
+5126      return result;
+5127  }
+
+(eval.c)
+</pre>
+
+
+<p>
+前置きもなしにこの関数をいきなり見せられたら「ぐぁっ」となるだろうが、
+ここまで<code>eval.c</code>の関数を撃破してきた我々にとってはもはや敵ではない。
+この関数はひたすらスタックを退避・復帰しているだけだ。注意すべきところ
+は以下の三点だけである。
+</p>
+
+<ul>
+<li>珍しく<code>FRAME</code>も（コピー・プッシュではなく）置き換えている</li>
+<li><code>ruby_cref</code>は<code>ruby_frame-&gt;cbase</code>で代用（？）している</li>
+<li><code>scope_vmode</code>だけは単純な復帰ではなく<code>data</code>に影響を与える</li>
+</ul>
+
+<p>
+そしてメイン部分は真ん中あたりにある<code>compile()</code>と<code>eval_node()</code>だ。
+<code>eval_node()</code>なんてもう忘れられていそうだが、引数<code>node</code>の評価を開始する関
+数である。<code>ruby_run()</code>でも使われていた。
+</p>
+
+<p>
+<code>compile()</code>はこうだ。
+</p>
+
+<p class="caption">▼<code>compile()</code></p>
+<pre class="longlist">
+4968  static NODE*
+4969  compile(src, file, line)
+4970      VALUE src;
+4971      char *file;
+4972      int line;
+4973  {
+4974      NODE *node;
+4975
+4976      ruby_nerrs = 0;
+4977      Check_Type(src, T_STRING);
+4978      node = rb_compile_string(file, src, line);
+4979
+4980      if (ruby_nerrs == 0) return node;
+4981      return 0;
+4982  }
+
+(eval.c)
+</pre>
+
+
+<p>
+<code>ruby_nerrs</code>は<code>yyerror()</code>の中でインクリメントされる変数である。
+つまりこの変数が非ゼロならパースエラーが起こったことを示す。また
+<code>rb_compile_string()</code>は既に第二部で扱っている。Rubyの文字列を構文木に
+コンパイルする関数だった。
+</p>
+
+<p>
+ここで一つ問題になってくるのがローカル変数である。第12章『構文木の構築』で
+見た通り、ローカル変数は<code>lvtbl</code>を使って管理されているのだった。しか
+しいまは既に<code>SCOPE</code>（と、もしかしたら<code>VARS</code>も）が存在しているのだから、
+それに上書き追加する形でパースしなければならない。これが実は<code>eval()</code>の
+核心であり、最悪に難しいところなのだ。再び<code>parse.y</code>に戻ってこの探索を
+完結させることにしよう。
+</p>
+
+
+
+<h3><code>top_local</code></h3>
+
+<p>
+ローカル変数の管理テーブル<code>struct local_vars</code>を積むときに使うのは
+<code>local_push() local_pop()</code>という
+関数だったが、実は<code>parse.y</code>には管理用テーブルを積む関数がもう一組ある。
+<code>top_local_init()</code>と<code>top_local_setup()</code>だ。それはこんな感じで呼ばれて
+いる。
+</p>
+
+<p class="caption">▼<code>top_local_init()</code>の呼ばれかた</p>
+<pre class="longlist">
+program :   { top_local_init(); }
+          compstmt
+            { top_local_setup(); }
+</pre>
+
+
+<p>
+もちろん実際には他にもいろいろやっているのだが、今はどうでもいいので全
+部カットした。そしてその内容はこうだ。
+</p>
+
+<p class="caption">▼<code>top_local_init()</code></p>
+<pre class="longlist">
+5273  static void
+5274  top_local_init()
+5275  {
+5276      local_push(1);
+5277      lvtbl-&gt;cnt = ruby_scope-&gt;local_tbl?ruby_scope-&gt;local_tbl[0]:0;
+5278      if (lvtbl-&gt;cnt &gt; 0) {
+5279          lvtbl-&gt;tbl = ALLOC_N(ID, lvtbl-&gt;cnt+3);
+5280          MEMCPY(lvtbl-&gt;tbl, ruby_scope-&gt;local_tbl, ID, lvtbl-&gt;cnt+1);
+5281      }
+5282      else {
+5283          lvtbl-&gt;tbl = 0;
+5284      }
+5285      if (ruby_dyna_vars)
+5286          lvtbl-&gt;dlev = 1;
+5287      else
+5288          lvtbl-&gt;dlev = 0;
+5289  }
+
+(parse.y)
+</pre>
+
+
+<p>
+つまり<code>ruby_scope</code>から<code>lvtbl</code>に<code>local_tbl</code>をコピーしておく。
+ブロックローカル変数についてはあとでまとめて見たほうがいいので、
+とりあえず普通のローカル変数に集中しよう。
+続いて<code>top_local_setup()</code>だ。
+</p>
+
+<p class="caption">▼<code>top_local_setup()</code></p>
+<pre class="longlist">
+5291  static void
+5292  top_local_setup()
+5293  {
+5294      int len = lvtbl-&gt;cnt;  /* パース後のローカル変数の数 */
+5295      int i;                 /* パース前のローカル変数の数 */
+5296
+5297      if (len &gt; 0) {
+5298          i = ruby_scope-&gt;local_tbl ? ruby_scope-&gt;local_tbl[0] : 0;
+5299
+5300          if (i &lt; len) {
+5301              if (i == 0 || (ruby_scope-&gt;flags &amp; SCOPE_MALLOC) == 0) {
+5302                  VALUE *vars = ALLOC_N(VALUE, len+1);
+5303                  if (ruby_scope-&gt;local_vars) {
+5304                      *vars++ = ruby_scope-&gt;local_vars[-1];
+5305                      MEMCPY(vars, ruby_scope-&gt;local_vars, VALUE, i);
+5306                      rb_mem_clear(vars+i, len-i);
+5307                  }
+5308                  else {
+5309                      *vars++ = 0;
+5310                      rb_mem_clear(vars, len);
+5311                  }
+5312                  ruby_scope-&gt;local_vars = vars;
+5313                  ruby_scope-&gt;flags |= SCOPE_MALLOC;
+5314              }
+5315              else {
+5316                  VALUE *vars = ruby_scope-&gt;local_vars-1;
+5317                  REALLOC_N(vars, VALUE, len+1);
+5318                  ruby_scope-&gt;local_vars = vars+1;
+5319                  rb_mem_clear(ruby_scope-&gt;local_vars+i, len-i);
+5320              }
+5321              if (ruby_scope-&gt;local_tbl &amp;&amp;
+                      ruby_scope-&gt;local_vars[-1] == 0) {
+5322                  free(ruby_scope-&gt;local_tbl);
+5323              }
+5324              ruby_scope-&gt;local_vars[-1] = 0;  /* NODEはもういらない */
+5325              ruby_scope-&gt;local_tbl = local_tbl();
+5326          }
+5327      }
+5328      local_pop();
+5329  }
+
+(parse.y)
+</pre>
+
+
+<p>
+<code>local_vars</code>はスタックにあったりヒープにあったりするので多少ややこしくなっ
+てはいるが、<code>ruby_scope</code>の<code>local_tbl</code>と<code>local_vars</code>をアップデートしているだ
+けである（<code>SCOPE_MALLOC</code>が立っていると<code>local_vars</code>は<code>malloc()</code>割り当て）。
+またここで<code>alloca()</code>を使っても意味がないので強制的に<code>malloc()</code>割り当てに
+変更するしかない。
+</p>
+
+
+
+<h3>ブロックローカル変数</h3>
+
+<p>
+ところでブロックローカル変数はどうなっているのだろうか。
+それを考えるにはまずパーサのエントリポイント<code>yycompile()</code>に
+戻らなければならない。
+</p>
+
+<p class="caption">▼<code>ruby_dyna_vars</code>の退避</p>
+<pre class="longlist">
+static NODE*
+yycompile(f, line)
+{
+    struct RVarmap *vars = ruby_dyna_vars;
+         :
+    n = yyparse();
+         :
+    ruby_dyna_vars = vars;
+}
+</pre>
+
+
+<p>
+単なる退避・復帰のようにも見えるのだが、<code>ruby_dyna_vars</code>をクリアしてはい
+ないところがポイントだ。つまり評価器で作った<code>RVarmap</code>のリンクにパーサでも
+直接要素を追加していくことになる。
+</p>
+
+<p>
+しかし<code>ruby_dyna_vars</code>はパーサと評価器で構造が違ったはずだ。リンクが常に
+単線なのは問題なさそうだが、ヘッダ（<code>id=0</code>の<code>RVarmap</code>）の付きかたの違いは
+どうするのだろう。
+</p>
+
+<p>
+そこで役に立つのが<code>top_local_init()</code>にあった<code>local_push(1)</code>の「1」であ
+る。<code>local_push()</code>の引数が真になると<code>ruby_dyna_vars</code>の最初のヘッダを付
+けなくなる。つまり、図1のようになる。これで<code>eval</code>文字列の
+中から外のスコープのブロックローカル変数を参照できることが確認できた。
+
+<p class="image">
+<img src="images/ch_anyeval_dynavars.jpg" alt="(dynavars)"><br>
+図1: <code>eval</code>中の<code>ruby_dyna_vars</code>
+</p>
+
+<p>
+いや、確かに参照はできるけども<code>ruby_dyna_vars</code>はパーサでは全部解放してい
+たはずじゃあないのか、評価器で作ったリンクを解放されたらどうする……と
+いうことに気付いてしまった人は次のところを読んで安心してもらいたい。
+</p>
+
+<p class="caption">▼<code>yycompile()</code>−<code>ruby_dyna_vars</code>の解放</p>
+<pre class="longlist">
+2386      vp = ruby_dyna_vars;
+2387      ruby_dyna_vars = vars;
+2388      lex_strterm = 0;
+2389      while (vp &amp;&amp; vp != vars) {
+2390          struct RVarmap *tmp = vp;
+2391          vp = vp-&gt;next;
+2392          rb_gc_force_recycle((VALUE)tmp);
+2393      }
+
+(parse.y)
+</pre>
+
+
+<p>
+評価器で作ったリンク（<code>vars</code>）まで来たらちゃんとループが
+止まるようになっているのだ。
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2><code>instance_eval</code></h2>
+
+<h3>全体像</h3>
+
+<p>
+<code>Module#module_eval</code>の実体は<code>rb_mod_module_eval()</code>、
+<code>Object#instance_eval</code>の実体は<code>rb_obj_instance_eval()</code>である。
+</p>
+
+<p class="caption">▼<code>rb_mod_module_eval() rb_obj_instance_eval()</code></p>
+<pre class="longlist">
+5316  VALUE
+5317  rb_mod_module_eval(argc, argv, mod)
+5318      int argc;
+5319      VALUE *argv;
+5320      VALUE mod;
+5321  {
+5322      return specific_eval(argc, argv, mod, mod);
+5323  }
+
+5298  VALUE
+5299  rb_obj_instance_eval(argc, argv, self)
+5300      int argc;
+5301      VALUE *argv;
+5302      VALUE self;
+5303  {
+5304      VALUE klass;
+5305
+5306      if (rb_special_const_p(self)) {
+5307          klass = Qnil;
+5308      }
+5309      else {
+5310          klass = rb_singleton_class(self);
+5311      }
+5312
+5313      return specific_eval(argc, argv, klass, self);
+5314  }
+
+(eval.c)
+</pre>
+
+
+<p>
+この二つのメソッドは「<code>self</code>と<code>class</code>を置き換えるメソッド」として共通化で
+きるのでその部分が<code>specific_eval()</code>でまとめられている。この先のことも含
+めて図示してみよう（図2）。
+括弧付きは関数ポインタでの呼び出しだ。
+</p>
+
+<p class="image">
+<img src="images/ch_anyeval_speceval.jpg" alt="(speceval)"><br>
+図2: コールグラフ
+</p>
+
+<p>
+<code>instance_eval</code>にしても<code>module_eval</code>にしてもブロックと文字列の両方を受けら
+れるので、それぞれ固有の処理をするよう<code>eval</code>と<code>yield</code>に別れる。ただしその
+ほとんどの部分はまた共通なので、その部分が<code>exec_under()</code>としてくくり出し
+てあるわけだ。
+</p>
+
+<p>
+しかし読む側からすると 2\times 2=4 通りを同時に相手にする
+ことになってしまうわけで、それは得策ではない。だからここでは
+</p>
+
+<ol>
+<li><code>instance_eval</code>で、</li>
+<li>文字列を引数に取るとき</li>
+</ol>
+
+<p>
+だけを考えて<code>rb_obj_instance_eval()</code>以下の関数を全てインライン展開、
+定数畳み込みをかけたものを読むことにする。
+</p>
+
+
+
+<h3>併合後</h3>
+
+<p>
+全部まとめたらこうなった。
+併合前と比べると随分わかりやすくなっている。
+</p>
+
+<p class="caption">▼<code>specific_eval()</code>−<code>instance_eval</code>、<code>eval</code>、文字列</p>
+<pre class="longlist">
+static VALUE
+instance_eval_string(self, src, file, line)
+    VALUE self, src;
+    const char *file;
+    int line;
+{
+    VALUE sclass;
+    VALUE result;
+    int state;
+    int mode;
+
+    sclass = rb_singleton_class(self);
+
+    PUSH_CLASS();
+    ruby_class = sclass;
+    PUSH_FRAME();
+    ruby_frame-&gt;self       = ruby_frame-&gt;prev-&gt;self;
+    ruby_frame-&gt;last_func  = ruby_frame-&gt;prev-&gt;last_func;
+    ruby_frame-&gt;last_class = ruby_frame-&gt;prev-&gt;last_class;
+    ruby_frame-&gt;argc       = ruby_frame-&gt;prev-&gt;argc;
+    ruby_frame-&gt;argv       = ruby_frame-&gt;prev-&gt;argv;
+    if (ruby_frame-&gt;cbase != sclass) {
+        ruby_frame-&gt;cbase = rb_node_newnode(NODE_CREF, sclass, 0,
+                                            ruby_frame-&gt;cbase);
+    }
+    PUSH_CREF(sclass);
+
+    mode = scope_vmode;
+    SCOPE_SET(SCOPE_PUBLIC);
+    PUSH_TAG(PROT_NONE);
+    if ((state = EXEC_TAG()) == 0) {
+        result = eval(self, src, Qnil, file, line);
+    }
+    POP_TAG();
+    SCOPE_SET(mode);
+
+    POP_CREF();
+    POP_FRAME();
+    POP_CLASS();
+    if (state) JUMP_TAG(state);
+
+    return result;
+}
+</pre>
+
+
+<p>
+オブジェクトの特異クラスを<code>CLASS</code>と<code>CREF</code>と<code>ruby_frame-&gt;cbase</code>に
+プッシュする。ということらしい。主処理は<code>eval()</code>一発である。いつもと
+違って<code>FRAME</code>を構造体コピーで初期化したりしていないのが珍しいが、
+それもたいした違いではない。
+</p>
+
+
+
+<h3>併合前</h3>
+
+<p>
+読みやすくなったと筆者は言ってはいるが、もしかしたら併合前から簡単だっ
+たのかもしれない。併合前のものと比べてどのあたりが簡単にされているのか
+検証してみよう。
+</p>
+
+<p>
+まず<code>specific_eval()</code>だ。この関数はRubyとのインターフェイス部分の
+コードを共通化するためのものなので、ほとんどが引数のパースである。
+それを全部削るとこうなる。
+</p>
+
+<p class="caption">▼<code>specific_eval()</code>（簡約版）</p>
+<pre class="longlist">
+5258  static VALUE
+5259  specific_eval(argc, argv, klass, self)
+5260      int argc;
+5261      VALUE *argv;
+5262      VALUE klass, self;
+5263  {
+5264      if (rb_block_given_p()) {
+
+5268          return yield_under(klass, self);
+5269      }
+5270      else {
+
+5294          return eval_under(klass, self, argv[0], file, line);
+5295      }
+5296  }
+
+(eval.c)
+</pre>
+
+
+<p>
+この通りブロックがあるかどうかで完璧に二通りに分かれており、
+それぞれのルートのコードが影響を与えあったりすることはない。だから
+読むときは片方ずつ読むべきだ。併合版ではまずこの点が改善されている。
+</p>
+
+<p>
+また<code>yield_under()</code>を読むときは<code>file</code>と<code>line</code>が関係ないので、
+<code>yield</code>ルートを主体に併合した場合はこの引数のパースについては
+全く考えなくていいことが明確になるだろう。
+</p>
+
+<p>
+次に<code>eval_under()</code>と<code>eval_under_i()</code>を見てみよう。
+</p>
+
+<p class="caption">▼<code>eval_under()</code></p>
+<pre class="longlist">
+5222  static VALUE
+5223  eval_under(under, self, src, file, line)
+5224      VALUE under, self, src;
+5225      const char *file;
+5226      int line;
+5227  {
+5228      VALUE args[4];
+5229
+5230      if (ruby_safe_level &gt;= 4) {
+5231          StringValue(src);
+5232      }
+5233      else {
+5234          SafeStringValue(src);
+5235      }
+5236      args[0] = self;
+5237      args[1] = src;
+5238      args[2] = (VALUE)file;
+5239      args[3] = (VALUE)line;
+5240      return exec_under(eval_under_i, under, under, args);
+5241  }
+
+5214  static VALUE
+5215  eval_under_i(args)
+5216      VALUE *args;
+5217  {
+5218      return eval(args[0], args[1], Qnil, (char*)args[2], (int)args[3]);
+5219  }
+
+(eval.c)
+</pre>
+
+
+<p>
+この関数では引数を一つにするために配列<code>args</code>を経由して渡している。
+この<code>args</code>は<code>eval_under()</code>から<code>eval_under_i()</code>に渡すための一時的な
+コンテナなんだろうな、
+と予想はできるが、本当にそうなのかはわからない。もしかしたら
+<code>exec_under()</code>の中で<code>args</code>を加工したりしているのかもしれない。
+</p>
+
+<p>
+コードの共通化の方法としてはこれは非常に正しいやりかただが、
+読む側からするとこういう間接的な渡しが入ると理解しづらいものだ。
+特に<code>file</code>と<code>line</code>にはコンパイラを胡麻化すために無駄なキャストが入っている
+ので本当の型がなんなのか想像しにくい。このあたりは併合版では全て消滅し
+ているので迷わずに済む。
+</p>
+
+<p>
+ただ併合したり展開したりするほうが常にわかりやすいかというとそうでもな
+い。例えば<code>exec_under()</code>を呼ぶときは第二引数も第三引数も<code>under</code>を渡して
+いるが、<code>exec_under()</code>の側ではパラメータ変数を両方とも<code>under</code>に展開して
+しまっていいのだろうか。と言うのは、
+<code>exec_under()</code>の第二・第三引数とは実はプッシュすべき<code>CLASS</code>と<code>CREF</code>を示して
+いるのである。<code>CLASS</code>と<code>CREF</code>は「別のもの」なので、別の変数を使うほうがい
+いかもしれない。先の併合版でもここだけは
+</p>
+
+<pre class="emlist">
+VALUE sclass = .....;
+VALUE cbase = sclass;
+</pre>
+
+<p>
+としようかと思ったのだが、いきなりこれだけ変数を残しても違和感があるか
+と思い、<code>sclass</code>で展開しておいた。つまり文章の流れ上の都合でしかない。
+</p>
+
+<p>
+これまで何回も引数を展開したり関数を展開したりしてきたが、そのたびに
+展開する理由をしつこく説明してきた。即ち
+</p>
+
+<ul>
+<li>とりうるパターンが数パターンに限られているとき</li>
+<li>動作が微妙に変わるとき</li>
+</ul>
+
+<p>
+である。
+「とにかく手でいろいろなものを展開すれば簡単になるんだ」
+なんてことを言っているわけでは、決してない。
+</p>
+
+<p>
+どんなときでも優先するのは自分にとっての理解しやすさであって、手順
+を守ることではない。展開してしまったほうがわかりやすいなら、展開する。
+展開しない、あるいは逆に手続きにまとめたほうがわかりやすいと感じるなら
+そうしよう。<code>ruby</code>の場合は元がちゃんと書けているので展開するばかりだった
+が、下手な人の書いたソースなら関数にくくりまくるほうがわかりやすくなる
+ことも多いはずだ。
+
+<hr>
+<p>
+御意見・御感想・誤殖の指摘などは
+<a href="mailto:aamine@loveruby.net">青木峰郎 &lt;aamine@loveruby.net&gt;</a>
+までお願いします。
+</p>
+<p>
+<a href="http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721">『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。</a>
+</p>
+<p>Copyright (c) 2002-2004 Minero Aoki, All rights reserved.</p>
+
+</body>
+</html>
