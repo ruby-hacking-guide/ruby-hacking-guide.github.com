@@ -5,12 +5,12 @@ Creating a github repo to hopefully inspire efforts to get this translated
 Contributors
 ============
 
-* Vincent ISAMBART
-* meinrad recheis
+* Vincent Isambart
+* Meinrad Recheis
 * Laurent Sansonetti
-* Clifford Caoile
+* Clifford Escobar Caoile
 * Jean-Denis Vauguet
-
+* Robert Gravina
 
 Running the site locally
 ==========
