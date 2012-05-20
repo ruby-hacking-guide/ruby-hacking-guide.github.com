@@ -1,3 +1,4 @@
+#encoding: utf-8
 # This script automatically converts the HTML pages
 # of the Ruby Hacking Guide to the textile-based text
 # format used for the translation.
@@ -31,7 +32,7 @@ File.open(ARGV[1], 'w') do |output|
       end
     end
   end
-  
+
   # different types of list
   list_type = nil
   data.gsub!(/<(ul|ol|li)>/) do |m|
@@ -44,17 +45,17 @@ File.open(ARGV[1], 'w') do |output|
   end
 
   [
-    [ /.*?<body>(.*?)<\/body>.*/m, '\1' ], # we only want the body
-    [ /<\/?(table|p( class=".+?")?)>|<\/(li|h\d|ol|ul)>/, '' ], # remove useless tags
-    [ /▼/, '▼ ' ], # just add a space after the arrow
-    [ /<h(\d)>/, 'h\1. ' ], # headers
-    [ /<a href="(.+?)">(.+?)<\/a>/m, '"\2":\1' ], # images
-    [ /<tr><td>|<td><td>|<td><\/tr>/, '|' ], # tables
-    [ /<img src="(.+?)" alt=".+?"><br>\n図\d+: (.*)/, '!\1(\2)!' ], # images and captions
-    [ /[ \t]+$/, '' ], # trims line ends
-    [ /\A\n+|\n+\Z/, '' ], # remove beginning and ending empty lines
-    [ /\n\n+/, "\n\n" ], # succession of empty lines
-  ].each { |re, str| data.gsub!(re, str) }
-    
+    [ /.*?<body>(.*?)<\/body>.*/m                        , '\1' ]             , # we only want the body
+    [ /<\/?(table|p( class=".+?")?)>|<\/(li|h\d|ol|ul)>/ , '' ]               , # remove useless tags
+    [ /▼/                                                , '▼ ' ]             , # just add a space after the arrow
+    [ /<h(\d)>/                                          , 'h\1. ' ]          , # headers
+    [ /<a href="(.+?)">(.+?)<\/a>/m                      , '"\2":\1' ]        , # images
+    [ /<tr><td>|<td><td>|<td><\/tr>/                     , '|' ]              , # tables
+    [ /<img src="(.+?)" alt=".+?"><br>\n図\d+: (.*)/     , '!\1(\2)!' ]       , # images and captions
+    [ /[ \t]+$/                                          , '' ]               , # trims line ends
+    [ /\A\n+|\n+\Z/                                      , '' ]               , # remove beginning and ending empty lines
+    [ /\n\n+/                                            , "\n\n" ]           , # succession of empty lines
+  ].each { |re, str| data.gsub!(re , str) }
+
   output.puts(data)
 end
