@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Classes and modules
+title: Parser
 ---
 
 Translated by Robert GRAVINA

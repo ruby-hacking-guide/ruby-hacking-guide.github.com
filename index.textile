@@ -2,14 +2,12 @@
 layout: default
 ---
 
-Translated by Vincent ISAMBART and Clifford Escobar CAOILE
-
-h1. Ruby Hacking Guide
-
-This is the home page of the project to translate into English the "Ruby
+This is a new effort to gather efforts to help translate into English the "Ruby
 Hacking Guide":http://i.loveruby.net/ja/rhg/book/. The RHG is a book
 that explains how the ruby interpreter (the official
-C implementation of the "Ruby language":http://www.ruby-lang.org/) works internally.
+C implementation of the "Ruby language":http://www.ruby-lang.org/) works
+internally.
+
 
 To fully understand it, you need a good knowledge of C and Ruby. The
 original book includes a Ruby tutorial (chapter 1), but it has not
@@ -44,18 +42,30 @@ People good at making diagrams would also be helpful because there is
 quite a lot to redo and translators would rather spend their time
 translating instead of making diagrams.
 
-So if you want to help us, join the "rhg-discussion mailing
-list":http://rubyforge.org/mailman/listinfo/rhg-discussion and
-introduce yourself (who you are, your skills, how much free time you
-have). You can of course just join the mailing list to see what's
-going on. And do not hesitate to ask questions!
+There have been multiple efforts to translate this book, and we want to see if
+we can renew efforts by creating an organisation on github. Interested parties
+can join in by starting a pull request on this repo
+https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com
+There is a mostly derelict mailing list at
+"rhg-discussion mailing list":http://rubyforge.org/mailman/listinfo/rhg-discussion
+feel free to introduce yourself (who you are, your skills, how much free time you
+have), but I think the best way to propose or send corrections/improvements
+is to send a pull request. If you start a feature branch along with a pull
+request at the start of your work then people can comment as you work.
 
-The preferred way to propose corrections/improvements is to send a
-patch (attached to the mail, not just in the body of the message) on
-the mailing list. The patch should be done against the text files in the
-SVN repository (http://rubyforge.org/scm/?group_id=1387).
-
+There is an old SVN repo, that is hosted at
 The RubyForge project page is http://rubyforge.org/projects/rhg.
+It has been imported here, and I will attempt to give credit and re-write the
+SVN/Git history when I can.
+
+As for now the contributors to that repo were:
+
+* Vincent ISAMBART
+* meinrad recheis
+* Laurent Sansonetti
+* Clifford Caoile
+* Jean-Denis Vauguet
+
 
 h2. Table of contents
 
@@ -75,13 +85,13 @@ h3. Part 1: Objects
 * "Chapter 4: Classes and modules":chapter04.html
 * Chapter 5: Garbage collection
 * "Chapter 6: Variables and constants":chapter06.html
-* Chapter 7: Security
+* "Chapter 7: Security":chapter07.html
 
 h3. Part 2: Syntax analysis
 
 * Chapter 8: Ruby language details
 * Chapter 9: yacc crash course
-* Chapter 10: Parser
+* "Chapter 10: Parser":chapter10.html
 * Chapter 11: Context-dependent scanner
 * Chapter 12: Syntax tree construction
 
@@ -95,7 +105,7 @@ h3. Part 3: Evaluation
 
 h3. Part 4: Around the evaluator
 
-* Chapter 18: Loading
+* "Chapter 18: Loading":chapter18.html
 * Chapter 19: Threads
 
 * Final chapter: Ruby's future
