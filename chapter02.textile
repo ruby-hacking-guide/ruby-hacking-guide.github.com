@@ -108,7 +108,7 @@ Let's look at the definition of a few object structures.
 Before looking at every one of them in detail, let's begin with something more
 general.
 
-First, as `VALUE` is defined as `unsigned long`, it must be casted before
+First, as `VALUE` is defined as `unsigned long`, it must be cast before
 being used. That's why `Rxxxx()` macros have been made for each object
 structure. For example, for `struct RString` there is `RSTRING()`, for `struct
 RArray` there is `RARRAY()`, etc... These macros are used like this:
