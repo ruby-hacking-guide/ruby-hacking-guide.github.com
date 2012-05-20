@@ -52,7 +52,7 @@ Ruby array class, `Array`, as an example.
 to `ruby` and the `c` that it is a class object. These naming rules
 are used everywhere in `ruby`.
 
-This call to `rb_define_class()` allows to define `Array` that
+This call to `rb_define_class()` defines a class called `Array`, which
 inherits from `Object`. At the same time as `rb_define_class()` creates
 the class object, it also defines the constant. That means that after this
 you can already access `Array` from a Ruby program. It corresponds to
@@ -171,8 +171,8 @@ end
 
 h3. Singleton methods definition
 
-We can define methods that are specific to an instance of an
-object. They are called singleton methods. As I used `File.unlink` as
+We can define methods that are specific to a single object instance. 
+They are called singleton methods. As I used `File.unlink` as
 an example in chapter 1 "Ruby language minimum", I first wanted to
 show it here, but for a particular reason we'll look at `File.link`
 instead.
@@ -217,7 +217,7 @@ made:
 (array.c)
 </pre>
 
-The `Init` for the built-in functions are explicitely called during
+The `Init` for the built-in functions are explicitly called during
 the startup of `ruby`. This is done in `inits.c`.
 
 ▼ `rb_call_inits()`
@@ -244,7 +244,7 @@ the startup of `ruby`. This is done in `inits.c`.
 
 This way, `Init_Array()` is called properly.
 
-That explains it for built-in libraries, but what about extension
+That explains it for the built-in libraries, but what about extension
 libraries? In fact, for extension libraries the convention is the
 same. Take the following code:
 
@@ -255,7 +255,7 @@ require "myextension"
 With this, if the loaded extension library is `myextension.so`, at
 load time, the (`extern`) function named `Init_myextension()` is
 called. How they are called is beyond the scope of this chapter. For
-that, you should read the chapter 18 "Load". Here we'll just end this
+that, you should read chapter 18, "Load". Here we'll just end this
 with an example of `Init`.
 
 The following example is from `stringio`, an extension library
@@ -317,7 +317,7 @@ level.
 h3. `rb_singleton_class()`
 
 Well, let's confirm what the singleton classes are made of. It's too
-simple to each time just show you the code of function so this time
+simple to just show you the code of a function each time so this time
 I'll use a new weapon, a call graph.
 
 <pre class="emlist">
@@ -458,7 +458,7 @@ rb_singleton_class
 Here also `rb_class_boot()` is called. So up to that point, it's the
 same as in normal classes. What's going on after is what's different
 between normal classes and singleton classes, in other words the
-characteristics of singleton classes. If you everything's clear so
+characteristics of singleton classes. If everything's clear so
 far, we just need to read `rb_singleton_class()` and
 `rb_make_metaclass()`.
 
@@ -523,7 +523,7 @@ half.
 
 Everything that is handled in the first half are non-pointer `VALUE`s,
 in other words objects without an existing C structure. First,
-`Fixnum` and `Symbol` are explicitely picked. Then,
+`Fixnum` and `Symbol` are explicitly picked. Then,
 `rb_special_const_p()` is a function that returns true for non-pointer
 `VALUE`s, so there only `Qtrue`, `Qfalse` and `Qnil` should get
 caught. Other than that, there are no valid non-pointer value so a bug
@@ -779,7 +779,7 @@ this logic.
 h4. "Class is also an object"
 
 "Everything is an object" is often used as advertising statement when
-speaking about Ruby. And as a part of that, "Classes are also object!"
+speaking about Ruby. And as a part of that, "Classes are also objects!"
 also appears. But these expressions often go too far. When thinking
 about these sayings, we have to split them in two:
 
@@ -1197,7 +1197,7 @@ After `rb_define_class_id`, we can find the following:
 st_add_direct(rb_class_tbl, id, klass);
 </pre>
 
-This part assigns the class to the constant. However, whichever the
+This part assigns the class to the constant. However, whichever
 way you look at it you do not see that. In fact, top-level classes are
 separated from the other constants and regrouped in
 `rb_class_tbl()`. The split is slightly related to the GC. It's not
@@ -1355,7 +1355,7 @@ If you create a class like this, we won't go through
 `rb_define_class_id()` and the classpath won't be set. In this case,
 `c` does not have any name, which is to say we get an unnamed class.
 
-However, if later it's assigned into a constant, the name of this
+However, if later it's assigned to a constant, the name of this
 constant will be attached to the class.
 
 <pre class="emlist">
