@@ -31,12 +31,12 @@ h4. `require`
 
 `require` has four features:
 
-* the file is searched in the load path
+* the file is searched for in the load path
 * it can load extension libraries
 * the `.rb`/`.so` extension can be omitted
 * a given file is never loaded more than once
 
-Ruby's load path is in the global variable `$:` that contains an
+Ruby's load path is in the global variable `$:`, which contains an
 array of strings. For example, displaying the content of the `$:` in
 the environment I usually use would show:
 
@@ -50,7 +50,7 @@ the environment I usually use would show:
 .
 </pre>
 
-Calling `puts` on an array displays one element by line so it's easy
+Calling `puts` on an array displays one element on each line so it's easy
 to read.
 
 As I ran `configure` using `--prefix=/usr`, the library path is
@@ -106,7 +106,7 @@ The are two reasons for adding the missing extension. The first one is
 not to load it twice if the same file is later `require`d with its
 extension. The second one is to be able to load both `nkf.rb` and
 `nkf.so`. In fact the extensions are disparate (`.so .dll .bundle`
-etc.) depending of the platform, but at locking time they all become
+etc.) depending on the platform, but at locking time they all become
 `.so`. That's why when writing a Ruby program you can ignore the
 differences of extensions and consider it's always `so`. So you can
 say that `ruby` is quite UNIX oriented.
@@ -193,10 +193,10 @@ For the second point, the functions that appear in this chapter come
 from 4 different files, `eval.c ruby.c file.c dln.c`.  We'll look at
 the reason they are stretched in different places.
 
-The third point is just like its name says. We will see how works the
+The third point is just like its name says. We will see how the
 currently popular trend of execution time loading, more commonly
-referred to as plug-ins. This is the most important part of this
-chapter so I'd like to use as many pages as possible to talk about it.
+referred to as plug-ins, works. This is the most important part of this
+chapter, so I'd like to use as many pages as possible to talk about it.
 
 h2. Searching the library
 
@@ -396,7 +396,7 @@ words locks the file.
 
 The problem comes after. Like the comment says "the loading of Ruby
 programs is serialised". In other words, a file can only be loaded
-from one thread, and if during the loading a thread tries to load the
+from one thread, and if during the loading another thread tries to load the
 same file, that thread will wait for the first loading to be finished.
 If it were not the case:
 
@@ -464,12 +464,12 @@ part inside `rb_f_require()`'s `load_rb` loading Ruby programs.
 (eval.c)
 </pre>
 
-Here the `rb_load()` that is called is in fact the real form of the
-Ruby level load.
-
-さてここで呼んでいる`rb_load()`、これは実はRubyレベルの`load`の実体である。
+The `rb_load()` which is called here is actually the "meat" of the
+Ruby-level `load`.
 ということは探索がもう一回必要になるわけで、同じ作業をもう一回見るなん
 てやっていられない。そこでその部分は以下では省略してある。
+
+And since the second argument (`wrap`) passed to `rb_load` in the above code is 0, the call is wrapped in 0. (*** What is this supposed to mean??? That the nesting level is 0?)
 また第二引数の`wrap`も、上記の呼び出しコードで0なので、0で畳み込んである。
 
 ▼ `rb_load()` (simplified edition)
@@ -596,14 +596,14 @@ load_file(fname, /* script=0 */)
 }
 </pre>
 
-(A) In practice, the try to open using `fopen()` is to check if the
+(A) The call to `fopen()` is to check if the
 file can be opened. If there is no problem, it's immediately closed.
 It may seem a little useless but it's an extremely simple and yet
 highly portable and reliable way to do it.
 
 (B) The file is opened once again, this time using the Ruby level
 library `File.open`. The file was not opened with `File.open` from the
-beginning not to raise any Ruby exception if the file cannot be
+beginning so as not to raise any Ruby exception if the file cannot be
 opened.  Here if any exception occurred we would like to have a
 loading error, but getting the errors related to `open`, for example
 `Errno::ENOENT`, `Errno::EACCESS`..., would be problematic. We are in
@@ -638,14 +638,13 @@ can be open, but in fact during the loading process other functions
 like for example `rb_find_file_ext()` also do checks using `open`. How
 many times is `open()` called in the whole process?
 
-と思ったら実際に数えてみるのが正しいプログラマのありかただ。システムコー
-ルトレーサを使えば簡単に数えられる。そのためのツールはLinuxなら
-`strace`、Solarisなら`truss`、BSD系なら`ktrace`か`truss`、
+If you're wondering that, it's just a matter of having the right program available to count and see. You can easily find out using a system call tracer. On Linux, the tool to use would be `strace`; on Solaris, `truss`; or on BSD, `ktrace` or `truss`. 
+
 というように
 OSによって名前がてんでバラバラなのだが、Googleで検索すればすぐ見付かる
-はずだ。WindowsならたいていIDEにトレーサが付いている。
 
-Well, as my main environment is Linux, I looked using `strace`.
+If you're using Windows, probably your IDE will have a tracer built in. Well, as my main environment is Linux, I looked using `strace`.
+
 The output is done on `stderr` so it was redirected using `2>&1`.
 
 <pre class="screen">
@@ -694,10 +693,10 @@ part about locking anymore so it was removed.
 (eval.c)
 </pre>
 
-もはやほとんど目新しいものはない。タグはイディオム通りの使いかた
+By now, there is very little here which is novel. タグはイディオム通りの使いかた
 しかしていないし、可視性スコープの退避・復帰も見慣れた手法だ。
-残るのは`dln_load()`だけである。これはいったい何をしているのだろう。
-というところで次に続く。
+All that remains is `dln_load()`. What on earth is that for? For the answer, continue to the next section.
+
 
 h3. リンクについて復習
 
@@ -722,15 +721,14 @@ Linuxで`gcc`を使っているので、次のようにすれば動くプログ�
 Hello, World!
 </pre>
 
-ちゃんとできている。
+It prints out just as expected.
 
-ところで、いま`gcc`は実際には何をしたのだろうか。普段はコンパイル、
-コンパイルと言うことが多いが、実際には
+By the way, what is `gcc` actually doing here? Usually we just say is "compiles", but actually it...
 
-# プリプロセス(`cpp`)
-# C言語をアセンブラにコンパイル(`cc`)
-# アセンブラを機械語にアセンブル(`as`)
-# リンク(`ld`)
+# Preprocesses (`cpp`)
+# Compiles C into assembly (`cc`)
+# Assembles the assembly language into machine code (`as`)
+# Links (`ld`)
 
 という四つの段階を通っている。このうちプリプロセス・コンパイル・アセン
 ブルまではいろいろなところで説明を見掛けるのだが、なぜかリンクの段階だ
@@ -798,16 +796,10 @@ Hello, World!
 
 h3. 真にダイナミックなリンク
 
-さてそろそろ本題に入ろう。ダイナミックリンクの「ダイナミック」は当然
-「実行時にやる」という意味だが、普通に言うところのダイナミックリンクだ
-と実はコンパイル時にかなりの部分が決まっている。例えば必要な関数の名前
-は決まっているだろうし、それがどこのライブラリにあるかということももう
-わかっている。例えば`cos()`なら`libm`にあるから`gcc -lm`という
-感じでリ
-ンクするわけだ。コンパイル時にそれを指定しなかったらリンクエラーになる。
+And finally we get into our main topic. The "dynamic" in "dynamic linking" naturally means it "occurs at execution time", but what people usually refer to as "dynamic linking" is pretty much decided already at compile time. For example, the names of the needed functions, and which library they can be found in, are already known. For instance, if you need `cos()`, you know it's in `libm`, so you use `gcc -lm`. If you didn't specify the correct library at compile time, you'd get a link error. 
 
-しかし拡張ライブラリの場合は違う。必要な関数の名前も、リンクするライブ
-ラリの名前すらもコンパイル時には決まっていない。文字列をプログラムの実
+But extension libraries are different. Neither the names of the needed functions, or the name of the library which defines them are known at compile time. 
+文字列をプログラムの実
 行中に組み立ててロード・リンクしなければいけないのである。つまり先程の
 言葉で言う「論理結合」すらも全て実行時に行わなければならない。そのため
 には普通に言うところのダイナミックリンクとはまた少し違う仕組みが必要に
@@ -910,7 +902,7 @@ dln_load(file)
 
 h3. `dln_load()`-`dlopen()`
 
-まず`dlopen`系のAPIのコードから行こう。
+First, let's start with the API code for the `dlopen` series.
 
 ▼ `dln_load()`-`dlopen()`
 <pre class="longlist">
