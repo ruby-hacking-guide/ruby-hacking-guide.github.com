@@ -1,0 +1,1044 @@
+h1. 第16章 ブロック
+
+h2. イテレータ
+
+この章ではRubyスタック七本のうち最後の大物、`BLOCK`が登場する。
+これが終われば評価器の内部状態についてはわかったも同然だ。
+
+h3. 全体像
+
+イテレータの仕組みはいったいどうなっているのか。
+まず次のような小さいプログラムで考えてみよう。
+
+▼ ソースプログラム
+<pre class="longlist">
+iter_method() do
+  9   # ブロックを探す目印
+end
+</pre>
+
+用語を確認しておく。このプログラムで言うと`iter_method`が
+イテレータメソッド、`do`〜`end`がイテレータブロックだ。
+このプログラムの構文木をダンプしたらこうなった。
+
+▼ 対応する構文木
+<pre class="longlist">
+NODE_ITER
+nd_iter:
+    NODE_FCALL
+    nd_mid = 9617 (iter_method)
+    nd_args = (null)
+nd_var = (null)
+nd_body:
+    NODE_LIT
+    nd_lit = 9:Fixnum
+</pre>
+
+イテレータブロックに書いた9を手書かりにブロックを探してみると、
+`NODE_ITER`がイテレータブロックを表しているようだ、とわかる。それと
+`iter_method`を呼び出す`NODE_FCALL`がその`NODE_ITER`の「下」にある。つ
+まりイテレータメソッドの呼び出しよりもイテレータブロックのノードのほう
+が先にある。ということは、ブロックはイテレータメソッドを呼び出す前に、
+別のノードで積まれるらしい。
+
+また、デバッガでコードの流れを追って確かめてみると、イテレータの起動は
+この`NODE_ITER NODE_CALL`に`NODE_YIELD`を加えた三段階に分かれていることが
+わかった。それは即ち
+
+# ブロックを積む(`NODE_ITER`)
+# イテレータであるメソッドを呼び出す(`NODE_CALL`)
+# `yield`(`NODE_YIELD`)
+
+である。
+
+h3. ブロックをプッシュ
+
+ではまず第一段階のブロックを積むノード、
+`NODE_ITER`から見ていくことにしよう。
+
+▼ `rb_eval()`-`NODE_ITER`(簡約版)
+<pre class="longlist">
+case NODE_ITER:
+  {
+    iter_retry:
+      PUSH_TAG(PROT_FUNC);
+      PUSH_BLOCK(node->nd_var, node->nd_body);
+
+      state = EXEC_TAG();
+      if (state == 0) {
+          PUSH_ITER(ITER_PRE);
+          result = rb_eval(self, node->nd_iter);
+          POP_ITER();
+      }
+      else if (_block.tag->dst == state) {
+          state &= TAG_MASK;
+          if (state == TAG_RETURN || state == TAG_BREAK) {
+              result = prot_tag->retval;
+          }
+      }
+      POP_BLOCK();
+      POP_TAG();
+      switch (state) {
+        case 0:
+          break;
+
+        case TAG_RETRY:
+          goto iter_retry;
+
+        case TAG_BREAK:
+          break;
+
+        case TAG_RETURN:
+          return_value(result);
+          /* fall through */
+        default:
+          JUMP_TAG(state);
+      }
+  }
+  break;
+</pre>
+
+元のコードには`for`文のサポートが入っていたのでそれを削除してある。タグ
+関係を除くと、`ITER`と`BLOCK`のプッシュ・ポップだけだ。あとは`NODE_FCALL`を
+普通に`rb_eval()`しているだけなのだから、この`ITER`と`BLOCK`がメソッドを
+イテレータにするための必要条件である。
+
+`BLOCK`のプッシュが必要になるのはまあいいとして、`ITER`は何のためにあるの
+だろうか。実は`ITER`の意味を考えるには`BLOCK`を使うほうの身になって考
+えてみる必要がある。
+
+例えば今まさにメソッドが呼び出されたとしよう。そして`ruby_block`が存在し
+た。しかし`BLOCK`はメソッド呼び出しの区切りと関係なく積まれるので、ブロッ
+クが存在するからと言ってそれが自分のために積まれたブロックであるかどう
+かはわからない。もしかすると自分の前のメソッドのために積まれたブロック
+かもしれないではないか(図1)。
+
+!images/ch_iterator_stacks.jpg(`FRAME`と`BLOCK`は一対一対応ではない)!
+
+そこでブロックがどのメソッドのために積まれたのか判別するために
+`ITER`を使うわけだ。なぜ`BLOCK`を`FRAME`ごとに積まないかと言うと、
+`BLOCK`を積むのはちょっと重いからである。どのくらい重いかは、
+実際に見て確かめてみよう。
+
+h4. `PUSH_BLOCK()`
+
+`PUSH_BLOCK()`の引数はブロックパラメータ(の構文木)とブロック
+本体である。
+
+▼ `PUSH_BLOCK() POP_BLOCK()`
+<pre class="longlist">
+ 592  #define PUSH_BLOCK(v,b) do { \
+ 593      struct BLOCK _block;                  \
+ 594      _block.tag = new_blktag();            \
+ 595      _block.var = v;                       \
+ 596      _block.body = b;                      \
+ 597      _block.self = self;                   \
+ 598      _block.frame = *ruby_frame;           \
+ 599      _block.klass = ruby_class;            \
+ 600      _block.frame.node = ruby_current_node;\
+ 601      _block.scope = ruby_scope;            \
+ 602      _block.prev = ruby_block;             \
+ 603      _block.iter = ruby_iter->iter;        \
+ 604      _block.vmode = scope_vmode;           \
+ 605      _block.flags = BLOCK_D_SCOPE;         \
+ 606      _block.dyna_vars = ruby_dyna_vars;    \
+ 607      _block.wrapper = ruby_wrapper;        \
+ 608      ruby_block = &_block
+
+ 610  #define POP_BLOCK() \
+ 611     if (_block.tag->flags & (BLOCK_DYNAMIC))              \
+ 612         _block.tag->flags |= BLOCK_ORPHAN;                \
+ 613     else if (!(_block.scope->flags & SCOPE_DONT_RECYCLE)) \
+ 614         rb_gc_force_recycle((VALUE)_block.tag);           \
+ 615     ruby_block = _block.prev;                             \
+ 616  } while (0)
+
+(eval.c)
+</pre>
+
+確認すると、`BLOCK`とは「作成した時点での環境のスナップショット」だ。
+その証拠に`CREF`と`BLOCK`以外のスタックフレーム六本が保存されている。
+`CREF`は`ruby_frame->cbase`で代替できるので積む必要がない。
+
+またプッシュの仕組みについては三点確認したい。`BLOCK`もスタック上にベ
+タ置き確保されていること。`BLOCK`にはこの時点での`FRAME`がまるごとコピー
+されていること。`BLOCK`は他の多くのスタックフレーム構造体と違って前の
+`BLOCK`へのポインタ(`prev`)を持つこと。
+
+`POP_BLOCK()`でいろいろ使われているフラグは後で`Proc`の実装を見てから
+まとめて見ないとわからないので、今は説明しない。
+
+さて`BLOCK`は重い、という話だが、確かに少し重そうだ。
+`new_blktag()`は
+中を見ると`malloc()`しているし、大量にメンバを格納する。ただ最終的な判
+断をするのは`PUSH_ITER()`も見比べてからにしよう。
+
+h4. `PUSH_ITER()`
+
+▼ `PUSH_ITER() POP_ITER()`
+<pre class="longlist">
+ 773  #define PUSH_ITER(i) do {               \
+ 774      struct iter _iter;                  \
+ 775      _iter.prev = ruby_iter;             \
+ 776      _iter.iter = (i);                   \
+ 777      ruby_iter = &_iter
+
+ 779  #define POP_ITER()                      \
+ 780      ruby_iter = _iter.prev;             \
+ 781  } while (0)
+
+(eval.c)
+</pre>
+
+こちらは見るからに軽そうだ。使うのはスタック領域だけだし、メンバも二つ
+しかない。これなら`FRAME`ごとに積んでもたいしたことはなさそうである。
+
+h3. イテレータメソッド呼び出し
+
+ブロックを積んだら次はイテレータ(である)メソッドを呼ぶことになる。そ
+こでもちょっとした仕掛けが必要だ。`rb_call0()`の冒頭に`ruby_iter`の
+値を変化させるコードがあったのを覚えているだろうか。ここだ。
+
+▼ `rb_call0()`-`ITER_CUR`に遷移
+<pre class="longlist">
+4498      switch (ruby_iter->iter) {
+4499        case ITER_PRE:
+4500          itr = ITER_CUR;
+4501          break;
+4502        case ITER_CUR:
+4503        default:
+4504          itr = ITER_NOT;
+4505          break;
+4506      }
+
+(eval.c)
+</pre>
+
+先程`NODE_ITER`で`ITER_PRE`を積んだので、このコードで`ruby_iter`が
+`ITER_CUR`になる。これで初めてメソッドはイテレータに「なる」わけだ。
+またスタックの状態を図示すると図2のようになっている。
+
+!images/ch_iterator_itertrans.jpg(イテレータ呼び出し時のRubyスタックの様子)!
+
+`ruby_iter`の値が真偽(自分の/自分のではない)の二つではなく三段階に分
+かれているのは、ブロックを積んでからイテレータメソッドが起動するまでに
+少し隙間があるからだ。例えばイテレータメソッドの引数の評価がはさまった
+りする。その中にはメソッドの呼び出しが入っていることもあるはずなので、
+その評価中に今積んだブロックを自分のものと勘違いされて使われてしまう可
+能性がある。だからイテレータになる……`ITER_CUR`にするのは、起動が完了す
+る寸前の`rb_call0()`の中でなければならない。
+
+▼ 処理される順番
+<pre class="longlist">
+method(arg) <span class="ami">{ block }</span>      # ブロックを積む
+method(<span class="ami">arg</span>) { block }      # 引数の評価
+<span class="ami">method(</span>arg<span class="ami">)</span> { block }      # メソッド呼び出し
+</pre>
+
+例えば前章『メソッド』で`NODE_CALL`のハンドラに`BEGIN_CALLARGS`とい
+うマクロがあった。これがまさに三段階`ITER`を活用しているところである。
+ちょっと戻って見てみよう。
+
+h4. `BEGIN_CALLARGS END_CALLARGS`
+
+▼ `BEGIN_CALLARGS END_CALLARGS`
+<pre class="longlist">
+1812  #define BEGIN_CALLARGS do {\
+1813      struct BLOCK *tmp_block = ruby_block;\
+1814      if (ruby_iter->iter == ITER_PRE) {\
+1815          ruby_block = ruby_block->prev;\
+1816      }\
+1817      PUSH_ITER(ITER_NOT)
+
+1819  #define END_CALLARGS \
+1820      ruby_block = tmp_block;\
+1821      POP_ITER();\
+1822  } while (0)
+
+(eval.c)
+</pre>
+
+`ruby_iter`が`ITER_PRE`のときは`ruby_block`を一つどけるようになっている。
+このコードが活躍するのは例えば以下のような場合だ。
+
+<pre class="emlist">
+obj.m1 { nil }.m2 { nil }
+</pre>
+
+この式の評価順は
+
+# `m2`のブロックをプッシュ
+# `m1`のブロックをプッシュ
+# メソッド`m1`呼び出し
+# メソッド`m2`呼び出し
+
+となる。だから`BEGIN_CALLARGS`がないと`m1`が`m2`のブロックを呼び出して
+しまう。
+
+また、もう一つイテレータがつながったとしてもその場合は
+`BEGIN_CALLARGS`の数も一緒に増えるから問題ない。
+
+h3. ブロック起動
+
+イテレータ起動の第三段階、つまり最後の段階はブロックの起動である。
+
+▼ `rb_eval()`-`NODE_YIELD`
+<pre class="longlist">
+2579        case NODE_YIELD:
+2580          if (node->nd_stts) {
+2581              result = avalue_to_yvalue(rb_eval(self, node->nd_stts));
+2582          }
+2583          else {
+2584              result = Qundef;    /* no arg */
+2585          }
+2586          SET_CURRENT_SOURCE();
+2587          result = rb_yield_0(result, 0, 0, 0);
+2588          break;
+
+(eval.c)
+</pre>
+
+`nd_stts`が`yield`の引数である。`avalue_to_yvalue()`は多重代入のところ
+でちょっと触れただけだが、無視しておいて問題ない。動作の核心はそんなも
+のではなく`rb_yield_0()`だ。この関数もまた長いので、思いきり簡略化して
+載せる。方法は今まで使ってきたものばかりだ。
+
+* `trace_func`関係を削る
+* エラーを削る
+* GCよけのためだけにあるコードを削る
+* `massign()`と同じく引数`pcall`がある。
+この引数は引数チェックの厳しさを変えるだけなのでどうでもいい。
+従って`pcall=0`と仮定して定数疊み込みをかける
+
+またさらに今回は以下の「読みやすさ最適化オプション」もオンにした。
+
+* それぞれの枝が同等のコード分岐はメインのものだけ残して後は削る
+* ほとんどの場合に真/偽である条件は常に真/偽と見做す
+* タグジャンプは全く起きないと仮定してタグ関係を全て消す
+
+ここまでやるとかなり短くなる。
+
+▼ `rb_yield_0()`(簡約版)
+<pre class="longlist">
+static VALUE
+rb_yield_0(val, self, klass, /* pcall=0 */)
+    VALUE val, self, klass;
+{
+    volatile VALUE result = Qnil;
+    volatile VALUE old_cref;
+    volatile VALUE old_wrapper;
+    struct BLOCK * volatile block;
+    struct SCOPE * volatile old_scope;
+    struct FRAME frame;
+    int state;
+
+    PUSH_VARS();
+    PUSH_CLASS();
+    block = ruby_block;
+    frame = block->frame;
+    frame.prev = ruby_frame;
+    ruby_frame = &(frame);
+    old_cref = (VALUE)ruby_cref;
+    ruby_cref = (NODE*)ruby_frame->cbase;
+    old_wrapper = ruby_wrapper;
+    ruby_wrapper = block->wrapper;
+    old_scope = ruby_scope;
+    ruby_scope = block->scope;
+    ruby_block = block->prev;
+    ruby_dyna_vars = new_dvar(0, 0, block->dyna_vars);
+    ruby_class = block->klass;
+    self = block->self;
+
+    /* ブロック引数をセット */
+    massign(self, block->var, val, pcall);
+
+    PUSH_ITER(block->iter);
+    /* ブロック本体を実行 */
+    result = rb_eval(self, block->body);
+    POP_ITER();
+
+    POP_CLASS();
+    /* ……ruby_dyna_varsを回収する…… */
+    POP_VARS();
+    ruby_block = block;
+    ruby_frame = ruby_frame->prev;
+    ruby_cref = (NODE*)old_cref;
+    ruby_wrapper = old_wrapper;
+    ruby_scope = old_scope;
+
+    return result;
+}
+</pre>
+
+見ての通り、ほとんどのスタックフレームを`ruby_block`に記憶していたものと
+すりかえている。単純な退避・復帰をしているものはいいとして、その他の
+注意すべきフレームの扱いを見ていこう。
+
+h4. `FRAME`
+
+<pre class="emlist">
+struct FRAME frame;
+
+frame = block->frame;     /* 構造体まるごとコピー */
+frame.prev = ruby_frame;  /* この二行で…… */
+ruby_frame = &(frame);    /* ……frameがプッシュされる */
+</pre>
+
+他のフレームと違い、`FRAME`は記憶しているものそのままではなく新しい
+`FRAME`を複製して作るようだ。つまり図3のようになる。
+
+!images/ch_iterator_framepush.jpg(コピーしたフレームを積む)!
+
+ここまでのコードを見てくると、`FRAME`は「再利用」されることは
+まずないようだ。`FRAME`を積むときはいつでも新しい`FRAME`を作っている。
+
+h4. `BLOCK`
+
+<pre class="emlist">
+block = ruby_block;
+         :
+ruby_block = block->prev;
+         :
+ruby_block = block;
+</pre>
+
+一番わけのわからないのが`BLOCK`のこの動作である。退避しているんだかポッ
+プしているんだかよくわからない。第一文と第三文が対になっていて最終的に
+は元に戻る、というのは理解できるが、第二文はいったいどういう結果につな
+がるのだろう。
+
+いろいろ考えた結論を一言で言うと、「ブロックを積んだ時の`ruby_block`に戻
+る」である。イテレータとはようするに以前のフレームに戻る構文だ
+から、スタックフレームの状態をブロックを作った時点に戻せばいいわけだ。
+そしてブロックを作ったときの`ruby_block`の値は、`block->prev`であったに
+違いない。だから`prev`に入っているのだ。
+
+また「常に`ruby_block`先頭の一つを起動すると仮定してしまっていいのだろう
+か」という疑問に対しては、「`rb_yield_0()`側としてはそう仮定してよい」と
+言うしかない。起動すべきブロックを`ruby_block`の一番上に積んでおくのはブ
+ロックを準備する側の仕事であって、`rb_yield_0()`の仕事ではないからだ。
+
+その一例が前章でやった`BEGIN_CALLARGS`である。イテレータ呼び出しがカスケー
+ドするとブロックが二段積まれて、使うべきでないブロックがスタックの先頭
+に来てしまう。だからわざわざチェックを入れて横にどけているのだった。
+
+h4. `VARS`
+
+そういえばまだ`PUSH_VARS()`と`POP_VARS()`の中身は見ていなかったような
+気がする。それもここで見ておこう。
+
+▼ `PUSH_VARS() POP_VARS()`
+<pre class="longlist">
+ 619  #define PUSH_VARS() do { \
+ 620      struct RVarmap * volatile _old; \
+ 621      _old = ruby_dyna_vars;          \
+ 622      ruby_dyna_vars = 0
+
+ 624  #define POP_VARS() \
+ 625     if (_old && (ruby_scope->flags & SCOPE_DONT_RECYCLE)) {   \
+ 626         if (RBASIC(_old)->flags) /* 再利用されていないなら */ \
+ 627             FL_SET(_old, DVAR_DONT_RECYCLE);                  \
+ 628      }                                                        \
+ 629      ruby_dyna_vars = _old;                                   \
+ 630  } while (0)
+
+(eval.c)
+</pre>
+
+これも新しい構造体を積むわけではないので「退避・復帰」と言うほうが近い。
+実際に`rb_yield_0()`では`PUSH_VARS()`は値を退避するために使われているだけ
+である。実際に`ruby_dyna_vars`を準備しているのはこの行だ。
+
+<pre class="emlist">
+ruby_dyna_vars = new_dvar(0, 0, block->dyna_vars);
+</pre>
+
+`BLOCK`に記憶しておいた`dyna_vars`を取り出してセットする。ついでにエントリ
+を一つ付けておく。第二部でやった`ruby_dyna_vars`の構造を思い出してほしい
+のだが、ここで生成しているような`id`が0の`RVarmap`はブロックスコープの区切
+りとして使われるのだった。
+
+ただ実はパーサと評価器では`ruby_dyna_vars`に格納されるリンクの形が微妙に
+違う。現在のブロックでブロックローカル変数の代入を行う関数
+`dvar_asgn_curr()`を見てみよう。
+
+▼ `dvar_asgn_curr()`
+<pre class="longlist">
+ 737  static inline void
+ 738  dvar_asgn_curr(id, value)
+ 739      ID id;
+ 740      VALUE value;
+ 741  {
+ 742      dvar_asgn_internal(id, value, 1);
+ 743  }
+
+ 699  static void
+ 700  dvar_asgn_internal(id, value, curr)
+ 701      ID id;
+ 702      VALUE value;
+ 703      int curr;
+ 704  {
+ 705      int n = 0;
+ 706      struct RVarmap *vars = ruby_dyna_vars;
+ 707
+ 708      while (vars) {
+ 709          if (curr && vars->id == 0) {
+ 710              /* first null is a dvar header */
+ 711              n++;
+ 712              if (n == 2) break;
+ 713          }
+ 714          if (vars->id == id) {
+ 715              vars->val = value;
+ 716              return;
+ 717          }
+ 718          vars = vars->next;
+ 719      }
+ 720      if (!ruby_dyna_vars) {
+ 721          ruby_dyna_vars = new_dvar(id, value, 0);
+ 722      }
+ 723      else {
+ 724          vars = new_dvar(id, value, ruby_dyna_vars->next);
+ 725          ruby_dyna_vars->next = vars;
+ 726      }
+ 727  }
+
+(eval.c)
+</pre>
+
+最後の`if`文が変数の追加だ。そこに注目すると、常に`ruby_dyna_vars`の
+「次」にリンクを割り込ませていることがわかる。
+つまり図4のようになるのだ。
+
+!images/ch_iterator_dynavarseval.jpg(`ruby_dyna_vars`の構造)!
+
+パーサのときとの違いは二点だ。まずスコープの切れめを示すヘッダ(id=0)が
+リンクの手元側に付く。また本鎖からぶらさがっているリンクがない。
+即ち`ruby_dyna_vars`は常にまっすぐな一本のリストを形成する。
+
+この二点はもちろん関連性がある。リストを一本にするためには、パーサでは
+途中にぶらさげていたエントリをリストの途中に挿入できるようにしなければ
+いけない。しかしもしヘッダが奥に付いているとスコープの最初の一個がうま
+く挿入できないのである(図5)。
+このような操作をするためには頭に戻って(そもそもそれが難しい)リンクを
+全部たどるか、`prev`リンクを付けないとならない。前者は面倒なうえにスピー
+ドが落ちるし、後者は`RVarmap`に隙間がないので無理だ。
+
+!images/ch_iterator_insert.jpg(うまくエントリを挿入できない)!
+
+h3. ターゲット指定ジャンプ
+
+先程はジャンプタグ関係を消して見せたが、`rb_yield_0()`のジャンプ
+にはこれまでにない工夫がある。どうして工夫が必要になるのか、
+その原因を先に言っておこう。以下のプログラムを見てもらいたい。
+
+<pre class="emlist">
+[0].each do
+  break
+end
+# breakで抜ける場所
+</pre>
+
+このように、ブロックから`break`した場合はブロックを積んだメソッドに抜け
+ないといけないはずである。それは実際にはどういうことだろうか。イテレー
+タを起動しているときの(動的)コールグラフを見て考えてみよう。
+
+<pre class="emlist">
+rb_eval(NODE_ITER)                   .... catch(TAG_BREAK)
+    rb_eval(NODE_CALL)               .... catch(TAG_BREAK)
+        rb_eval(NODE_YIELD)
+            rb_yield_0
+                rb_eval(NODE_BREAK)  .... throw(TAG_BREAK)
+</pre>
+
+ブロックを積んだのは`NODE_ITER`なのだから、`break`では`NODE_ITER`まで
+戻るべきだろう。ところが`NODE_ITER`より前に`NODE_CALL`が`TAG_BREAK`を
+待ち構えている。メソッド越しの`break`をエラーにするためである。これは
+困った。なんとかして`NODE_ITER`まで一気に抜けないといけない。
+
+しかも実は「`NODE_ITER`に戻る」でもまだまずい。イテレータがネストして
+いたら`NODE_ITER`も複数存在することがあり、現在のブロックに対応するのが
+一番最初の`NODE_ITER`とも限らない。つまり「いま起動中のブロックを積んだ
+`NODE_ITER`」だけを限定して戻らなければならないのだ。
+
+そこでどうしているのか見てみよう。
+
+▼ `rb_yield_0()`-タグ関係
+<pre class="longlist">
+3826      PUSH_TAG(PROT_NONE);
+3827      if ((state = EXEC_TAG()) == 0) {
+              /* ……本体を評価する…… */
+3838      }
+3839      else {
+3840          switch (state) {
+3841            case TAG_REDO:
+3842              state = 0;
+3843              CHECK_INTS;
+3844              goto redo;
+3845            case TAG_NEXT:
+3846              state = 0;
+3847              result = prot_tag->retval;
+3848              break;
+3849            case TAG_BREAK:
+3850            case TAG_RETURN:
+3851              state |= (serial++ << 8);
+3852              state |= 0x10;
+3853              block->tag->dst = state;
+3854              break;
+3855            default:
+3856              break;
+3857          }
+3858      }
+3859      POP_TAG();
+
+(eval.c)
+</pre>
+
+`TAG_BREAK`と`TAG_RETURN`のところが肝心だ。
+
+まず`serial`は`rb_yield_0()`のスタティック変数なので、`rb_yield_0()`の呼び出
+しごとに違う値が得られることになる。「`serial`」は「シリアルナンバー」の
+`serial`だ。
+
+8ビット左シフトしているのは`TAG_xxxx`の値を避けるためのようだ。`TAG_xxxx`は
+`0x1`〜`0x8`なので4ビットあれば済む。そして`0x10`のbit orは、`serial`の
+オーバーフロー対策だと思われる。32ビットマシンだと`serial`は24ビット分
+(1600万回分)
+しかないので最近のマシンなら10秒かからずにオーバーフローさせられる。
+そうするとその回は下位24ビットに0が並ぶことになるので、もし`0x10`が
+なかったら`state`が`TAG_xxxx`と同じ値になってしまう(図6参照)。
+
+!images/ch_iterator_dst.jpg(`block->tag->dst`)!
+
+さて、これで`tag->dst`は`TAG_xxxx`とも違う、しかも呼び出しごとにユニークな
+値になった。そうするとこれまでのような普通の`switch`では受け取れなくなる
+ので、ジャンプを止めるほうもそれなりの工夫が必要になるはずである。
+それはどこかと言うと、`rb_eval:NODE_ITER`のここだ。
+
+▼ `rb_eval()`-`NODE_ITER`(ジャンプを止める)
+<pre class="longlist">
+case NODE_ITER:
+  {
+      state = EXEC_TAG();
+      if (state == 0) {
+          /* ……イテレータを起動…… */
+      }
+      else if (_block.tag->dst == state) {
+          state &= TAG_MASK;
+          if (state == TAG_RETURN || state == TAG_BREAK) {
+              result = prot_tag->retval;
+          }
+      }
+  }
+</pre>
+
+対応している`NODE_ITER`と`rb_yield_0()`では`block`は同じものを指しているはず
+なので、`rb_yield_0()`でセットした`tag->dst`がここに出てくることになる。そ
+うすると対応する`NODE_ITER`だけでうまくジャンプを止められるわけだ。
+
+h3. ブロックのチェック
+
+現在評価中のメソッドがイテレータであるかどうか、つまりブロックが
+あるかどうか、は`rb_block_given_p()`で確認できる。ここまでを読めば
+実装はわかるだろう。
+
+▼ `rb_block_given_p()`
+<pre class="longlist">
+3726  int
+3727  rb_block_given_p()
+3728  {
+3729      if (ruby_frame->iter && ruby_block)
+3730          return Qtrue;
+3731      return Qfalse;
+3732  }
+
+(eval.c)
+</pre>
+
+問題ないと思う。今回話題にしたかったのは実はもう一つのチェック用
+関数、`rb_f_block_given_p()`のほうだ。
+
+▼ `rb_f_block_given_p()`
+<pre class="longlist">
+3740  static VALUE
+3741  rb_f_block_given_p()
+3742  {
+3743      if (ruby_frame->prev && ruby_frame->prev->iter && ruby_block)
+3744          return Qtrue;
+3745      return Qfalse;
+3746  }
+
+(eval.c)
+</pre>
+
+こちらはRubyの`block_given?`の実体である。`rb_block_given_p()`と比較すると
+`ruby_frame`の`prev`を調べているところが違うようだ。どうしてだろう。
+
+ブロックを積む仕組みを考えると`rb_block_given_p()`のように現在の
+`ruby_frame`を調べるのが正しい。しかしRubyレベルから`block_given?`を呼んだ
+場合は、`block_given?`それ自体がメソッドなので`FRAME`が一段余計に積まれて
+いる。だからもう一段前を調べる必要があるのだ。
+
+h2. `Proc`
+
+`Proc`オブジェクトを実装の観点から言うと「Rubyレベルに持ち出せる
+`BLOCK`」である。Rubyレベルに持ち出せる、ということは自由度が上がる反
+面、いつどこで使われるか全くわからなくなるということでもある。そのこと
+がどう影響を与えているか注目して実装を見ていこう。
+
+h3. `Proc`オブジェクトの生成
+
+`Proc`オブジェクトは`Proc.new`で作るのだった。その実体は`proc_new()`である。
+
+▼ `proc_new()`
+<pre class="longlist">
+6418  static VALUE
+6419  proc_new(klass)
+6420      VALUE klass;
+6421  {
+6422      volatile VALUE proc;
+6423      struct BLOCK *data, *p;
+6424      struct RVarmap *vars;
+6425
+6426      if (!rb_block_given_p() && !rb_f_block_given_p()) {
+6427          rb_raise(rb_eArgError,
+                "tried to create Proc object without a block");
+6428      }
+6429
+          /* (A)struct RDataとstruct BLOCKをまとめて確保する */
+6430      proc = Data_Make_Struct(klass, struct BLOCK,
+                                  blk_mark, blk_free, data);
+6431      *data = *ruby_block;
+6432
+6433      data->orig_thread = rb_thread_current();
+6434      data->wrapper = ruby_wrapper;
+6435      data->iter = data->prev?Qtrue:Qfalse;
+          /* (B)本質的な初期化はここまでで完了 */
+6436      frame_dup(&data->frame);
+6437      if (data->iter) {
+6438          blk_copy_prev(data);
+6439      }
+6440      else {
+6441          data->prev = 0;
+6442      }
+6443      data->flags |= BLOCK_DYNAMIC;
+6444      data->tag->flags |= BLOCK_DYNAMIC;
+6445
+6446      for (p = data; p; p = p->prev) {
+6447          for (vars = p->dyna_vars; vars; vars = vars->next) {
+6448              if (FL_TEST(vars, DVAR_DONT_RECYCLE)) break;
+6449              FL_SET(vars, DVAR_DONT_RECYCLE);
+6450          }
+6451      }
+6452      scope_dup(data->scope);
+6453      proc_save_safe_level(proc);
+6454
+6455      return proc;
+6456  }
+
+(eval.c)
+</pre>
+
+`Proc`オブジェクトの作成自体は意外と簡単である。(A)から(B)の
+間で`Proc`オブジェクトの領域が確保され、初期化も終わる。
+`Data_Make_Struct()`は`malloc()`と`Data_Wrap_Struct()`を同時にやる単純な
+マクロだ。
+
+問題はその後だ。
+
+* `frame_dup()`
+* `blk_copy_prev()`
+* `FL_SET(vars, DVAR_DONT_RECYCLE)`
+* `scope_dup()`
+
+この四つの目的は全部同じである。それは
+
+* マシンスタックに置いていたものを全部ヒープに移す
+* `POP`されても回収されないようにする
+
+である。ここで、「全部」というのは`prev`まで含めて全部だ。そこに積んであ
+るスタックフレームを全部`malloc()`してコピーして複製を作る。`VARS`は普通だ
+と`POP`と同時に`rb_gc_force_recycle()`で強制回収されるのだが、それも
+`DVAR_DONT_RECYCLE`フラグを付けて停止させる。などなどだ。実に思いきった
+ことをする。
+
+どうしてこんな凄まじいことをしないといけないのだろうか。それは、イテレー
+タブロックと違って`Proc`は作成元のメソッドよりも長生きできるからだ。そ
+してメソッドが終了するということはマシンスタックに確保される`FRAME`や
+`ITER`や、`SCOPE`の`local_vars`が無効になるということで、無効になった
+メモリを後から使ったらどういう結果になるかは簡単に予想できる
+(解答例:困ったことになる)。
+
+それでもせめて複数の`Proc`で同じ`FRAME`を使うとかそういうことはできないか、
+と考えてみたのだが、`old_frame`などのようにローカル変数にポインタを退避
+しているところがあるのでうまくいきそうにない。どうせ苦労するのなら例え
+ば最初から全部`malloc()`で割り当てるようにする、などの工夫に労力を使うほ
+うがよさそうだ。
+
+それにしても、これだけ凄いことをしているのによくあんな速さで動くなあ、
+と筆者はしみじみ思うのだ。実にいい時代になったものである。
+
+h3. 浮動フレーム
+
+先程は一言で「フレームを全部複製」と片付けてしまったが、それではあんま
+りなのでもう少し詳しく見ておこう。ポイントは次の二点である。
+
+* どうやって全部複製するのか
+* なぜ全部複製するのか
+
+ではまず各スタックフレームの記憶形式のまとめから始めよう。
+
+|フレーム|記憶形式|`prev`ポインタ|
+|`FRAME`|スタック|あり|
+|`SCOPE`|スタック|なし|
+|`local_tbl`|ヒープ||
+|`local_vars`|スタック||
+|`VARS`|ヒープ|なし|
+|`BLOCK`|スタック|あり|
+
+`CLASS CREF ITER`はこのさい必要ない。`CLASS`は一般のRubyオブジェクトなので
+間違っても`rb_gc_force_recycle()`したりはしない(できない)し、`CREF`と
+`ITER`はその時々の値を`FRAME`に格納してしまえばもう用済みだからである。
+この表にある四つのフレームが重要なのは、あとから何度も変更したり参照
+したりする必要があるからだ。残りの三つはそうではない。
+
+それでどうやって全部複製するかという話だ。どうやって、と言ってももちろ
+ん「`malloc()`で」とかいうことではない。どうやって「全部」複製するかとい
+うところが問題なのだ。というのは、表を見てほしいのだが、`prev`ポインタが
+ないフレームがある。つまりリンクを辿れない。それならどうやって全部複製
+するのだろうか。
+
+これにはなかなか巧妙な手口が使われている。`SCOPE`を例に取ろう。
+先程`SCOPE`を複製するのに`scope_dup()`という関数を使っていたので、
+まずそれを見てみよう。
+
+▼ `scope_dup()`先頭のみ
+<pre class="longlist">
+6187  static void
+6188  scope_dup(scope)
+6189      struct SCOPE *scope;
+6190  {
+6191      ID *tbl;
+6192      VALUE *vars;
+6193
+6194      scope->flags |= SCOPE_DONT_RECYCLE;
+
+(eval.c)
+</pre>
+
+見ての通り`SCOPE_DONT_RECYCLE`を付ける。
+そこで次に`POP_SCOPE()`の定義を見てみると、
+
+▼ `POP_SCOPE()`先頭のみ
+<pre class="longlist">
+ 869  #define POP_SCOPE()                                      \
+ 870      if (ruby_scope->flags & SCOPE_DONT_RECYCLE) {        \
+ 871         if (_old) scope_dup(_old);                        \
+ 872      }                                                    \
+
+(eval.c)
+</pre>
+
+ポップするときに現在の`SCOPE`(`ruby_scope`)に`SCOPE_DONT_RECYCLE`フ
+ラグが立っていたら、その一つ前の`SCOPE`(`_old`)も`scope_dup()`する、
+とある。つまりこれにも`SCOPE_DONT_RECYCLE`が付く。こうやって一つ一つポッ
+プするところでフラグを伝播させていくわけだ(図7)。
+
+!images/ch_iterator_flaginfect.jpg(フラグの伝播)!
+
+`VARS`も`prev`ポインタがないので同じ手法を使って`DVAR_DONT_RECYCLE`という
+フラグを伝播させている。
+
+次に第二点、「なぜ全部複製するのか」を考えてみよう。`Proc`を作ればその
+`SCOPE`のローカル変数を後から参照できるのはわかるが、だからと言って何も
+その前の`SCOPE`まで含めて全部コピーしてしまうことはないのではないだろうか。
+
+正直に言うと、筆者はこの答えがわからなくて三日ほどどうやってこの節を書
+いたらいいか悩んでいたのだが、ついさっき答えがわかった。次のプログラム
+を見てほしい。
+
+<pre class="emlist">
+def get_proc
+  Proc.new { nil }
+end
+
+env = get_proc { p 'ok' }
+eval("yield", env)
+</pre>
+
+これはまだ説明していない機能だが、`eval`の第二引数に`Proc`オブジェクトを渡
+すとその環境で文字列を評価できるのである。
+
+というのはつまり、ここまで読んできてくれた読者ならばわかると思うが、
+`Proc`(つまり`BLOCK`)から各種環境を取り出してプッシュして評価してく
+れるということである。そうするともちろん`BLOCK`も積んでくれるので、そ
+の`BLOCK`をまた`Proc`にできる。そうしたらその`Proc`を使ってまた
+`eval`して……とやれば、Rubyレベルから`ruby_block`のほとんどの情報に
+好き放題アクセスできることになる。それが、スタックをまるごと全部
+複製しないといけない理由だ。
+
+h3. `Proc`の起動
+
+次は生成した`Proc`オブジェクトの起動について見てみる。Rubyからは
+`Proc#call`で起動できるから、その実体を追っていけばいい。`Proc#call`の実体
+は`proc_call()`だ。
+
+▼ `proc_call()`
+<pre class="longlist">
+6570  static VALUE
+6571  proc_call(proc, args)
+6572      VALUE proc, args;           /* OK */
+6573  {
+6574      return proc_invoke(proc, args, Qtrue, Qundef);
+6575  }
+
+(eval.c)
+</pre>
+
+`proc_invoke()`に委譲。`invoke`を辞書で索くと「(神などに)救いを求め
+て呼び掛ける」などと書いてあるのだがプログラミングの文脈だと「起動する」
+とだいたい同じ意味で使うことが多いようだ。例えば"Invoking gcc"と言うよう
+に。日本語にするなら「起動」「発動」あたりがいいのではなかろうか。
+
+その`proc_invoke()`のプロトタイプはと言うと、
+
+<pre class="emlist">
+proc_invoke(VALUE proc, VALUE args, int pcall, VALUE self)
+</pre>
+
+となっているが、先程見たところによると`pcall=Qtrue`、
+`self=Qundef`なのでこの二つは定数畳み込みで潰してしまう。
+
+▼ `proc_invoke`(簡約版)
+<pre class="longlist">
+static VALUE
+proc_invoke(proc, args, /* pcall=Qtrue */, /* self=Qundef */)
+    VALUE proc, args;
+    VALUE self;
+{
+    struct BLOCK * volatile old_block;
+    struct BLOCK _block;
+    struct BLOCK *data;
+    volatile VALUE result = Qnil;
+    int state;
+    volatile int orphan;
+    volatile int safe = ruby_safe_level;
+    volatile VALUE old_wrapper = ruby_wrapper;
+    struct RVarmap * volatile old_dvars = ruby_dyna_vars;
+
+    /*(A)procからBLOCKを取り出しdataに代入する */
+    Data_Get_Struct(proc, struct BLOCK, data);
+    /*(B)blk_orphan */
+    orphan = blk_orphan(data);
+
+    ruby_wrapper = data->wrapper;
+    ruby_dyna_vars = data->dyna_vars;
+    /*(C)dataからBLOCKを積む */
+    old_block = ruby_block;
+    _block = *data;
+    ruby_block = &_block;
+
+    /*(D)ITER_CURに遷移する */
+    PUSH_ITER(ITER_CUR);
+    ruby_frame->iter = ITER_CUR;
+
+    PUSH_TAG(PROT_NONE);
+    state = EXEC_TAG();
+    if (state == 0) {
+        proc_set_safe_level(proc);
+        /*(E)ブロック起動 */
+        result = rb_yield_0(args, self, 0, pcall);
+    }
+    POP_TAG();
+
+    POP_ITER();
+    if (ruby_block->tag->dst == state) {
+        state &= TAG_MASK;      /* ターゲット指定ジャンプ */
+    }
+    ruby_block = old_block;
+    ruby_wrapper = old_wrapper;
+    ruby_dyna_vars = old_dvars;
+    ruby_safe_level = safe;
+
+    switch (state) {
+      case 0:
+        break;
+      case TAG_BREAK:
+        result = prot_tag->retval;
+        break;
+      case TAG_RETURN:
+        if (orphan) {   /* orphan procedure */
+            localjump_error("return from proc-closure", prot_tag->retval);
+        }
+        /* fall through */
+      default:
+        JUMP_TAG(state);
+    }
+    return result;
+}
+</pre>
+
+肝心なところはC、D、Eの三つだ。
+
+(C)`NODE_ITER`では構文木から`BLOCK`を作って積んだが、今回は`Proc`から
+`BLOCK`を取り出して積む。
+
+(D)`rb_call0()`では`ITER_PRE`を経由して`ITER_CUR`にしたが、今回はいきなり
+`ITER_CUR`に突入する。
+
+(E)普通のイテレータならメソッド呼び出しがはさまってから
+`yield`が起こり`rb_yield_0()`に行くわけだが、今回は問答無用で
+`rb_yield_0()`を呼び、積んだばかりのブロックを起動する。
+
+つまりイテレータでは`NODE_ITER`〜`rb_call0()`〜`NODE_YIELD`と三個所に分け
+てやっていた作業をまとめて一気にやってしまうわけだ。
+
+最後に(B)の`blk_orphan()`の意味について話しておこう。orphanは「孤児」
+という意味で、「`Proc`を作成したメソッドが終了している」状態を判定するた
+めの関数である。例えば`BLOCK`が使っている`SCOPE`が既にポップされていたら終
+了していると判断すればよい。
+
+h3. ブロックと`Proc`
+
+前章でメソッドの引数とパラメータについていろいろ話したが、ブロック
+引数の話がなかった。簡単にではあるが、ここでその完結編をやろう。
+
+<pre class="emlist">
+def m(&block)
+end
+</pre>
+
+これは「ブロックパラメータ」だ。これの実現方法は非常に簡単である。`m`がイ
+テレータならばもう`BLOCK`が積まれているはずなので、それを`Proc`化して(こ
+の場合なら)`block`というローカル変数に代入すれば済む。ブロックを`Proc`に
+するには先程やったばかりの`proc_new()`を呼ぶだけでよい。どうしてそれ
+でいいのかちょっとわかりにくいかもしれないが、`Proc.new`だろうと`m`だろう
+と「メソッドが呼び出されていて、`BLOCK`が積まれている」という状況に変わ
+りはないはずだ。だからCレベルから`proc_new()`を呼べばいつでもブロックを
+`Proc`化できる。
+
+また`m`がイテレータでないなら単に`nil`を代入すればいい。
+
+次にブロックを渡すほうを。
+
+<pre class="emlist">
+m(&block)
+</pre>
+
+こちらは「ブロック引数」だ。これも簡単で、`block`(に入っている`Proc`オブ
+ジェクト)から`BLOCK`を取り出して積めばよい。`PUSH_BLOCK()`と違うのは先
+に`BLOCK`が作ってあるかそうでないかという点だけだ。
+
+ちなみに、この作業をやっている関数は`block_pass()`である。気になるならそ
+のあたりを見て確かめてほしい。ただし本当にここで言った通りのことしか
+していないのでガッカリするかもしれないが……。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

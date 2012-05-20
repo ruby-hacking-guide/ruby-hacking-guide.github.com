@@ -1,0 +1,119 @@
+/*
+
+    rhg.css
+
+*/
+
+body {
+    background-color: white;
+    color: black;
+    text-align: left;
+    line-height: 140%;
+    margin-top:  5%;
+    margin-left: 2em;
+    width: 40em;
+}
+
+h1 {
+    text-align:    left;
+    font-size:     200%;
+    margin-top:    0em;
+    margin-bottom: 1em;
+    padding-left: 12px;
+    border-left: 80px solid #33a;
+    line-height: 80px;
+}
+
+h2 {
+    text-align: left;
+    font-size: 150%;
+    margin-top: 3em;
+    margin-bottom: 1em;
+    border-bottom: 2px solid #33a;
+}
+
+h3 {
+    text-align: left;
+    font-size:  150%;
+    margin-top: 1em;
+    margin-bottom: 0.1em;
+    padding-left: 8px;
+    border-left: 12px solid #33a;
+}
+
+h4 {
+    text-align: left;
+    font-size:  150%;
+    margin-top: 1em;
+    margin-bottom: 0.1em;
+}
+
+ul {
+    padding-left: 1em;
+}
+
+li {
+    padding-left: 0em;
+}
+
+dl {
+    margin-top:    0em;
+    margin-bottom: 0em;
+    margin-left:   0em;
+    margin-right:  0em;
+}
+
+dt {
+    margin-top:    0.5em;
+    margin-bottom: 0.2em;
+    margin-left:   0em;
+    margin-right:  0em;
+}
+
+dd {
+    margin-top:    0em;
+    margin-bottom: 0em;
+    margin-left:   4em;
+    margin-right:  0em;
+}
+
+p.caption {
+    margin-botton: 0px;
+}
+
+pre {
+    line-height: 110%;
+    padding: 8px;
+    background: #eee;
+}
+
+span.ami {
+    color: black;
+    background-color: #ccc;
+}
+
+p.image {
+    align: center;
+    margin-top: 2em;
+    margin-bottom: 2em;
+}
+
+address {
+    font-style: normal;
+    line-height: 110%;
+    text-align: right;
+}
+
+a:link, a:visited {
+    color: #33a;
+    text-decoration: none;
+}
+
+a:active, a:visited {
+    color: #666;
+    text-decoration: none;
+}
+
+a:hover, a:focus {
+    text-decoration: underline;
+}

@@ -1,0 +1,677 @@
+h1. 第17章 動的評価
+
+h2. 概略
+
+評価器の仕組みそれ自体については前章までで既に完結している。本章ではそ
+の全てにパーサまでを加えた「広義の評価器」としての全体像を検証しよう。
+対象となるのは`eval`・`Module#module_eval`・`Object#instance_eval`の三つであ
+る。
+
+h3. `eval`
+
+`eval`については既に話したが、ここではより細かい話をしようと思う。
+
+`eval`を使うと実行時にその場で文字列をコンパイルし、評価することができる。
+返り値はそのプログラムの最後の式の値だ。
+
+<pre class="emlist">
+p eval("1 + 1")   # 2
+</pre>
+
+`eval`する文字列の中からはそのスコープの変数も参照できる。
+
+<pre class="emlist">
+lvar = 5
+@ivar = 6
+p eval("lvar + @ivar")   # 11
+</pre>
+
+ここまで読んできた読者なら「そのスコープ」という言葉を安直に読み飛ばせ
+なくなっているだろう。例えば定数の「スコープ」はどうなっているんだ、な
+んてことが気にならないだろうか。筆者は気になる。結論から言うと、基本的
+に`eval`の外の環境をそのまま引き継ぐと思っていい。
+
+またメソッド定義もクラス定義もできる。
+
+<pre class="emlist">
+def a
+  eval('class C;  def test() puts("ok") end   end')
+end
+
+a()          # クラスCとC#testを定義する
+C.new.test   # okと表示される
+</pre>
+
+さらに、前章で少し言及したが、第二引数に`Proc`を渡すとその環境で評価できる、
+
+<pre class="emlist">
+def new_env
+  n = 5
+  Proc.new { nil }   # このメソッドの環境をオブジェクトにして返す
+end
+
+p eval('n * 3', new_env())   # 15
+</pre>
+
+h3. `module_eval`と`instance_eval`
+
+`Proc`を`eval`の第二引数に渡すとその環境で評価できた。`module_eval`と
+`instance_eval`はその限定版(あるいはショートカット)である。
+`module_eval`ではモジュール文やクラス文の内部にいるかのような環境で
+評価できる。
+
+<pre class="emlist">
+lvar = "toplevel lvar"   # スコープ確認用のローカル変数
+
+module M
+end
+M.module_eval(<<'EOS')   # こういうときこそヒアドキュメント
+    p lvar   # 参照できる
+    p self   # Mと表示される
+    def ok   # M#okを定義する
+      puts 'ok'
+    end
+EOS
+</pre>
+
+`instance_eval`は特異クラス文で`self`がそのオブジェクトになった環境で
+評価できる。
+
+<pre class="emlist">
+lvar = "toplevel lvar"   # スコープ確認用のローカル変数
+
+obj = Object.new
+obj.instance_eval(<<'EOS')
+    p lvar   # 参照できる
+    p self   # #<Object:0x40274f5c>と表示される
+    def ok   # obj.okを定義する
+      puts 'ok'
+    end
+EOS
+</pre>
+
+またこの`module_eval`と`instance_eval`はイテレータとして使うことも
+できて、その場合はブロックがそれぞれの環境で評価される。例えば
+
+<pre class="emlist">
+obj = Object.new
+p obj                 # #<Object:0x40274fac>
+obj.instance_eval {
+    p self            # #<Object:0x40274fac>
+}
+</pre>
+
+というように。
+
+ただ文字列を使う場合とブロックを使う場合とでは
+ローカル変数まわりの挙動が違う。例えばメソッド`a`でブロックを作り
+メソッド`b`で`instance_eval`したら、ブロックは`a`のローカル変数を
+参照する。メソッド`a`で文字列を作りメソッド`b`で`instance_eval`したら、
+その文字列の中からは`b`のローカル変数を参照する。ローカル変数の
+スコープはあくまで「コンパイル時に」決まるので、毎回コンパイルする
+文字列と、ファイルロード時にコンパイルされてしまうブロックでは結果が
+違うわけだ。
+
+h2. `eval`
+
+h3. `eval()`
+
+Rubyの`eval`は引数のあるなしで場合分けが多いので、呼び出し形式は
+
+<pre class="emlist">
+eval(prog_string, some_block)
+</pre>
+
+と限定しよう。すると実際のインターフェイス関数`rb_f_eval()`はほとんど意味
+がなくなるので、もう一つ下の関数の`eval()`から見ていくことにする。
+`eval()`の関数プロトタイプは
+
+<pre class="emlist">
+static VALUE
+eval(VALUE self, VALUE src, VALUE scope, char *file, int line);
+</pre>
+
+で、`scope`が第二引数の`Proc`。`file`と`line`は`eval`する文字列が
+置いてあると仮定するファイル名・行番号である。では中身を見てみよう。
+
+▼ `eval()`(簡約版)
+<pre class="longlist">
+4984  static VALUE
+4985  eval(self, src, scope, file, line)
+4986      VALUE self, src, scope;
+4987      char *file;
+4988      int line;
+4989  {
+4990      struct BLOCK *data = NULL;
+4991      volatile VALUE result = Qnil;
+4992      struct SCOPE * volatile old_scope;
+4993      struct BLOCK * volatile old_block;
+4994      struct RVarmap * volatile old_dyna_vars;
+4995      VALUE volatile old_cref;
+4996      int volatile old_vmode;
+4997      volatile VALUE old_wrapper;
+4998      struct FRAME frame;
+4999      NODE *nodesave = ruby_current_node;
+5000      volatile int iter = ruby_frame->iter;
+5001      int state;
+5002
+5003      if (!NIL_P(scope)) {  /* 今は常に真 */
+5009          Data_Get_Struct(scope, struct BLOCK, data);
+5010          /* dataからBLOCKを積む */
+5011          frame = data->frame;
+5012          frame.tmp = ruby_frame; /* GCよけ */
+5013          ruby_frame = &(frame);
+5014          old_scope = ruby_scope;
+5015          ruby_scope = data->scope;
+5016          old_block = ruby_block;
+5017          ruby_block = data->prev;
+5018          old_dyna_vars = ruby_dyna_vars;
+5019          ruby_dyna_vars = data->dyna_vars;
+5020          old_vmode = scope_vmode;
+5021          scope_vmode = data->vmode;
+5022          old_cref = (VALUE)ruby_cref;
+5023          ruby_cref = (NODE*)ruby_frame->cbase;
+5024          old_wrapper = ruby_wrapper;
+5025          ruby_wrapper = data->wrapper;
+5032          self = data->self;
+5033          ruby_frame->iter = data->iter;
+5034      }
+5045      PUSH_CLASS();
+5046      ruby_class = ruby_cbase;  /* == ruby_frame->cbase */
+5047
+5048      ruby_in_eval++;
+5049      if (TYPE(ruby_class) == T_ICLASS) {
+5050          ruby_class = RBASIC(ruby_class)->klass;
+5051      }
+5052      PUSH_TAG(PROT_NONE);
+5053      if ((state = EXEC_TAG()) == 0) {
+5054          NODE *node;
+5055
+5056          result = ruby_errinfo;
+5057          ruby_errinfo = Qnil;
+5058          node = compile(src, file, line);
+5059          if (ruby_nerrs > 0) {
+5060              compile_error(0);
+5061          }
+5062          if (!NIL_P(result)) ruby_errinfo = result;
+5063          result = eval_node(self, node);
+5064      }
+5065      POP_TAG();
+5066      POP_CLASS();
+5067      ruby_in_eval--;
+5068      if (!NIL_P(scope)) {  /* 今は常に真 */
+5069          int dont_recycle = ruby_scope->flags & SCOPE_DONT_RECYCLE;
+5070
+5071          ruby_wrapper = old_wrapper;
+5072          ruby_cref  = (NODE*)old_cref;
+5073          ruby_frame = frame.tmp;
+5074          ruby_scope = old_scope;
+5075          ruby_block = old_block;
+5076          ruby_dyna_vars = old_dyna_vars;
+5077          data->vmode = scope_vmode; /* 可視性スコープの変更を保存 */
+5078          scope_vmode = old_vmode;
+5079          if (dont_recycle) {
+                  /* ……SCOPE・BLOCK・VARSをコピーする…… */
+5097          }
+5098      }
+5104      if (state) {
+5105          if (state == TAG_RAISE) {
+                  /* ……例外オブジェクトを準備…… */
+5121              rb_exc_raise(ruby_errinfo);
+5122          }
+5123          JUMP_TAG(state);
+5124      }
+5125
+5126      return result;
+5127  }
+
+(eval.c)
+</pre>
+
+前置きもなしにこの関数をいきなり見せられたら「ぐぁっ」となるだろうが、
+ここまで`eval.c`の関数を撃破してきた我々にとってはもはや敵ではない。
+この関数はひたすらスタックを退避・復帰しているだけだ。注意すべきところ
+は以下の三点だけである。
+
+* 珍しく`FRAME`も(コピー・プッシュではなく)置き換えている
+* `ruby_cref`は`ruby_frame->cbase`で代用(?)している
+* `scope_vmode`だけは単純な復帰ではなく`data`に影響を与える
+
+そしてメイン部分は真ん中あたりにある`compile()`と`eval_node()`だ。
+`eval_node()`なんてもう忘れられていそうだが、引数`node`の評価を開始する関
+数である。`ruby_run()`でも使われていた。
+
+`compile()`はこうだ。
+
+▼ `compile()`
+<pre class="longlist">
+4968  static NODE*
+4969  compile(src, file, line)
+4970      VALUE src;
+4971      char *file;
+4972      int line;
+4973  {
+4974      NODE *node;
+4975
+4976      ruby_nerrs = 0;
+4977      Check_Type(src, T_STRING);
+4978      node = rb_compile_string(file, src, line);
+4979
+4980      if (ruby_nerrs == 0) return node;
+4981      return 0;
+4982  }
+
+(eval.c)
+</pre>
+
+`ruby_nerrs`は`yyerror()`の中でインクリメントされる変数である。
+つまりこの変数が非ゼロならパースエラーが起こったことを示す。また
+`rb_compile_string()`は既に第二部で扱っている。Rubyの文字列を構文木に
+コンパイルする関数だった。
+
+ここで一つ問題になってくるのがローカル変数である。第12章『構文木の構築』で
+見た通り、ローカル変数は`lvtbl`を使って管理されているのだった。しか
+しいまは既に`SCOPE`(と、もしかしたら`VARS`も)が存在しているのだから、
+それに上書き追加する形でパースしなければならない。これが実は`eval()`の
+核心であり、最悪に難しいところなのだ。再び`parse.y`に戻ってこの探索を
+完結させることにしよう。
+
+h3. `top_local`
+
+ローカル変数の管理テーブル`struct local_vars`を積むときに使うのは
+`local_push() local_pop()`という
+関数だったが、実は`parse.y`には管理用テーブルを積む関数がもう一組ある。
+`top_local_init()`と`top_local_setup()`だ。それはこんな感じで呼ばれて
+いる。
+
+▼ `top_local_init()`の呼ばれかた
+<pre class="longlist">
+program :   { top_local_init(); }
+          compstmt
+            { top_local_setup(); }
+</pre>
+
+もちろん実際には他にもいろいろやっているのだが、今はどうでもいいので全
+部カットした。そしてその内容はこうだ。
+
+▼ `top_local_init()`
+<pre class="longlist">
+5273  static void
+5274  top_local_init()
+5275  {
+5276      local_push(1);
+5277      lvtbl->cnt = ruby_scope->local_tbl?ruby_scope->local_tbl[0]:0;
+5278      if (lvtbl->cnt > 0) {
+5279          lvtbl->tbl = ALLOC_N(ID, lvtbl->cnt+3);
+5280          MEMCPY(lvtbl->tbl, ruby_scope->local_tbl, ID, lvtbl->cnt+1);
+5281      }
+5282      else {
+5283          lvtbl->tbl = 0;
+5284      }
+5285      if (ruby_dyna_vars)
+5286          lvtbl->dlev = 1;
+5287      else
+5288          lvtbl->dlev = 0;
+5289  }
+
+(parse.y)
+</pre>
+
+つまり`ruby_scope`から`lvtbl`に`local_tbl`をコピーしておく。
+ブロックローカル変数についてはあとでまとめて見たほうがいいので、
+とりあえず普通のローカル変数に集中しよう。
+続いて`top_local_setup()`だ。
+
+▼ `top_local_setup()`
+<pre class="longlist">
+5291  static void
+5292  top_local_setup()
+5293  {
+5294      int len = lvtbl->cnt;  /* パース後のローカル変数の数 */
+5295      int i;                 /* パース前のローカル変数の数 */
+5296
+5297      if (len > 0) {
+5298          i = ruby_scope->local_tbl ? ruby_scope->local_tbl[0] : 0;
+5299
+5300          if (i < len) {
+5301              if (i == 0 || (ruby_scope->flags & SCOPE_MALLOC) == 0) {
+5302                  VALUE *vars = ALLOC_N(VALUE, len+1);
+5303                  if (ruby_scope->local_vars) {
+5304                      *vars++ = ruby_scope->local_vars[-1];
+5305                      MEMCPY(vars, ruby_scope->local_vars, VALUE, i);
+5306                      rb_mem_clear(vars+i, len-i);
+5307                  }
+5308                  else {
+5309                      *vars++ = 0;
+5310                      rb_mem_clear(vars, len);
+5311                  }
+5312                  ruby_scope->local_vars = vars;
+5313                  ruby_scope->flags |= SCOPE_MALLOC;
+5314              }
+5315              else {
+5316                  VALUE *vars = ruby_scope->local_vars-1;
+5317                  REALLOC_N(vars, VALUE, len+1);
+5318                  ruby_scope->local_vars = vars+1;
+5319                  rb_mem_clear(ruby_scope->local_vars+i, len-i);
+5320              }
+5321              if (ruby_scope->local_tbl &&
+                      ruby_scope->local_vars[-1] == 0) {
+5322                  free(ruby_scope->local_tbl);
+5323              }
+5324              ruby_scope->local_vars[-1] = 0;  /* NODEはもういらない */
+5325              ruby_scope->local_tbl = local_tbl();
+5326          }
+5327      }
+5328      local_pop();
+5329  }
+
+(parse.y)
+</pre>
+
+`local_vars`はスタックにあったりヒープにあったりするので多少ややこしくなっ
+てはいるが、`ruby_scope`の`local_tbl`と`local_vars`をアップデートしているだ
+けである(`SCOPE_MALLOC`が立っていると`local_vars`は`malloc()`割り当て)。
+またここで`alloca()`を使っても意味がないので強制的に`malloc()`割り当てに
+変更するしかない。
+
+h3. ブロックローカル変数
+
+ところでブロックローカル変数はどうなっているのだろうか。
+それを考えるにはまずパーサのエントリポイント`yycompile()`に
+戻らなければならない。
+
+▼ `ruby_dyna_vars`の退避
+<pre class="longlist">
+static NODE*
+yycompile(f, line)
+{
+    struct RVarmap *vars = ruby_dyna_vars;
+         :
+    n = yyparse();
+         :
+    ruby_dyna_vars = vars;
+}
+</pre>
+
+単なる退避・復帰のようにも見えるのだが、`ruby_dyna_vars`をクリアしてはい
+ないところがポイントだ。つまり評価器で作った`RVarmap`のリンクにパーサでも
+直接要素を追加していくことになる。
+
+しかし`ruby_dyna_vars`はパーサと評価器で構造が違ったはずだ。リンクが常に
+単線なのは問題なさそうだが、ヘッダ(`id=0`の`RVarmap`)の付きかたの違いは
+どうするのだろう。
+
+そこで役に立つのが`top_local_init()`にあった`local_push(1)`の「1」であ
+る。`local_push()`の引数が真になると`ruby_dyna_vars`の最初のヘッダを付
+けなくなる。つまり、図1のようになる。これで`eval`文字列の
+中から外のスコープのブロックローカル変数を参照できることが確認できた。
+
+!images/ch_anyeval_dynavars.jpg(`eval`中の`ruby_dyna_vars`)!
+
+いや、確かに参照はできるけども`ruby_dyna_vars`はパーサでは全部解放してい
+たはずじゃあないのか、評価器で作ったリンクを解放されたらどうする……と
+いうことに気付いてしまった人は次のところを読んで安心してもらいたい。
+
+▼ `yycompile()`-`ruby_dyna_vars`の解放
+<pre class="longlist">
+2386      vp = ruby_dyna_vars;
+2387      ruby_dyna_vars = vars;
+2388      lex_strterm = 0;
+2389      while (vp && vp != vars) {
+2390          struct RVarmap *tmp = vp;
+2391          vp = vp->next;
+2392          rb_gc_force_recycle((VALUE)tmp);
+2393      }
+
+(parse.y)
+</pre>
+
+評価器で作ったリンク(`vars`)まで来たらちゃんとループが
+止まるようになっているのだ。
+
+h2. `instance_eval`
+
+h3. 全体像
+
+`Module#module_eval`の実体は`rb_mod_module_eval()`、
+`Object#instance_eval`の実体は`rb_obj_instance_eval()`である。
+
+▼ `rb_mod_module_eval() rb_obj_instance_eval()`
+<pre class="longlist">
+5316  VALUE
+5317  rb_mod_module_eval(argc, argv, mod)
+5318      int argc;
+5319      VALUE *argv;
+5320      VALUE mod;
+5321  {
+5322      return specific_eval(argc, argv, mod, mod);
+5323  }
+
+5298  VALUE
+5299  rb_obj_instance_eval(argc, argv, self)
+5300      int argc;
+5301      VALUE *argv;
+5302      VALUE self;
+5303  {
+5304      VALUE klass;
+5305
+5306      if (rb_special_const_p(self)) {
+5307          klass = Qnil;
+5308      }
+5309      else {
+5310          klass = rb_singleton_class(self);
+5311      }
+5312
+5313      return specific_eval(argc, argv, klass, self);
+5314  }
+
+(eval.c)
+</pre>
+
+この二つのメソッドは「`self`と`class`を置き換えるメソッド」として共通化で
+きるのでその部分が`specific_eval()`でまとめられている。この先のことも含
+めて図示してみよう(図2)。
+括弧付きは関数ポインタでの呼び出しだ。
+
+!images/ch_anyeval_speceval.jpg(コールグラフ)!
+
+`instance_eval`にしても`module_eval`にしてもブロックと文字列の両方を受けら
+れるので、それぞれ固有の処理をするよう`eval`と`yield`に別れる。ただしその
+ほとんどの部分はまた共通なので、その部分が`exec_under()`としてくくり出し
+てあるわけだ。
+
+しかし読む側からすると 2\times 2=4 通りを同時に相手にする
+ことになってしまうわけで、それは得策ではない。だからここでは
+
+# `instance_eval`で、
+# 文字列を引数に取るとき
+
+だけを考えて`rb_obj_instance_eval()`以下の関数を全てインライン展開、
+定数畳み込みをかけたものを読むことにする。
+
+h3. 併合後
+
+全部まとめたらこうなった。
+併合前と比べると随分わかりやすくなっている。
+
+▼ `specific_eval()`-`instance_eval`、`eval`、文字列
+<pre class="longlist">
+static VALUE
+instance_eval_string(self, src, file, line)
+    VALUE self, src;
+    const char *file;
+    int line;
+{
+    VALUE sclass;
+    VALUE result;
+    int state;
+    int mode;
+
+    sclass = rb_singleton_class(self);
+
+    PUSH_CLASS();
+    ruby_class = sclass;
+    PUSH_FRAME();
+    ruby_frame->self       = ruby_frame->prev->self;
+    ruby_frame->last_func  = ruby_frame->prev->last_func;
+    ruby_frame->last_class = ruby_frame->prev->last_class;
+    ruby_frame->argc       = ruby_frame->prev->argc;
+    ruby_frame->argv       = ruby_frame->prev->argv;
+    if (ruby_frame->cbase != sclass) {
+        ruby_frame->cbase = rb_node_newnode(NODE_CREF, sclass, 0,
+                                            ruby_frame->cbase);
+    }
+    PUSH_CREF(sclass);
+
+    mode = scope_vmode;
+    SCOPE_SET(SCOPE_PUBLIC);
+    PUSH_TAG(PROT_NONE);
+    if ((state = EXEC_TAG()) == 0) {
+        result = eval(self, src, Qnil, file, line);
+    }
+    POP_TAG();
+    SCOPE_SET(mode);
+
+    POP_CREF();
+    POP_FRAME();
+    POP_CLASS();
+    if (state) JUMP_TAG(state);
+
+    return result;
+}
+</pre>
+
+オブジェクトの特異クラスを`CLASS`と`CREF`と`ruby_frame->cbase`に
+プッシュする。ということらしい。主処理は`eval()`一発である。いつもと
+違って`FRAME`を構造体コピーで初期化したりしていないのが珍しいが、
+それもたいした違いではない。
+
+h3. 併合前
+
+読みやすくなったと筆者は言ってはいるが、もしかしたら併合前から簡単だっ
+たのかもしれない。併合前のものと比べてどのあたりが簡単にされているのか
+検証してみよう。
+
+まず`specific_eval()`だ。この関数はRubyとのインターフェイス部分の
+コードを共通化するためのものなので、ほとんどが引数のパースである。
+それを全部削るとこうなる。
+
+▼ `specific_eval()`(簡約版)
+<pre class="longlist">
+5258  static VALUE
+5259  specific_eval(argc, argv, klass, self)
+5260      int argc;
+5261      VALUE *argv;
+5262      VALUE klass, self;
+5263  {
+5264      if (rb_block_given_p()) {
+
+5268          return yield_under(klass, self);
+5269      }
+5270      else {
+
+5294          return eval_under(klass, self, argv[0], file, line);
+5295      }
+5296  }
+
+(eval.c)
+</pre>
+
+この通りブロックがあるかどうかで完璧に二通りに分かれており、
+それぞれのルートのコードが影響を与えあったりすることはない。だから
+読むときは片方ずつ読むべきだ。併合版ではまずこの点が改善されている。
+
+また`yield_under()`を読むときは`file`と`line`が関係ないので、
+`yield`ルートを主体に併合した場合はこの引数のパースについては
+全く考えなくていいことが明確になるだろう。
+
+次に`eval_under()`と`eval_under_i()`を見てみよう。
+
+▼ `eval_under()`
+<pre class="longlist">
+5222  static VALUE
+5223  eval_under(under, self, src, file, line)
+5224      VALUE under, self, src;
+5225      const char *file;
+5226      int line;
+5227  {
+5228      VALUE args[4];
+5229
+5230      if (ruby_safe_level >= 4) {
+5231          StringValue(src);
+5232      }
+5233      else {
+5234          SafeStringValue(src);
+5235      }
+5236      args[0] = self;
+5237      args[1] = src;
+5238      args[2] = (VALUE)file;
+5239      args[3] = (VALUE)line;
+5240      return exec_under(eval_under_i, under, under, args);
+5241  }
+
+5214  static VALUE
+5215  eval_under_i(args)
+5216      VALUE *args;
+5217  {
+5218      return eval(args[0], args[1], Qnil, (char*)args[2], (int)args[3]);
+5219  }
+
+(eval.c)
+</pre>
+
+この関数では引数を一つにするために配列`args`を経由して渡している。
+この`args`は`eval_under()`から`eval_under_i()`に渡すための一時的な
+コンテナなんだろうな、
+と予想はできるが、本当にそうなのかはわからない。もしかしたら
+`exec_under()`の中で`args`を加工したりしているのかもしれない。
+
+コードの共通化の方法としてはこれは非常に正しいやりかただが、
+読む側からするとこういう間接的な渡しが入ると理解しづらいものだ。
+特に`file`と`line`にはコンパイラを胡麻化すために無駄なキャストが入っている
+ので本当の型がなんなのか想像しにくい。このあたりは併合版では全て消滅し
+ているので迷わずに済む。
+
+ただ併合したり展開したりするほうが常にわかりやすいかというとそうでもな
+い。例えば`exec_under()`を呼ぶときは第二引数も第三引数も`under`を渡して
+いるが、`exec_under()`の側ではパラメータ変数を両方とも`under`に展開して
+しまっていいのだろうか。と言うのは、
+`exec_under()`の第二・第三引数とは実はプッシュすべき`CLASS`と`CREF`を示して
+いるのである。`CLASS`と`CREF`は「別のもの」なので、別の変数を使うほうがい
+いかもしれない。先の併合版でもここだけは
+
+<pre class="emlist">
+VALUE sclass = .....;
+VALUE cbase = sclass;
+</pre>
+
+としようかと思ったのだが、いきなりこれだけ変数を残しても違和感があるか
+と思い、`sclass`で展開しておいた。つまり文章の流れ上の都合でしかない。
+
+これまで何回も引数を展開したり関数を展開したりしてきたが、そのたびに
+展開する理由をしつこく説明してきた。即ち
+
+* とりうるパターンが数パターンに限られているとき
+* 動作が微妙に変わるとき
+
+である。
+「とにかく手でいろいろなものを展開すれば簡単になるんだ」
+なんてことを言っているわけでは、決してない。
+
+どんなときでも優先するのは自分にとっての理解しやすさであって、手順
+を守ることではない。展開してしまったほうがわかりやすいなら、展開する。
+展開しない、あるいは逆に手続きにまとめたほうがわかりやすいと感じるなら
+そうしよう。`ruby`の場合は元がちゃんと書けているので展開するばかりだった
+が、下手な人の書いたソースなら関数にくくりまくるほうがわかりやすくなる
+ことも多いはずだ。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

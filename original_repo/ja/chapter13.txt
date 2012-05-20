@@ -1,0 +1,1258 @@
+h1. 第13章 評価器の構造
+
+h2. 第四部の概略
+
+h3. 評価器とは
+
+「評価器」なんて聞き慣れない言葉だ。評価器という字面から考えるに
+「評価」
+するための「器械」には違いないけども、それでは評価するとはどういうこと
+だろうか。
+
+「評価」はevaluateの定訳だが、プログラム言語について話すという前提では、
+誤訳ぎみだ。日本語で評価と言うとどうしても「良い悪い」の意味合いが含ま
+れてしまう。
+
+プログラム言語におけるevaluateは良し悪しとは全く関係なく、「推し測る」
+とか「実行する」に近い意味を持つ。evaluateの語源はラテン語の
+ex+value+ateで、直訳すれば「値にする」となる。これが一番理解しやすいか
+もしれない。テキストで表現された式から値を求める、というわけだ。
+
+まあようするにぶっちゃけて言えば評価とは書かれている式を実行してその結
+果を得る、という意味である。ではなぜ実行と言わないかと言うと、実行だけ
+が評価ではないからだ。
+
+例えば普通のプログラム言語なら「3」と書けば整数の3として扱われる。こう
+いうとき「`"3"`を評価した結果は3である」と言ったりする。定数の式は実行し
+ているとは言い難いが、それもやはり評価なのである。「3」という字面を
+評価したときに整数6として扱われる(評価される)言語があっても、別に構
+わないのだから。
+
+別の例を挙げよう。定数を組み合わせた式があると、コンパイル中に計算して
+しまうことがある(定数畳み込み)。これも普通「実行」して計算していると
+は言わない。実行と言えば作ったバイナリが動いている間の作業を指すからだ。
+しかしいつ計算しようとプログラムの最終的な評価値は変わらない。
+
+つまり「評価する」とはたいていはプログラムを実行することと等しいのだが、
+根本的には実行と評価は違う。とりあえずこの点だけ覚えておいてほしい。
+
+h3. `ruby`の評価器の特徴
+
+`ruby`の評価器で最大の特徴は、インタプリタ全体に言えることだが、Cレベル
+(拡張ライブラリ)とRubyレベルのコードの表現の差が小さいことだ。普通の
+処理系では拡張ライブラリから使えるインタプリタの機能はかなり制限される
+ものだが、`ruby`では恐ろしく制限が少ない。クラス定義、メソッド定義、制限
+無しのメソッド呼び出し、あたりは当然として、例外処理、イテレータ、果て
+はスレッドまで使えてしまう。
+
+しかしその便利さの代償はどこかで払わなければならない。実装が異様に大変
+だったり、オーバーヘッドが大きかったり、同じようなことをRuby用とC用に
+二回実装している個所もかなりある。
+
+また`ruby`は動的な言語なので、実行時にプログラムを文字列で組み立てて
+それを評価させることもできる。`eval`という関数風メソッドがそれだ。
+名前はもちろんevaluateから来ている。それを使うとこんなこともできる。
+
+<pre class="emlist">
+lvar = 1
+answer = eval("lvar + lvar")    # 答えは2
+</pre>
+
+その他に`Module#module_eval`、`Object#instance_eval`というものもあり、
+またそれぞれに癖のある動きをする。このあたりの詳しいことは
+第17章『動的評価』で述べよう。
+
+h3. `eval.c`
+
+評価器は`eval.c`で実装されている。ところがこの`eval.c`が非常に巨大で、実に
+9000行200Kバイト、関数の数309という難敵である。このくらいになってくる
+と頭から眺めた程度ではさっぱり構造がつかめない。
+
+ではどうするか。まず、巨大なファイルになればなるほど、その中に全く区分
+けがないということは考えられない。つまり内部でもっと小さい単位にモジュー
+ル化されているはずなのだ。だからそれを探すことを第一に考えるべきである。
+ではモジュールをどうやって探せばいいだろう。
+方法をいくつか羅列してみる。
+
+まず定義されている関数のリストを出力してプリフィクスを見る。`rb_dvar_`、
+`rb_mod_`、`rb_obj_`、`rb_thread_`といったプリフィクスを持った関数がズラズラ
+と並んでいるはずだ。これは明らかに同種の関数のまとまりである。
+
+またクラスライブラリのコードを見るとわかるのだが、`ruby`のコードでは
+`Init_xxxx()`は常にブロックの最後に置かれる。だから`Init_xxxx()`があったら
+そこも切れめである。
+
+それに当然ながら名前も重要である。`eval()`と`rb_eval()`と`eval_node()`が
+近くにあったら互いに深い関係があると思うのが当然だ。
+
+最後に、`ruby`のソースコードでは型や変数の定義、プロトタイプ宣言がはさまっ
+ていると切れめであることが多い。
+
+このあたりを意識して見てみると、`eval.c`は主に以下のようなモジュールに
+分割できそうだ。
+
+|セーフレベル|第7章『セキュリティ』で説明済み|
+|メソッドエントリの操作|メソッド実体の構文木の探索や削除を行う|
+|評価器コア|`rb_eval()`を中心とした、評価器の核心部|
+|例外|例外の発生とバックトレース生成|
+|メソッド|メソッド呼び出しの実装|
+|イテレータ|ブロックに関係する関数の実装|
+|ロード|外部ファイルのロードと評価|
+|`Proc`|`Proc`の実装|
+|スレッド|Rubyスレッドの実装|
+
+このうちロードとスレッドのパートは本来`eval.c`にあるべきではない部分だ。
+`eval.c`にあるのは単にC言語の制約が理由である。もう少し言うと、
+`PUSH_TAG()`など`eval.c`の内部で定義されているマクロを使う必要が
+あるからだ。そこでこの二つは第三部から外し、第四部で扱うことにした。
+またセーフレベルについては第一部で説明してしまったのでもういいだろう。
+
+以上の三つを削った残りの六項目が第三部の解説対象である。
+章との対応は以下の表のようになる。
+
+▼ 第三部解説割り振り
+
+|メソッドエントリの操作|次章『コンテキスト』|
+|評価器コア|第三部全章|
+|例外|本章|
+|メソッド|第15章『メソッド』|
+|イテレータ|第16章『ブロック』|
+|`Proc`|第16章『ブロック』|
+
+h2. `main`発`ruby_run`経由`rb_eval`行き
+
+h3. コールグラフ
+
+評価器の真のコアは`rb_eval()`という関数なのだが、
+この節は`main()`からその`rb_eval()`までの道筋を追ってゆく。
+まず以下は`rb_eval()`周辺のおおまかなコールグラフである。
+
+<pre class="emlist">
+main                     ....main.c
+    ruby_init                ....eval.c
+        ruby_prog_init           ....ruby.c
+    ruby_options             ....eval.c
+        ruby_process_options     ....ruby.c
+    ruby_run                 ....eval.c
+        eval_node
+            rb_eval
+                *
+        ruby_stop
+</pre>
+
+右側にはファイルが移動するところでファイル名を入れておいた。
+これをジッと見てみてまず気付くのは、`eval.c`の関数から`main.c`の
+関数を呼び返していることだ。
+
+呼び返している、と書いたのは、`main.c`と`ruby.c`はどちらかというと
+`ruby`コマンドの実装となるファイルだからだ。`eval.c`は`ruby`コマンドとは
+少し距離を置いた、評価器自体の実装である。つまり`eval.c`は`ruby.c`に
+使われる立場であって、`eval.c`から`ruby.c`の関数を呼んでしまったら
+`eval.c`の独立性が下がる。
+
+ではどうしてこうなっているのだろう。理由は主にC言語の制約による。
+`ruby_prog_init()`や`ruby_process_options()`ではRuby世界のAPIを使い
+はじめるので、例外が起きる可能性がある。しかしRubyの例外を止める
+ためには`eval.c`の中でしか使えない`PUSH_TAG()`というマクロを使わないと
+ならないのだ。つまり本来は`ruby_init()`や`ruby_run()`のほうが`ruby.c`に
+あるべきだということである。
+
+ではどうして`PUSH_TAG()`を`extern`関数なりなんなりにして公開しないのだろう。
+実は`PUSH_TAG()`は次のように`POP_TAG()`と対にしないと使えないのだ。
+
+<pre class="emlist">
+PUSH_TAG();
+/* いろいろする */
+POP_TAG();
+</pre>
+
+実装上の理由から、この二つのマクロは同じ関数に入れておかないといけない。
+やろうと思えば別々の関数に分けられるように実装することもできるのだが、
+そうすると速度が遅くなるのでそうはなっていないのだ。
+
+次に気付くのは、`main()`から`ruby_xxxx()`という名前の関数を連続で呼んで
+いるのはとても意味がありそうだ、ということである。これだけあからさまに
+対称形なら何も関係ないほうがおかしい。
+
+実際この三つの関数には深い関係がある。一言で言ってしまうと、この三つは
+どれも「組み込みRubyインターフェイス」なのだ。つまり`ruby`インタプリタを
+組み込んだコマンドを作るときだけ使う、そして拡張ライブラリでは使わない、
+関数なのだ。`ruby`コマンド自体も理論上は組み込みRubyプログラムの一種と考
+えられるから、このインターフェイスを使うのが自然だ。
+
+`ruby_`というプリフィクスはなんだろう。`ruby`の関数はこれまで全て
+`rb_`だった。どうして`rb_`と`ruby_`の二種類あるのだろうか。調べてみ
+てもどうにも違いがわからないので直接理由を聞いてみたところ、「`ruby`コ
+マンドの補助をするものが`ruby_`で公式インターフェイスが`rb_`」なんだそ
+うだ。
+
+じゃあ`eval.c`の内部だけで使う`ruby_scope`などはなぜ`ruby_`なのか? と
+ツッコんでみると、これは単なる偶然らしい。`ruby_scope`などは
+元々`the_`という名前だったのだが、1.3の途中で全インターフェイスに
+プリフィクスを付ける変更が入った。そのときに「なんとなく内部っぽい」
+変数に`ruby_`を付けたんだそうな。
+
+つまり結論だけ言うと、`ruby_`が付いているものは`ruby`コマンド補助用
+または内部専用変数。`rb_`が付いているものは`ruby`インタプリタの公式
+インターフェイス。ということだ。
+
+h3. `main()`
+
+最初は素直に`main()`から見ていくことにしよう。
+ここは非常に短かくて助かる。
+
+▼ `main()`
+<pre class="longlist">
+  36  int
+  37  main(argc, argv, envp)
+  38      int argc;
+  39      char **argv, **envp;
+  40  {
+  41  #if defined(NT)
+  42      NtInitialize(&argc, &argv);
+  43  #endif
+  44  #if defined(__MACOS__) && defined(__MWERKS__)
+  45      argc = ccommand(&argv);
+  46  #endif
+  47
+  48      ruby_init();
+  49      ruby_options(argc, argv);
+  50      ruby_run();
+  51      return 0;
+  52  }
+
+(main.c)
+</pre>
+
+`#ifdef NT`は当然ながらWindows NTのNTである。が、なぜかWin9xでも
+NTは定義される。つまりWin32環境という意味だ。
+`NtInitialize()`はWin32のために`argc argv`とソケットシステム
+(WinSock)を初期化する。この関数は初期化をしているだけなので
+面白くないし本筋にも関係ないので省略する。
+
+また`__MACOS__`は「まこす」でなくてMac OSのこと。この場合Mac OS 9以前の
+ことで、Mac OS Xは入らない。こんな`#ifdef`は残っているが、最初に書いたと
+おり現在のバージョンはMac OS 9以前では動かない。動いていたころの名残で
+ある。よってこのコードも略。
+
+ところでC言語に詳しい読者ならば知っていると思うが、アンダーバーで始ま
+る識別子はシステムライブラリやOSのために予約されている。もっとも予約さ
+れているとは言っても使うとエラーになったりするということはまずないが、
+ちょっとヘンな`cc`ではエラーになることもある。例えばHP-UXの`cc`。
+HP-UXというのは`HP`の作っているUNIXのことだ。HP-UXはヘンじゃない、
+という意見は声を大にして却下する。
+
+まあ、なんにしてもユーザアプリケーションではそのような識別子は定義しない
+のがお約束である。
+
+では組み込みRubyインターフェイスをさらっと解説していこう。
+
+h3. `ruby_init()`
+
+`ruby_init()`はRubyインタプリタを初期化する。現在のRubyインタプリタは一
+つのプロセスに一つしか存在できないので引数も返り値も必要ない。この点は
+一般には「機能不足」と見られている。
+
+インタプリタが一つだけだと困るのはなんと言ってもRubyの開発環境まわりだ
+ろう。具体的には`irb`であるとかRubyWin、RDEと言ったアプリケーションだ。
+プログラムを書き直してロードしても消したはずのクラスが残ってしまう。リ
+フレクションAPIを駆使すれば対処できないこともないが、かなり苦しい。
+
+だがまつもとさんはどうやら意図的にインタプリタの数を一つに制限している
+ようだ。「完全な初期化はできないから」というのが理由らしい。例えばロー
+ドしてしまった拡張ライブラリを外すことはできないというのが例として挙げ
+られている。
+
+`ruby_init()`のコードは見ても意味がないので略。
+
+h3. `ruby_options()`
+
+Rubyインタプリタのためにコマンドラインオプションをパースするのが
+`ruby_options()`である。もちろんコマンドによっては使わなくてもよい。
+
+この関数の中で`-r`(ライブラリのロード)や
+`-e`(コマンドラインからプログラムを渡す)の処理は行われてしまう。
+それに引数に渡したファイルをRubyプログラムとしてパースするのもここだ。
+
+`ruby`コマンドはファイルを与えられればそこから、与えられなければ
+`stdin`から、メインプログラムを読む。そうしたら第二部で紹介した
+`rb_compile_string()`や`rb_compile_file()`を使ってテキストを構文木に
+コンパイルする。その結果はグローバル変数`ruby_eval_tree`にセット
+される。
+
+`ruby_options()`のコードも地道すぎて面白くないので略。
+
+h3. `ruby_run()`
+
+そして最後に`ruby_run()`で`ruby_eval_tree`にセットされている構文木の
+評価を開始する。この関数も必ずしも呼ぶ必要はない。`ruby_run()`以外には
+例えば`rb_eval_string()`という関数を使って文字列を評価する方法がある。
+
+▼ `ruby_run()`
+<pre class="longlist">
+1257  void
+1258  ruby_run()
+1259  {
+1260      int state;
+1261      static int ex;
+1262      volatile NODE *tmp;
+1263
+1264      if (ruby_nerrs > 0) exit(ruby_nerrs);
+1265
+1266      Init_stack((void*)&tmp);
+1267      PUSH_TAG(PROT_NONE);
+1268      PUSH_ITER(ITER_NOT);
+1269      if ((state = EXEC_TAG()) == 0) {
+1270          eval_node(ruby_top_self, ruby_eval_tree);
+1271      }
+1272      POP_ITER();
+1273      POP_TAG();
+1274
+1275      if (state && !ex) ex = state;
+1276      ruby_stop(ex);
+1277  }
+
+(eval.c)
+</pre>
+
+`PUSH_xxxx()`というマクロが見えるが、とりあえず無視しておいていい。このあ
+たりの詳しいことはいずれときが来たら説明する。ここでは重要なのは
+`eval_node()`だけだ。その中身はと言うと、
+
+▼ `eval_node()`
+<pre class="longlist">
+1112  static VALUE
+1113  eval_node(self, node)
+1114      VALUE self;
+1115      NODE *node;
+1116  {
+1117      NODE *beg_tree = ruby_eval_tree_begin;
+1118
+1119      ruby_eval_tree_begin = 0;
+1120      if (beg_tree) {
+1121          rb_eval(self, beg_tree);
+1122      }
+1123
+1124      if (!node) return Qnil;
+1125      return rb_eval(self, node);
+1126  }
+
+(eval.c)
+</pre>
+
+`ruby_eval_tree`に対して`rb_eval()`を呼ぶ。`ruby_eval_tree_begin`のほうは
+`BEGIN`で登録された文を格納している。が、これもどうでもいい。
+
+また`ruby_run()`の中の`ruby_stop()`では、スレッドを全部終了させて、
+オブジェクトを全てファイナライズし、例外をチェックして最終的に
+`exit()`を呼ぶ。こちらもどうでもいいので見ない。
+
+h2. `rb_eval()`
+
+h3. 概要
+
+さて`rb_eval()`である。この関数こそが`ruby`の真の核だ。
+`rb_eval()`の呼び出し一回が`NODE`一つを処理し、再帰呼び出し
+しながら構文木全体を処理していく(図1)。
+
+!images/ch_evaluator_rbeval.jpg(`rb_eval`のイメージ)!
+
+`rb_eval()`も`yylex()`と同じく巨大な`switch`文でできており、
+ノードごとに分岐するようになっている。まずは概形から見てみよう。
+
+▼ `rb_eval()`概形
+<pre class="longlist">
+2221  static VALUE
+2222  rb_eval(self, n)
+2223      VALUE self;
+2224      NODE *n;
+2225  {
+2226      NODE *nodesave = ruby_current_node;
+2227      NODE * volatile node = n;
+2228      int state;
+2229      volatile VALUE result = Qnil;
+2230
+2231  #define RETURN(v) do { \
+2232      result = (v);      \
+2233      goto finish;       \
+2234  } while (0)
+2235
+2236    again:
+2237      if (!node) RETURN(Qnil);
+2238
+2239      ruby_last_node = ruby_current_node = node;
+2240      switch (nd_type(node)) {
+            case NODE_BLOCK:
+              .....
+            case NODE_POSTEXE:
+              .....
+            case NODE_BEGIN:
+                   :
+            (大量のcase文)
+                   :
+3415        default:
+3416          rb_bug("unknown node type %d", nd_type(node));
+3417      }
+3418    finish:
+3419      CHECK_INTS;
+3420      ruby_current_node = nodesave;
+3421      return result;
+3422  }
+
+(eval.c)
+</pre>
+
+省略したところには全ノードの処理コードがずらっと並んでいる。
+こうやって分岐してノードごとの処理を行うわけだ。コードが少なければ
+`rb_eval()`の中だけで処理されてしまうが、多くなってくると関数に
+分割される。`eval.c`の関数のほとんどはそうやってできたものだ。
+
+`rb_eval()`から値を返すときは`return`でなくマクロ`RETURN()`を使う。
+必ず`CHECK_INTS`を通るようにするためである。このマクロはスレッド
+関係なので、そのときまで無視しておいてよい。
+
+それから最後に、ローカル変数の`result`と`node`を
+`volatile`しているのはGC対策である。
+
+h3. `NODE_IF`
+
+では`if`文を例にとって`rb_eval()`による評価の過程を具体的に見てみよう。
+以下、`rb_eval()`の解説では
+
+* ソースプログラム(Rubyプログラム)
+* それに対応する構文木
+* `rb_eval()`でのノード処理コード
+
+の三つを冒頭に挙げて読んでいくことにする。
+
+▼ ソースプログラム
+<pre class="longlist">
+if true
+  'true expr'
+else
+  'false expr'
+end
+</pre>
+
+▼ 対応する構文木(`nodedump`)
+<pre class="longlist">
+NODE_NEWLINE
+nd_file = "if"
+nd_nth  = 1
+nd_next:
+    NODE_IF
+    nd_cond:
+        NODE_TRUE
+    nd_body:
+        NODE_NEWLINE
+        nd_file = "if"
+        nd_nth  = 2
+        nd_next:
+            NODE_STR
+            nd_lit = "true expr":String
+    nd_else:
+        NODE_NEWLINE
+        nd_file = "if"
+        nd_nth  = 4
+        nd_next:
+            NODE_STR
+            nd_lit = "false expr":String
+</pre>
+
+第二部で見たとおり、`elsif`や`unless`は組みかたを工夫することで
+`NODE_IF`一種類にまとめられるので特別に扱う必要はない。
+
+▼ `rb_eval()`-`NODE_IF`
+<pre class="longlist">
+2324  case NODE_IF:
+2325    if (trace_func) {
+2326        call_trace_func("line", node, self,
+2327                        ruby_frame->last_func,
+2328                        ruby_frame->last_class);
+2329    }
+2330    if (RTEST(rb_eval(self, node->nd_cond))) {
+2331        node = node->nd_body;
+2332    }
+2333    else {
+2334        node = node->nd_else;
+2335    }
+2336    goto again;
+
+(eval.c)
+</pre>
+
+重要なのは最後の`if`文だけである。
+この文を意味を変えずに書きなおすとこうなる。
+
+<pre class="emlist">
+if (RTEST(rb_eval(self, node->nd_cond))) {     (A)
+    RETURN(rb_eval(self, node->nd_body));      (B)
+}
+else {
+    RETURN(rb_eval(self, node->nd_else));      (C)
+}
+</pre>
+
+まず(A)でRubyの条件式(のノード)を評価し、その値を`RTEST()`でテストする。
+`RTEST()`は`VALUE`がRubyの真であるかどうかテストするマクロだった。
+それが真なら(B)で`then`側の節を評価し、
+偽なら(C)で`else`側の節を評価する。
+
+そしてRubyの`if`式もまた値を持つのだったから、値を返さないといけない。
+`if`の値は`then`側または`else`側、実行されたほうの節の値だから、
+`RETURN()`マクロでそれを返す。
+
+オリジナルのリストで`rb_eval()`を再帰呼び出しせずに`goto`で済ませてい
+るのは前章『構文木の構築』でも登場した「末尾再帰→`goto`変換」である。
+
+h3. `NODE_NEWLINE`
+
+`if`式のところに`NODE_NEWLINE`があったのでその処理コードも見ておこう。
+このノードは`stmt`一つにつき一つつくヘッダのようなものであった。
+`rb_eval()`では実行中のプログラムの、ファイル上での位置を
+逐次合わせるために使われる。
+
+▼ `rb_eval()`-`NODE_NEWLINE`
+<pre class="longlist">
+3404  case NODE_NEWLINE:
+3405    ruby_sourcefile = node->nd_file;
+3406    ruby_sourceline = node->nd_nth;
+3407    if (trace_func) {
+3408        call_trace_func("line", node, self,
+3409                        ruby_frame->last_func,
+3410                        ruby_frame->last_class);
+3411    }
+3412    node = node->nd_next;
+3413    goto again;
+
+(eval.c)
+</pre>
+
+特に難しいことはない。
+
+`call_trace_func()`は`NODE_IF`でも登場していた。これがどういうものかと
+いうことだけ
+簡単に解説しておこう。これはRubyプログラムをRubyレベルからトレースす
+るための機能である。デバッガ(`debug.rb`)やトレーサ(`tracer.rb`)、
+プロファイラ(`profile.rb`)、
+`irb`(対話的な`ruby`コマンド)などがこの機能を使っている。
+
+`set_trace_func`という関数風メソッドを呼ぶとトレース用の`Proc`オブ
+ジェクトを登録できるようになっていて、その`Proc`オブジェクトが
+`trace_func`に入っている。`trace_func`が0でなかったら、つまり
+`Qfalse`でなかったら、それを`Proc`オブジェクトと見做して
+(`call_trace_func()`で)実行する。
+
+この`call_trace_func()`は本筋とはまるで関係がないうえ、あまり面白くな
+いので本書では以後一切無視する。興味のある人は第16章『ブロック』を
+読んでから挑戦してほしい。
+
+h3. 擬似ローカル変数
+
+`NODE_IF`などは構文木で言えば節に当たる部分であった。
+葉の部分も見ておこう。
+
+▼ `rb_eval()`-擬似ローカル変数ノード
+<pre class="longlist">
+2312  case NODE_SELF:
+2313    RETURN(self);
+2314
+2315  case NODE_NIL:
+2316    RETURN(Qnil);
+2317
+2318  case NODE_TRUE:
+2319    RETURN(Qtrue);
+2320
+2321  case NODE_FALSE:
+2322    RETURN(Qfalse);
+
+(eval.c)
+</pre>
+
+`self`は`rb_eval()`の引数だった。ちょっと前に戻って確認しておいてほしい。
+他はいいだろう。
+
+h3. ジャンプタグ
+
+次は`while`に対応するノード`NODE_WHILE`を解説していきたいのだが、
+`break`や`next`を実装するには関数の再帰呼び出しだけでは難しい。
+`ruby`はこれらの構文をジャンプタグというものを使って実現しているので、
+まずはその話をしよう。
+
+ジャンプタグを一言で言うと、C言語のライブラリ関数`setjmp()`と
+`longjmp()`の
+ラッパーである。`setjmp()`のことは知っているだろうか。
+この関数は`gc.c`でも出てきたが、あっちでの使いかたはかなり邪道だ。
+`setjmp()`は普通は関数越しジャンプのために使うものである。
+以下のコードを例にして説明しよう。エントリポイントは`parent()`だ。
+
+▼ `setjmp()`と`longjmp()`
+<pre class="longlist">
+jmp_buf buf;
+
+void child2(void) {
+    longjmp(buf, 34);   /* parentまで一気に戻る。
+                           setjmpの返り値は34になる */
+    puts("このメッセージは絶対に出力されない");
+}
+
+void child1(void) {
+    child2();
+    puts("このメッセージは絶対に出力されない");
+}
+
+void parent(void) {
+    int result;
+    if ((result = setjmp(buf)) == 0) {
+        /* 普通にsetjmpから戻ってきた */
+        child1();
+    } else {
+        /* child2からlongjmpで戻ってきた */
+        printf("%d\n", result);   /* 34と表示される */
+    }
+}
+</pre>
+
+まず`parent()`で`setjmp()`を呼ぶと引数の`buf`にその時の実行状態が記録
+される。もうちょっと直接的に言うと、マシンスタックの先端アドレスと
+CPUのレジスタが記録される。`setjmp()`の返り値が0だったらその`setjmp()`か
+ら普通に戻ってきたということなので、普通に続きのコードを書けばよい。そ
+れが`if`側だ。ここでは`child1()`を呼び出している。
+
+そして次に`child2()`に制御が移って`longjmp`を呼ぶと、引数の`buf`を
+`setjmp`した
+ところにいきなり戻ることができる。つまりこの場合は`parent()`の`setjmp`のと
+ころまで戻る。`longjmp`で戻ったときは`setjmp()`の返り値が`longjmp`の第二
+引数の値になるので`else`側が実行される。ちなみに`longjmp`に0を渡しても
+強制的に違う値にされてしまうので無駄だ。
+
+例によってマシンスタックの状態を図にすると図2のようになる。
+普通の関数は一回の呼び出しにつき一回しか戻らないものだ。しかし
+`setjmp()`は二回戻ることがある。`fork()`みたいなものだと言ったら少しは
+イメージがつかめるだろうか。
+
+!images/ch_evaluator_setjmp.jpg(`setjmp()` `longjmp()`のイメージ)!
+
+さて、`setjmp()`の予習はここまでだ。`eval.c`では`EXEC_TAG()`が`setjmp()`、
+`JUMP_TAG()`が`longjmp()`に、それぞれ相当する(図3)。
+
+!images/ch_evaluator_jumptag.jpg(タグジャンプのイメージ)!
+
+この図を見ると`EXEC_TAG()`に引数がないようだ。`jmp_buf`は
+どこに行ってしまったのだろう。
+実は`ruby`では`jmp_buf`は`struct tag`という構造体にラップされている。
+見てみよう。
+
+▼ `struct tag`
+<pre class="longlist">
+ 783  struct tag {
+ 784      jmp_buf buf;
+ 785      struct FRAME *frame;   /* PUSH_TAGしたときのFRAME */
+ 786      struct iter *iter;     /* PUSH_TAGしたときのITER */
+ 787      ID tag;                /* タグの種類 */
+ 788      VALUE retval;          /* ジャンプに伴う返り値 */
+ 789      struct SCOPE *scope;   /* PUSH_TAGしたときのSCOPE */
+ 790      int dst;               /* ジャンプ先ID */
+ 791      struct tag *prev;
+ 792  };
+
+(eval.c)
+</pre>
+
+`prev`メンバがあるので`struct tag`はリンクリストを使ったスタック
+構造だろうと予測できる。さらにまわりを見回してみると`PUSH_TAG()`と
+`POP_TAG()`というマクロがあるので、スタックで間違いなさそうだ。
+
+▼ `PUSH_TAG() POP_TAG()`
+<pre class="longlist">
+ 793  static struct tag *prot_tag;   /* スタックの先端を指すポインタ */
+
+ 795  #define PUSH_TAG(ptag) do {             \
+ 796      struct tag _tag;                    \
+ 797      _tag.retval = Qnil;                 \
+ 798      _tag.frame = ruby_frame;            \
+ 799      _tag.iter = ruby_iter;              \
+ 800      _tag.prev = prot_tag;               \
+ 801      _tag.scope = ruby_scope;            \
+ 802      _tag.tag = ptag;                    \
+ 803      _tag.dst = 0;                       \
+ 804      prot_tag = &_tag
+
+ 818  #define POP_TAG()                       \
+ 819      if (_tag.prev)                      \
+ 820          _tag.prev->retval = _tag.retval;\
+ 821      prot_tag = _tag.prev;               \
+ 822  } while (0)
+
+(eval.c)
+</pre>
+
+ここで唖然としてほしいのだが、なんとタグの実体はローカル変数としてマシ
+ンスタックにベタ置き確保されているようだ(図4)。しかも
+`do`〜`while`が二つのマクロに分離している。Cのプリプロセッサの使いかた
+でもこれはかなり凶悪な部類に入るのではなかろうか。わかりやすく
+`PUSH`/`POP`のマクロを組にして展開するとこうなる。
+
+<pre class="emlist">
+do {
+    struct tag _tag;
+    _tag.prev = prot_tag;   /* 前のタグを保存 */
+    prot_tag = &_tag;       /* 新しいタグをスタックに積む */
+    /* いろいろする */
+    prot_tag = _tag.prev;   /* 前のタグを復帰 */
+} while (0);
+</pre>
+
+この方法だと関数呼び出しのオーバーヘッドもなければメモリ割り当てのコス
+トもないに等しい。最もこの手法は`ruby`の評価器が`rb_eval()`の再帰でできて
+いるからこそできる技だ。
+
+!images/ch_evaluator_tagstack.jpg(タグスタックはマシンスタックに埋め込まれている)!
+
+こういう実装なので`PUSH_TAG()`と`POP_TAG()`は一つの関数に対にして
+置かないとまずい。またうっかり評価器の外で使われてよいものでもない
+ので公開もできない。
+
+ついでに`EXEC_TAG()`と`JUMP_TAG()`も見ておこう。
+
+▼ `EXEC_TAG() JUMP_TAG()`
+<pre class="longlist">
+ 810  #define EXEC_TAG()    setjmp(prot_tag->buf)
+
+ 812  #define JUMP_TAG(st) do {               \
+ 813      ruby_frame = prot_tag->frame;       \
+ 814      ruby_iter = prot_tag->iter;         \
+ 815      longjmp(prot_tag->buf,(st));        \
+ 816  } while (0)
+
+(eval.c)
+</pre>
+
+このように、`setjmp`と`longjmp`がそれぞれ`EXEC_TAG()`と`JUMP_TAG()`に
+ラップされている。`EXEC_TAG()`という字面だけ見ると一瞬`longjmp()`の
+ラッパーのように見えるのだが、こちらが`setjmp()`の実行である。
+
+以上を踏まえて`while`の仕組みを説明しよう。まず`while`の開始時に
+`EXEC_TAG()`する(`setjmp`)。その後`rb_eval()`を再帰して本体を実行する。
+そして`break`や`next`があると`JUMP_TAG()`する(`longjmp`)。
+すると`while`ループの開始地点まで戻れるというわけだ(図5)。
+
+!images/ch_evaluator_whilejmp.jpg(タグジャンプによる`while`の実装)!
+
+ここでは`break`を例にしたが、ジャンプしないと実装できないのは`break`だ
+けではない。`while`に限っても`next`や`redo`がある。またメソッドからの
+`return`や例外でも`rb_eval()`の壁を越えなければいけないはずだ。そして
+それぞれのために別のタグスタックを使うのは面倒だから、なんとかしてスタッ
+ク一本でまとめたいものだ。
+
+それを実現するには、「このジャンプは何のためのジャンプか」という情報を
+つければいい。都合のいいことに`longjmp()`に引数を渡すと`setjmp()`の返
+り値を指定することができたから、それを使えばよさそうだ。その種類が次の
+フラグで示されている。
+
+▼ タグタイプ
+<pre class="longlist">
+ 828  #define TAG_RETURN      0x1    /* return */
+ 829  #define TAG_BREAK       0x2    /* break */
+ 830  #define TAG_NEXT        0x3    /* next */
+ 831  #define TAG_RETRY       0x4    /* retry */
+ 832  #define TAG_REDO        0x5    /* redo */
+ 833  #define TAG_RAISE       0x6    /* 一般の例外 */
+ 834  #define TAG_THROW       0x7    /* throw(本書では扱わない)*/
+ 835  #define TAG_FATAL       0x8    /* 補足不可能な例外fatal */
+ 836  #define TAG_MASK        0xf
+
+(eval.c)
+</pre>
+
+意味はコメントの通り。最後の`TAG_MASK`は`setjmp()`の返り値からこれらの
+フラグを取り出すためのビットマスクである。`setjmp()`の返り値には「ジャ
+ンプの種類」以外の情報も載せることがあるからだ。
+
+h3. `NODE_WHILE`
+
+では`NODE_WHILE`のコードで実際のタグの使いかたを確かめよう。
+
+▼ ソースプログラム
+<pre class="longlist">
+while true
+  'true_expr'
+end
+</pre>
+
+▼ 対応する構文木(`nodedump-short`)
+<pre class="longlist">
+NODE_WHILE
+nd_state = 1 (while)
+nd_cond:
+    NODE_TRUE
+nd_body:
+    NODE_STR
+    nd_lit = "true_expr":String
+</pre>
+
+▼ `rb_eval`-`NODE_WHILE`
+<pre class="longlist">
+2418  case NODE_WHILE:
+2419    PUSH_TAG(PROT_NONE);
+2420    result = Qnil;
+2421    switch (state = EXEC_TAG()) {
+2422      case 0:
+2423        if (node->nd_state && !RTEST(rb_eval(self, node->nd_cond)))
+2424            goto while_out;
+2425        do {
+2426          while_redo:
+2427            rb_eval(self, node->nd_body);
+2428          while_next:
+2429            ;
+2430        } while (RTEST(rb_eval(self, node->nd_cond)));
+2431        break;
+2432
+2433      case TAG_REDO:
+2434        state = 0;
+2435        goto while_redo;
+2436      case TAG_NEXT:
+2437        state = 0;
+2438        goto while_next;
+2439      case TAG_BREAK:
+2440        state = 0;
+2441        result = prot_tag->retval;
+2442      default:
+2443        break;
+2444    }
+2445  while_out:
+2446    POP_TAG();
+2447    if (state) JUMP_TAG(state);
+2448    RETURN(result);
+
+(eval.c)
+</pre>
+
+ここにはこれから何度も何度も登場するイディオムが登場している。
+
+<pre class="emlist">
+PUSH_TAG(PROT_NONE);
+switch (state = EXEC_TAG()) {
+  case 0:
+    /* 通常の処理を行う */
+    break;
+  case TAG_a:
+    state = 0;    /* 自分が待っていたジャンプだからstateをクリア */
+    /* TAG_aで飛んできたときの処理 */
+    break;
+  case TAG_b:
+    state = 0;    /* 自分が待っていたジャンプだからstateをクリア */
+    /* TAG_bで飛んできたときの処理 */
+    break;
+  default
+    break;        /* 自分が待っていたジャンプではない。すると…… */
+}
+POP_TAG();
+if (state) JUMP_TAG(state);   /* ……ここで再ジャンプする。*/
+</pre>
+
+まず`PUSH_TAG()`と`POP_TAG()`は前述のような仕組みなので必ず対にしなければ
+ならない。また`EXEC_TAG()`よりも外側になければならない。そしていま積んだ
+ばかりの`jmp_buf`を`EXEC_TAG()`する。つまり`setjmp()`する。返り値が0なら
+`setjmp()`からすぐに戻ってきたということなので通常の処理を行う(普通は
+`rb_eval()`を含む)。`EXEC_TAG()`の返り値が0以外なら`longjmp()`で戻ってきた
+ということなので自分が必要なジャンプだけ`case`で漉し取り、残りは通す
+(`default`)。
+
+ジャンプするほうのコードも合わせて見るとわかりやすいかもしれない。
+以下に`redo`のノードのハンドラを示す。
+
+▼ `rb_eval()`-`NODE_REDO`
+<pre class="longlist">
+2560  case NODE_REDO:
+2561    CHECK_INTS;
+2562    JUMP_TAG(TAG_REDO);
+2563    break;
+
+(eval.c)
+</pre>
+
+`JUMP_TAG()`で飛ぶと、その一つ前に行った`EXEC_TAG()`に戻る。
+その時の返り値は引数の`TAG_REDO`だ。それを考えつつ`NODE_WHILE`の
+コードを眺めて、どういう経路を通るか確認してほしい。
+
+ではイディオムはいいとして、`NODE_WHILE`のコードをもうちょっと詳しく
+説明する。言った通り`case 0:`の中が本処理なのでそこだけ取りだし、
+ついでに読みやすくなるようにラベルをいくつかずらしてみた。
+
+<pre class="emlist">
+  if (node->nd_state && !RTEST(rb_eval(self, node->nd_cond)))
+      goto while_out;
+  do {
+      rb_eval(self, node->nd_body);
+  } while (RTEST(rb_eval(self, node->nd_cond)));
+while_out:
+</pre>
+
+条件式に相当する`node->nd_cond`が二ヶ所で`rb_eval()`されている。一回目
+の条件判定だけが分離されているようだ。これは`do`〜`while`と`while`をま
+とめて扱うためである。`node->nd_state`が0のときが`do`〜`while`、1のと
+きが普通の`while`だ。あとは地道に追ってもらえればわかるだろう。いちい
+ち説明はしない。
+
+ところで、もし条件式の中に`next`や`redo`があったら簡単に
+無限ループになりそうな気がする。もちろんそういう意味の
+コードなのだから書くほうが悪いのだが、ちょっと気になる。
+そこで実際にやってみた。
+
+<pre class="screen">
+% ruby -e 'while next do nil end'
+-e:1: void value expression
+</pre>
+
+あっさりパースの時点でハネられてしまった。安全ではあるが、
+面白い結果ではない。ちなみにこのエラーを出して
+いるのが`parse.y`の`value_expr()`である。
+
+h3. `while`の評価値
+
+長いこと`while`は値を持たなかったのだが、`ruby` 1.7からは`break`で値を返せる
+ようになった。今度は評価値の流れに注目してみよう。ローカル変数`result`の
+値が`rb_eval()`の返り値になることを頭に入れて見てほしい。
+
+<pre class="emlist">
+        result = Qnil;
+        switch (state = EXEC_TAG()) {
+          case 0:
+            /* 本処理 */
+          case TAG_REDO:
+          case TAG_NEXT:
+            /* それぞれジャンプ */
+
+          case TAG_BREAK:
+            state = 0;
+            result = prot_tag->retval;     (A)
+          default:
+            break;
+        }
+        RETURN(result);
+</pre>
+
+注目すべきは(A)のみである。ジャンプの返り値は
+`prot_tag->retval`つまり`struct tag`を経由して渡されているようだ。
+渡すほうはこうだ。
+
+▼ `rb_eval()`-`NODE_BREAK`
+<pre class="longlist">
+2219  #define return_value(v) prot_tag->retval = (v)
+
+2539  case NODE_BREAK:
+2540    if (node->nd_stts) {
+2541        return_value(avalue_to_svalue(rb_eval(self, node->nd_stts)));
+2542    }
+2543    else {
+2544        return_value(Qnil);
+2545    }
+2546    JUMP_TAG(TAG_BREAK);
+2547    break;
+
+(eval.c)
+</pre>
+
+このように`return_value()`というマクロでタグスタック先端の構造体に
+値を入れておく。
+
+基本的な流れはこれでよいのだが、実際には
+`NODE_WHILE`の`EXEC_TAG()`から`NODE_BREAK`の`JUMP_TAG()`までの
+間に別の`EXEC_TAG`が入ることもありうる。例えば例外処理の`rescue`が途中に
+入っているかもしれない。
+
+<pre class="emlist">
+while cond       # NODE_WHILEでEXEC_TAG()
+  begin          # ここでrescueのためにまたEXEC_TAG()
+    break 1
+  rescue
+  end
+end
+</pre>
+
+だから`NODE_BREAK`で`JUMP_TAG()`したときの`struct tag`が`NODE_WHILE`で
+積んだタグかどうかはわからない。その場合は`POP_TAG()`の中で次のように
+`retval`を伝播しているので、特に何も考えなくても次のタグへと返り値を渡
+せるようになっている。
+
+▼ `POP_TAG()`
+<pre class="longlist">
+ 818  #define POP_TAG()                       \
+ 819      if (_tag.prev)                      \
+ 820          _tag.prev->retval = _tag.retval;\
+ 821      prot_tag = _tag.prev;               \
+ 822  } while (0)
+
+(eval.c)
+</pre>
+
+図にすれば図6のようになるだろう。
+
+!images/ch_evaluator_usetag.jpg(返り値の伝播)!
+
+h2. 例外
+
+タグジャンプの使いかたの二つめの例として例外の取り扱いを見ていく。
+
+h3. `raise`
+
+`while`では`setjmp()`側を先に見たので今回は趣向を変えて
+`longjmp()`側から見ていくことにしよう。`raise`の実体`rb_exc_raise()`だ。
+
+▼ `rb_exc_raise()`
+<pre class="longlist">
+3645  void
+3646  rb_exc_raise(mesg)
+3647      VALUE mesg;
+3648  {
+3649      rb_longjmp(TAG_RAISE, mesg);
+3650  }
+
+(eval.c)
+</pre>
+
+`mesg`は例外オブジェクト(`Exception`以下のクラスのインスタンス)である。
+今回は`TAG_RAISE`でジャンプするらしいというところに注目しておこう。
+そして`rb_longjmp()`を思いきり簡単にしたものを以下に示す。
+
+▼ `rb_longjmp()`(簡約版)
+<pre class="longlist">
+static void
+rb_longjmp(tag, mesg)
+    int tag;
+    VALUE mesg;
+{
+    if (NIL_P(mesg))
+        mesg = ruby_errinfo;
+    set_backtrace(mesg, get_backtrace(mesg));
+    ruby_errinfo = mesg;
+    JUMP_TAG(tag);
+}
+</pre>
+
+まあ当然と言えば当然だが、普通に`JUMP_TAG()`でジャンプするだけだ。
+
+`ruby_errinfo`は何だろう。少し`grep`してみるとこの変数がRubyのグローバ
+ル変数`$!`の実体であるとわかった。この変数は現在発生中の例外を示してい
+るから、その実体の`ruby_errinfo`も当然同じ意味を持つはずである。
+
+h3. 全体像
+
+▼ ソースプログラム
+<pre class="longlist">
+begin
+  raise('exception raised')
+rescue
+  'rescue clause'
+ensure
+  'ensure clause'
+end
+</pre>
+
+▼ 対応する構文木(`nodedump-short`)
+<pre class="longlist">
+NODE_BEGIN
+nd_body:
+    NODE_ENSURE
+    nd_head:
+        NODE_RESCUE
+        nd_head:
+            NODE_FCALL
+            nd_mid = 3857 (raise)
+            nd_args:
+                NODE_ARRAY [
+                0:
+                    NODE_STR
+                    nd_lit = "exception raised":String
+                ]
+        nd_resq:
+            NODE_RESBODY
+            nd_args = (null)
+            nd_body:
+                NODE_STR
+                nd_lit = "rescue clause":String
+            nd_head = (null)
+        nd_else = (null)
+    nd_ensr:
+        NODE_STR
+        nd_lit = "ensure clause":String
+</pre>
+
+パーサレベルで`rescue`と`ensure`の順番が決められているように、構文木で
+もまた順番が厳密に決まっている。必ず`NODE_ENSURE`が一番「上」、その次
+に`NODE_RESCUE`、最後に本体(`raise`のあるところ)が来る。
+`NODE_BEGIN`は何もしないノードなので、実際には`NODE_ENSURE`が一番上に
+あると思っていい。
+
+つまりプロテクトしたい本体よりも`NODE_ENSURE`や`NODE_RESCUE`が上に来るから、
+単に`EXEC_TAG()`するだけで`raise`を止められる。と言うよりも、そうできるよ
+うに構文木上で上にしている、というほうが正しいか。
+
+h3. `ensure`
+
+`ensure`のノード`NODE_ENSURE`のハンドラを見ていく。
+
+▼ `rb_eval()`-`NODE_ENSURE`
+<pre class="longlist">
+2634  case NODE_ENSURE:
+2635    PUSH_TAG(PROT_NONE);
+2636    if ((state = EXEC_TAG()) == 0) {
+2637        result = rb_eval(self, node->nd_head);   (A-1)
+2638    }
+2639    POP_TAG();
+2640    if (node->nd_ensr) {
+2641        VALUE retval = prot_tag->retval;   (B-1)
+2642        VALUE errinfo = ruby_errinfo;
+2643
+2644        rb_eval(self, node->nd_ensr);            (A-2)
+2645        return_value(retval);              (B-2)
+2646        ruby_errinfo = errinfo;
+2647    }
+2648    if (state) JUMP_TAG(state);            (B-3)
+2649    break;
+
+(eval.c)
+</pre>
+
+この`if`を使った分岐はタグを扱う二つめのイディオムだ。
+`EXEC_TAG()`してジャンプを止めておき、`ensure`節(`node->nd_ensr`)を
+評価する、となっている。処理の流れについては問題ないだろう。
+
+また評価値に関して考えてみる。仕様から確認すると、
+
+<pre class="emlist">
+begin
+  expr0
+ensure
+  expr1
+end
+</pre>
+
+という文の場合、`begin`全体の値は`ensure`のあるなしには関係なく`expr0`の値に
+なる。それが反映されているのが(A-1,2)のところで、`ensure`節の評価値が
+無碍に捨てられている。
+
+また(B-1,3)では本体でジャンプが発生した場合の評価値を扱っている。
+その場合の値は`prot_tag->retval`に入っているのだったから、`ensure`節の
+実行中にうっかり書き換えられないようローカル変数に退避する(B-1)。
+そして`ensure`節の評価が終わったら`return_value()`で元に戻す(B-2)。
+もし本体でジャンプが発生していなくても、つまり`state==0`でも、
+そのときはそもそも`prot_tag->retval`は使われないからどうでもいい。
+
+h3. `rescue`
+
+少し間が空いてしまったのでもう一度`rescue`の構文木を見ておこう。
+
+▼ ソースプログラム
+<pre class="longlist">
+begin
+  raise()
+rescue ArgumentError, TypeError
+  'error raised'
+end
+</pre>
+
+▼ 対応する構文木(`nodedump-short`)
+<pre class="longlist">
+NODE_BEGIN
+nd_body:
+    NODE_RESCUE
+    nd_head:
+        NODE_FCALL
+        nd_mid = 3857 (raise)
+        nd_args = (null)
+    nd_resq:
+        NODE_RESBODY
+        nd_args:
+            NODE_ARRAY [
+            0:
+                NODE_CONST
+                nd_vid  = 4733 (ArgumentError)
+            1:
+                NODE_CONST
+                nd_vid  = 4725 (TypeError)
+            ]
+        nd_body:
+            NODE_STR
+            nd_lit = "error raised":String
+        nd_head = (null)
+    nd_else = (null)
+</pre>
+
+`rescue`の対象にしたい文(の構文木)が`NODE_RESCUE`の「下」にあることを
+確認してほしい。
+
+▼ `rb_eval()`-`NODE_RESCUE`
+<pre class="longlist">
+2590  case NODE_RESCUE:
+2591  retry_entry:
+2592    {
+2593        volatile VALUE e_info = ruby_errinfo;
+2594
+2595        PUSH_TAG(PROT_NONE);
+2596        if ((state = EXEC_TAG()) == 0) {
+2597            result = rb_eval(self, node->nd_head); /* 本体を評価 */
+2598        }
+2599        POP_TAG();
+2600        if (state == TAG_RAISE) { /* 本体で例外が発生した */
+2601            NODE * volatile resq = node->nd_resq;
+2602
+2603            while (resq) { /* rescue節を順番に扱う */
+2604                ruby_current_node = resq;
+2605                if (handle_rescue(self, resq)) { /* この節で扱うなら */
+2606                    state = 0;
+2607                    PUSH_TAG(PROT_NONE);
+2608                    if ((state = EXEC_TAG()) == 0) {
+2609                        result = rb_eval(self, resq->nd_body);
+2610                    }                            /* rescue節を評価 */
+2611                    POP_TAG();
+2612                    if (state == TAG_RETRY) { /* retryが発生したので */
+2613                        state = 0;
+2614                        ruby_errinfo = Qnil;  /* 例外は停止する */
+2615                        goto retry_entry;     /* gotoに変換 */
+2616                    }
+2617                    if (state != TAG_RAISE) {  /* returnなどでも、*/
+2618                        ruby_errinfo = e_info; /* 例外は停止する  */
+2619                    }
+2620                    break;
+2621                }
+2622                resq = resq->nd_head; /* 次のrescue節に進む */
+2623            }
+2624        }
+2625        else if (node->nd_else) { /* else節があり、 */
+2626            if (!state) { /* 例外が起きなかったときだけ評価する */
+2627                result = rb_eval(self, node->nd_else);
+2628            }
+2629        }
+2630        if (state) JUMP_TAG(state); /* 待っていないジャンプ */
+2631    }
+2632    break;
+
+(eval.c)
+</pre>
+
+多少コードサイズはあるが、ノードを地道に地道に扱うだけだから
+難しくはない。`handle_rescue()`というのが初出だが、この関数は
+ちょっとわけあって今見るわけにいかない。効果だけ説明しておく。
+プロトタイプは
+
+<pre class="emlist">
+static int handle_rescue(VALUE self, NODE *resq)
+</pre>
+
+で、現在発生中の例外(`ruby_errinfo`)が
+`resq`で表されるクラス(例えば`TypeError`)の下位クラスであるか
+どうか判定する。`self`を渡しているのは関数の中で`resq`を評価する
+ために`rb_eval()`を呼ぶ必要があるからだ。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

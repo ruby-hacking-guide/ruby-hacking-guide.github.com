@@ -1,0 +1,1195 @@
+$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+Traduction à partir de l'anglais par Jean-Denis VAUGUET
+
+h1. Chapitre 2 : Les objets
+
+h2. Structure des objets en Ruby
+
+h3. Conseils
+
+À partir de ce chapitre, nous allons explorer le code source de `ruby`, en
+commençant par l'étude de la déclaration de la structure des objets.
+
+Quelles sont les conditions nécessaires pour assurer l'existence d'objets ?
+Il existe plusieurs pistes de réponses potentielles, mais en réalité trois
+conditions sont à respecter :
+
+# être capable de se différencier de l'extérieur (avoir une identité propre)
+# être capable de répondre à des requêtes (méthodes)
+# conserver un état interne (variables d'instances)
+
+Dans ce chapitre, nous allons vérifier la validité de ces trois fonctionnalités
+l'une après l'autre.
+
+Le fichier le plus intéressant dans cette optique sera `ruby.h`, mais nous
+jeterons également un œil à d'autres fichiers, comme `object.c`, `class.c`
+ou encore `variable.c`.
+
+h3. Structure de `VALUE` et des objets
+
+Dans `ruby`, le contenu d'un objet est exprimé à travers une structure du
+langage `C`, toujours désignée _via_ un pointeur. À chaque classe correspond
+un genre de structure différent, mais le type du pointeur sera toujours `VALUE`
+(figure 1).
+
+!images/ch_object_value.png(`VALUE` et structure)!
+
+Voici la définition de `VALUE` :
+
+▼ `VALUE`
+<pre class="longlist">
+ 71  typedef unsigned long VALUE;
+
+(ruby.h)
+</pre>
+
+Dans la pratique, une `VALUE` doit être castée vers différents types de pointeurs
+de structure. De ce fait, si un `unsigned long` et un pointeur ont des tailles
+différentes, `ruby` ne fonctionnera pas très bien. À strictement parler, ça ne
+marchera pas pour les types de pointeurs plus grands que `sizeof(unsigned long)`.
+Heureusement, aucune machine récente n'offre cette possibilité, bien que ce fut
+possible de le faire sur quelques unes il y a quelque temps encore.
+
+Plusieurs structures sont disponibles selon les classes d'objet :
+
+| `struct RObject`              | toute chose qui ne rentre dans aucune catégorie ci-dessous |
+| `struct RClass`               | objet classe |
+| `struct RFloat`               | petits nombres |
+| `struct RString`              | chaînes de caractères |
+| `struct RArray`               | tableau |
+| `struct RRegexp`              | expression régulière |
+| `struct RHash`                | table de hachage |
+| `struct RFile`                | `IO`, `File`, `Socket`, etc. |
+| `struct RData`                | toute classe définie au niveau du C, exceptées les précédentes |
+| `struct RStruct`              | classe `Struct` dans Ruby |
+| `struct RBignum`              | grands entiers |
+
+Par exemple, pour un objet chaîne de caractères, `struct RString` sera utilisée ;
+nous aurons donc quelque comme ceci :
+
+!images/ch_objet_string(Objet String)!
+
+Voyons plus précisement les définitions structurelles de quelques objets.
+
+▼ Examples de structure d'objet
+<pre class="longlist">
+     /* structure des objets ordinaires */
+ 295  struct RObject {
+ 296      struct RBasic basic;
+ 297      struct st_table *iv_tbl;
+ 298  };
+
+     /* structure pour les chaînes (instance de String) */
+ 314  struct RString {
+ 315      struct RBasic basic;
+ 316      long len;
+ 317      char *ptr;
+ 318      union {
+ 319          long capa;
+ 320          VALUE shared;
+ 321      } aux;
+ 322  };
+
+     /* structure pour les tableaux (instance de Array) */
+ 324  struct RArray {
+ 325      struct RBasic basic;
+ 326      long len;
+ 327      union {
+ 328          long capa;
+ 329          VALUE shared;
+ 330      } aux;
+ 331      VALUE *ptr;
+ 332  };
+
+(ruby.h)
+</pre>
+
+Avant d'entrer dans les détails de chacune d'elles, commençons par quelques
+généralités.
+
+<pre class="emlist">
+VALUE str = ....;
+VALUE arr = ....;
+RSTRING(str)->len;   /* ((struct RString*)str)->len */
+RARRAY(arr)->len;    /* ((struct RArray*)arr)->len */
+</pre>
+
+Tout d'abord, `VALUE` étant défini comme `unsigned long`, il doit être casté
+avant d'être utilisé. C'est pourquoi des macros `Rxxxx()` existent pour chaque
+structures d'objet. Par exemple, pour la structure `struct RString`, il y a
+une macro `RSTRING()` ; pour `struct RArray`, il y a `RARRAY()`, etc. Ces
+macros sont utilisées de la manière suivante :
+
+<pre class="emlist">
+VALUE str = ....;
+VALUE arr = ....;
+RSTRING(str)->len;   /* ((struct RString*)str)->len */
+RARRAY(arr)->len;    /* ((struct RArray*)arr)->len */
+</pre>
+
+Un autre point important à mentionner est que toutes les structures d'objets
+ont pour premier membre `basic`, de type `struct RBasic` — de sorte que, quel
+que soit le type de la structure pointée par `VALUE`, vous pourrez accéder au
+contenu de `basic` en castant ce `VALUE` avec `struct RBasic*`.
+
+!images/ch_objet_rbasic.png(`struct RBasic`)!
+
+Vous avez certainement deviné que `struct RBasic` a été créée pour contenir
+certaines informations importantes partagées par toutes les structures d'objets.
+La définition de `struct RBasic` est la suivante :
+
+▼ `struct RBasic`
+<pre class="longlist">
+ 290  struct RBasic {
+ 291      unsigned long flags;
+ 292      VALUE klass;
+ 293  };
+
+(ruby.h)
+</pre>
+
+Les `flags` sont des drapeaux (NDT(Note du traducteur) : "flags" en anglais)
+à usages multiples, principalement utilisés pour enregistrer le type de la
+structure (par exemple `struct RObject`). Les drapeaux de type sont sommés
+d'après la convention `T_xxxx`, et peuvent être obtenus à partir d'un `VALUE`
+en utilisant la macro `TYPE()`. Voici un exemple :
+
+<pre class="emlist">
+VALUE str;
+str = rb_str_new();    /* crée une chaîne Ruby (de structure RString) */
+TYPE(str);             /* la valeur de retour est T_STRING */
+</pre>
+
+Les noms de ces drapeaux `T_xxxx` ont une correspondance directe avec les noms
+des types qui y sont liés, comme les couples `T_STRING` et `struct RString`
+ou `T_ARRAY` et `struct RArray` le montrent.
+
+L'autre membre de `struct RBasic`, `klass`, contient la classe auquel l'objet
+appartient. Comme `klass` est de type `VALUE`, c'est un (pointeur vers un) objet
+Ruby qui est contenu dans ce membre. En bref, c'est un objet classe.
+
+!images/ch_object_class.png(Objet et classe)!
+
+La relation entre un objet et sa classe sera détaillée dans la section « Méthodes »
+de ce chapitre.
+
+
+Évidemment, le nom de ce second membre n'est pas `class`, pour s'assurer qu'il
+n'entre pas en conflit avec `class` lorsque le fichier est traité par un
+compilateur C++, `class` étant un mot réservé.
+
+h4. À propos des types des structures
+
+J'ai dit que le type de structure est stocké dans le membre `flags` de `struct
+Basic`. Mais pourquoi avons nous besoin de stocker le type de structure ? La
+raison en est que cela nous permet de prendre en charge tous les types différents
+de structures _via_ `VALUE`. Si vous castez un pointeur vers une structure avec
+`VALUE`, comme l'information sur le type disparaît, le compilateur ne pourra
+plus vous aider. C'est pourquoi nous devons nous-mêmes gérer le type. C'est la
+contrepartie directe du fait de pouvoir gérer tous les types de structure d'une
+unique façon.
+
+D'accord, mais la structure utilisée est définie par la classe ; pourquoi
+alors le type de structure et la classe sont stockés séparement ? Être en
+mesure de trouver le type de structure à partir de la classe devrait suffire.
+Il y a en fait deux raisons de ne pas procéder ainsi.
+
+La première raison (je suis désolé de contredire ce que j'ai dit avant) est
+qu'il y a en fait des structures qui n'ont pas de `struct RBasic` (et n'ont
+donc pas de membre `klass`). Par exemple, `struct RNode`, qui fera son
+apparition dans la seconde partie du livre. Cependant, vous êtes assurés de
+trouver `flags` parmi les premiers membres de toutes les structures, même de
+celles comme `RNode`. Ainsi, si vous mettez le type de structure dans `flags`,
+toutes les structures d'objet peuvent être différenciées les unes des autres
+d'une seule façon.
+
+La seconde raison est qu'il n'y pas de correspondance unique entre classe et
+structure. Par exemple, toutes les instances de classes définies au niveau de
+Ruby utilisent `struct RObject` ; retrouver une structure à partir d'une classe
+nécessiterait de garder la correspondance entre toutes les classes et toutes
+les structures. C'est pourquoi il est plus simple et rapide de mettre cette
+information à propos du type dans la structure.
+
+h4. L'utilisation de `basic.flags`
+
+Simplement dire que `basic.flags` est utilisé pour stocker différentes choses
+dont le type de structure me tourmente clairement, aussi voici une
+illustration générale de cette idée (figure 5). Il n'est pas nécessaire de
+tout comprendre pour le moment, je souhaitais simplement montrer ses utilisations
+pour aller mieux.
+
+!images/ch_object_flags.png(Utilisation de `flags`)!
+
+D'après le diagramme, il semble que vingt-et-un (21) bits restent inutilisés
+sur une machine 32 bits. Sur ces bits supplémentaires sont définis les drapeaux
+`FL_USER0` à `FL_USER8`, lesquels sont utilisés dans plusieurs buts, selon
+les structures. J'ai par ailleurs ajouté `FL_USER0` (`FL_SINGLETON`) comme
+exemple sur le diagramme.
+
+h3. Objets contenus dans `VALUE`
+
+Comme je l'ai dit, `VALUE` est un `unsigned long`. Comme `VALUE` est un pointeur,
+il semble que `void*` aurait très bien pu faire l'affaire également, mais il
+y a une bonne raison de ne pas l'avoir choisi. En fait, `VALUE` peut très bien
+ne pas être un pointeur. Les six cas où `VALUE` n'est pas un pointeur sont les
+suivants :
+
+# petits entiers
+# symboles
+# `true`
+# `false`
+# `nil`
+# `Qundef`
+
+Je vais les expliquer chacun à leur tour.
+
+h4. Petits entiers
+
+Comme en Ruby toute donnée est un objet, les entiers sont également des objets.
+Cependant, il y a de très nombreuses instances d'entiers, aussi les exprimer
+à travers des structures risquerait de ralentir excessivement l'exécution. Par
+exemple, réaliser une incrémentation de 0 à 50 000 nécessiterait de créer
+50 000 objets, ce qui nous laisserait pour le moins dubitatifs.
+
+C'est pourquoi en `ruby`, dans une certaine mesure, les petits entiers reçoivent
+un traitement spécial et sont directement inclus dans `VALUE`. « Petit » signifie
+des entiers signés manipulables dans `sizeof(VALUE)*8-1` bits. En d'autres termes,
+sur une machine 32 bits, les entiers ont un bit de signe et 30 bits pour leur
+partie entière. Les entiers de cet intervalle appartiendront à la classe `Fixnum`
+et les autres entiers, à la classe `Bignum`.
+
+Voyons maintenant ce que donne en pratique la macro `INT2FIX()`, qui convertit
+un `int` C en un `Fixnum`, et assure que `Fixnum` est directement inclus dans
+`VALUE`.
+
+▼ `INT2FIX`
+<pre class="longlist">
+ 123  #define INT2FIX(i) ((VALUE)(((long)(i))<<1 | FIXNUM_FLAG))
+ 122  #define FIXNUM_FLAG 0x01
+
+(ruby.h)
+</pre>
+
+Pour résumer, décaler d'un bit à droite, et réaliser un OU inclusif bit à bit
+avec 1.
+
+| `0110100001000` | avant la conversion |
+| `1101000010001` | après la conversion |
+
+Cela signifie que `Fixnum` en tant que `VALUE` sera toujours un nombre impair.
+D'un autre coté, comme les structures d'objet Ruby sont allouées avec `malloc()`,
+elles sont en général conservées à des adresses multiples de 4. Elles ne
+recouvrent donc pas les valeurs de `Fixnum` comme `VALUE`.
+
+Nous pouvons aussi convertir des `int` ou `long` en `VALUE` en utilisant des
+macros comme `INT2NUM()` ou `LONG2NUM()`. Toute macro de conversion `XXXX2XXXX`
+dont le nom contient `NUM` peut prendre en charge tant `Fixnum` que `Bignum`.
+Par exemple, si `INT2NUM()` ne peut pas convertir un entier en `Fixnum`, il sera
+automatiquement converti en `Bignum`. `NUM2INT()` convertira à la fois `Fixnum`
+`Bignum` en `int`. Si le nombre ne peut pas être stocké comme `int`, une exception
+sera levée, aussi n'y a t-il pas besoin de vérifier la valeur de l'intervalle.
+
+h4. Symboles
+
+Que sont les symboles ?
+
+Donner une réponse à cette question ne se fait pas sans difficulté ; commençons
+par donner les raisons pour lesquelles les symboles sont nécessaires. Tout
+d'abord, regardons le type `ID` utilisé au sein de `ruby`. Voici sa définition :
+
+▼ `ID`
+<pre class="longlist">
+ 72  typedef unsigned long ID;
+
+(ruby.h)
+</pre>
+
+Cet `ID` est un nombre qui a une relation exclusive avec une chaîne. Dans le
+monde réel il n'est pas possible d'avoir une association entre toutes les
+chaînes et une valeur numérique, c'est pourquoi ils sont limités à une relation
+1-à-1 dans un processus `ruby`. Je parlerai de la méthode pour trouver un `ID`
+dans le prochain chapitre, « Noms et tables de nommage. »
+
+Dans les implémentations de langages, il y a beaucoup de noms à gérer. Noms
+de méthodes ou de variables, noms de constantes, noms de fichiers dans des
+noms de classes... Il est difficile de tous les prendre en charge en tant que
+chaînes (`char*`), parce que cela nécessite encore et toujours plus de gestion
+mémoire. Par ailleurs, de nombreuses comparaisons seront certainement requises,
+et comparerdes chaînes caractère par caractère sera un frein à l'exécution.
+C'est pourquoi les chaînes ne sont pas gérées directement et que quelque chose
+leur sera associé et utilisé à la place. Et généralement, ce « quelque chose »
+sera des nombres, la chose la plus simple à manipuler.
+
+Ces `ID` se retrouvent en tant que symboles dans le monde de Ruby. Jusqu'à
+`ruby 1.4`, les valeurs de ces `ID` étaient converties en `Fixnum`, mais
+utilisées comme symboles — encore aujourd'hui, ces valeurs peuvent être obtenus
+en utilisant `Symbol#to_i`. Cependant, l'utilisation concrète s'étant terminée
+en carambolages, on a prit conscience du fait que mêler `Fixnum` et `Symbol`
+n'était pas une bonne idée. Depuis la version 1.6 existe une classe `Symbol`
+indépendante.
+
+Les objets `Symbol` sont largement utilisés, notamment comme clés pour les
+tables de hachage. C'est la raison pour laquelle `Symbol`, tout comme `Fixnum`,
+ont été définies comme stockées dans `VALUE`. Voyons plus particulièrement la
+macro `ID2SYM()` qui convertit un `ID` en objet `Symbol`.
+
+▼ `ID2SYM`
+<pre class="longlist">
+ 158  #define SYMBOL_FLAG 0x0e
+ 160  #define ID2SYM(x) ((VALUE)(((long)(x))<<8|SYMBOL_FLAG))
+
+(ruby.h)
+</pre>
+
+Lorsqu'on fait un décalage de huit bits à gauche, `x` devient un multiple de
+256, donc de 4. Ensuite, après une comparaison par un OU inclusif bit à bit
+(ce qui revient ici à une addition) avec `0x0e` (14 en décimal), le `VALUE`
+exprimant le symbole n'est plus multiple de 4. Ni même un nombre impair. Il
+ne recouvre donc plus l'intervalle d'aucun autre `VALUE` — c'est une petite
+astuce assez malicieuse.
+
+Finalement, voyons la macro de conversion inverse à `ID2SYM()`, `SYM2ID()`.
+
+▼ `SYM2ID()`
+<pre class="longlist">
+ 161  #define SYM2ID(x) RSHIFT((long)x,8)
+
+(ruby.h)
+</pre>
+
+`RSHIFT` est un décalage à droite. Comme un tel décalage peut conserver ou non
+le signe selon l'architecture de la machine, l'opération est devenue une macro.
+
+h4. `true false nil`
+
+Ce trio est constitué d'objets Ruby d'un genre particulier. `true` et `false`
+représentent les valeurs booléennes. `nil` est un objet utilisé pour spécifier
+l'absence d'objet. Leurs valeurs respectives sont définies ainsi au niveau du C :
+
+▼ `true false nil`
+<pre class="longlist">
+ 164  #define Qfalse 0        /* false en Ruby */
+ 165  #define Qtrue  2        /* true en Ruby */
+ 166  #define Qnil   4        /* nil en Ruby */
+
+(ruby.h)
+</pre>
+
+This time it's even numbers, but as 0 or 2 can't be used by pointers, they
+can't overlap with other `VALUE`. It's because usually the first bloc of
+virtual memory is not allocated, to make the programs dereferencing a `NULL`
+pointer crash.
+
+Cette fois ci, il s'agit de nombres pairs mais comme 0 ou 2 ne peuvent pas être
+utilisés comme pointeurs, ils ne risquent pas de recouvrir d'autres `VALUE`. En
+général, cela vient du fait que le premier bloc de la mémoire virtuelle n'est
+jamais alloué, pour permettre aux programmes de déréférencer une erreur fatale
+suite à un pointeur `NULL`.
+
+Comme `Qfalse` vaut 0, il peut également être utilisé comme false au niveau du C.
+Dans la pratique, en `ruby`, quand une fonction retourne une valeur booléenne, on
+fait souvent en sorte de lui faire retourner un `int` ou `VALUE`, et elle retourne
+`Qtrue`/`Qfalse`.
+
+Pour `Qnil`, il existe une macro chargée de vérifier si un `VALUE` vaut `Qnil`
+ou non, `NIL_P()`.
+
+▼ `NIL_P()`
+<pre>
+ 170  #define NIL_P(v) ((VALUE)(v) == Qnil)
+
+(ruby.h)
+</pre>
+
+Son nom se termine par `p`, une notation provenant de Lisp dénotant une fonction
+qui retourne une valeur booléenne. En d'autres termes, `NIL_P()` signifie « est-ce
+que l'argument est `nil` ? » Il semble que la lettre `p` provienne du verbe
+"predicate" (ie. supposer). Cette convention de nommage est utilisée à plusieurs
+endroits dans `ruby`.
+
+De plus, en Ruby, `false` et `nil` sont faux et tous les autres objets vrais.
+Par contre, en C, `nil` (`Qnil`) est vrai. C'est pourquoi en C a été créée
+une macro dans le style Ruby, `RTEST()`.
+
+▼ `RTEST()`
+<pre class="longlist">
+ 169  #define RTEST(v) (((VALUE)(v) & ~Qnil) != 0)
+
+(ruby.h)
+</pre>
+
+Comme dans `Qnil`, seul le troisième bit est à 1, dans `~Qnil`, seul ce même
+troisième bit est à 0. Ainsi, seuls `Qfalse` et `Qnil` deviennent 0 après une
+comparaison par ET bit à bit.
+
+`!=0` a été ajouté pour être certain de n'avoir que 0 ou 1 au final, pour
+satisfaire aux conditions de la librairie glib qui ne veut que 0 ou 1
+("[ruby-dev:11049]":http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-dev/11049).
+
+Question évident, que signifie le `Q` dans `Qnil` ? `R` aurait été logique, mais
+pourquoi `Q` ? Lorsque j'ai demandé, la réponse a été « parce que c'était comme
+ça dans Emacs. » Pas vraiment l'explication amusante que j'attendais...
+
+h4. `Qundef`
+
+▼ `Qundef`
+<pre class="longlist">
+ 167  #define Qundef 6                /* undefined value for placeholder */
+
+(ruby.h)
+</pre>
+
+Cette valeur est utilisée pour exprimer une valeur indéfinie dans l'interpréteur.
+Elle n'est pas du tout visible au niveau Ruby.
+
+h2. Méthodes
+
+J'ai déjà mentionné les trois points importants pour un objet Ruby, à savoir
+avoir une identité, être capable d'appeler une méthode et conserver des données
+pour chaque instance. Dans cette section, je vais expliquer de manière simple
+la structure qui relie les objets et les méthodes.
+
+h3. `struct RClass`
+
+En Ruby, les classes existent en tant qu'objets durant l'excution. Évidemment.
+Il doit donc y avoir une structure pour les objets classe. Cette structure est
+`struct RClass`. Son drapeau de type de structure est `T_CLASS`.
+
+Comme les classes et les modules sont très semblables, il n'est pas nécessaire
+de différencier leur contenu. C'est pourquoi les modules utilisent également
+la structure `struct RClass`, et se distinguent par leur drapeau de structure
+`T_MODULE`.
+
+▼ `struct RClass`
+<pre class="longlist">
+ 300  struct RClass {
+ 301      struct RBasic basic;
+ 302      struct st_table *iv_tbl;
+ 303      struct st_table *m_tbl;
+ 304      VALUE super;
+ 305  };
+
+(ruby.h)
+</pre>
+
+D'abord, voyons le membre `m_tbl` (_Method TaBLe_). `struct st_table` est une
+table de hachage utilisée un peu partout dans `ruby`. Ses raffinements seront
+présentés dans le prochain chapitre « Noms et tables de nommage » mais, pour
+faire simple, il s'agit d'une table qui établit la correspondance entre noms
+et objets. Dans le cas de `m_tbl`, elle conserve la correspondance entre le
+nom (`ID`) des méthodes que cette classe possède et les entités de méthodes
+en elles-mêmes.
+
+Le quatrième membre `super` conserve, comme son nom l'indique la classe parente
+(NDT(Note du traducteur) : _superclass_ en anglais). Comme c'est un `VALUE`,
+il s'agit d'un pointeur vers l'objet classe de la classe parente.
+
+Cependant, j'ai déjà dit que toutes les méthodes d'`Object` sont définies dans
+le module `Kernel`, et qu'`Object` ne fait que l'inclure. Comme les modules
+sont, d'un point de vue fonctionnel, similaires au concept d'héritage multiple,
+il peut sembler qu'avoir seulement ce `super` est problématique, mais, mais, en
+`ruby`, certaines modifications futées sont réalisées pour donner l'impression
+qu'il ne s'agit que d'héritage simple. Les détails de ce procédé seront exposés
+dans le qautrième chapitre « Classes et modules. »
+
+À cause de cela, `super` dans la structure pour `Object` pointe sur `struct
+RClass` dans l'objet `Kernel`. Seul le `super` du Kernel vaut NULL. Donc,
+contrairement à ce que j'ai dit, si `super` est NULL, cette `RClass` est
+l'objet `Kernel` (figure 6).
+
+!images/ch_object_classtree.png(Arbre des classes au niveau du C)!
+
+h3. Recherche de méthodes
+
+Avec une structure de classes telles que celle-la, vous pouvez facilement
+imaginer le processus d'appel à une méthode (NDT(Note du traducteur) :
+_method call_ en anglais). Le membre `m_tbl` de la classe de l'objet est
+recherchée ; si la méthode n'est pas trouvée, la recherche s'effectue sur
+le membre `m_tbl` de `super`, et ainsi de suite. S'il n'y a plus de `super`,
+cela signifie que la méthode n'a pas été trouvée, même dans `Object`, ie.
+elle a toutes les chances de ne pas être définie.
+
+Le processus de recherche séquentielle dans `m_tbl` est réalisé par
+`search_method()`.
+
+▼ `search_method()`
+<pre class="longlist">
+ 256  static NODE*
+ 257  search_method(klass, id, origin)
+ 258      VALUE klass, *origin;
+ 259      ID id;
+ 260  {
+ 261      NODE *body;
+ 262
+ 263      if (!klass) return 0;
+ 264      while (!st_lookup(RCLASS(klass)->m_tbl, id, &body)) {
+ 265          klass = RCLASS(klass)->super;
+ 266          if (!klass) return 0;
+ 267      }
+ 268
+ 269      if (origin) *origin = klass;
+ 270      return body;
+ 271  }
+
+(eval.c)
+</pre>
+
+Cette fonction recherche la méthode nommée `id` dans l'objet classe
+`klass`.
+
+`RCLASS(value)` est une macro réalisant :
+
+<pre class="emlist">
+((struct RClass*)(value))
+</pre>
+
+`st_lookup()` est une fonction qui recherche dans `st_table` la valeur
+correspondante à une clé. Si la valeur est trouvée, la fonction retourne
+vrai et place la valeur obtenue  l'adresse donnée comme troisième
+paramètre (`&body`).
+
+Néanmoins, effectuer cette recherche à chaque fois en toute circonstances
+serait trop lent. C'est pourquoi, en réalité, une fois appelée, une méthode
+est mise en cache. Ainsi, à partir du second appel, elle sera retrouvée sans
+avoir à parcourir les `super` un à un. Ce cache et son parcours de recherche
+seront exposés dans le chapitre 15, « Méthodes. »
+
+h2. Variables d'instance
+
+Dans cette section, je vais expliquer l'implémentation de la troisième
+condition essentielle, les variables d'instances.
+
+h3. `rb_ivar_set()`
+
+Les variables d'instances sont ce qui permet à chaque objet de conserver des
+données propres. Les stocker dans l'objet lui-même (ie. dans la structure de
+l'objet) pourrait sembler naturel, mais qu'en est-il en pratique ? Voyons la
+fonction `rb_ivar_set()` qui place un objet dans une variable d'instance.
+
+▼ `rb_ivar_set()`
+<pre class="longlist">
+     /* write val in the id instance of obj */
+ 984  VALUE
+ 985  rb_ivar_set(obj, id, val)
+ 986      VALUE obj;
+ 987      ID id;
+ 988      VALUE val;
+ 989  {
+ 990      if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4)
+ 991          rb_raise(rb_eSecurityError,
+                      "Insecure: can't modify instance variable");
+ 992      if (OBJ_FROZEN(obj)) rb_error_frozen("object");
+ 993      switch (TYPE(obj)) {
+ 994        case T_OBJECT:
+ 995        case T_CLASS:
+ 996        case T_MODULE:
+ 997          if (!ROBJECT(obj)->iv_tbl)
+                 ROBJECT(obj)->iv_tbl = st_init_numtable();
+ 998          st_insert(ROBJECT(obj)->iv_tbl, id, val);
+ 999          break;
+1000        default:
+1001          generic_ivar_set(obj, id, val);
+1002          break;
+1003      }
+1004      return val;
+1005  }
+
+(variable.c)
+</pre>
+
+`rb_raise()` et `rb_error_frozen()` sont deux vérifications d'erreurs. Ces
+vérifications sont nécessaires mais ne constituent pas l'essentiel du
+traitement, vous devriez les ignorer en première lecture.
+
+Si on omet les traitements d'erreurs, il ne reste qu'un `switch`, mais
+
+<pre class="emlist">
+switch (TYPE(obj)) {
+ case T_aaaa:
+ case T_bbbb:
+    ...
+}
+</pre>
+
+sa forme est caractéristique de `ruby`. `TYPE()` est la macro qui retourne
+le drapeau de type d'une structure d'objet (`T_OBJECT`, `T_STRING`, etc.)
+Étant donné que le drapeau de type est une constante entière, nous pouvons
+aiguiller le processus par un `swtich`. `Fixnum` ou `Symbol` n'ont pas de
+structures, mais au sein de `TYPE()` un traitement spécial est effectué
+pour retourner proprement `T_FIXNUM` et `T_SYMBOL`, il n'y a donc pas lieu
+de s'inquiéter ici.
+
+Bien, revenons à `rb_ivar_set()`. Il semble que seul les traitements de
+`T_OBJECT`, `T_CLASS` et `T_MODULE` soient différents. Ces trois-là ont
+été choisis parce que leur second membre est `iv_tbl`. Vérifions-le en
+pratique.
+
+▼ Structures dont le second membre est `iv_tbl`
+<pre class="longlist">
+     /* TYPE(val) == T_OBJECT */
+ 295  struct RObject {
+ 296      struct RBasic basic;
+ 297      struct st_table *iv_tbl;
+ 298  };
+
+     /* TYPE(val) == T_CLASS or T_MODULE */
+ 300  struct RClass {
+ 301      struct RBasic basic;
+ 302      struct st_table *iv_tbl;
+ 303      struct st_table *m_tbl;
+ 304      VALUE super;
+ 305  };
+
+(ruby.h)
+</pre>
+
+`iv_tbl` est la table de variable d'instance (NDT(Note du traducteur) :
+_Instance Variable TaBLe_ en anglais). Elle conserver les noms des variables
+et les valeurs correspondantes.
+
+Dans `rb_ivar_set()`, regardons à nouveau le code pour les structures ayant
+un champ `iv_tbl`.
+
+<pre class="emlist">
+if (!ROBJECT(obj)->iv_tbl)
+   ROBJECT(obj)->iv_tbl = st_init_numtable();
+st_insert(ROBJECT(obj)->iv_tbl, id, val);
+break;
+</pre>
+
+`ROBJECT()` est une macro qui caste un `VALUE` en `struct RObject*`. Il est
+possible que `obj` pointe vers une structure RClass, mais comme nous n'allons
+accéder qu'au second membre, cela ne posera aucun problème.
+
+`st_init_numtable()` est une fonction qui créé une nouvelle `st_table`.
+`st_insert()` est une fonctione qui réalise les associations dans une `st_table`.
+
+En conclusion, ce code réalise ceci : si `iv_tbl` n'existe pas, elle est créée,
+puis l'association [nom de variable → objet] est stockée.
+
+Attention : comme `struct RClass` est un objet classe, cette table de variables
+d'instance est destinée à être utilisée pour l'objet classe lui-même. En terme
+de programmation Ruby, cela correspond à quelque chose comme :
+
+<pre class="emlist">
+class C
+ @ivar = "content"
+end
+</pre>
+
+h3. `generic_ivar_set()`
+
+Que se passe t-il lorsqu'on modifie une variable d'instance pour les objets
+dont la structure n'est ni `T_OBJECT`,  ni`T_MODULE`, ni `T_CLASS` ?
+
+▼ `rb_ivar_set()` en cas d'absence de `iv_tbl`
+<pre class="longlist">
+1000  default:
+1001    generic_ivar_set(obj, id, val);
+1002    break;
+
+(variable.c)
+</pre>
+
+Le contrôle est donné à `generic_ivar_set()`. Avant de regarder cette fonction,
+voyons l'idée générale qui la soustend.
+
+Les structures autres que `T_OBJECT`, `T_MODULE` ou `T_CLASS` ne possèdent
+pas de membre `iv_tbl` (la raison en sera exposée plus tard). Cependant, une
+méthode reliant une instance à une `struct st_table` permettrait aux instances
+d'avoir des variables d'instances. Dans `ruby`, cela a été solutionné par
+l'utilisation d'une `st_table` globale, et `generic_iv_table` (figure 17)
+pour réaliser les associations.
+
+!images/ch_object_givtable.png(`generic_iv_table`)!
+
+Voyons comment cela se passe concrètement.
+
+▼ `generic_ivar_set()`
+<pre class="longlist">
+ 801  static st_table *generic_iv_tbl;
+
+ 830  static void
+ 831  generic_ivar_set(obj, id, val)
+ 832      VALUE obj;
+ 833      ID id;
+ 834      VALUE val;
+ 835  {
+ 836      st_table *tbl;
+ 837
+         /* pour le moment vous devriez ignorer ça */
+ 838      if (rb_special_const_p(obj)) {
+ 839          special_generic_ivar = 1;
+ 840      }
+         /* initialiser generic_iv_tbl si inexistant */
+ 841      if (!generic_iv_tbl) {
+ 842          generic_iv_tbl = st_init_numtable();
+ 843      }
+ 844
+         /* le traitement en lui-même */
+ 845      if (!st_lookup(generic_iv_tbl, obj, &tbl)) {
+ 846          FL_SET(obj, FL_EXIVAR);
+ 847          tbl = st_init_numtable();
+ 848          st_add_direct(generic_iv_tbl, obj, tbl);
+ 849          st_add_direct(tbl, id, val);
+ 850          return;
+ 851      }
+ 852      st_insert(tbl, id, val);
+ 853  }
+
+(variable.c)
+</pre>
+
+`rb_special_const_p()` est vrai quand son argument n'est pas un pointeur. Mais
+comme cette partie dans le `if` nécessite des connaissances sur le ramasse-
+miette (NDT(Note du traducteur) : _garbage collector_), nous allons la mettre
+de coté pour le moment. Je voudrais que vous y reveniez après avoir lu le
+chapitre 5, « Ramasse-miette. »
+
+`st_init_numtable()` est déjà apparu quelques fois. Elle créé une nouvelle
+table de hachage.
+
+`st_lookup()` recherche une valeur correspondant à une clé. Dans le présent
+cas de figure, elle recherche ce qui est rattaché à `obj`. Si une valeur peut
+être trouvée, l'ensemble de la fonction retourne vrai et stocke la valeur à
+l'adresse donnée comme troisième paramètre (`&tbl`). En bref, `!st_lookup(...)`
+peut être lu comme « si une valeur est introuvable. »
+
+`st_insert()` a également déjà été expliquée. Elle a pour rôle de stocker une
+nouvelle association dans une table.
+
+`st_add_direct()` est similaire à `st_insert()`, mais elle diffère dans sa
+partie qui vérifie si la clé est déjà présente ou non, avant de procéder à
+l'ajout de l'association. Dans le cas de `st_add_direct()`, si une clé déjà
+enregistrée est utilisée, deux associations liées vers cette même clé seront
+stockées.
+`st_add_direct()` peut être utilisée quand la vérification d'existence a déjà
+été effectuée, comme c'est le cas ici, ou lorsqu'une nouvelle table vient juste
+d'être créée.
+
+`FL_SET(obj, FL_EXIVAR)` est la macro qui place le drapeau `FL_EXIVAR` dans
+`basic.flags` pour `obj`. Les drapeaux de `basic.flags` sont tous nommés sur
+la convention `FL_xxxx` et peuvent être définis en utilisant `FL_SET()`. Ces
+drapeaux peuvent également être retirés avec `FL_UNSET()`. Le `EXIVAR` dans
+`FL_EXIVAR` semble être l'abbréviation de _EXternal Instance Variable_.
+
+La mise en place de ces drapeaux est effectuée pour accélérer la lecture des
+variables d'instance. Si `FL_EXIVAR` n'est pas défini, nous savons directement,
+même sans rechercher dans `generic_iv_tbl`, que cet objet possèdes des variables
+d'instances. Évidemment, un test sur un bit est bien plus rapide que de faire
+une recherche sur une `struct st_table`.
+
+h3. Sauts dans les structures
+
+Maintenant, vous devriez comprendre comment les variables d'instances sont
+stockées, mais pourquoi a t-on des structures sans `iv_tbl` ? Pourquoi ne pas
+avoir de `iv_tbl` dans `struct RString` ou `struct RArray` ? Est-ce qu'`iv_tbl`
+ne pourrait pas faire parti de `RBasic` ?
+
+Et bien, cela aurait pu se faire ainsi, mais il y a de bonnes raisons pour
+que ça ne ce soit pas passé ainsi. Si on adopte une approche pragmatique, le
+problème est intiment lié à la façon dont `ruby` gère les objets.
+
+Dans `ruby`, la mémoire utilisée par, mettons, une donnée « chaîne » (`char[]`)
+est directement allouée par `malloc()`. Cependant, les structures d'objets
+sont gérées d'une façon un peu particulière. `ruby` les alloue par groupes
+(NDT(Note du traducteur) : _clusters_ en anglais), puis les distribue à partir
+de ces groupes. Comme la diversité des types (et des tailles) de structures
+rend compliquée leur manipulation au moment de l'allocation, un type (`union`)
+combinant toutes les structures `RVALUE` a été déclaré, et c'est un tableau
+de ce type qui est manipulé. Comme la taille de ce type vaut celle de son plus
+grand membre, s'il n'y a qu'une seule grande structure, beaucoup d'espace reste
+inutilisé. C'est pourquoi maximiser le regroupement des structures de tailles
+proches est avantageux. Les détails à propos de `RVALUE` seront expliqués dans
+le chapitre 5 « Ramasse-miette. »
+
+De façon générale, la structure la plus utilisée est `struct RString`. Ensuite
+viennent dans les programmes les structures `struct RArray` (tableau), `RHash`
+(tableau associatif), `RObject` (objet défini par l'utilisateur), etc. Il faut
+noter que `struct RObject` n'utilise pour espace que `struct RBasic` plus un
+pointeur, tandis que  `struct RString`, `RArray` et `RHash` utilisent l'espace
+de `RBasic` plus trois pointeurs. Cela signifie que si on place un `struct
+RObject` dans l'entité partagée (groupe), l'espace pour deux pointeurs est
+inutilisé. De façon analogue, si `RString` avait par exemple quatre pointeurs,
+`RObject` utiliserait moins de la moitié de la taille de l'entité partagée, ce
+qui représenterait, vous vous en doutez, un certain gaspillage.
+
+Ainsi, les mérites souvent attribués à `iv_tbl` sont plus ou moins de sauver
+de la mémoire et d'accélérer le proccessus général. Toutefois, on ne sait pas
+si elle est utilisée souvent ou non. Le fait est que `generic_iv_tbl` n'a été
+introduite qu'à partir de `ruby` 1.2, il n'était donc pas possible d'utiliser
+des variables d'instances pour `String` ou `Array` à l'époque. Néanmoins, ça
+ne représentait pas vraiment un problème, si bien que gaspiller autant de
+mémoire pour cette seule fonctionnalité peut sembler stupide.
+
+Si vous prenez tous ces éléments en considération, vous pouvez conclure que
+l'augmentation de la taille des structures n'est pas spécialement bénéfique.
+
+h3. `rb_ivar_get()`
+
+Nous avons vu la fonction `rb_ivar_set()` qui définie des variables, aussi
+regardons rapidement comment en prendre connaissance.
+
+▼ `rb_ivar_get()`
+<pre class="longlist">
+ 960  VALUE
+ 961  rb_ivar_get(obj, id)
+ 962      VALUE obj;
+ 963      ID id;
+ 964  {
+ 965      VALUE val;
+ 966
+ 967      switch (TYPE(obj)) {
+     /* (A) */
+ 968        case T_OBJECT:
+ 969        case T_CLASS:
+ 970        case T_MODULE:
+ 971          if (ROBJECT(obj)->iv_tbl &&
+                 st_lookup(ROBJECT(obj)->iv_tbl, id, &val))
+ 972              return val;
+ 973          break;
+     /* (B) */
+ 974        default:
+ 975          if (FL_TEST(obj, FL_EXIVAR) || rb_special_const_p(obj))
+ 976              return generic_ivar_get(obj, id);
+ 977          break;
+ 978      }
+     /* (C) */
+ 979      rb_warning("instance variable %s not initialized", rb_id2name(id));
+ 980
+ 981      return Qnil;
+ 982  }
+
+(variable.c)
+</pre>
+
+La structure de la fonction est strictement la même.
+
+(A) Pour `struct RObject` ou `RClass`, nous recherchons la variable dans
+`iv_tbl`. Comme `iv_tbl` peut très bien être `NULL`, nous devons effectuer
+une vérification avant de l'utiliser. Puis, si `st_lookup()` trouve une
+relation, elle retourne vrai, si bien que l'ensemble du `if` peut être lu
+comme « si la variable d'instance a été définie, retourner sa valeur .»
+
+(C) Si aucune correspondance n'est trouvée, ie. si nous essayons de lire une
+variable d'instance qui n'a pas été définie, nous quittons d'abord la clause
+`if`, puis, le `switch`. `rb_warning()` se charge ensuite de propager un
+avertissement et `nil` est retourné, car Ruby permet de lire des variables
+d'instances qui n'ont pas encore été définie.
+
+(B) Autre possibilité, si la structure n'est ni `struct RObject` ni `RClass`,
+la recherche de variable d'instance est effectuée dans `generic_iv_tbl`. La
+fonction de `generic_ivar_get()` coule de source, aussi m'abstiendrais-je de
+l'expliquer. Concentrez-vous plutôt sur le `if`.
+
+Je vous ai déjà dit que `generic_ivar_set()` définit le drapeau `FL_EXIVAR`
+pour accélérer la vérification.
+
+À quoi sert `rb_special_const_p()` ? Cette fonction retourne vrai lorsque son
+paramètre `obj` ne pointe pas vers une structure. Comme l'absence de structure
+signifie l'absence de `basic.flags`, aucun drapeau ne peut être défini, donc
+`FL_xxxx()` retournerait toujours faux. C'est pourquoi ces objets doivent être
+traités à part.
+
+h2. Structures des objets
+
+Dans cette section, nous allons voire de façon simple ce que les structures
+d'objets contiennent d'important et comment elles sont gérées.
+
+h3. `struct RString`
+
+`struct RString` est la structure des instances de la classe `String` et de
+ses sous-classes.
+
+▼ `struct RString`
+<pre class="longlist">
+ 314  struct RString {
+ 315      struct RBasic basic;
+ 316      long len;
+ 317      char *ptr;
+ 318      union {
+ 319          long capa;
+ 320          VALUE shared;
+ 321      } aux;
+ 322  };
+
+(ruby.h)
+</pre>
+
+`prt` est un pointeur vers la chaîne et `len` la longueur de la chaîne. Très
+classique.
+
+Plutôt qu'une chaîne de caractères à proprement parler, une chaîne Ruby est
+plus un tableau de d'octets, qui peut contenir tout octet dont `NUL`. Ainsi,
+lorsque vous réfléchissez au niveau Ruby, terminer la chaîne par `NUL` n'a
+aucun sens. Les fonctions C réclamant ce `NUL`, par soucis de commodité ce
+`NUL` est présent, mais il n'est pas comptabilisé dans `len`.
+
+Lorsque vous traitez une chaîne en provenance de l'interprétateur ou d'une
+librairie d'extension, vous pouvez écrire `RSTRING(str)->ptr` ou, de façon
+équivalente, `RSTRING(str)->len`, pour accéder à `ptr` et `len`. Mais il y a
+quand même quelques points sur lesquels il faut faire attention :
+
+# vous devez d'abord vérifier si `str` pointe vraiment sur une `struct RString` ;
+# vous pouvez lire les membres, mais pas les modifier ;
+# vous ne pouvez pas stocker `RSTRING(str)->ptr` dans quelque chose comme une
+variable locale, pour l'utiliser plus tard.
+
+Pourquoi cela ? Tout d'abord, il y a un principe de conception logicielle à
+respecter : ne pas toucher de façon arbitraire aux données de quelqu'un. Les
+fonctions d'interface existent pour une raison précise. Mais, au-delà de ça,
+il y a des arguments concrets pour que, dans l'architecture de `ruby`, il vous
+soit défendu de faire certaines choses comme consulter ou stocker un pointeur,
+ces arguments étant à liés au quatrième membre `aux`. Mais avant d'expliquer
+en détails l'utilisation de `aux`, quelques précisions sur les caractéristiques
+des chaînes en Ruby sont nécessaires.
+
+Les chaînes Ruby peuvent être modifiables (NDT(Note du traducteur) : _mutable_
+en anglais). Par modifiables, j'entends le fait qu'après le code suivant :
+
+<pre class="emlist">
+s = "str"        # créer une chaîne et l'assigner à s
+s.concat("ing")  # ajouter « ing » à la fin de l'objet chaîne
+p(s)             # afficher la chaîne
+</pre>
+
+l'objet pointé par s aura pour contenu final « `string`. » C'est un comportement
+différent de Java ou Python concernant les objets chaînes. Les `StringBuffer`
+de Java s'en rapprochent plus.
+
+Bien, et quel est le rapport avec notre problème ? En premier lieu, modifiable
+signifie que la longueur (`len`) de la chaîne peut changer. Nous allons devoir
+incrémenter ou décrémenter la mémoire allouée à chaque changement de longueur.
+Nous pouvons bien sûr utiliser `realloc()` pour cela, mais en général, `malloc()`
+et `realloc()` sont des opérations lourdes. Opérer un `realloc()` à chaque fois
+que la chaîne est modifiée est une charge bien lourde.
+
+C'est la raison pour laquelle la mémoire pointée par `ptr` est allouée avec
+une taille légèrement plus importante que `len`. À cause de cela, si la partie
+ajoutée à la chaîne peut tenir dans l'espace mémoire libre, aucun `realloc()`
+n'est nécessaire, ce qui augmente d'autant la rapidité d'exécution. Le membre
+de la structure `aux.capa` contient la longueur totale, place additionnelle
+en mémoire comprise.
+
+Qu'est-ce que représente l'autre membre `aux.shared` ? Il sert à accélérer
+la création de chaînes littérales. Considérez le programme Ruby suivant :
+
+<pre class="emlist">
+while true do  # répéter indéfiniement
+ a = "str"        # créer une chaîne de contenu « str » et l'assigner à a
+ a.concat("ing")  # ajouter « ing » à l'objet pointé par a
+ p(a)             # afficher "string"
+end
+</pre>
+
+Quel que soit le nombre de fois que vous répèterez cette boucle, la quatrième
+ligne `p` doit afficher « `string`. » En définitive, le code `"str"` devra
+créer, à chaque fois, une chaîne contenant un `char[]` différent. Si bien que,
+si un grand nombre de chaîne sont similaires par leur contenu, de nombreuses
+copies inutiles de `char[]` seront créer à maintes reprises. Il serait plus
+judicieux de partager un seul et même `char[]`.
+
+Le petit tour de passe-passe qui autorise cela est `aux.shared`. Les objets
+chaîne créés avec un littéral utilisent un `char[]` partagé. Lorsqu'une
+modification survient, la chaîne est copiée dans une mémoire non partagée,
+et le changement s'opère sur cette nouvelle copie. Cette technique s'appelle
+"_copy-on-write_". Lorsqu'un `char[]` partagé est utilisé par un objet, le
+drapeau `ELTS_SHARED` est défini dans le `basic.flags` de la structure de cet
+objet ; `aux.shared` contient lui l'objet original. `ELTS` est sans doute
+l'abbréviation de "_ELemenTS_".
+
+Ces disgressions terminées, revenons-en à `RSTRING(str)->ptr`. Même si la
+simple consultation du pointeur est valide, vous ne devez en aucun cas le
+modifier, d'abord parce que la valeur de `len` ou `capa` ne serait plus en
+accord avec le contenu de la chaîne, et ensuite parce si la modification
+portait sur une chaîne créée par un littéral, vous seriez dans le cas de
+figure où `aux.shared` doit être séparé.
+
+To finish this section about `RString`, let's write some examples how to use
+it. `str` is a `VALUE` that points to `RString`.
+
+Pour terminer cette section sur `RString`, quelques exemples concrets sur
+son utilisation — `str` est un `VALUE` pointant vers `RString` :
+
+<pre class="emlist">
+RSTRING(str)->len;               /* longueur */
+RSTRING(str)->ptr[0];            /* premier caractère */
+str = rb_str_new("content", 7);  /* créer une chaîne avec « content » pour contenu
+                                   le second paramètre est la longueur */
+str = rb_str_new2("content");    /* créer une chaîne de contenu « content »
+                                   sa longueur est calculée avec strlen() */
+rb_str_cat2(str, "end");         /* Concaténer une chaîne C à une chaîne Ruby */
+</pre>
+
+h3. `struct RArray`
+
+`struct RArray` est la structure la classe Ruby `Array` pour les tableaux.
+
+▼ `struct RArray`
+<pre class="longlist">
+ 324  struct RArray {
+ 325      struct RBasic basic;
+ 326      long len;
+ 327      union {
+ 328          long capa;
+ 329          VALUE shared;
+ 330      } aux;
+ 331      VALUE *ptr;
+ 332  };
+
+(ruby.h)
+</pre>
+
+Hormis le type de `ptr`, cette structure est quasi-équivalente à `struct
+RString`. `ptr` pointe vers le contenu du tableau, et `len` représente la
+longueur de ce dernier. `aux` joue exactement le même rôle que dans `struct
+RString`. `aux.capa` est la taille « réelle » de la mémoire pointée par
+`ptr`, et si `ptr` est partagé, `aux.shared` stocke l'objet tableau original
+et partagé.
+
+D'après cette structure, il est clair que le `Array` de Ruby est un tableau
+et non une liste. Cela signifie que, lorsque le nombre d'élements du tableau
+augmente, un `realloc()` doit être fait, et que si un élément doit être inséré
+à une autre place que la fin, c'est un `memmove()` qui sera effectué. Mais,
+même en procédant ainsi, l'exécution est tellement rapide que c'est tout à
+fait pertinent et impressionant sur les machines actuelles.
+
+Tout cela explique pourquoi la façon d'accéder aux éléments est similaire à
+`RString`. Vous pouvez consulter `RARRAY(arr)->ptr` et `RARRAY(arr)->len`,
+mais pas les définir ou modifier, etc. Juste, quelques exemples simples :
+
+<pre class="emlist">
+/* Gérer un tableau depuis le C */
+VALUE ary;
+ary = rb_ary_new();             /* crée un tableau vide */
+rb_ary_push(ary, INT2FIX(9));   /* insère un 9 en Ruby */
+RARRAY(ary)->ptr[0];            /* regarde ce qui se trouve à l'index 0 */
+rb_p(RARRAY(ary)->ptr[0]);      /* effectue p sur ary[0] (le résultat est 9) */
+
+# Gérer un tableau en Ruby
+ary = []      # crée un tableau vide
+ary.push(9)   # insère 9
+ary[0]        # regarde ce qui se trouve à l'index 0
+p(ary[0])     # effectue p sur ary[0] (le résultat est 9)
+</pre>
+
+h3. `struct RRegexp`
+
+C'est la structure des instances de la classe d'expressions régulières, `Regexp`.
+
+▼ `struct RRegexp`
+<pre class="longlist">
+ 334  struct RRegexp {
+ 335      struct RBasic basic;
+ 336      struct re_pattern_buffer *ptr;
+ 337      long len;
+ 338      char *str;
+ 339  };
+
+(ruby.h)
+</pre>
+
+`ptr` est l'expression régulière après compilation. `str` est la chaîne avant
+compilation (le code source de l'expression régulière), et `len` la longueur
+de la chaîne.
+
+Étant donné que la gestion de l'objet `Regexp` ne figure pas dans ce livre,
+nous n'allons pas voir comment l'utiliser. Même si vous l'utilisez dans des
+librairies d'extensions, tant que vous ne cherchez pas à les utiliser de façon
+détournée, les fonctions d'interface sont suffisantes.
+
+h3. `struct RHash`
+
+`struct RHash` est la structure des objets Ruby `Hash`.
+
+▼ `struct RHash`
+<pre class="longlist">
+ 341  struct RHash {
+ 342      struct RBasic basic;
+ 343      struct st_table *tbl;
+ 344      int iter_lev;
+ 345      VALUE ifnone;
+ 346  };
+
+(ruby.h)
+</pre>
+
+Il s'agit d'une interface à `struct st_table`. `st_table` sera vue en détails
+dans le prochain chapitre, « Noms et table de nommage. »
+
+`ifnone` est la valeur attribuée à une clé sans valeur explicite. Elle vaut
+`nil` par défaut. `iter_lev` sert à rendre un table autoréférentielle
+(_multithread safe_).
+
+h3. `struct RFile`
+
+`struct RFile` est la structure des instances de la classe standard IO
+(NDT(Note du traducteur) : _Input/Output_, classe d'entrées/sortie) et de
+ses sous-classes.
+
+▼ `struct RFile`
+<pre class="longlist">
+ 348  struct RFile {
+ 349      struct RBasic basic;
+ 350      struct OpenFile *fptr;
+ 351  };
+
+(ruby.h)
+</pre>
+
+▼ `OpenFile`
+<pre class="longlist">
+ 19  typedef struct OpenFile {
+ 20      FILE *f;                    /* pointeur stdio pour read/write */
+ 21      FILE *f2;                   /* pointeur additionnel pour les pipes rw */
+ 22      int mode;                   /* drapeaux de mode */
+ 23      int pid;                    /* pid de l'enfant (pour les pipes) */
+ 24      int lineno;                 /* nombre de lignes lues */
+ 25      char *path;                 /* chemin du nom du fichier */
+ 26      void (*finalize) _((struct OpenFile*)); /* version finale du proc */
+ 27  } OpenFile;
+
+(rubyio.h)
+</pre>
+
+Tous les membres ont été transférés dans `struct OpenFile`. Comme les instances
+d'objets `IO` ne sont pas légions, cette façon de faire convient. L'objectif
+de chacun des membres est explicité en commentaire. _Grosso modo_, c'est une
+interface pour le `stdio` du C.
+
+h3. `struct RData`
+
+`struct RData` est d'une substance quelque peu différente de ce que nous avons
+vu jusque là. C'est la structure permettant l'implémentation de librairies
+d'extensions.
+
+Bien sûr, des structures pour les classes créées dans les librairies d'extension
+sont requises, mais étant donné que ces structures dépendent de classes créées
+arbitrairement, il est impossible de prévoir leur taille. C'esy pourquoi une
+« structure pour gérer un pointeur vers une structure définie par l'utilisateur »
+a été créée coté `ruby`. `RData` est cette structure.
+
+▼ `struct RData`
+<pre class="longlist">
+ 353  struct RData {
+ 354      struct RBasic basic;
+ 355      void (*dmark) _((void*));
+ 356      void (*dfree) _((void*));
+ 357      void *data;
+ 358  };
+
+(ruby.h)
+</pre>
+
+`data` est un pointeur vers la structure définie par l'utilisateur ;
+`dfree` est la fonction pour libérer cette structure ;
+`dmark` est la fonction relative au « marquage » de l'algorithme de marquage
+et nettoyage (NDT(Note du traducteur) : _mark and sweep_ en anglais), lorsque
+celui-la advient.
+
+Expliquer `struct RData` est, pour le moment encore, trop compliqué, aussi
+contentons-nous de regarder sa représentation (figure 8). Vous aurez une
+explication détaillée de chacun de ses membres au chapitre 5, « Ramasse-
+miette. »
+
+!images/ch_object_rdata.png(Représentation de `struct RData`)!

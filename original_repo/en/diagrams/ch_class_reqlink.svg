@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="250.00000px"
+   height="120.00000px"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.42"
+   sodipodi:docbase="/d/pr/rhg/rhg/en/diagrams"
+   sodipodi:docname="ch_class_reqlink.svg"
+   inkscape:export-filename="/d/pr/rhg/rhg/images/ch_class_reqlink.jpg"
+   inkscape:export-xdpi="180.00000"
+   inkscape:export-ydpi="180.00000">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.9798990"
+     inkscape:cx="294.04458"
+     inkscape:cy="9.6984739"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     inkscape:window-width="1600"
+     inkscape:window-height="1126"
+     inkscape:window-x="0"
+     inkscape:window-y="26" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:#afd2f7;fill-opacity:1.0000000;fill-rule:evenodd;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000"
+       d="M 12.656250,9.3488263 L 12.656250,22.161326 L 12.625000,22.161326 L 12.625000,30.755076 L 10.125000,30.755076 L 16.843750,38.661326 L 23.562500,30.755076 L 21.031250,30.755076 L 21.031250,22.223826 L 120.15625,22.223826 L 120.15625,9.3488263 L 12.656250,9.3488263 z "
+       id="rect1332" />
+    <g
+       id="g2643"
+       transform="translate(3.535534,3.535534)">
+      <text
+         id="text1306"
+         y="15.339924"
+         x="12.833982"
+         style="font-size:8.2956991px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="15.339924"
+           x="12.833982"
+           id="tspan1308"
+           sodipodi:role="line">Need for static methods</tspan></text>
+    </g>
+    <g
+       id="g2653"
+       transform="translate(-2.535895,6.883749)">
+      <rect
+         y="60.939835"
+         x="113.39285"
+         height="12.857142"
+         width="128.57143"
+         id="rect2066"
+         style="fill:#afd2f7;fill-opacity:1.0000000;fill-rule:evenodd;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000" />
+      <text
+         id="text1322"
+         y="69.657013"
+         x="116.5118"
+         style="font-size:8.2956991px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           id="tspan1326"
+           y="69.657013"
+           x="116.51180"
+           sodipodi:role="line">Classes are first-class objects</tspan></text>
+    </g>
+    <g
+       id="g2628"
+       transform="translate(3.535534,8.205857)">
+      <rect
+         y="88.839058"
+         x="9.1071424"
+         height="12.857142"
+         width="86.785713"
+         id="rect2068"
+         style="fill:#afd2f7;fill-opacity:1.0000000;fill-rule:evenodd;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000" />
+      <text
+         id="text1328"
+         y="97.556236"
+         x="13.101323"
+         style="font-size:8.2956991px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="97.556236"
+           x="13.101323"
+           id="tspan1330"
+           sodipodi:role="line">Singleton classes</tspan></text>
+    </g>
+    <path
+       style="fill:#afd2f7;fill-opacity:1.0000000;fill-rule:evenodd;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000"
+       d="M 194.59375,38.630076 L 194.59375,51.473826 L 194.62500,51.473826 L 194.62500,59.942576 L 192.12500,59.942576 L 198.84375,67.848826 L 205.56250,59.942576 L 203.03125,59.942576 L 203.03125,51.473826 L 239.43750,51.473826 L 239.43750,38.630076 L 194.59375,38.630076 z "
+       id="rect2062" />
+    <text
+       xml:space="preserve"
+       style="font-size:8.0367212px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+       x="204.25414"
+       y="46.639378"
+       id="text1318"
+       transform="scale(0.968782,1.032224)"><tspan
+         sodipodi:role="line"
+         id="tspan1320"
+         x="204.25414"
+         y="46.639378">Reflection</tspan></text>
+    <path
+       style="fill:#afd2f7;fill-opacity:1.0000000;fill-rule:evenodd;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000"
+       d="M 12.656250,38.630076 L 12.656250,51.473826 L 12.687500,51.473826 L 12.687500,59.942576 L 10.156250,59.942576 L 16.875000,67.848826 L 23.593750,59.942576 L 21.062500,59.942576 L 21.062500,51.473826 L 111.75000,51.473826 L 111.75000,59.942576 L 109.21875,59.942576 L 115.93750,67.848826 L 122.65625,59.942576 L 120.12500,59.942576 L 120.12500,51.473826 L 120.15625,51.473826 L 120.15625,38.630076 L 12.656250,38.630076 z "
+       id="rect2060" />
+    <text
+       xml:space="preserve"
+       style="font-size:8.2956991px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+       x="16.717871"
+       y="48.142296"
+       id="text1310"><tspan
+         sodipodi:role="line"
+         id="tspan1312"
+         x="16.717871"
+         y="48.142296">Class methods</tspan></text>
+    <path
+       style="fill:#afd2f7;fill-opacity:1.0000000;fill-rule:evenodd;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000"
+       d="M 12.656250,67.817576 L 12.656250,80.567576 L 12.656250,80.692576 L 12.656250,89.161326 L 10.125000,89.161326 L 16.875000,97.036326 L 23.593750,89.161326 L 21.062500,89.161326 L 21.062500,80.692576 L 99.437500,80.692576 L 99.437500,67.817576 L 12.656250,67.817576 z "
+       id="rect2064" />
+    <text
+       xml:space="preserve"
+       style="font-size:8.2956991px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+       x="16.636858"
+       y="76.540756"
+       id="text1314"><tspan
+         sodipodi:role="line"
+         id="tspan1316"
+         x="16.636858"
+         y="76.540756">Singleton methods</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:8.0000000px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125.00000%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1.0000000;stroke:none;stroke-width:1.0000000px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1.0000000;font-family:Bitstream Vera Sans"
+       x="3.0304575"
+       y="132.62691"
+       id="text1324"
+       sodipodi:linespacing="125.00000%"><tspan
+         sodipodi:role="line"
+         id="tspan1327"
+         x="3.0304575"
+         y="132.62691">!images/ch_class_reqlink.jpg(Requirements dependencies)!</tspan></text>
+  </g>
+</svg>

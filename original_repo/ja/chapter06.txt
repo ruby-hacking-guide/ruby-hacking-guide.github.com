@@ -1,0 +1,643 @@
+h1. 第6章 変数と定数
+
+h2. 本章の概要
+
+h3. Rubyの変数
+
+Rubyには以下のようにかなりたくさんの種類の変数・定数が存在する。
+スコープの大きいほうから並べよう。
+
+* グローバル変数
+* 定数
+* クラス変数
+* インスタンス変数
+* ローカル変数
+
+インスタンス変数については既に第2章『オブジェクト』で説明した。
+本章では残りのうち
+
+* グローバル変数
+* クラス変数
+* 定数
+
+について解説する。
+また残るローカル変数については第三部で話す。
+
+h3. 変数関連API
+
+本章の解析対象は`variable.c`である。
+まずそこからエントリポイントとなるAPIを紹介しておこう。
+
+<pre class="emlist">
+VALUE rb_iv_get(VALUE obj, char *name)
+VALUE rb_ivar_get(VALUE obj, ID name)
+VALUE rb_iv_set(VALUE obj, char *name, VALUE val)
+VALUE rb_ivar_set(VALUE obj, ID name, VALUE val)
+</pre>
+
+これは既に解説したインスタンス変数のアクセスAPI。
+`variable.c`に定義があるのでいちおう載せておいた。
+
+<pre class="emlist">
+VALUE rb_cv_get(VALUE klass, char *name)
+VALUE rb_cvar_get(VALUE klass, ID name)
+VALUE rb_cv_set(VALUE klass, char *name, VALUE val)
+VALUE rb_cvar_set(VALUE klass, ID name, VALUE val)
+</pre>
+
+クラス変数アクセスAPI。クラス変数はクラスに属するものなのでクラスを引
+数に取る。どうやら変数アクセスAPIには`rb_Xv`と`rb_Xvar`というパターンがあ
+るらしい。その違いは変数名の型で、ユーザが使いやすいほう(`char*`)が関
+数名が短く、比較的内部用のもの(`ID`)は関数名が長い。
+
+<pre class="emlist">
+VALUE rb_const_get(VALUE klass, ID name)
+VALUE rb_const_get_at(VALUE klass, ID name)
+VALUE rb_const_set(VALUE klass, ID name, VALUE val)
+</pre>
+
+定数アクセスAPI。
+定数もクラスに属するのでクラスを引数に取る。
+`rb_const_get()`はスーパークラスも辿り、
+`rb_const_get_at()`は辿らない。つまり引数の`klass`だけを調べる。
+
+<pre class="emlist">
+struct global_entry *rb_global_entry(ID name)
+VALUE rb_gv_get(char *name)
+VALUE rb_gvar_get(struct global_entry *ent)
+VALUE rb_gv_set(char *name, VALUE val)
+VALUE rb_gvar_set(struct global_entry *ent, VALUE val)
+</pre>
+
+そして最後にグローバル変数アクセスAPI。`struct global_entry`を
+介しているところが他の変数とちょっと違う。そうなっている理由は
+実装のところで話す。
+
+h3. 本章のポイント
+
+変数の話をするうえで最大のポイントとなるのは、「変数はどこに、どうやっ
+て記憶されているか」である。つまりデータ構造だ。
+
+二番目に参照の振舞いである。Rubyの変数や定数はどれも継承してみたり
+「外」を見てみたりとクセが強いので、
+「こういうときはこうなるんだから実装はこうじゃなきゃおかしい!」
+というふうに仕様と比べ合わせて考えていくと迷わずに済む。
+
+h2. クラス変数
+
+クラス変数はクラスに属する変数である。クラスと、そのインスタンスの
+両方からアクセスできる。JavaやC++で言うスタティック変数だ。だが
+「インスタンスから」とか「クラスから」とかいうのは評価器にある情報で
+あって今はそういうものは存在していない。だからCレベルからはアクセス
+範囲なんてないのと同じである。ここでは変数の格納形式だけに焦点を
+絞って見ていこう。
+
+h3. 参照
+
+クラス変数を参照するAPIは`rb_cvar_get()`である。そしてまた短縮版の
+`rb_cv_get()`もあり、関数名が長いほうが`ID`、短いほうが`char*`を
+引数に取る。`ID`をとるほうがより内部に近いと考えられるから、
+`rb_cvar_get()`を見てみよう。
+
+▼ `rb_cvar_get()`
+<pre class="longlist">
+1508  VALUE
+1509  rb_cvar_get(klass, id)
+1510      VALUE klass;
+1511      ID id;
+1512  {
+1513      VALUE value;
+1514      VALUE tmp;
+1515
+1516      tmp = klass;
+1517      while (tmp) {
+1518          if (RCLASS(tmp)->iv_tbl) {
+1519              if (st_lookup(RCLASS(tmp)->iv_tbl,id,&value)) {
+1520                  if (RTEST(ruby_verbose)) {
+1521                      cvar_override_check(id, tmp);
+1522                  }
+1523                  return value;
+1524              }
+1525          }
+1526          tmp = RCLASS(tmp)->super;
+1527      }
+1528
+1529      rb_name_error(id,"uninitialized class variable %s in %s",
+1530                    rb_id2name(id), rb_class2name(klass));
+1531      return Qnil;                /* not reached */
+1532  }
+
+(variable.c)
+</pre>
+
+この関数は`klass`のクラス変数`id`を参照する。
+
+`rb_raise()`、つまりエラー処理をする関数は基本的に無視してよいという
+ことは既に書いた。今回出てきた`rb_name_error()`も例外を発生する関数
+なので同じく無視できる。基本的に`ruby`では`_error`で終わる関数は全て
+例外を発生すると考えてよい。
+
+そういうものを全部削ると、`klass`のスーパークラスを順番に辿りつつ
+`iv_tbl`を検索するだけだな、とわかる。……と言うところで「えっ?」と
+思ってほしい。`iv_tbl`というのはインスタンス変数のテーブルのはずだ。
+ということは、実はクラス変数はインスタンス変数のテーブルに記憶されて
+いるのである。
+
+こういうことができるのは`ID`を作るときの同値判定に変数のプリフィクスまで
+含まれているからだ。つまり`"@var"`と`"@@var"`は`rb_intern()`すると別の`ID`に
+なるからだ。またRubyレベルでは変数の種類がプリフィクスだけで決まるので
+`@var`という名前のクラス変数を参照することはどうやってもできない。だから
+こそこんなことをしてもうまくいく。
+
+h2. 定数
+
+唐突だがここで`struct RClass`のメンバを思い出してほしい。
+`struct RClass`にあるのは、`basic`を除くと
+
+* `VALUE super`
+* `struct st_table *iv_tbl`
+* `struct st_table *m_tbl`
+
+の三つだ。そこで考えるに、
+
+# 定数はクラスに所属する
+# 定数専用のテーブルが`struct RClass`にあるようには見えない
+# クラス変数は`iv_tbl`に同居していた
+
+じゃあもしかして定数も……
+
+h3. 代入
+
+`rb_const_set()`は定数に値を代入する関数である。
+クラス`klass`の定数`id`に、`val`をセットする。
+
+▼ `rb_const_set()`
+<pre class="longlist">
+1377  void
+1378  rb_const_set(klass, id, val)
+1379      VALUE klass;
+1380      ID id;
+1381      VALUE val;
+1382  {
+1383      mod_av_set(klass, id, val, Qtrue);
+1384  }
+
+(variable.c)
+</pre>
+
+ほとんど`mod_av_set()`に委譲されている。
+
+▼ `mod_av_set()`
+<pre class="longlist">
+1352  static void
+1353  mod_av_set(klass, id, val, isconst)
+1354      VALUE klass;
+1355      ID id;
+1356      VALUE val;
+1357      int isconst;
+1358  {
+1359      char *dest = isconst ? "constant" : "class variable";
+1360
+1361      if (!OBJ_TAINTED(klass) && rb_safe_level() >= 4)
+1362          rb_raise(rb_eSecurityError, "Insecure: can't set %s", dest);
+1363      if (OBJ_FROZEN(klass)) rb_error_frozen("class/module");
+1364      if (!RCLASS(klass)->iv_tbl) {
+1365          RCLASS(klass)->iv_tbl = st_init_numtable();
+1366      }
+1367      else if (isconst) {
+1368          if (st_lookup(RCLASS(klass)->iv_tbl, id, 0) ||
+1369              (klass == rb_cObject && st_lookup(rb_class_tbl, id, 0))) {
+1370              rb_warn("already initialized %s %s", dest, rb_id2name(id));
+1371          }
+1372      }
+1373
+1374      st_insert(RCLASS(klass)->iv_tbl, id, val);
+1375  }
+
+(variable.c)
+</pre>
+
+今回も例外チェックと警告は無視する。具体的には`rb_raise()`と
+`rb_error_frozen()`、`rb_warn()`を無視する。すると残りはこれだけだ。
+
+▼ `mod_av_set()`(重要部分のみ)
+<pre class="longlist">
+    if (!RCLASS(klass)->iv_tbl) {
+        RCLASS(klass)->iv_tbl = st_init_numtable();
+    }
+    st_insert(RCLASS(klass)->iv_tbl, id, val);
+</pre>
+
+ここから明らかなように、定数もやはりインスタンス
+変数テーブルに同居しているのだ。つまり`struct RClass`の
+`iv_tbl`には
+
+# クラス自身のインスタンス変数
+# クラス変数
+# 定数
+
+の三種類がごっちゃになって記憶されているということになる。
+
+h3. 参照
+
+以上で定数の格納形式についてはわかった。
+今度は頭を切り替えて定数の仕様のほうに目を向けていくことにしよう。
+
+h4. `rb_const_get()`
+
+定数を参照する関数`rb_const_get()`を読んでみる。
+この関数はクラス`klass`の定数`id`を参照する。
+
+▼ `rb_const_get()`
+<pre class="longlist">
+1156  VALUE
+1157  rb_const_get(klass, id)
+1158      VALUE klass;
+1159      ID id;
+1160  {
+1161      VALUE value, tmp;
+1162      int mod_retry = 0;
+1163
+1164      tmp = klass;
+1165    retry:
+1166      while (tmp) {
+1167          if (RCLASS(tmp)->iv_tbl &&
+                  st_lookup(RCLASS(tmp)->iv_tbl,id,&value)) {
+1168              return value;
+1169          }
+1170          if (tmp == rb_cObject && top_const_get(id, &value))
+                  return value;
+1171          tmp = RCLASS(tmp)->super;
+1172      }
+1173      if (!mod_retry && BUILTIN_TYPE(klass) == T_MODULE) {
+1174          mod_retry = 1;
+1175          tmp = rb_cObject;
+1176          goto retry;
+1177      }
+1178
+1179      /* Uninitialized constant */
+1180      if (klass && klass != rb_cObject) {
+1181          rb_name_error(id, "uninitialized constant %s at %s",
+1182                        rb_id2name(id),
+1183                        RSTRING(rb_class_path(klass))->ptr);
+1184      }
+1185      else { /* global_uninitialized */
+1186          rb_name_error(id, "uninitialized constant %s",rb_id2name(id));
+1187      }
+1188      return Qnil;                /* not reached */
+1189  }
+
+(variable.c)
+</pre>
+
+いろいろあって邪魔だ。まず少なくとも後半の`rb_name_error()`はまとめて
+消せる。真ん中の`mod_retry`のあたりはどうもモジュールを特別扱いしている
+ようだ。これもとりあえず消してしまおう。するとここまで減らせる。
+
+▼ `rb_const_get`(簡約版)
+<pre class="longlist">
+VALUE
+rb_const_get(klass, id)
+    VALUE klass;
+    ID id;
+{
+    VALUE value, tmp;
+
+    tmp = klass;
+    while (tmp) {
+        if (RCLASS(tmp)->iv_tbl && st_lookup(RCLASS(tmp)->iv_tbl,id,&value)) {
+            return value;
+        }
+        if (tmp == rb_cObject && top_const_get(id, &value)) return value;
+        tmp = RCLASS(tmp)->super;
+    }
+}
+</pre>
+
+これなら一目でわかる。引数の`klass`のスーパークラスをたどりながら
+`iv_tbl`を検索しているのだ。つまり
+
+<pre class="emlist">
+class A
+  Const = "ok"
+end
+class B < A
+  p(Const)    # 参照できる
+end
+</pre>
+
+という場合だ。
+
+唯一気になるのは`top_const_get()`のところである。`rb_cObject`で限定してい
+るのだから`top`は「トップレベル」の意味だろう。念のため確認しておくと、
+トップレベルでのクラスは`Object`だ。それは「`C`を定義するクラス文の中では
+クラスが`C`になる」というのと同じ意味で、「トップレベルのクラスは
+`Object`」なのである。
+
+<pre class="emlist">
+# トップレベルのクラスはObject
+class A
+  # クラスはA
+  class B
+    # クラスはB
+  end
+end
+</pre>
+
+つまり`top_const_get()`はトップレベル限定で特殊な操作をするようだと
+予想できる。
+
+h4. `top_const_get()`
+
+その`top_const_get()`を見てみよう。
+定数`id`を検索し`klassp`に書き込んで返す。
+
+▼ `top_const_get()`
+<pre class="longlist">
+1102  static int
+1103  top_const_get(id, klassp)
+1104      ID id;
+1105      VALUE *klassp;
+1106  {
+1107      /* pre-defined class */
+1108      if (st_lookup(rb_class_tbl, id, klassp)) return Qtrue;
+1109
+1110      /* autoload */
+1111      if (autoload_tbl && st_lookup(autoload_tbl, id, 0)) {
+1112          rb_autoload_load(id);
+1113          *klassp = rb_const_get(rb_cObject, id);
+1114          return Qtrue;
+1115      }
+1116      return Qfalse;
+1117  }
+
+(variable.c)
+</pre>
+
+`rb_class_tbl`は第4章『クラスとモジュール』で出てきた。トップレベルのクラスを記
+憶しているテーブルである。例えば組み込みクラスの`String`や`Array`など
+がここに登録されている。だからトップレベルの定数を検索するときはこのテー
+ブルも探さなければ不十分だ。
+
+それから次にあるのがオートロード関係の関数である。トップレベルの定数は
+初めて参照されたときに自動的にロードするライブラリを登録できるようになっ
+ている。例えばこんなふうに使う。
+
+<pre class="emlist">
+autoload(:VeryBigClass, "verybigclass")   # 中でVeryBigClassを定義する
+</pre>
+
+こう書いておくと`VeryBigClass`を初めて参照したときにライブラリ
+`verybigclass`が`require`され、その中で`VeryBigClass`が定義されていれば何事
+もなく続きを実行できる。ライブラリが大きすぎてロードに時
+間がかかるときに使うと効果的である。
+
+このオートロードを処理しているのが`rb_autoload_xxxx()`だ。本書ではオート
+ロードについてはこれ以上話さない。どうも近いうちに仕様の大変更がありそ
+うだからだ。
+
+h4. 外のクラス?
+
+ところで、外のクラスの定数を検索するコードはどこに行ってしまったのだろ
+う。定数はまず外方向を検索し、次にスーパークラス方向を検索するはずだ。
+
+実は、それがまだ説明できない部分なのである。外のクラスはプログラムの場
+所によって変わる。つまりプログラムのコンテキストに依存しているのだ。だ
+から評価器の内部状態を合わせて考えないと扱えないのである。具体的に言う
+と、外のクラスまで扱っているのは`eval.c`の`ev_const_get()`だ。定数の話には
+第三部でケリをつけることにしよう。
+
+h2. グローバル変数
+
+h3. 総論
+
+グローバル変数はどこからでもアクセスできる。それは逆に言うと
+一切アクセスを限定する必要がないということである。どこに所属
+するわけでもないからテーブルが一ヶ所あればそれで済むし、なんの
+チェックもしなくていい。だから実装は非常に簡単だ。
+
+それでもややコードが多いのは、Rubyのグローバル変数にはただの
+変数とは言い難いギミックが搭載されているからだ。
+こんな機能があるのはグローバル変数だけである。
+
+* アクセスをフックできる
+* `alias`文で別名を定義できる
+
+簡単に説明しよう。
+
+h4. 変数エイリアス
+
+<pre class="emlist">
+alias $newname $oldname
+</pre>
+
+これで以後`$newname`を`$oldname`の代わりに使えるようになる。
+
+変数の`alias`は主に「記号変数」対策のために用意されている。
+記号変数とはPerlから継承した`$=`とか`$0`といった変数のことだ。
+`$=`は文字列比較のとき大文字小文字の区別をするかどうか決める。
+`$0`はメインのRubyプログラム名を表す。記号変数はこの他にもいくつか
+あるのだが、なにぶん名前部分が一文字なので、Perlなどを知らない人に
+とっては覚えるのも大変である。そこでもう少しわかりやすい
+別名をつけられるようにしてあるというわけだ。
+
+とは言っても現在はそもそも記号変数自体推奨されなくなってきており、
+次々と適当なモジュールの特異メソッドなどに移されている。
+`$=`などは2.0では機能自体が廃止されそうな雰囲気だ。
+
+h4. フック
+
+グローバル変数では変数への代入・参照をフックできる。
+
+いちおうRubyレベルからもフックはかけられるのだが、どちらかというと
+Cレベルで`$KCODE`のようなシステム用の特殊変数を用意するために使いたかった
+のではないかと思う。`$KCODE`というのはそのときインタプリタが扱う文字列
+エンコーディングを入れておく変数で、厳密には`"EUC"`とか`"UTF8"`という
+ような特定の文字列しか代入できない。ただそれでは面倒なので`"e"`とか
+`"u"`でも代用できるようになっている。
+
+<pre class="emlist">
+p($KCODE)      # "NONE"(デフォルト)
+$KCODE = "e"
+p($KCODE)      # "EUC"
+$KCODE = "u"
+p($KCODE)      # "UTF8"
+</pre>
+
+代入にフックをかけられればこういうことも簡単にできるのは
+わかると思う。ちなみに`$KCODE`のKは漢字のKらしい。
+
+まあ`alias`にしてもフックにしても、そもそもグローバル変数自体ロクに使わ
+ないのでどうでもいい機能だ。使わない機能は適当に終わらせて、パーサや評
+価器の解析にページを使いたいものである。そういうわけで以下の説明も投げ
+遣り度85%で進行したいと思う。
+
+h3. データ構造
+
+変数の仕組みを見ていくときのポイントは格納形式だと言った。
+まずはグローバル変数に使われる構造をしっかり把握してほしい。
+
+▼ グローバル変数のデータ構造
+<pre class="longlist">
+  21  static st_table *rb_global_tbl;
+
+ 334  struct global_entry {
+ 335      struct global_variable *var;
+ 336      ID id;
+ 337  };
+
+ 324  struct global_variable {
+ 325      int   counter;      /* リファレンスカウンタ */
+ 326      void *data;         /* 変数の値 */
+ 327      VALUE (*getter)();  /* 変数の参照に使う関数 */
+ 328      void  (*setter)();  /* 変数への代入で使う関数 */
+ 329      void  (*marker)();  /* 変数をマークする関数 */
+ 330      int block_trace;
+ 331      struct trace_var *trace;
+ 332  };
+
+(variable.c)
+</pre>
+
+`rb_global_tbl`がメインテーブルである。全てのグローバル変数は
+差別なくこのテーブルに記憶される。テーブルのキーはもちろん
+変数名(`ID`)。そして値は`struct global_entry`と`struct global_variable`が
+セットでグローバル変数一つを表現している(図1)。
+
+!images/ch_variable_gvar.jpg(グローバル変数テーブルの実行時イメージ)!
+
+変数を表現する構造体が二つに分かれているのは`alias`の実装のためである。
+`alias`が設定されたら、二つの`global_entry`から同じ
+`struct global_variable`を指すようにする。
+
+また`struct global_variable`のメンバ`counter`はその時に必要になるリファ
+レンスカウンタである。リファレンスカウントの概念は既に前章『ガ-ベージコレクション』で
+説明した。簡単に復習すると、これから参照しようとするときにはカウンタを
+ +1 する。もういらなくなったらカウンタを -1 する。カウントがゼロになっ
+たらもう誰も必要としていないので`free()`していい。
+
+それから最後に、Rubyレベルでフックが定義されているときはさらに
+`struct global_variable`のメンバ`trace`に`sturct trace_var`のリストが
+格納されるのだが、これについては話さない。`struct trace_var`ごと省略する。
+
+h3. 参照
+
+グローバル変数は参照だけ見ればだいたいわかってしまう。
+参照のための関数は`rb_gv_get()`と`rb_gvar_get()`である。
+
+▼ `rb_gv_get() rb_gvar_get()`
+<pre class="longlist">
+ 716  VALUE
+ 717  rb_gv_get(name)
+ 718      const char *name;
+ 719  {
+ 720      struct global_entry *entry;
+ 721
+ 722      entry = rb_global_entry(global_id(name));
+ 723      return rb_gvar_get(entry);
+ 724  }
+
+ 649  VALUE
+ 650  rb_gvar_get(entry)
+ 651      struct global_entry *entry;
+ 652  {
+ 653      struct global_variable *var = entry->var;
+ 654      return (*var->getter)(entry->id, var->data, var);
+ 655  }
+
+(variable.c)
+</pre>
+
+実質的な内容は`rb_global_entry()`にたらいまわしされているが、やろうと
+していることはなんとなくわかる。`global_id()`は`char*`を`ID`に変換して、
+ついでにそれがグローバル変数の`ID`かチェックしてくれる関数だろう。
+`(*var->getter)(...)`はもちろん関数ポインタ`var->getter`を使った
+関数呼び出しである。`p`が関数ポインタとすると`(*p)(arg)`でその
+関数を呼び出せるのだった。
+
+なんにしても本筋は`rb_global_entry()`だ。
+
+▼ `rb_global_entry()`
+<pre class="longlist">
+ 351  struct global_entry*
+ 352  rb_global_entry(id)
+ 353      ID id;
+ 354  {
+ 355      struct global_entry *entry;
+ 356
+ 357      if (!st_lookup(rb_global_tbl, id, &entry)) {
+ 358          struct global_variable *var;
+ 359          entry = ALLOC(struct global_entry);
+ 360          st_add_direct(rb_global_tbl, id, entry);
+ 361          var = ALLOC(struct global_variable);
+ 362          entry->id = id;
+ 363          entry->var = var;
+ 364          var->counter = 1;
+ 365          var->data = 0;
+ 366          var->getter = undef_getter;
+ 367          var->setter = undef_setter;
+ 368          var->marker = undef_marker;
+ 369
+ 370          var->block_trace = 0;
+ 371          var->trace = 0;
+ 372      }
+ 373      return entry;
+ 374  }
+
+(variable.c)
+</pre>
+
+本処理は冒頭の`st_lookup()`だけで、あとのコードは新規エントリを作って
+(そして登録して)いる。つまり初めて参照したときに自動的にエントリが
+作られるわけだから、`rb_global_entry()`は`NULL`を返すということがない。
+
+こういう仕組みになっているのは主に高速化のためである。パースの時点でグ
+ローバル変数を見付けたら対応する`struct global_entry`を取得してしまい、
+変数を参照するときは(`rb_gv_get()`を使って)エントリから値を取るだけ、
+というふうにするのだ。
+
+さてコードの続きをもう少し。`var->getter`などに`undef_xxxx`という
+関数ポインタがセットされている。`undef`、つまりグローバル変数が
+まだ未定義(undefined)である状態の`setter/getter/marker`、という
+意味だろう。
+
+`undef_getter()`では警告だけ出して`nil`を返す。グローバル変数は定義せずに
+参照できるからだ。`undef_setter()`がちょっと面白いので見てみよう。
+
+▼ `undef_setter()`
+<pre class="longlist">
+ 385  static void
+ 386  undef_setter(val, id, data, var)
+ 387      VALUE val;
+ 388      ID id;
+ 389      void *data;
+ 390      struct global_variable *var;
+ 391  {
+ 392      var->getter = val_getter;
+ 393      var->setter = val_setter;
+ 394      var->marker = val_marker;
+ 395
+ 396      var->data = (void*)val;
+ 397  }
+
+(variable.c)
+</pre>
+
+`val_getter()`は値を`entry->data`から取って返すだけ、
+`val_setter()`は値を`entry->data`に入れるだけの関数だ。
+このようにハンドラを登録しなおすことで未定義という
+特別な状態を特別扱いすることなく処理できる(図2)。
+うまいやりかただ。
+
+!images/ch_variable_gaccess.jpg(グローバル変数の代入・参照)!
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

@@ -1,0 +1,1713 @@
+h1. 第5章 ガ-ベージコレクション
+
+h2. プログラムの実行時イメージ
+
+突然だが、本章を始めるに先立ち、プログラム実行時のメモリ空間の状態につ
+いて予習をしておこうと思う。この章ではコンピュータの低レベルな部分にか
+なり踏み込んでいくことになるので、あらかじめある程度の知識を仕入れてお
+かないと太刀打ちできないのだ。それにこの後の章になればいずれ必要になっ
+てくる。ここで一回やってしまえば後が楽だ。
+
+h3. セグメント
+
+一般的なCプログラムではメモリ空間の中に以下の部分を持つ。
+
+# テキスト領域
+# スタティック変数やグローバル変数の置場
+# マシンスタック
+# ヒープ
+
+テキスト領域はコードが置いてあるところ。二番目は見ての通り。マシンスタッ
+クには関数の引数やローカル変数が積まれる。ヒープは`malloc()`で割り当てて
+もらうところだ。
+
+三つめのマシンスタックについてもう少し話そう。マシン「スタック」と言う
+くらいだから当然スタック構造をしている。つまりどんどん新しいものを上に
+積み重ねていく。実際にマシンスタックに値を積むときは`int`一個などの細か
+い単位で積むわけだが、論理的に見るともう少し大きい単位がある。それを
+スタックフレーム(stack frame)と言う。
+
+スタックフレームは一つが関数呼び出し一回に対応している。つまり関数を呼
+ぶとスタックフレームを一つ積む。`return`するとスタックフレームを一つ降
+ろす。思い切り単純化すればマシンスタックの様子は図1のよう
+に図示できる。
+
+!images/ch_gc_macstack.jpg(マシンスタック)!
+
+この図ではスタックの先端を「上」と書いたが、マシンスタッ
+クは必ずしも低位アドレスから高位アドレスに伸びるとは限らない。例えば
+x86マシンではスタックは低位アドレスに向かって伸びる。
+
+h3. `alloca()`
+
+`malloc()`を使うとヒープ上に任意の大きさのメモリ領域をもらうことができた。
+`alloca()`はそれのマシンスタック版である。ただし`malloc()`と違って
+`alloca()`で割り当てたメモリは解放しなくていい。あるいは、関数の`return`と
+ともに解放「されてしまう」と言ったほうがいいだろうか。だから割り当てた
+値を関数の返り値にしたりすることはできない。「ローカル変数を指すポイン
+タを返してはいけない」というのと同じである。
+
+ここまではいい。長さを実行時に変えられる配列をローカルに割り当てられる、
+という程度のことだ。
+
+だが世の中にはネイティブの`alloca()`がない環境というのがある。そういう場
+合でも`alloca()`は使いたいと思う人は多いので、同じ働きをする関数がCで
+書いてあったりする。ただこの場合は「解放する必要がない」という特徴だけ
+が実装されていて、マシンスタック上にメモリを割り当ててくれるとは限らな
+い。と言うか、普通は取らない。それができるならそもそもネイティブの
+`alloca()`が実装できるということだからだ。
+
+`alloca()`をCで実装するにはどうするか。一番簡単な実装だと、まず
+普通に`malloc()`でメモリを割り当てる。そして`alloca()`を呼び出した関数と
+割り当てたアドレスの組をグローバルなリストに覚えさせておく。
+あとは次に`alloca()`が呼び出されたときについでにそのリストをチェックし、
+既に終了した関数で割り当てたメモリがあったら`free()`で解放すればいい
+(図2)。
+
+!images/ch_gc_calloca.jpg(Cで実装した`alloca()`の動き)!
+
+`ruby`の`missing/alloca.c`がこのエミュレート版`alloca()`の実装例だ。
+
+h2. 概要
+
+ここからがようやく本章の主題、ガーベージコレクションの話題だ。
+
+h3. GCとは
+
+オブジェクトは普通、メモリのうえにある。当然の帰結として、オブジェクトを
+たくさん作ればメモリをたくさん使う。メモリが無限に使えるなら何も問題
+はないのだが、現実にはメモリの量には必ず限りがある。だから使わなくなっ
+たメモリは回収して再利用しなければいけない。もう少し具体的に言うならば、
+`malloc()`でもらったメモリは`free()`で返さなければいけない。
+
+しかし`malloc()`と`free()`の管理を全てプログラマにやらせるとプログラマはと
+ても大変である。特にオブジェクト指向プログラムではオブジェクト同士が相
+互に参照しあっていて、どのタイミングでメモリを解放すればいいのかわかり
+にくい。
+
+そこでガーベージコレクションだ。
+ガーベージコレクション(garbage collection、以下GC)とは、
+必要のなくなった
+メモリを自動的に検出し解放してくれる機能である。GCさえ
+あれば「いつ`free()`したらいいんだー」などと悩む必要がない。これがあるのと
+ないのではプログラムの書きやすさが格段に違うのだ。
+
+ところで、以前何かの本に「使えるメモリがこまぎれになっているのを整理す
+るのがGC」と書いてあったのを見たことがある。これは「
+コンパクション(compaction)」と言う作業だ。
+コンパクトになるからコンパクションである。
+コンパクションをやるとメモリキャッシュにヒットしやすくなるのでスピード
+アップにそれなりの効果があるのだが、これはGCの主目的ではない。GCの目的
+はあくまでメモリの回収である。実際、メモリの回収はしてもコンパクション
+はしないGCも多い。`ruby`のGCもコンパクションはしない。
+
+では具体的にどんなシステムでGCが使えるのだろうか。
+CやC++ではアドオンとして使える
+Boehm GC\footnote{Boehm GC `http://www.hpl.hp.com/personal/Hans_Boehm/gc`}と
+いうものがある。
+またJavaやPerl、Python、C#、Eiffelなど最近の言語にとってはGCは
+標準装備だ。そしてもちろんRubyにもGCがある。
+本章では`ruby`のGCの詳細を追っていこう。対象となるファイルは`gc.c`である。
+
+h3. GCとは何をすることか
+
+GCのアルゴリズムについて説明するにはまず、「GCとは何であるか」を
+説明しないといけない。つまり「必要のないメモリ」とはどういう状態に
+あるメモリか、ということである。
+
+話を具体的にするためにオブジェクトとリンクだけに構造を単純化しよう。
+つまり図3のような状態になっている。
+
+!images/ch_gc_objects.jpg(オブジェクト)!
+
+グローバル変数から指されていたり、言語のスタック上にあるオブジェクトは
+まず「確実に必要」である。さらにそのオブジェクトのインスタンス変数など
+から指されているオブジェクトも必要である。さらにそれらのオブジェトから
+リンクを辿って到達できるオブジェクトもやはり必要だ。
+
+これをもう少し論理的に言うと、「確実に必要」なオブジェクトを起点として
+再帰的にリンクを辿ったときに到達できるオブジェクト全てが必要である、と
+なる。図4にそのイメージを書いた。線の左側にあるのが「確実
+に必要なオブジェクト」で、そこから辿れるものが黒く塗りつぶされている。
+この黒く塗られたオブジェクトが必要なものだ。残りは解放してよい。
+
+!images/ch_gc_gcimage.jpg(必要なオブジェクトと必要でないオブジェクト)!
+
+専門用語だとこの「確実に必要なオブジェクト」のことを
+「GCのルート」と呼ぶことになっている。
+必要なオブジェクトを辿った結果として見えて
+くるツリー構造の根(root)になるからだ。
+
+h3. マーク&amp;スイープ
+
+GCが最初に実装されたのはLispなのだが、そのLispで最初に実現されたGCつまり
+世界で最初のGCを、マーク&amp;スイープ(mark&amp;sweep)型GCと言う。
+`ruby`のGCもこの一種である。
+
+マーク&amp;スイープGCのイメージは「必要なオブジェクト」の定義にかなり近い。
+まずルートオブジェクトに「マーク」を付ける。そしてこれを出発点として、
+そこから辿れるオブジェクトに片端から「マーク」をつけていく。この全体が
+「マーク」フェイズだ。
+
+そしてこれ以上辿れるオブジェクトがない、とわかったところでオブジェクト溜まりを
+全部チェックし、マークのついていないオブジェクトを全部解放する(スイー
+プ)。スイープはマインスイーパのsweep(掃除する)だ。
+
+長所は二点である。
+
+* GCの実装以外の場所ではGCのことを(あまり)考えなくていい
+* サイクルも解放できる(サイクルについてはリファレンスカウントの項を参照)
+
+短所もやはり二点。
+
+* スイープのため最低一度はオブジェクトを全部なめる必要がある
+* GCの負荷が一点に集中する
+
+エディタのEmacsを使っているとときどき「`Garbage collecting...`」と出て
+反応が全くなくなることがあるのだが、そのときにGCをやっているのである。
+これは二点目の短所がモロに出る例だ。ただしこの点はアルゴリズムを変える
+ことで改善できる(インクリメンタルGCと言う)。
+
+h3. ストップ&amp;コピー
+
+ストップ&amp;コピーGCはマーク&amp;スイープGCの変形である。まずオブジェクト領域
+を複数用意する。ここでは話を単純にするために領域AとBの二つとしよう。そ
+して片方に「active」マークを付けておき、オブジェクトを生成するときは
+activeなほうにだけ作る(図5)。
+
+!images/ch_gc_stop2.jpg(ストップ&amp;コピー(1))!
+
+いざGCが発動したら、マーク&amp;スイープと同じようにルートから辿る。しかし
+マークの代わりにオブジェクト自体をもう一つの領域に移動してしまう
+(図6)。リンクを全て辿り終えたらAに残ったオブジェクトは捨て、
+今度はBをactiveにすればいい。
+
+!images/ch_gc_stop3.jpg(ストップ&amp;コピー(2))!
+
+ストップ&amp;コピーGCの長所もまた二点ある。
+
+* メモリ回収と同時にコンパクションができる
+* しかも参照しているオブジェクト同士が近くに来るので
+キャッシュにヒットしやすくなる
+
+短所も二点だ。
+
+* オブジェクト領域が倍以上必要になる
+* オブジェクトの位置が変わってしまう
+
+世の中うまいことばかりではないようだ。
+
+h3. リファレンスカウント
+
+リファレンスカウントはこれまでのものとは少し違い、到達チェックを
+コードのあちこちに分散させるようになっている。
+
+まずオブジェクト一つ一つに整数のカウンタを付ける。変数や配列経由で参照
+するときは参照するオブジェクトのカウンタを増やす。参照するのをやめたら
+同時にカウンタを減らす。それでカウンタが0になったら解放する。それが
+リファレンスカウントという方式である(図7)。
+
+!images/ch_gc_refcnt.jpg(リファレンスカウント)!
+
+この方式も長所が二点。
+
+* GCの負荷がプログラム全体に分散される
+* 必要なくなったオブジェクトが即座に解放される
+
+そして短所も二点だ。
+
+* カウンタ操作を忘れがち
+* 単純にやるとサイクルを解放できない
+
+二点目について解説しておこう。サイクル(cycle)とは
+図8のように参照関係が循環している状態のことだ。
+こうなってしまうとカウンタが減らなくなり、絶対に解放されなくなる。
+
+!images/ch_gc_cycle.jpg(サイクル)!
+
+ちなみに最新のPython(2.2)はリファレンスカウントGCを使っているのだが
+サイクルも解放できる。しかしそれはリファレンスカウント自体の力ではなく、
+ときどきマーク&amp;スイープGCをやってチェックしているからだ。
+
+h2. オブジェクトの管理
+
+`ruby`のGCはRubyオブジェクトのみが対象だ。しかも`ruby`が生成し
+管理しているオブジェクトでないといけない。逆に言うとユーザが
+勝手に割りあてたメモリまでは面倒を見てくれないということだ。
+例えば以下の関数は例え`ruby`が稼働中だろうとメモリリークを起こす。
+
+<pre class="emlist">
+void not_ok()
+{
+    malloc(1024);  /* メモリをもらっては捨てる */
+}
+</pre>
+
+しかし以下の関数はメモリリークを起こさない。
+
+<pre class="emlist">
+void this_is_ok()
+{
+    rb_ary_new();  /* Rubyの配列を作っては捨てる */
+}
+</pre>
+
+`rb_ary_new()`はその中で`ruby`の正式インターフェイスを使ってメ
+モリを割り当てるので`ruby`のGCの管理下にあり、`ruby`が面倒を
+見てくれる。
+
+h3. `struct RVALUE`
+
+オブジェクトの実体は構造体だったから、オブジェクトの管理とは即ちこの構
+造体の管理だ。もちろん非ポインタの`Fixnum Symbol nil true false`などは
+例外だが、しつこくなるのでそれはいちいち書かない。
+
+実体の構造体のサイズは型ごとにマチマチだが、恐らく管理が大変になるの
+を避けるためだろう、組み込みクラスの構造体の共用体を宣言して、メモリを
+さわるときは常にその共用体を介して扱うようになっている。その共用
+体の宣言がこれだ。
+
+▼ `RVALUE`
+<pre class="longlist">
+ 211  typedef struct RVALUE {
+ 212      union {
+ 213          struct {
+ 214              unsigned long flags;   /* 使われていないときはゼロ */
+ 215              struct RVALUE *next;
+ 216          } free;
+ 217          struct RBasic  basic;
+ 218          struct RObject object;
+ 219          struct RClass  klass;
+ 220          struct RFloat  flonum;
+ 221          struct RString string;
+ 222          struct RArray  array;
+ 223          struct RRegexp regexp;
+ 224          struct RHash   hash;
+ 225          struct RData   data;
+ 226          struct RStruct rstruct;
+ 227          struct RBignum bignum;
+ 228          struct RFile   file;
+ 229          struct RNode   node;
+ 230          struct RMatch  match;
+ 231          struct RVarmap varmap;
+ 232          struct SCOPE   scope;
+ 233      } as;
+ 234  } RVALUE;
+
+(gc.c)
+</pre>
+
+`struct RVALUE`は要素が一つだけの構造体だ。`union`を直接使わないのはデバッ
+グや将来の拡張のときに簡単にメンバを増やせるようにするためだそうである。
+
+まずは共用体の最初の要素`free.flags`に注目しよう。コメントには「使われて
+いないときはゼロ」と書いてあるが本当だろうか。まだ使っているオブジェク
+トの`free.flags`が偶然0になることはないのだろうか。
+
+第2章『オブジェクト』で見たように、全てのオブジェクト構造体は
+`struct RBasic`を最初の要素に持つ。だから共用体のどの要素からアクセスしても
+`obj->as.free.flags`は`obj->as.basic.flags`と書くのと同じことだ。そして
+オブジェクトは必ずフラグに構造体型フラグ(`T_STRING`など)を持ち、しか
+もそのフラグは全て0以外なので、「生きている」オブジェクトのフラグが偶
+然0になることはない。つまりフラグを0にすることで「死に」オブジェクトを
+表すのは必要十分だと確かめられる。
+
+h3. オブジェクトヒープ
+
+全てのオブジェクト構造体のためのメモリはグローバル変数
+`heaps`にまとめられている。以下これをオブジェクトヒープと呼ぼう。
+
+▼ オブジェクトヒープ
+<pre class="longlist">
+ 239  #define HEAPS_INCREMENT 10
+ 240  static RVALUE **heaps;
+ 241  static int heaps_length = 0;
+ 242  static int heaps_used   = 0;
+ 243
+ 244  #define HEAP_MIN_SLOTS 10000
+ 245  static int *heaps_limits;
+ 246  static int heap_slots = HEAP_MIN_SLOTS;
+
+(gc.c)
+</pre>
+
+`heaps`は`struct RVALUE`の配列の配列だ。`heapS`だから、入っている配列
+一本一本が`heap`だろう。`heap`の要素一つ一つは`slot`である
+(図9)。
+
+!images/ch_gc_heapitems.jpg(`heaps`、`heap`、`slot`)!
+
+`heaps`の長さは`heaps_length`で可変。そのうち実際に使っているスロット
+の数が`heaps_used`。`heap`一本の長さは対応する`heaps_limits[index]`に
+入っている。つまりオブジェクトヒープの構造は図10のようになる
+だろう。
+
+!images/ch_gc_heaps.jpg(メモリ上に展開された`heaps`の概念図)!
+
+この構造には必然性がある。例えば全ての構造体を一つの配列に配置すると
+メモリ空間は最もコンパクトになるが、アドレスが変わってしまう恐れがある
+ので`realloc()`できない。`VALUE`は単なるポインタだからだ。
+
+とあるJavaの実装だと`VALUE`に相当するものがアドレスではなくてオブジェク
+トのインデックスで、ポインタテーブルを経由して取り扱われるようになって
+いるため、オブジェクトを移動することができる。ただしその場合は
+オブジェクトアクセスのたびに配列のインデクシングが入るので多少
+パフォーマンスは落ちる。
+
+一方`RVALUE`へのポインタ(つまり`VALUE`)の一次元配列にした場合はどうだろ
+うか。これは一見うまくいきそうだが、GCのときに困ってしまう。というのも、
+これから詳しく書くとおり、`ruby`のGCでは「`VALUE`(`RVALUE`へのポインタ)ら
+しい」整数を知る必要があるからだ。全ての`RVALUE`がてんでバラバラのアドレ
+スに配置されていると、全ての`RVALUE`のアドレスと「ポインタかもしれない」
+整数全てをそれぞれ比較しなければいけない。これではGCの速度は O(n^2) 以
+上のオーダーになり、容認できない。
+
+以上の条件から、オブジェクトヒープはある程度アドレスにまとまりがあり、
+しかも位置と総量は制限されないような構造にするのがよいというわけだ。
+
+h3. `freelist`
+
+使われていない`RVALUE`は`freelist`から始まるリンク
+リストに一本につながれて管理される。`RVALUE`の`as.free.next`はそのため
+に使うリンクだ。
+
+▼ `freelist`
+<pre class="longlist">
+ 236  static RVALUE *freelist = 0;
+
+(gc.c)
+</pre>
+
+h3. `add_heap()`
+
+データ構造がわかったところでヒープを追加する関数`add_heap()`を読んでみよ
+う。この関数はやたらと本筋以外の記述がうるさいので、エラー処理やキャス
+トを省いて簡単にしたものを見せる。
+
+▼ `add_heap()`(簡約版)
+<pre class="longlist">
+static void
+add_heap()
+{
+    RVALUE *p, *pend;
+
+    /* 必要ならheapsをのばす */
+    if (heaps_used == heaps_length) {
+        heaps_length += HEAPS_INCREMENT;
+        heaps        = realloc(heaps,        heaps_length * sizeof(RVALUE*));
+        heaps_limits = realloc(heaps_limits, heaps_length * sizeof(int));
+    }
+
+    /* heapを一つ増やす */
+    p = heaps[heaps_used] = malloc(sizeof(RVALUE) * heap_slots);
+    heaps_limits[heaps_used] = heap_slots;
+    pend = p + heap_slots;
+    if (lomem == 0 || lomem > p) lomem = p;
+    if (himem < pend) himem = pend;
+    heaps_used++;
+    heap_slots *= 1.8;
+
+    /* 割り当てたRVALUEをfreelistにつなぐ */
+    while (p < pend) {
+        p->as.free.flags = 0;
+        p->as.free.next = freelist;
+        freelist = p;
+        p++;
+    }
+}
+</pre>
+
+以下の点を確認しておいてほしい。
+
+* `heap`の長さは`heap_slots`
+* その`heap_slots`は`heap`が一つ増えるごとに1.8倍になっていく
+* `heaps[i]`の長さ(ヒープ生成時の`heap_slots`の値)は`heaps_limits[i]`に格納されている
+
+また`lomem`と`himem`を変更しているのもこの関数だけなので、この関数だけから
+仕組みが理解できる。この変数にはオブジェクトヒープの最下位アドレスと
+最上位アドレスが入っているのである。この値はあとで「`VALUE`っぽい」整数を
+判断するときに使う。
+
+h3. `rb_newobj()`
+
+以上の点を総合して考えればオブジェクトを生成する方法はすぐにわかる。
+`freelist`につながれている`RVALUE`があればそれを使い、なければGCするか、
+ヒープを増やせばよい。オブジェクト生成を行う関数`rb_newobj()`を読んで
+確かめてみよう。
+
+▼ `rb_newobj()`
+<pre class="longlist">
+ 297  VALUE
+ 298  rb_newobj()
+ 299  {
+ 300      VALUE obj;
+ 301
+ 302      if (!freelist) rb_gc();
+ 303
+ 304      obj = (VALUE)freelist;
+ 305      freelist = freelist->as.free.next;
+ 306      MEMZERO((void*)obj, RVALUE, 1);
+ 307      return obj;
+ 308  }
+
+(gc.c)
+</pre>
+
+`freelist`が0、つまり余りの構造体がないならGCを起動して領域を作る。
+もし一つもオブジェクトを回収できなくても、`rb_gc()`の中で新しい
+領域を割り当ててくれるので問題ない。そして`freelist`から構造体を
+一つ取り出し、`MEMZERO()`で0を充填、それを返す、となる。
+
+h2. マーク
+
+説明したとおり、`ruby`のGCはマーク&amp;スイープである。マークとは具体的には
+`FL_MARK`フラグをセットすることだ。使われている`VALUE`を探しては
+`FL_MARK`をセットし、これで全部調べたと思ったらオブジェクトヒープを見て、
+`FL_MARK`がセットされていないオブジェクトを解放すればいい。
+
+h3. `rb_gc_mark()`
+
+`rb_gc_mark()`はオブジェクトを再帰的にマークする関数である。
+
+▼ `rb_gc_mark()`
+<pre class="longlist">
+ 573  void
+ 574  rb_gc_mark(ptr)
+ 575      VALUE ptr;
+ 576  {
+ 577      int ret;
+ 578      register RVALUE *obj = RANY(ptr);
+ 579
+ 580      if (rb_special_const_p(ptr)) return; /* special const not marked */
+ 581      if (obj->as.basic.flags == 0) return;       /* free cell */
+ 582      if (obj->as.basic.flags & FL_MARK) return;  /* already marked */
+ 583
+ 584      obj->as.basic.flags |= FL_MARK;
+ 585
+ 586      CHECK_STACK(ret);
+ 587      if (ret) {
+ 588          if (!mark_stack_overflow) {
+ 589              if (mark_stack_ptr - mark_stack < MARK_STACK_MAX) {
+ 590                  *mark_stack_ptr = ptr;
+ 591                  mark_stack_ptr++;
+ 592              }
+ 593              else {
+ 594                  mark_stack_overflow = 1;
+ 595              }
+ 596          }
+ 597      }
+ 598      else {
+ 599          rb_gc_mark_children(ptr);
+ 600      }
+ 601  }
+
+(gc.c)
+</pre>
+
+まず`RANY()`の定義はこうだ。特にたいしたものではない。
+
+▼ `RANY()`
+<pre class="longlist">
+ 295  #define RANY(o) ((RVALUE*)(o))
+
+(gc.c)
+</pre>
+
+最初にポインタでないものや既に解放したオブジェクトのチェック、
+マークされたオブジェクトの再帰チェックがあり、
+
+<pre class="emlist">
+obj->as.basic.flags |= FL_MARK;
+</pre>
+
+で`obj`(つまり関数の引数`ptr`)がマークされる。
+そうしたら次は`obj`から出ている参照を辿ってマークする番である。
+`rb_gc_mark_children()`がそれだ。
+
+その他の、`CHECK_STACK()`から始まっていろいろと書いてあるのはマシンスタッ
+ク溢れを防ぐための仕掛けである。`rb_gc_mark()`は再帰呼び出しを使ってオブ
+ジェクトをマークするため、大きなオブジェクトクラスタがあるとマシンスタッ
+クの長さが足りなくなることがある。そこでスタックが溢れそうだったら再帰
+を中止してオブジェクトをグローバルなリストに積んでおき、あとからもう一
+度マークしなおすようにしているのだ。
+このコードは本筋ではないので省略する。
+
+h3. `rb_gc_mark_children()`
+
+さて、`rb_gc_mark_children()`だが、
+内部の型をひたすら並べて地道にマークしているだけなので長いうえに
+面白くない。ここでは単純な列挙部分は省略して載せる。
+
+▼ `rb_gc_mark_children()`
+<pre class="longlist">
+ 603  void
+ 604  rb_gc_mark_children(ptr)
+ 605      VALUE ptr;
+ 606  {
+ 607      register RVALUE *obj = RANY(ptr);
+ 608
+ 609      if (FL_TEST(obj, FL_EXIVAR)) {
+ 610          rb_mark_generic_ivar((VALUE)obj);
+ 611      }
+ 612
+ 613      switch (obj->as.basic.flags & T_MASK) {
+ 614        case T_NIL:
+ 615        case T_FIXNUM:
+ 616          rb_bug("rb_gc_mark() called for broken object");
+ 617          break;
+ 618
+ 619        case T_NODE:
+ 620          mark_source_filename(obj->as.node.nd_file);
+ 621          switch (nd_type(obj)) {
+ 622            case NODE_IF:         /* 1,2,3 */
+ 623            case NODE_FOR:
+ 624            case NODE_ITER:
+                /* …………省略………… */
+ 749          }
+ 750          return;   /* basic.klassはマークしなくてよい */
+ 751      }
+ 752
+ 753      rb_gc_mark(obj->as.basic.klass);
+ 754      switch (obj->as.basic.flags & T_MASK) {
+ 755        case T_ICLASS:
+ 756        case T_CLASS:
+ 757        case T_MODULE:
+ 758          rb_gc_mark(obj->as.klass.super);
+ 759          rb_mark_tbl(obj->as.klass.m_tbl);
+ 760          rb_mark_tbl(obj->as.klass.iv_tbl);
+ 761          break;
+ 762
+ 763        case T_ARRAY:
+ 764          if (FL_TEST(obj, ELTS_SHARED)) {
+ 765              rb_gc_mark(obj->as.array.aux.shared);
+ 766          }
+ 767          else {
+ 768              long i, len = obj->as.array.len;
+ 769              VALUE *ptr = obj->as.array.ptr;
+ 770
+ 771              for (i=0; i < len; i++) {
+ 772                  rb_gc_mark(*ptr++);
+ 773              }
+ 774          }
+ 775          break;
+
+            /* …………省略………… */
+
+ 837        default:
+ 838          rb_bug("rb_gc_mark(): unknown data type 0x%x(0x%x) %s",
+ 839                 obj->as.basic.flags & T_MASK, obj,
+ 840                 is_pointer_to_heap(obj) ? "corrupted object"
+                                             : "non object");
+ 841      }
+ 842  }
+
+(gc.c)
+</pre>
+
+`rb_gc_mark()`を再帰呼び出ししているな、ということだけ確認してもらえば
+それでよい。省略した部分には`NODE`と`T_xxxx`がそれぞれ列挙されている。
+`NODE`のことは第二部で紹介する。
+
+それと`T_DATA`(拡張ライブラリに使う構造体)のマークの部分だけは確認した
+いことがあるので見ておこう。このコードは二つめの`switch`文から抜粋した。
+
+▼ `rb_gc_mark_children()`-`T_DATA`
+<pre class="longlist">
+ 789        case T_DATA:
+ 790          if (obj->as.data.dmark) (*obj->as.data.dmark)(DATA_PTR(obj));
+ 791          break;
+
+(gc.c)
+</pre>
+
+ここは`rb_gc_mark()`やその類似の関数ではなく、ユーザからもらった関数
+`dmark`を使っている。その中ではもちろん`rb_gc_mark()`なりなんなりを使
+うだろうが、使わないこともありうる。例えば極端な場合で言うと、ユーザ
+定義のオブジェクトに`VALUE`が入っていないならマークする必要はないだろう。
+
+h3. `rb_gc()`
+
+ここまででオブジェクト単位の話は済んだので、ここからは全体を統轄する関数
+`rb_gc()`を見ていくことにする。ここでマークしているのが「必要だということが
+明らかに分かっているオブジェクト」つまり「GCのルート」だ。
+
+▼ `rb_gc()`
+<pre class="longlist">
+1110  void
+1111  rb_gc()
+1112  {
+1113      struct gc_list *list;
+1114      struct FRAME * volatile frame; /* gcc 2.7.2.3 -O2 bug??  */
+1115      jmp_buf save_regs_gc_mark;
+1116      SET_STACK_END;
+1117
+1118      if (dont_gc || during_gc) {
+1119          if (!freelist) {
+1120              add_heap();
+1121          }
+1122          return;
+1123      }
+
+          /* ……全てのルートをマークする…… */
+
+1183      gc_sweep();
+1184  }
+
+(gc.c)
+</pre>
+
+マークすべきルートはこの後で順番に見せていくが、一点だけ触れておこう。
+
+`ruby`ではCPUのレジスタやマシンスタックもルートとする。
+それはつまりCのローカル変数や引数も勝手にマークされるということだ。
+例えば
+
+<pre class="emlist">
+static int
+f(void)
+{
+    VALUE arr = rb_ary_new();
+
+    /* ……いろいろする…… */
+}
+</pre>
+
+というように、ただ変数に入れておくだけでそのオブジェクトは保護されるの
+だ。これは`ruby`のGCの非常に大きな特徴である。この機能があるからこそ
+`ruby`の拡張ライブラリは異様に書き易くなっているのだ。
+
+ただしもちろんスタックに置かれているのは`VALUE`ばかりではない。何の関係も
+ない値もたくさん存在する。そのあたりをどうやって解決しているのかがGCの
+実装を見ていくときの鍵だ。
+
+h3. Rubyスタック
+
+最初はインタプリタが使っている(`ruby`の)スタックフレームを
+マークする。第三部まで行けばこれが何者かはわかるので今はあまり
+深く考えなくてもいい。
+
+▼ Rubyスタックのマーク
+<pre class="longlist">
+1130      /* mark frame stack */
+1131      for (frame = ruby_frame; frame; frame = frame->prev) {
+1132          rb_gc_mark_frame(frame);
+1133          if (frame->tmp) {
+1134              struct FRAME *tmp = frame->tmp;
+1135              while (tmp) {
+1136                  rb_gc_mark_frame(tmp);
+1137                  tmp = tmp->prev;
+1138              }
+1139          }
+1140      }
+1141      rb_gc_mark((VALUE)ruby_class);
+1142      rb_gc_mark((VALUE)ruby_scope);
+1143      rb_gc_mark((VALUE)ruby_dyna_vars);
+
+(gc.c)
+</pre>
+
+`ruby_frame ruby_class ruby_scope ruby_dyna_vars`がそれぞれ評価器の
+スタックの先頭を指す変数で、それぞれその時点でのフレーム、クラススコープ、
+ローカル変数スコープ、ブロックローカル変数を保持している。
+
+h3. レジスタ
+
+次にCPUのレジスタをマークする。
+
+▼ レジスタのマーク
+<pre class="longlist">
+1148      FLUSH_REGISTER_WINDOWS;
+1149      /* ここで全てのレジスタがjmp_bufに保存されなければならない */
+1150      setjmp(save_regs_gc_mark);
+1151      mark_locations_array((VALUE*)save_regs_gc_mark,
+                               sizeof(save_regs_gc_mark) / sizeof(VALUE *));
+
+(gc.c)
+</pre>
+
+`FLUSH_REGISTER_WINDOWS`は特殊なので後にまわす。
+
+`setjmp()`は本当は遠隔ジャンプのための関数なのだけど、
+その副作用として引数(`jmp_buf`型の変数)にレジスタの内容を
+保存するようになっている。
+それを利用してレジスタの中身をマークしようというわけだ。
+このあたりはかなり裏技っぽい。
+
+ただしdjgppとHuman68kだけは特別扱いされている。
+djgppというのはDOS用の`gcc`環境。
+Human68kはシャープのX680x0シリーズのOSだ。
+この二つの環境では通常の`setjmp()`では全てのレジスタが書きこまれないよ
+うで、`setjmp()`を以下のようにインラインアセンブラで再定義して明示的にレジスタを書き出し
+ている。
+
+▼ オリジナル版`setjmp`
+<pre class="longlist">
+1072  #ifdef __GNUC__
+1073  #if defined(__human68k__) || defined(DJGPP)
+1074  #if defined(__human68k__)
+1075  typedef unsigned long rb_jmp_buf[8];
+1076  __asm__ (".even\n\                   2バイトアラインメント
+1077  _rb_setjmp:\n\                       関数rb_setjmp()のラベル
+1078          move.l  4(sp),a0\n\          第一引数をレジスタa0にロード
+1079          movem.l d3-d7/a3-a5,(a0)\n\  a0の指す先にレジスタをコピー
+1080          moveq.l #0,d0\n\             d0に0をセット(返り値)
+1081          rts");                       return
+1082  #ifdef setjmp
+1083  #undef setjmp
+1084  #endif
+1085  #else
+1086  #if defined(DJGPP)
+1087  typedef unsigned long rb_jmp_buf[6];
+1088  __asm__ (".align 4\n\                4バイトアラインメントを指示
+1089  _rb_setjmp:\n\                       関数rb_setjmp()のラベル
+1090          pushl   %ebp\n\              ebpをスタックにプッシュ
+1091          movl    %esp,%ebp\n\         スタックポインタをebpにセット
+1092          movl    8(%ebp),%ebp\n\      第一引数を拾いebpにセット
+1093          movl    %eax,(%ebp)\n\       以下、各レジスタを
+1094          movl    %ebx,4(%ebp)\n\        ebpの指す先にストア
+1095          movl    %ecx,8(%ebp)\n\
+1096          movl    %edx,12(%ebp)\n\
+1097          movl    %esi,16(%ebp)\n\
+1098          movl    %edi,20(%ebp)\n\
+1099          popl    %ebp\n\              ebpをスタックから復帰
+1100          xorl    %eax,%eax\n\         eaxに0をセット(返り値)
+1101          ret");                       return
+1102  #endif
+1103  #endif
+1104  int rb_setjmp (rb_jmp_buf);
+1105  #define jmp_buf rb_jmp_buf
+1106  #define setjmp rb_setjmp
+1107  #endif /* __human68k__ or DJGPP */
+1108  #endif /* __GNUC__ */
+
+(gc.c)
+</pre>
+
+アラインメント(alignment)というのはメモリに変数を置くときの
+制約のことだ。
+例えば32ビットマシンでは普通`int`は32ビットだが、メモリのど
+こからでも32ビット取り出せるわけでは必ずしもない。特にRISCマシンだと制
+約が強く、「4の倍数バイトから」とか「偶数バイトから」というふうに決め
+られている。そういう制約があるほうがメモリアクセスユニットを単純化でき
+る(その結果高速化できる)からだ。「4の倍数バイトから」という制約が
+あるなら「4バイトアラインメント」と呼ぶ。
+
+またdjgppやHuman68kの`cc`ではコンパイラが関数名の先頭にアンダーラインを
+付ける規約があるようだ。だからアセンブラでCの関数を書くときは自分で先
+頭にアンダーライン(`_`)を付けなければならない。このタイプの規約はライ
+ブラリ関数と名前が重複しないようにするための工夫だ。UNIXでも少し前までは
+アンダーラインを付けていたそうだが今はほぼなくなっている。
+
+さてここまででレジスタの中身を`jmp_buf`に書きだせたので、
+次のコードでマークする。
+
+▼ レジスタのマーク(再掲)
+<pre class="longlist">
+1151      mark_locations_array((VALUE*)save_regs_gc_mark,
+                               sizeof(save_regs_gc_mark) / sizeof(VALUE *));
+
+(gc.c)
+</pre>
+
+`mark_locations_array()`というのが初めて出てきた。
+これは別項目として見ておこう。
+
+h4. `mark_locations_array()`
+
+▼ `mark_locations_array()`
+<pre class="longlist">
+ 500  static void
+ 501  mark_locations_array(x, n)
+ 502      register VALUE *x;
+ 503      register long n;
+ 504  {
+ 505      while (n--) {
+ 506          if (is_pointer_to_heap((void *)*x)) {
+ 507              rb_gc_mark(*x);
+ 508          }
+ 509          x++;
+ 510      }
+ 511  }
+
+(gc.c)
+</pre>
+
+この関数は配列をまとめてマークするための関数なのだが、これまでのマーク
+関数とは少し違う。これまでは確実に`VALUE`がある(オブジェクトを指すポイ
+ンタだ)とわかっている場所をマークしてきた。しかし今度マークしようとし
+ているのはレジスタ領域で、ここには`VALUE`以外のものがあることも十分考え
+られる。そこで、まずその数値が`VALUE`であるか(ポインタであるか)どうか
+調べてみて、それらしく見えるならば全てポインタとして扱うことにする。
+このような手法を「保守的GC(conservative GC)」と呼ぶ。
+「とりあえず安全側に倒す」というところが保守的だということらしい。
+
+では次はその「`VALUE`っぽいかどうか」を調べる関数
+`is_pointer_to_heap()`を見よう。
+
+h4. `is_pointer_to_heap()`
+
+▼ `is_pointer_to_heap()`
+<pre class="longlist">
+ 480  static inline int
+ 481  is_pointer_to_heap(ptr)
+ 482      void *ptr;
+ 483  {
+ 484      register RVALUE *p = RANY(ptr);
+ 485      register RVALUE *heap_org;
+ 486      register long i;
+ 487
+ 488      if (p < lomem || p > himem) return Qfalse;
+ 489
+ 490      /* pがポインタである可能性があるか調べる */
+ 491      for (i=0; i < heaps_used; i++) {
+ 492          heap_org = heaps[i];
+ 493          if (heap_org <= p && p < heap_org + heaps_limits[i] &&
+ 494              ((((char*)p)-((char*)heap_org))%sizeof(RVALUE)) == 0)
+ 495              return Qtrue;
+ 496      }
+ 497      return Qfalse;
+ 498  }
+
+(gc.c)
+</pre>
+
+簡単に説明すると次のようになる。
+
+# `RVALUE`があるアドレスの最下端と最上端の間にあるか調べる
+# 各ヒープの範囲内にあるかどうか調べる
+# その数値が`RVALUE`の先頭を指しているかどうか確かめる
+
+このような仕組みなので、間違って本当は`VALUE`でない値を`VALUE`と
+扱ってしまうことも当然ある。しかし少なくとも使っている
+`VALUE`を見付けられないことはない。
+それもこれだけのテストをしていれば意図的でない
+限りそうそう`VALUE`でない値を拾うことはないと思われるので、GCで
+得られる利点を考えれば十分に妥協できる。というわけだ。
+
+h4. レジスタウィンドウ
+
+最後に後回しにしておいた`FLUSH_REGISTER_WINDOWS()`について。
+
+レジスタウィンドウ(register windows)とはマシンスタックの一部をCPUの
+中に置いておくことができる機構である。ようするに用途を絞ったキャッシュ
+だ。最近はSparcアーキテクチャにしか存在しない。レジスタウィンドウにも
+`VALUE`が入っている可能性があるので、これも前もってメモリに落としておく
+必要がある。
+
+マクロの中身はこんな感じだ。
+
+▼ `FLUSH_REGISTER_WINDOWS`
+<pre class="longlist">
+ 125  #if defined(sparc) || defined(__sparc__)
+ 126  # if defined(linux) || defined(__linux__)
+ 127  #define FLUSH_REGISTER_WINDOWS  asm("ta  0x83")
+ 128  # else /* Solaris, not sparc linux */
+ 129  #define FLUSH_REGISTER_WINDOWS  asm("ta  0x03")
+ 130  # endif
+ 131  #else /* Not a sparc */
+ 132  #define FLUSH_REGISTER_WINDOWS
+ 133  #endif
+
+(defines.h)
+</pre>
+
+`asm(...)`は埋め込み
+アセンブラだ。ただしアセンブラとは言ってもこの`ta`という命令は
+特権命令の
+コール、つまりCPUでなくOSの呼び出しである。だからこそOSごとに命令が
+違うのだ。なお、コメントにはLinuxとSolarisしか書いていないが実際には
+FreeBSDやNetBSDもSparcで動くのでこのコメントは間違いである。
+
+それと、Sparcでない場合はそもそもフラッシュする必要がないので、
+`FLUSH_REGISTER_WINDOWS`を無と定義している。このような、
+マクロを無に還す手法はデバッグ出力などにも使える超有名手法だ。
+
+h3. マシンスタック
+
+ではまた`rb_gc()`の続きに戻ろう。今度はマシンスタックに置かれた
+`VALUE`をマークする。
+
+▼ マシンスタックのマーク
+<pre class="longlist">
+1152      rb_gc_mark_locations(rb_gc_stack_start, (VALUE*)STACK_END);
+1153  #if defined(__human68k__)
+1154      rb_gc_mark_locations((VALUE*)((char*)rb_gc_stack_start + 2),
+1155                           (VALUE*)((char*)STACK_END + 2));
+1156  #endif
+
+(gc.c)
+</pre>
+
+`rb_gc_stack_start`がスタックの開始アドレス(スタックの末尾)で
+`STACK_END`が終了アドレス(先端)らしい。
+そして`rb_gc_mark_locations()`が実際にスタック領域をマークする。
+
+`rb_gc_mark_locations()`が二回あるのはスタックが4バイトアラインメントで
+ないアーキテクチャへの対策である。`rb_gc_mark_locations()`は
+`sizeof(VALUE)`単位でマークを試すので、2バイトアラインメントの環境だとう
+まくマークできないことがある。そこで2バイトズラしてもう一度マークする
+わけだ。
+
+では`rb_gc_stack_start`、`STACK_END`、`rb_gc_mark_locations()`の
+三つを順番に見ていこう。
+
+h4. `Init_stack()`
+
+最初は`rb_gc_stack_start`だ。この変数は`Init_stack()`中でだけセットさ
+れる。`Init_`という名前から想像がつくかもしれないが、この関数は`ruby`イン
+タプリタの初期化の時点で呼ばれる。
+
+▼ `Init_stack()`
+<pre class="longlist">
+1193  void
+1194  Init_stack(addr)
+1195      VALUE *addr;
+1196  {
+1197  #if defined(__human68k__)
+1198      extern void *_SEND;
+1199      rb_gc_stack_start = _SEND;
+1200  #else
+1201      VALUE start;
+1202
+1203      if (!addr) addr = &start;
+1204      rb_gc_stack_start = addr;
+1205  #endif
+1206  #ifdef HAVE_GETRLIMIT
+1207      {
+1208          struct rlimit rlim;
+1209
+1210          if (getrlimit(RLIMIT_STACK, &rlim) == 0) {
+1211              double space = (double)rlim.rlim_cur*0.2;
+1212
+1213              if (space > 1024*1024) space = 1024*1024;
+1214              STACK_LEVEL_MAX = (rlim.rlim_cur - space) / sizeof(VALUE);
+1215          }
+1216      }
+1217  #endif
+1218  }
+
+(gc.c)
+</pre>
+
+重要なのは真ん中の部分だけだ。つまり適当にローカル変数(スタックに確保される)を定義してそのア
+ドレスを`rb_gc_stack_start`とする。`__human68k__`のコードにある
+`_SEND`というのはコンパイラのライブラリかシステムが定義した変数だろう。
+当然`Stack END`の略であろうと想像できる。
+
+一方そのあとの`HAVE_GETRLIMIT`でくくってあるコードではスタックの長さを
+調べてゴニョゴニョとやっているようだ。これも`rb_gc_mark_children()`での
+スタック溢れ防止の一貫である。無視していい。
+
+h4. `STACK_END`
+
+次にスタックの先端を検出するマクロ`STACK_END`を見る。
+
+▼ `STACK_END`
+<pre class="longlist">
+ 345  #ifdef C_ALLOCA
+ 346  # define SET_STACK_END VALUE stack_end; alloca(0);
+ 347  # define STACK_END (&stack_end)
+ 348  #else
+ 349  # if defined(__GNUC__) && defined(USE_BUILTIN_FRAME_ADDRESS)
+ 350  #  define SET_STACK_END  VALUE *stack_end = __builtin_frame_address(0)
+ 351  # else
+ 352  #  define SET_STACK_END  VALUE *stack_end = alloca(1)
+ 353  # endif
+ 354  # define STACK_END (stack_end)
+ 355  #endif
+
+(gc.c)
+</pre>
+
+`SET_STACK_END`が三通りあるので、まず一番下の場合から。`alloca()`はスタッ
+クの先端に領域を割り当てて返すので、その返り値とスタックの先端アドレス
+はかなり近いはずだ。そこで`alloca()`の返り値でスタック先端の近似とする。
+
+次に戻って一番上を見よう。マクロ`C_ALLOCA`が定義されている場合は
+`alloca()`がネイティブで定義されてない……つまり、互換関数がCで定義され
+ていることを示す。その場合は`alloca()`は内部で`malloc()`でメモリを確保して
+いるのであった。それではスタックの位置を取るのには全く役に立たない。そ
+こでどうするかというと、いま実行中の関数のローカル変数(`stack_end`)が
+スタックの先端に近いと判断してそのアドレスを使う(`&stack_end`)。
+
+またこのコードには、何に使っているのかよくわからない`alloca(0)`も入って
+いる。これはCで定義した`alloca()`の昔からの仕様で、いらない領域をチェッ
+クして解放してね、という意味である。ちょうどGCをやっているから
+`alloca()`の割り当てた分も一緒に解放してやろうというわけだ。しかしそれ
+ならそれでこんなところに紛れこまさず別のマクロに入れておいたほうがいい
+と思うのだが……。
+
+そして最後に真ん中の場合、`__builtin_frame_address()`について。
+`__GNUC__`は`gcc`(GNUのCコンパイラ)で定義されるシンボルである。
+それを使って限定しているのだから、
+これは`gcc`組み込みの拡張命令だ。`__builtin_frame_address(n)`で n 個前の
+スタックフレームのアドレスが取れる。`__builtin_frame_address(0)`なら
+現在のフレームのアドレスだ。
+
+h4. `rb_gc_mark_locations()`
+
+最後は実際にスタックをマークする関数`rb_gc_mark_locations()`である。
+
+▼ `rb_gc_mark_locations()`
+<pre class="longlist">
+ 513  void
+ 514  rb_gc_mark_locations(start, end)
+ 515      VALUE *start, *end;
+ 516  {
+ 517      VALUE *tmp;
+ 518      long n;
+ 519
+ 520      if (start > end) {
+ 521          tmp = start;
+ 522          start = end;
+ 523          end = tmp;
+ 524      }
+ 525      n = end - start + 1;
+ 526      mark_locations_array(start,n);
+ 527  }
+
+(gc.c)
+</pre>
+
+基本的には領域をマークする関数`mark_locations_array()`に任せればよい。
+この関数がやるのは引数をうまく調節することである。このような調整が
+必要になるのは、マシンスタックが伸びる方向が決まっていないからだ。
+低位アドレスに伸びる場合は`end`のほうが小さいし、高位アドレスに伸びる
+場合は`start`のほうが小さい。だからアドレスの小さいほうが`start`になる
+ようにここで揃えるのだ。
+
+h3. その他のルートオブジェクト
+
+最後にインタプリタ組みこみの`VALUE`コンテナをマークする。
+
+▼ その他のルート
+<pre class="longlist">
+1159      /* 登録されているグローバル変数をマーク */
+1160      for (list = global_List; list; list = list->next) {
+1161          rb_gc_mark(*list->varptr);
+1162      }
+1163      rb_mark_end_proc();
+1164      rb_gc_mark_global_tbl();
+1165
+1166      rb_mark_tbl(rb_class_tbl);
+1167      rb_gc_mark_trap_list();
+1168
+1169      /* true、falseなどのインスタンス変数があればそれをマーク */
+1170      rb_mark_generic_ivar_tbl();
+1171
+          /* rubyのパーサで使う変数をマーク(パース中のみ) */
+1172      rb_gc_mark_parser();
+
+(gc.c)
+</pre>
+
+Cのグローバル変数に`VALUE`を入れる場合は`rb_gc_register_address()`で
+そのアドレスをユーザに登録してもらうことになっている。`global_List`に
+それが保存されているので、全部マークする。
+
+`rb_mark_end_proc()`はRubyの`END`文などで登録した、
+プログラムの終了時に実行される
+手続きオブジェクトのマーク(本書では`END`文は扱わない)。
+
+`rb_gc_mark_global_tbl()`はグローバル変数のテーブル`rb_global_tbl`の
+マーク(次章『変数と定数』参照)。
+
+`rb_mark_tbl(rb_class_tbl)`は前章でやった`rb_class_tbl`のマーク。
+
+`rb_gc_mark_trap_list()`はRubyの関数メソッド`trap`で登録した
+手続きオブジェクトのマーク(シグナル関係。これも本書では扱わない)。
+
+`rb_mark_generic_ivar_tbl()`は`true`などの非ポインタ`VALUE`のために
+用意されたインスタンス変数テーブルをマークする。
+
+`rb_gc_mark_parser()`はパーサのセマンティックスタックをマークする
+(セマンティックスタックについては第二部を参照)。
+
+ここまででマークフェイズは終わりだ。
+
+h2. スイープ
+
+h3. `NODE`の特別扱い
+
+スイープフェイズはマークされていないオブジェクトを探して解放していく作
+業だ。しかし、ちょっと理由があって`T_NODE`型のオブジェクトだけは特別扱い
+されている。次のところを見てほしい。
+
+▼ `gc_sweep()`冒頭
+<pre class="longlist">
+ 846  static void
+ 847  gc_sweep()
+ 848  {
+ 849      RVALUE *p, *pend, *final_list;
+ 850      int freed = 0;
+ 851      int i, used = heaps_used;
+ 852
+ 853      if (ruby_in_compile && ruby_parser_stack_on_heap()) {
+ 854          /* yaccのスタックがマシンスタック上にない場合は
+ 855             パース中はNODEを回収してはならない */
+ 856          for (i = 0; i < used; i++) {
+ 857              p = heaps[i]; pend = p + heaps_limits[i];
+ 858              while (p < pend) {
+ 859                  if (!(p->as.basic.flags & FL_MARK) &&
+                                          BUILTIN_TYPE(p) == T_NODE)
+ 860                      rb_gc_mark((VALUE)p);
+ 861                  p++;
+ 862              }
+ 863          }
+ 864      }
+
+(gc.c)
+</pre>
+
+`NODE`はパーサでプログラムを表現するために使うオブジェクトだ。`NODE`はコン
+パイル中には`yacc`というツールの用意するスタックに置かれるのだが、そのス
+タックはマシンスタック上にあるとは限らない。具体的に言うと、
+`ruby_parser_stack_on_heap()`が偽だとマシンスタック上にないことを示す。
+するとその場合は生成途中の`NODE`がうっかり回収されてしまう危険があるので、
+コンパイル中(`ruby_in_compile`)は`T_NODE`型のオブジェクトを無条件に
+マークして、回収されないようにするのである。
+
+h3. ファイナライザ
+
+ここまで来たらマークされていないオブジェクトは全て解放できるようになる。
+が、解放前にもう一仕事しなければならない。Rubyではオブジェクトの解放を
+フックできるようになっているので、これを呼ぶ必要がある。このフックを
+ファイナライザ(finalizer)と言う。
+
+▼ `gc_sweep()`中盤
+<pre class="longlist">
+ 869      freelist = 0;
+ 870      final_list = deferred_final_list;
+ 871      deferred_final_list = 0;
+ 872      for (i = 0; i < used; i++) {
+ 873          int n = 0;
+ 874
+ 875          p = heaps[i]; pend = p + heaps_limits[i];
+ 876          while (p < pend) {
+ 877              if (!(p->as.basic.flags & FL_MARK)) {
+ 878  (A)             if (p->as.basic.flags) {
+ 879                      obj_free((VALUE)p);
+ 880                  }
+ 881  (B)             if (need_call_final && FL_TEST(p, FL_FINALIZE)) {
+ 882                      p->as.free.flags = FL_MARK; /* マークされたまま残る */
+ 883                      p->as.free.next = final_list;
+ 884                      final_list = p;
+ 885                  }
+ 886                  else {
+ 887                      p->as.free.flags = 0;
+ 888                      p->as.free.next = freelist;
+ 889                      freelist = p;
+ 890                  }
+ 891                  n++;
+ 892              }
+ 893  (C)         else if (RBASIC(p)->flags == FL_MARK) {
+ 894                  /* ファイナライズが必要なオブジェクト。 */
+ 895                  /* 何もしないで放っておく */
+ 896              }
+ 897              else {
+ 898                  RBASIC(p)->flags &= ~FL_MARK;
+ 899              }
+ 900              p++;
+ 901          }
+ 902          freed += n;
+ 903      }
+ 904      if (freed < FREE_MIN) {
+ 905          add_heap();
+ 906      }
+ 907      during_gc = 0;
+
+(gc.c)
+</pre>
+
+オブジェクトヒープを端から全て見てゆき、`FL_MARK`フラグが立っていなかっ
+たら`obj_free()`で解放する(A)。`obj_free()`では例えば文字列オブジェクトが
+使う`char[]`や配列オブジェクトが使う`VALUE[]`を解放するだけで、
+`RVALUE`構造体を解放したりはないし、`basic.flags`も全くいじらない。だ
+から`obj_free()`を呼んだあとにその構造体を操作しても落ちる心配はない。
+
+オブジェクトを解放したあと、`FL_FINALIZE`フラグによって分岐する(B)。
+`FL_FINALIZE`が立っていたらそのオブジェクトに対してファイナライザが定義
+されているので`final_list`に、立っていなかったらすぐに`freelist`に追加す
+る。またファイナライズするときは`basic.flags`を`FL_MARK`にする。これで構造
+体型フラグ(`T_STRING`など)がクリアされるので、生きているオブジェクトと
+区別が付く。
+
+あとはまとめてファイナライザを実行すれば終わりだ。ここで、ファイナライ
+ザを呼ぶときはフック対象となったオブジェクトは既に死んでいることに注
+意しよう。つまりファイナライザ実行中に、フックをかけたオブジェクトを使
+うことはできない。
+
+▼ `gc_sweep()`残り
+<pre class="longlist">
+ 910      if (final_list) {
+ 911          RVALUE *tmp;
+ 912
+ 913          if (rb_prohibit_interrupt || ruby_in_compile) {
+ 914              deferred_final_list = final_list;
+ 915              return;
+ 916          }
+ 917
+ 918          for (p = final_list; p; p = tmp) {
+ 919              tmp = p->as.free.next;
+ 920              run_final((VALUE)p);
+ 921              p->as.free.flags = 0;
+ 922              p->as.free.next = freelist;
+ 923              freelist = p;
+ 924          }
+ 925      }
+ 926  }
+
+(gc.c)
+</pre>
+
+後半の`for`がメインのファイナライズ作業だ。前半の`if`は様々な理由により
+Rubyプログラムに実行を移せない場合だ。ここでファイナライズを遅らせた
+オブジェクトは先程のリストの経路(C)に出てくる。
+
+h3. `rb_gc_force_recycle()`
+
+最後に少し違う話をしよう。ここまでは`ruby`のガーベージコレクタがオブジェクトを回収する
+かしないか決めていたが、ユーザから明示的に回収させることもできる。そ
+れが`rb_gc_force_recycle()`である。
+
+▼ `rb_gc_force_recycle()`
+<pre class="longlist">
+ 928  void
+ 929  rb_gc_force_recycle(p)
+ 930      VALUE p;
+ 931  {
+ 932      RANY(p)->as.free.flags = 0;
+ 933      RANY(p)->as.free.next = freelist;
+ 934      freelist = RANY(p);
+ 935  }
+
+(gc.c)
+</pre>
+
+仕組みはたいしたことはないが、第二部・第三部で何度か出会うことになるので
+紹介しておいた。
+
+h2. 考察
+
+h3. 領域の解放
+
+個々のオブジェクトで割りあてた領域、例えば`String`の`char[]`など、はスイー
+プフェイズの中で解放されていたが、`RVALUE`構造体自体を解放するコードは出
+てこなかった。またオブジェクトヒープでも使っている構造体の数の管理など
+はやっていない。ということは、`ruby`のオブジェクト領域は一度割り当てたら
+絶対に解放されないのだ。
+
+例えば筆者がいま作っているメーラは500通のメールのスレッドを構築する
+とき一時的に40Mバイトくらい領域を使うのだが、そのあとGCされて大半を使わなく
+なったとしてもずっと40Mバイト占有し続ける。筆者のマシンもイマドキのやつなの
+で40Mバイトくらい使われたところでなんともないが、ずっと起動しっぱなしの
+サーバなどでこれが起きると問題になることもあるだろう。
+
+ただし`free()`すればメモリ使用量が減るとも限らないことには留意すべきであ
+る。メモリをOSに返さない限りプロセスのメモリ使用量は減らない。そして
+`malloc()`の実装によっては`free()`してもメモリがOSに返されないことはよく
+ある。
+
+……と書いていたのだが、なんと本書の締切間際に`RVALUE`が解放されるように
+なってしまった。添付CD-ROMには最新版の`ruby`も入っているから`diff`して
+見てみてほしい。……なんて酷いオチだ。
+
+h3. 世代別GC
+
+マーク&amp;スイープには「オブジェクト領域全体を最低でも一度なめる必要が
+ある」という弱点があった。世代別GCという考えかたを使うとその弱点を補え
+る可能性がある。
+
+世代別GCの基礎になるのは「ほとんどのオブジェクトは寿命が非常に長いか
+非常に短いかのどちらかである」という経験則だ。この点は自分の書くプロ
+グラムのことをちょっと考えてみれば納得がいくと思う。
+
+さて、この規則を踏まえて考えてみると「長生きするオブジェクトは毎回毎回
+マークしてスイープしなくてもいいじゃないか」という発想が出てくる。この
+オブジェクトは長生きだな、と思ったら、特別扱いにしてGC対象から外せばい
+いのだ。するとマークにしてもスイープにしてもオブジェクトの数を圧倒的に
+減らすことができる。例えば特定のGCのタイミングで長生きしているオブジェ
+クトが半分を占めているとすれば対象オブジェクト数は半分になる。
+
+ただ一つ問題がある。世代別GCはオブジェクトを移動できないと非常にやりに
+くいのだ。なぜかというと、長生きするオブジェクトは先程書いたとおり「特
+別扱い」しないといけないからである。世代別GCは扱うオブジェクトを減らし
+てコストを下げるわけだから、この二つの世代にあるオブジェクトをきっちり
+分類しておかないと結局のところ両方を対象にするのと変わらなくなってしま
+う。またさらに`ruby`のGCはconservative GCであるから、
+`is_pointer_to_heap()`が動くようにも作らなければならない。これが難しい。
+
+そこでどうやってこの問題を解決するかだが……木山真人さんの手によって
+`ruby`のための世代別GCの実装が公開されている。以下はこのパッチが各種の
+問題にどう対処したのかを簡単に示していくことにしよう。また今回は
+木山さんのご厚意により、この世代別GCパッチと論文を添付CD-ROMに収録して
+いる\footnote{木山版世代別GCパッチについては添付CD-ROMの`doc/generational-gc.html`をまず参照のこと}。
+
+では説明に入る。説明がしやすいように、
+長生きするオブジェクトを「旧世代オブジェクト」、
+短い寿命のオブジェクトを「新世代オブジェクト」
+と呼ぶことにしよう。
+
+最初に、最大の問題である旧世代オブジェクトの特別扱いについて。この点は
+新世代のオブジェクトだけを`newlist`というリンクリストにつなぐことで解決
+している。またこのリストは`RVALUE`の要素を増やすことで実現する。
+
+第二に、旧世代のオブジェクトを見付ける方法について。これはとても簡単で、
+`newlist`でGCされなかったものを`newlist`から外すだけだ。つまり一回GCを生き
+残ると旧世代のオブジェクトとして扱われる。
+
+第三に、旧世代から新世代への参照を検出する方法について。世代別GCでは、
+言ってみれば、旧世代のオブジェクトにはマークが付きっぱなしの状態になる
+わけだ。しかし旧世代から新世代へリンクが出ている場合、その新世代の
+オブジェクトにはマークが付かなくなる(図11)。
+
+!images/ch_gc_gengc.jpg(世代を越えた参照)!
+
+これではまずいので、旧世代のオブジェクトから新世代のオブジェクトを参照
+したらその瞬間にその新世代のオブジェクトは
+旧世代にならなければいけない。そこでライブラリを修正し、こういう
+参照が起こる可能性のあるところにひたすらチェックを入れるようにしている。
+
+仕組みの概要は以上である。このパッチは当初`ruby` 1.7に取りこまれる予定だっ
+たのだが結局まだ取りこまれていない。「速度が出なかった」というのが理由
+だそうだ。第三点の「参照全チェック」のコストが効いているのではないか、
+という推測もなされているが、詳しい原因はまだよくわかっていない。
+
+h3. コンパクション
+
+`ruby`のGCでコンパクションはできるだろうか。`ruby`の`VALUE`は
+構造体への直ポ
+インタであるから、コンパクションして構造体のアドレスが変わったら、
+移動した構造体を指している`VALUE`を全て書き換えないといけない。
+
+ところが`ruby`のGCはconservative GCなので「それが本当に`VALUE`かどうかわか
+らない場合」がありうる。それなのにその値を書き換えてしまったら、もし
+`VALUE`でなかったときにはとんでもないことになる。コンパクションと
+conservative GCはとても相性が悪いのだ。
+
+だがなんとかして対策を考えてみよう。まず`VALUE`をポインタでなく
+オブジェクトIDに
+する方法が考えられる(図12)。`VALUE`と構造体の間に一
+枚間接層を挟む方法だ。これなら`VALUE`を書き換えずに済むので安心して構
+造体を移動できる。だがその代償としてアクセス速度は遅くなるし、拡張ライ
+ブラリの互換性もなくなる。
+
+!images/ch_gc_objid.jpg(オブジェクトID経由での参照)!
+
+そこで次の方法として、「確実に`VALUE`である」ポインタ「だけ」から
+指されている構造体に限定して移動するという手法がある(図13)。
+この手法をMostly-copying garbage collectionと言う。普通のプログ
+ラムなら`is_pointer_to_heap()`が真になるオブジェクトはそうたくさんはない
+から、かなりの確率でオブジェクト構造体を移動できることになる。
+
+!images/ch_gc_mostcopy.jpg(Mostly-copying garbage collection)!
+
+さらにさらに、もし構造体が移動できるということになれば、
+同時に世代別GCの実装も簡単になる。挑戦してみる価値はありそうだ。
+
+h3. GC対策の`volatile`
+
+スタック上の`VALUE`はGCが面倒を見てくれると書いた。それならば
+ローカル変数として`VALUE`を置いておけばその`VALUE`は確実にマークされる
+はずである。しかし現実には最適化の影響で変数が消えてしまうことがある。
+例えば次のような場合は消える可能性がある。
+
+<pre class="emlist">
+VALUE str;
+str = rb_str_new2("...");
+printf("%s\n", RSTRING(str)->ptr);
+</pre>
+
+このコードでは`str`自体にアクセスしていないので、コンパイラによっては
+`str->ptr`だけメモリに残して`str`は消してしまうことがある。そうすると
+`str`が回収されて落ちる。こういう時は仕方がないので、
+
+<pre class="emlist">
+volatile VALUE str;
+</pre>
+
+とする。`volatile`はCの予約語で、この変数に関する最適化を禁止する
+効果がある。Ruby関係のコードで`volatile`が付いていたらまず間違いなく
+GC対策と思ってよい。K&amp;Rを読んだときは「こんなもの何に使うんだろう」
+と思っていたのだが、まさか`ruby`でこんなに大量に見ることになるとは
+思わなかった。
+
+しかしこういうところを見るとconservative GCの「ユーザがGCを気にしなく
+ていい」という謳い文句もあまり当てにならないようである。一時は
+「KSMというSchemeのGCは`volatile`が必要ないらしい」
+という話もあったのだが、
+アルゴリズムに穴があって結局`ruby`には適用できないようだ。
+
+h2. 起動のタイミング
+
+h3. `gc.c`内部
+
+GCが起動するのはどんなときだろうか。
+`gc.c`の内部では`rb_gc()`を呼んでいるところは三個所ある。
+
+* `ruby_xmalloc()`
+* `ruby_xrealloc()`
+* `rb_newobj()`
+
+`ruby_xmalloc()`と`ruby_xrealloc()`の場合はメモリ割り当てに失敗したときだ。
+そこでGCすればメモリが解放されてまた使えるスペースができるかもしれない。
+`rb_newobj()`も状況は似ていて、`freelist`が空になったときに起動する。
+
+h3. インタプリタ内
+
+`gc.c`以外でもインタプリタ内で`rb_gc()`を呼んでいるところが何か所かある。
+
+まず`io.c`と`dir.c`で、ファイルディスクリプタが足りなくて開けなかったとき
+にGCを起動する。`IO`オブジェクトがGCされればファイルがクローズされて
+ファイルディスクリプタが空くかもしれない、という目論見からだ。
+
+`ruby.c`ではファイルをロードしたあとで`rb_gc()`することがある。スイープの
+ところで書いたとおり、コンパイル中に`NODE`をGCできないのを補うためである。
+
+h2. オブジェクトの生成
+
+GCの話が終わってRubyオブジェクトの生成から解放までを扱えるように
+なったので、ここでオブジェクトの生成についての話をしておこう。これは
+GCとはあまり関係なく、むしろ前章でやったクラスの話に少し関ってくる。
+
+h3. アロケーションフレームワーク
+
+これまで何度もオブジェクトを生成してきた。例えばこんな方法がある。
+
+<pre class="emlist">
+class C
+end
+C.new()
+</pre>
+
+このとき`C.new`はどうやってオブジェクトを生成しているのだろうか。
+
+まず`C.new`は実際には`Class#new`である。その実体はこうだ。
+
+▼ `rb_class_new_instance()`
+<pre class="longlist">
+ 725  VALUE
+ 726  rb_class_new_instance(argc, argv, klass)
+ 727      int argc;
+ 728      VALUE *argv;
+ 729      VALUE klass;
+ 730  {
+ 731      VALUE obj;
+ 732
+ 733      obj = rb_obj_alloc(klass);
+ 734      rb_obj_call_init(obj, argc, argv);
+ 735
+ 736      return obj;
+ 737  }
+
+(object.c)
+</pre>
+
+`rb_obj_alloc()`は`klass`に対して`allocate`というメソッドを呼ぶ。つま
+りいま説明している例ならば`C.allocate`を呼ぶ。
+そのデフォルトは`Class#allocate`で、そのまた実体が
+`rb_class_allocate_instance()`である。
+
+▼ `rb_class_allocate_instance()`
+<pre class="longlist">
+ 708  static VALUE
+ 709  rb_class_allocate_instance(klass)
+ 710      VALUE klass;
+ 711  {
+ 712      if (FL_TEST(klass, FL_SINGLETON)) {
+ 713          rb_raise(rb_eTypeError,
+                       "can't create instance of virtual class");
+ 714      }
+ 715      if (rb_frame_last_func() != alloc) {
+ 716          return rb_obj_alloc(klass);
+ 717      }
+ 718      else {
+ 719          NEWOBJ(obj, struct RObject);
+ 720          OBJSETUP(obj, klass, T_OBJECT);
+ 721          return (VALUE)obj;
+ 722      }
+ 723  }
+
+(object.c)
+</pre>
+
+最後の三行以外は気にしなくていい。この`NEWOBJ()`と`OBJSETUP()`はこれまで
+も何回か出てきた、Rubyのオブジェクトを作るときのイディオムである。今度
+は中身も見てみよう。
+
+▼ `NEWOBJ() OBJSETUP()`
+<pre class="longlist">
+ 274  #define NEWOBJ(obj,type) type *obj = (type*)rb_newobj()
+ 275  #define OBJSETUP(obj,c,t) do {\
+ 276      RBASIC(obj)->flags = (t);\
+ 277      RBASIC(obj)->klass = (c);\
+ 278      if (rb_safe_level() >= 3) FL_SET(obj, FL_TAINT);\
+ 279  } while (0)
+
+(ruby.h)
+</pre>
+
+`rb_newobj()`は`RVALUE`を一つ`freelist`から外して返してくれる関数だった。
+`NEWOBJ()`はその`rb_newobj()`に型のごまかしを加えたものにすぎないとわ
+かる。また`OBJSETUP()`は`struct RBasic`部分を初期化するマクロである。
+こちらは`FL_TAINT`フラグを立てるのを忘れないためだけにあると思って
+いいだろう。
+
+あとは`rb_class_new_instance()`に戻って`rb_obj_call_init()`を呼ぶことにな
+る。この関数が作ったばかりのオブジェクトに対して`initialize`を呼び出して
+初期化は完了である。
+
+まとめると以下のようになっている。
+
+<pre class="emlist">
+SomeClass.new            = Class#new (rb_class_new_instance)
+    SomeClass.allocate       = Class#allocate (rb_class_allocate_instance)
+    SomeClass#initialize     = Object#initialize (rb_obj_dummy)
+</pre>
+
+クラスメソッドの`allocate`が物理的な初期化、`initialize`が論理的な初期
+化と言ってもいい。このような仕組み……つまりオブジェクト生成を
+`allocate`・`initialize`に分割し、`new`が統轄するという仕組みを、
+「アロケーションフレームワーク」と呼んでいる。
+
+h3. ユーザ定義オブジェクトの生成
+
+次は拡張ライブラリで定義したクラスのインスタンス生成について見ていく。
+ユーザ定義と言うからにはその構造体は決まっていないわけで、その割り当て
+かたを教えてあげないと`ruby`にはどうやって作っていいのかわからない。それ
+を教える方法を見よう。
+
+h4. `Data_Wrap_Struct()`
+
+ユーザ定義だろうとなんだろうと生成の仕組み自体はアロケーションフレーム
+ワークに従えばいい。つまり新しいクラス`SomeClass`をCで定義するときは
+`SomeClass.allocate`と`SomeClass#initialize`の両方をオーバーライドする。
+
+まずは`allocate`のほうから見ていこう。ここでは物理的な初期化をする。
+何を割り当てればよいかと言うと、ユーザ定義クラスのインスタンスは
+`struct RData`と、こちらで用意する構造体の組であった。仮にその構造体を
+`struct my`型としておこう。その`struct my`を元に`VALUE`を作るには
+`Data_Wrap_Struct()`というマクロを使う。使いかたはこうだ。
+
+<pre class="emlist">
+struct my *ptr = malloc(sizeof(struct my));  /* 適当にヒープに取る */
+VALUE val = Data_Wrap_Struct(data_class, mark_f, free_f, ptr);
+</pre>
+
+`data_class`が`val`の所属するクラスで、`ptr`がラップしようとしているポ
+インタだ。`mark_f`がこの構造体をマークするための関数(へのポインタ)。
+と言っても`ptr`自体をマークするわけではもちろんなくて、`ptr`の指す構造
+体の中に`VALUE`があるときに使うものだ。一方の`free_f`は`ptr`自体を解放
+するために使う関数である。どちらの関数も引数は`ptr`だ。このあたりは少
+し戻ってマークのコードを読んでもらえると一発で納得できると思う。
+
+`Data_Wrap_Struct()`の中身も見ておこう。
+
+▼ `Data_Wrap_Struct()`
+<pre class="longlist">
+ 369  #define Data_Wrap_Struct(klass, mark, free, sval) \
+ 370      rb_data_object_alloc(klass, sval,             \
+                               (RUBY_DATA_FUNC)mark,    \
+                               (RUBY_DATA_FUNC)free)
+
+ 365  typedef void (*RUBY_DATA_FUNC) _((void*));
+
+(ruby.h)
+</pre>
+
+`rb_data_object_alloc()`にほとんど委譲されている。
+
+▼ `rb_data_object_alloc()`
+<pre class="longlist">
+ 310  VALUE
+ 311  rb_data_object_alloc(klass, datap, dmark, dfree)
+ 312      VALUE klass;
+ 313      void *datap;
+ 314      RUBY_DATA_FUNC dmark;
+ 315      RUBY_DATA_FUNC dfree;
+ 316  {
+ 317      NEWOBJ(data, struct RData);
+ 318      OBJSETUP(data, klass, T_DATA);
+ 319      data->data = datap;
+ 320      data->dfree = dfree;
+ 321      data->dmark = dmark;
+ 322
+ 323      return (VALUE)data;
+ 324  }
+
+(gc.c)
+</pre>
+
+なんてことはない。通常のオブジェクトと同じく`NEWOBJ() OBJSETUP()`を使って
+`RVALUE`を用意し、メンバを入れるだけだ。
+
+ここで`allocate`の話に戻ろう。ここまでで`VALUE`は作れたので、あとはこれを
+適当な関数に入れて`rb_define_singleton_method()`でクラスに定義して
+やればよい。
+
+h4. `Data_Get_Struct()`
+
+次は`initialize`だ。`initialize`に限らず、メソッドではさっき作った`VALUE`か
+ら`struct my*`を取り出す方法が必要になるはずだ。そのためには
+`Data_Get_Struct()`というマクロを使う。
+
+▼ `Data_Get_Struct()`
+<pre class="longlist">
+ 378  #define Data_Get_Struct(obj,type,sval) do {\
+ 379      Check_Type(obj, T_DATA); \
+ 380      sval = (type*)DATA_PTR(obj);\
+ 381  } while (0)
+
+ 360  #define DATA_PTR(dta) (RDATA(dta)->data)
+
+(ruby.h)
+</pre>
+
+見ての通り、`RData`のメンバから(`struct my`への)ポインタを取り出すだけ
+である。簡単だ。`Check_Type()`は構造体型のチェックをするだけ。
+
+h3. アロケーションフレームワークの問題点
+
+と、ここまで何食わぬ顔で説明してきたのだが、実は現在のアロケーションフ
+レームワークには致命的な問題がある。いま、`allocate`で作ったオブジェクト
+が`initialize`やその他のメソッドに出てくる、ということを言ったが、ここで
+同じクラスの`allocate`で作ったオブジェクトが渡ってきてくれないと非常に困
+るはずだ。例えばデフォルトの`Object.allocate`(`Class#allocate`)で作った
+オブジェクトが`String`のメソッドに渡ってしまったらとても困る。なぜなら
+`String`のメソッドは`struct RString`の構造体がもらえると仮定して書いてある
+のに、実際には`struct RObject`だからだ。こういうことを防ぐためには、
+`C.allocate`で作ったオブジェクトなら、`C`か、その下位クラスのメソッドだけ
+に渡るようにしなければならない。
+
+もちろん普通にやっていればそうなる。`C.allocate`ならクラス`C`のインスタン
+スを作るわけだから、クラス`C`のメソッド以外には渡らないはずだ。
+例外として`Object`のメソッドには渡る可能性があるが、
+`Object`のメソッドは構造体型に依存しないよう書いてある。
+
+だが普通にやらなかったらどうだろうか。`C.allocate`はRubyレベルに露出して
+いるので、まだ説明していないが`alias`だの`super`だのを活用しまくると
+`allocate`の定義を別のクラスに移植できてしまう。そうすると、クラスは
+`String`なのに本当の構造体型は`struct RObject`、なんてオブジェクトも
+作れてしまう。つまりRubyレベルから好き放題`ruby`を落とせるのだ。これは
+困る。
+
+問題の根源は`allocate`がメソッドとしてRubyレベルに露出していることだ。
+逆に言うと`allocate`の中身をメソッド以外の手段でクラスに定義しておけば
+いい。そこで
+
+<pre class="emlist">
+rb_define_allocator(rb_cMy, my_allocate);
+</pre>
+
+という感じの代替案が現在議論されている。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

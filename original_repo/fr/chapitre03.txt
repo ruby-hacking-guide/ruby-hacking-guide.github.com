@@ -1,0 +1,675 @@
+$comment(-*- coding: utf-8 -*- vim:set encoding=utf-8:)$
+Traduction à partir de l'anglais par Jean-Denis VAUGUET
+
+h1. Chapitre 3 : Noms et table de nommage
+
+h2. `st_table`
+
+Vous connaissez déjà `st_table` comme table stockant méthodes et instances.
+Dans ce chapitre, nous allons voir plus en détail son fonctionnement.
+
+h3. En bref
+
+J'ai mentionné précédemment que `st_table` est une table de hachage. Qu'est-ce
+qu'une table de hachage ? Une structure de données qui enregistre des relations
+unaires (1-à-1), par exemple un nom de variable et sa valeur, le nom d'une
+fonction et son corps, etc.
+
+Toutefois, les tables de hachages ne sont pas les seules à pouvoir stocker des
+relations unaires. Prenez par exemple une liste de structures de données comme
+celle présentées ci-dessous : elle suffira pleinement dans cette optique.
+
+<pre class="emlist">
+struct entry {
+    ID key;
+    VALUE val;
+    struct entry *next;  /* pointe vers l'entrée suivante */
+};
+</pre>
+
+Cette méthode est cependant lente. Si la liste contient une centaine d'item,
+dans le pire des cas, il faut travers cent liens. En définitive, la durée de
+rechercher croit proportionnellement avec le nombre d'éléments, ce qui est
+pénalisant. Depuis maintenant fort longtemps, diverses méthodes accélérant les
+structures de données ont été imaginées. La table de hachage est l'une de ces
+méthodes. Finalement, le point clé n'est pas qu'une table de hachage est néces-
+saire, mais qu'elle est plus rapide.
+
+Maintenant, examinons de plus près `st_table`. Avant toute chose, sachez que
+cette librairie n'a pas été créée par Matsumoto :
+
+▼ `st.c` credits
+<pre class="longlist">
+   1  /* This is a public domain general purpose hash table package
+         written by Peter Moore @ UCB. */
+
+(st.c)
+</pre>
+
+Évidemment, j'ai fait une recherche sur Google à propos d'une autre version,
+et il en est ressorti que st_table est la contraction de « STring TABLE. »
+J'ai trouvé cela plutôt contradictoire : une table ayant à la fois un but
+général (_"general purpose"_) et des aspects liés aux chaînes de caractères
+(_"string"_).
+
+h4. Qu'est-ce qu'une table de hachage ?
+
+Une table de hachage peut se conceptualiser ainsi : d'abord, imaginons un
+tableau de n items. Prenons par exemple n = 64 (figure 1).
+
+!images/ch_name_array.png(Tableau)!
+
+Puis, définissons une fonction f qui, avec une clé, produit un entier i entre
+0 et n-1 (ici, 0-63). f sera appelée « fonction de hachage » : elle donne le
+même entier i si on lui toujours passe la même clé. Par exemple, si on fait
+la supposition que la clé est choisie dans les entiers positifs uniquement,
+alors la clé sera divisée par 64, si bien que la partie entière sera toujours
+comprise entre 0 et 63. Cette méthode de calcul pourrait definir l'expression
+fonctionnelle de f.
+
+Lorsqu'on enregistre des relations, étant donné une clé, la fonction f génère
+un entier i, et place la valeur à l'index i du tableau que nous avons préparé.
+En d'autres termes, l'accès à l'index d'un tableau est très rapide. L'idée
+fondamentale ici est de transformer la clé en entier.
+
+!images/ch_name_aset.png(Enregistrement dans le tableau)!
+
+En réalité, tout n'est pas aussi simple dans le monde réel. Il y a un problème
+critique avec cette idée de clé. Du fait que n vaut 64, si le nombre de relations
+dépasse 64, alors il est certain que deux clés seront associées au même entier i.
+Cela peut même se produire avec moins de 64 clés. Par exemple, avec la fonction
+de hachage précédente « clé % 64 », les clés 65 et 129 auront la même valeur de
+hachage de 1. Voilà une collision de valeurs de hachage ; il y a plusieurs façons
+de les gérer.
+
+Première façon : si une collision survient, alors on peut enregistrer la valeur
+dans l'élément suivante. C'est l'adressage ouvert (figure 3).
+
+!images/ch_name_nexti.png(Open addressing)!
+
+Plutôt que d'utiliser le tableau ainsi, d'autres approches sont possibles,
+comme par exemple utiliser un pointeur vers une liste chaînée dans chaque
+cellule du tableau. Lorsqu'il y a collision, il suffit de faire grandir la
+liste idoine. Cela s'appelle du chaînage (figure 4) et c'est la méthode
+utilisée par `st_table`.
+
+!images/ch_name_chain.png(Chaining)! 
+
+Cependant, si on arrive à déterminer _a priori_ quel est l'ensemble de clés
+qui sera utilisé, on peut éviter toute collision en choisissant avec soins
+la fonction de hachage. Ce type de fonction est appellée « fonction de
+hachage parfaite. » Il y a en fait plusieurs outils qui créent de telles
+fonctions étant donné une sélection arbitraire de chaînes. GNU gperf est l'un
+d'eux, et le parseur de `ruby` utilise GNU gperf, mais... ce n'est pas encore
+le temps de parler de ça. Cela viendra dans la seconde partie du livre.
+
+h3. Structure de données
+
+Attaquons maintenant le code source. Comme je l'ai écrit dans le chapitre
+introductif, s'il y a à la fois des données et du code, il vaut mieux lire
+les données en premier. Ce qui suit est le type de donnée de `st_table`.
+
+▼ `st_table`
+<pre class="longlist">
+   9  typedef struct st_table st_table;
+
+  16  struct st_table {
+  17      struct st_hash_type *type;
+  18      int num_bins;                   /* slot count */
+  19      int num_entries;                /* nombre total d'entrées */
+  20      struct st_table_entry **bins;   /* slot */
+  21  };
+
+(st.h)
+</pre>
+
+▼ `struct st_table_entry`
+<pre class="longlist">
+  16  struct st_table_entry {
+  17      unsigned int hash;
+  18      char *key;
+  19      char *record;
+  20      st_table_entry *next;
+  21  };
+
+(st.c)
+</pre>
+
+`st_table` est la structure principale de la table. `st_table_entry` est un
+réceptacle qui contient une valeur. `st_table_entry` contient un membre `next`
+qui, triviallement, permet de lier des entrées et fait de `st_table_entry`
+une liste chaînée. C'est la partie « chaîne » de la méthode de chaînage. Le
+type de donnée `st_hash_table` utilisé sera expliqué par la suite. D'abord,
+laissez-moi vous expliquer les autres éléments de sorte que vous puissiez
+comprendre et comparer leurs rôles.
+
+!images/ch_name_sttable.png(structure de données `st_table`)!
+
+Faisons donc quelques commentaires à propos de `st_hash_type`.
+
+▼ `struct st_hash_type`
+<pre class="longlist">
+  11  struct st_hash_type {
+  12      int (*compare)();   /* fonction de comparaison */
+  13      int (*hash)();      /* fonction de hachage */
+  14  };
+
+(st.h)
+</pre>
+
+Nous n'en sommes qu'au chapitre 3, aussi examinons tout ça attentivement.
+
+<pre class="emlist">
+int (*compare)()
+</pre>
+
+Cette partie montre évidement le membre `compare`, qui a pour type de données
+« un pointeur vers une fonction retournant un `int`. » `hash` est du même type.
+Cette variable est substituée de la manière suivante :
+
+<pre class="emlist">
+int
+super_fonction(int n)
+{
+    /* ToDo: faire réellement quelque chose ! */
+    return n;
+}
+
+{
+    int (*f)();
+    f = super_fonction;
+</pre>
+
+Et elle est appellée comme suit :
+
+<pre class="emlist">
+    (*f)(7);
+}
+</pre>
+
+Revenons ici sur le commentaire à propos de `st_hash_type`. De des membres
+`hash` et `compare`, `hash` est la fonction de hachage f dors-et-déjà
+présentée.
+
+L'autre membre, `compare`, est une fonction qui détermine si la clé est la
+même ou non. Avec la méthode de chaînage, plusieurs éléments peuvent être
+insérés dans un seul et même emplacement, grâce à la fonction de hachage.
+Afin de savoir quel élément exactement est recherché, il faut cette fois
+utiliser une fonction de comparaison dans laquelle nous pouvons avoir une
+confiance absolue. `compare` sera cette fonction.
+
+Cette structure `st_hash_type` est une bonne technique généralisée. La table
+de hachage en elle-même ne sait pas déterminer quel type de donnée les clés
+stockées auront. Par exemple, dans `ruby`, les clés de `st_table` peuvent
+être des `ID`, ou `char*`, ou encore `VALUE`, mais écrire le même genre de
+hachage pour chacun de ces cas de figure est maladroit. Généralement, ce qui
+change en même temps que le type de données des clés sera en fait la fonction
+de hachage. Pour tout ce qui touche à l'allocation mémoire et la détection des
+collisions, la plus grande partie du code reste inchangée. Ainsi, seule les
+parties du code affectée par un changement du type de données des clés sera
+mis sous la forme de fonction, et un pointeur vers cette fonction sera utilisé.
+Grâce à cela, la majeure partie du code qui constitue l'implémentation du
+processus de hachage pourra l'utiliser.
+
+Dans les langages orientés objet, une première chose possible consiste à passer
+à _quelque chose_ un objet auquel vous aurez attaché une procédure, si bien
+que ce genre d'astuce n'est pas nécessaire. Ou alors, peut-être est-il plus
+juste de dire que ces astuces sont directement implémentées comme fonctionnalités
+du langage.
+
+h3. Un exemple pour `st_hash_type`
+
+L'utilisation d'une structure de données telle que `st_hash_type` constitue
+une bonne abstraction. D'un autre coté, cela rend peut-être plus difficile
+la compréhension de quel _genre_ de code est réellement exprimé à travers elle.
+Si nous ne regardons pas ce que les fonctions `hash` et `compare` seront en
+réalité, nous n'allons pas tout saisir. Pour comprendre le tout, un coup d'œil
+sérieux à `st_init_numtable()`, introduit au chapitre précédent, devrait être
+suffisant. Cette fonction crée une table de hachage pour des clés de type de
+donnée entier.
+
+
+▼ `st_init_numtable()`
+<pre class="longlist">
+ 182  st_table*
+ 183  st_init_numtable()
+ 184  {
+ 185      return st_init_table(&type_numhash);
+ 186  }
+
+(st.c)
+</pre>
+
+`st_init_table()` est la fonction qui alloue la table en mémoire et ce genre
+de chose. `type_numhash` est un `st_hash_type` (c'est le membre nommé "type"
+de `st_table`). Regardons de plus près ce `type_numhash` :
+
+▼ `type_numhash`
+<pre class="longlist">
+  37  static struct st_hash_type type_numhash = {
+  38      numcmp,
+  39      numhash,
+  40  };
+
+ 552  static int
+ 553  numcmp(x, y)
+ 554      long x, y;
+ 555  {
+ 556      return x != y;
+ 557  }
+
+ 559  static int
+ 560  numhash(n)
+ 561      long n;
+ 562  {
+ 563      return n;
+ 564  }
+
+(st.c)
+</pre>
+
+Très simple : la table que l'interprétateur `ruby` utilise est globalement
+ce `type_numhash`.
+
+h3. `st_lookup()`
+
+Bien. Maintenant, voyons la fonction qui utilise cette structure de données.
+D'abord, c'est une bonne idée de regarder la fonction qui réalise la recherche.
+Voici ci-dessous la fonction qui effectue une recherche à l'intérieur de la
+table de hachage, `st_lookup()`.
+
+▼ `st_lookup()`
+<pre class="longlist">
+ 247  int
+ 248  st_lookup(table, key, value)
+ 249      st_table *table;
+ 250      register char *key;
+ 251      char **value;
+ 252  {
+ 253      unsigned int hash_val, bin_pos;
+ 254      register st_table_entry *ptr;
+ 255
+ 256      hash_val = do_hash(key, table);
+ 257      FIND_ENTRY(table, ptr, hash_val, bin_pos);
+ 258
+ 259      if (ptr == 0) {
+ 260          return 0;
+ 261      }
+ 262      else {
+ 263          if (value != 0)  *value = ptr->record;
+ 264          return 1;
+ 265      }
+ 266  }
+
+(st.c)
+</pre>
+
+Les parties importantes sont assurément `do_hash()`et `FIND_ENTRY()`. Examinons-les
+l'une après l'autre.
+
+▼ `do_hash()`
+<pre class="longlist">
+  68  #define do_hash(key,table) (unsigned int)(*(table)->type->hash)((key))
+
+(st.c)
+</pre>
+
+Juste au cas où, écrivons à part le corps de la macro qui est difficile à saisir :
+
+<pre class="emlist">
+(table)->type->hash
+</pre>
+
+C'est un pointeur vers une fonction, auquel on passe la clé `key`. C'est la
+syntaxe utiliséecpour appeler la fonction. `*` ne s'applique pas à `table`.
+En définitive, cette maxcro est un générateur de valeur de hachage pour une
+clé `key`, qui utilise la fonction de hachage pré-existance `type->hash`
+selon le type de données.
+
+Voyons ensuite `FIND_ENTRY()`.
+
+▼ `FIND_ENTRY()`
+<pre class="longlist">
+ 235  #define FIND_ENTRY(table, ptr, hash_val, bin_pos) do {\
+ 236      bin_pos = hash_val%(table)->num_bins;\
+ 237      ptr = (table)->bins[bin_pos];\
+ 238      if (PTR_NOT_EQUAL(table, ptr, hash_val, key)) {\
+ 239          COLLISION;\
+ 240          while (PTR_NOT_EQUAL(table, ptr->next, hash_val, key)) {\
+ 241              ptr = ptr->next;\
+ 242          }\
+ 243          ptr = ptr->next;\
+ 244      }\
+ 245  } while (0)
+
+ 227  #define PTR_NOT_EQUAL(table, ptr, hash_val, key) ((ptr) != 0 && \
+          (ptr->hash != (hash_val) || !EQUAL((table), (key), (ptr)->key)))
+
+  66  #define EQUAL(table,x,y) \
+          ((x)==(y) || (*table->type->compare)((x),(y)) == 0)
+
+(st.c)
+</pre>
+
+`COLLISION` est une macro de débogguage, nous allons la laisser de coté.
+
+Les paramètres de `FIND_ENTRY()` sont, en partant de la gauche :
+
+# `st_table`
+# l'entrée trouvée sera pointée par ce second paramètre
+# valeur de hachage
+# une variable temporaire
+
+Le second paramètre pointera vers la `st_table_entry*` trouvée.
+
+Au niveau le plus général, une boucle `do` ... `while(0)` est utilisée pour
+encadrer de façon sécurisée une expression macro multiple. C'est un idiome de
+`ruby`, ou plutôt du préprocesseur C. Quand on est dans le cas `if(1)`, l'ajout
+d'un `else` pourrait représenter un danger ; dans le cas d'un `while(1)`, il
+devient nécessaire d'ajouter un `break` à la toute fin.
+
+Notez qu'il n'y pas de point-virgule après le `while(0)`.
+
+<pre class="emlist">
+FIND_ENTRY();
+</pre>
+
+Cela permet de garder une cohérence au moment de l'utilisation de l'expression,
+avec un seul et unique point-virgule utile.
+
+h3. `st_add_direct()`
+
+Nous en arrivons maintenant à `st_add_direct()`, qui est une fonction qui
+ajoute une nouvelle relation dans la table de hachage. Elle ne vérifie pas
+si la clé est déjà enregistrée ; elle ajoutera toujours une nouvelle entrée.
+D'où l'usage de `direct` dans le nom.
+
+▼ `st_add_direct()`
+<pre class="longlist">
+ 308  void
+ 309  st_add_direct(table, key, value)
+ 310      st_table *table;
+ 311      char *key;
+ 312      char *value;
+ 313  {
+ 314      unsigned int hash_val, bin_pos;
+ 315
+ 316      hash_val = do_hash(key, table);
+ 317      bin_pos = hash_val % table->num_bins;
+ 318      ADD_DIRECT(table, key, value, hash_val, bin_pos);
+ 319  }
+
+(st.c)
+</pre>
+
+Tout comme précédemment, on fait appel à la macro `do_hash()` qui obtient une
+valeur. Après quoi, le calcul est le même qu'au début de `FIND_ENTRY()`, calcul
+consistant à échanger la valeur de hachage par un index concret.
+
+L'opération d'insertion semble ensuite être implémentée par `ADD_DIRECT()`,
+l'usage des majuscules nous laissant présager qu'il s'agit d'une macro.
+
+▼ `ADD_DIRECT()`
+<pre class="longlist">
+ 268  #define ADD_DIRECT(table, key, value, hash_val, bin_pos) \
+ 269  do {                                                     \
+ 270      st_table_entry *entry;                               \
+ 271      if (table->num_entries / (table->num_bins)           \
+                              > ST_DEFAULT_MAX_DENSITY) {      \
+ 272          rehash(table);                                   \
+ 273          bin_pos = hash_val % table->num_bins;            \
+ 274      }                                                    \
+ 275                                                           \
+          /* (A) */                                            \
+ 276      entry = alloc(st_table_entry);                       \
+ 277                                                           \
+ 278      entry->hash = hash_val;                              \
+ 279      entry->key = key;                                    \
+ 280      entry->record = value;                               \
+          /* (B) */                                            \
+ 281      entry->next = table->bins[bin_pos];                  \
+ 282      table->bins[bin_pos] = entry;                        \
+ 283      table->num_entries++;                                \
+ 284  } while (0)
+
+(st.c)
+</pre>
+
+Le premier `if` est un cas d'exception, j'y reviendrai après.
+
+(A) Alloue et initialise une entrée `st_table_entry`. 
+
+(B) Insère l'entrée `entry` au début de la liste.
+C'est l'idiome servant à manipuler une liste. Ie. :
+
+<pre class="emlist">
+entry->next = list_beg;
+list_beg = entry;
+</pre>
+
+est ce qui rend possible l'insertion d'une entrée au début de la liste. C'est
+similaire au "cons-ing" du langage Lisp. vous pouvez vérifier que, même si
+`list_beg` est `NULL`, ce bout de code reste vrai.
+
+J'en viens maintenant au code que j'avais mis de coté.
+
+▼ `ADD_DIRECT()`-`rehash`
+<pre class="longlist">
+ 271      if (table->num_entries / (table->num_bins)           \
+                              > ST_DEFAULT_MAX_DENSITY) {      \
+ 272          rehash(table);                                   \
+ 273          bin_pos = hash_val % table->num_bins;            \
+ 274      }                                                    \
+
+(st.c)
+</pre>
+
+`DENSITY` représente la « concentration. » En termes concrets, cette clause
+conditionnelle vérifie si la table est fortement « peuplée » ou non. Au sein
+de `st_table`, quand le nombre de valeurs utilisant le même `bin_pos` croît,
+il en va de même pour les listes, qui s'allongent. Tout cela rend la recherche
+plus lente. C'est pourquoi, étant donné un certain compteur `bin` donné, quand
+le nombre moyen d'éléments pa emplacement devient trop grand, `bin` devient
+plus grand et la facteur de densité du peupelement s'en trouve réduit.
+
+Le `ST_DEFAULT_MAX_DENSITY` de départ est
+
+▼ `ST_DEFAULT_MAX_DENSITY`
+<pre class="longlist">
+  23  #define ST_DEFAULT_MAX_DENSITY 5
+
+(st.c)
+</pre>
+
+Du fait de ce réglage, si dans tous les `bin_pos` il y a cinq `st_table_entries`,
+la taille sera augmentée.
+
+h3. `st_insert()`
+
+`st_insert()` n'est rien de plus qu'une combinaison de `st_add_direct()` et
+`st_lookup()`, aussi si vous comprenez ces deux fonctions, tout sera on ne
+peut plus clair.
+
+▼ `st_insert()`
+<pre class="longlist">
+ 286  int
+ 287  st_insert(table, key, value)
+ 288      register st_table *table;
+ 289      register char *key;
+ 290      char *value;
+ 291  {
+ 292      unsigned int hash_val, bin_pos;
+ 293      register st_table_entry *ptr;
+ 294
+ 295      hash_val = do_hash(key, table);
+ 296      FIND_ENTRY(table, ptr, hash_val, bin_pos);
+ 297
+ 298      if (ptr == 0) {
+ 299          ADD_DIRECT(table, key, value, hash_val, bin_pos);
+ 300          return 0;
+ 301      }
+ 302      else {
+ 303          ptr->record = value;
+ 304          return 1;
+ 305      }
+ 306  }
+
+(st.c)
+</pre>
+
+La fonction vérifie si l'élément est déjà présent dans la table. Il ne sera
+ajouté que si ce n'est pas le cas. S'il y a effectivement insertion, la valeur
+de retour sera 0 ; sinon, 1.
+
+h2. `ID` et Symboles
+
+J'ai déjà expliqué ce qu'était un `ID`. C'est une correspondance entre une
+chaîne de caractères arbitraire et une valeur. On l'utilise pour déclarer
+différents noms, et le type de données sous-jacent est `unsigned int`.
+
+h3. De `char*` à `ID`
+
+La conversion d'une chaîne en `ID` est réalisée par `rb_intern()`. Cette
+fonction est plutôt longue, aussi va t-on en omettre la partie centrale.
+
+▼ `rb_intern()` (simplifiée)
+<pre class="longlist">
+5451  static st_table *sym_tbl;       /*  char* en ID   */
+5452  static st_table *sym_rev_tbl;   /*  ID en char*   */
+
+5469  ID
+5470  rb_intern(name)
+5471      const char *name;
+5472  {
+5473      const char *m = name;
+5474      ID id;
+5475      int last;
+5476
+          /* S'il y a déjà un ID correspondant au nom, le retourner */
+5477      if (st_lookup(sym_tbl, name, &id))
+5478          return id;
+
+          /* partie omise ... crée un nouvel ID */
+
+          /* enregistre le nom et l'ID correspondant */
+5538    id_regist:
+5539      name = strdup(name);
+5540      st_add_direct(sym_tbl, name, id);
+5541      st_add_direct(sym_rev_tbl, id, name);
+5542      return id;
+5543  }
+
+(parse.y)
+</pre>
+
+La relation de correspondance entre la chaîne et l'`ID` peut être sauvegardée
+dans une table `st_table`. Il n'y a _a priori_ aucune difficulté particulière
+ici.
+
+Que fait la section cachée ? Elle traite les noms de variables de globales et
+de variables d'instances d'une façon spéciale et les marque d'un drapeau. La
+raison en est que, au sein du parseur, il est nécessaire de connaître à partir
+de l'`ID` la classification de la variable traitée. Cependant, la principale
+partie de `ID` n'est pas liée à tout cela, aussi ne vais-je pas l'expliquer
+ici.
+
+h3. De `ID` vers `char*`
+
+Le méchanisme inverse de `rb_intern()` est assuré par `rb_id2name()`, une
+fonction qui prend en argument un `ID` et génère un `char*`. Vous le savez
+certainemetn déjà, mais le 2 dans `id2name` signifie "_to_" (NDT(Note du traducteur) : vers).
+"_To_" et "_two_" ayant la même prononciation, le chiffre est utilisé comme
+raccourci, une syntaxe très courante.
+
+Cette fonction initialise également le drapeau de classification `ID`, elle
+est donc relativement longue. Je vais la simplifier.
+
+▼ `rb_id2name()` (simplifiée)
+<pre class="longlist">
+char *
+rb_id2name(id)
+    ID id;
+{
+    char *name;
+
+    if (st_lookup(sym_rev_tbl, id, &name))
+        return name;
+    return 0;
+}
+</pre>
+
+Bon, elle semble peut-être simplifiée à l'extrême, mais il est vrai que si
+on en supprime les raffinements, elle est vraiment aussi simple.
+
+Le point sur lequel je veux insister est que le `name` trouvé n'est pas copié.
+L'API de `ruby` ne requière pas (en fait, interdit) la libération (NDT(Note du traducteur) : `free`)
+de la valeur de retour. Par ailleurs, quand les paramètres sont passés, ils
+sont toujours copiés. En d'autres termes, la création et la libération se fait
+globalement, d'un seul coté : soit celui de l'utilisateur, soit celui de `ruby`.
+
+Donc, par la suite, quand la création et la libération d'une valeur ne peuvent
+être accomplies (quand, une fois la valeur passée, rien n'est retourné), c'est
+un objet Ruby qui est utilisé. Je n'ai pas encore abordé ça, mais un objet Ruby
+est libérer automatiquement une fois qu'il est devenu inutile, même si on ne
+fait rien de spécial pour le gérer.
+
+h3. Conversion de `VALUE` et `ID`
+
+`ID` est exposé comme une instance de la classe `Symbol` au niveau de Ruby.
+On peut d'ailleurs l'obtenir comme ceci : `"string".intern`. L'implémentation
+de `String#intern` est `rb_str_intern()`.
+
+▼ `rb_str_intern()`
+<pre class="longlist">
+2996  static VALUE
+2997  rb_str_intern(str)
+2998      VALUE str;
+2999  {
+3000      ID id;
+3001
+3002      if (!RSTRING(str)->ptr || RSTRING(str)->len == 0) {
+3003          rb_raise(rb_eArgError, "interning empty string");
+3004      }
+3005      if (strlen(RSTRING(str)->ptr) != RSTRING(str)->len)
+3006          rb_raise(rb_eArgError, "string contains `\\0'");
+3007      id = rb_intern(RSTRING(str)->ptr);
+3008      return ID2SYM(id);
+3009  }
+
+(string.c)
+</pre>
+
+Cette fonction est somme toute très raisonnable comme exemple de code d'une
+classe d'une librairie de `ruby`. Concentrez s'il-vous-plaît votre attention
+sur à la partie où `RSTRING()` est utilisé et casté, et dans laquelle on accède
+au membre de la structure de données.
+
+Lisons le code. Tout d'abord, `rb_raise()`, qui est simplement là pour gérer
+les erreurs ; ignorons-le. Le `rb_intern()` que nous avons examiné plus tôt
+est présent, et également ID2SYM. Pour rappel, `ID2SYM()` est une macro qui
+convertit un `ID` en `Symbol`.
+
+L'opération inverse est accomplie par `Symbol#to_s` ; son implémentation est
+`sym_to_s`.
+
+▼ `sym_to_s()`
+<pre class="longlist">
+ 522  static VALUE
+ 523  sym_to_s(sym)
+ 524      VALUE sym;
+ 525  {
+ 526      return rb_str_new2(rb_id2name(SYM2ID(sym)));
+ 527  }
+
+(object.c)
+</pre>
+
+`SYM2ID()` est la macro qui convertit un `Symbol` (`VALUE`) en `ID`.
+
+Il semble bien que la fonction ne fait rien de déraisonnable. Toutefois, il
+n'est pas inutile de faire attention à la partie autour de la gestion mémoire.
+`rb_id2name()` retourne un `char*` qui ne doit pas être libéré par `free()`.
+`rb_str_new2()` copie le `char*` du paramètre et utilise la copie (si bien
+que la paramètre original n'est pas modifié). De cette façon, notre politique
+de gestion mémoire reste cohérente, ce qui nous autorise à écrire une seule
+ligne consistant en le chaînage des fonctions.

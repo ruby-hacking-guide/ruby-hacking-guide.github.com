@@ -1,0 +1,641 @@
+h1. 第3章 名前と名前表
+
+h2. `st_table`
+
+メソッドテーブルやインスタンス変数テーブルとして`st_table`は既に何度か登
+場してきた。本章ではまずこの`st_table`について詳しい作りを見ていくことに
+しよう。
+
+h3. 概要
+
+`st_table`はハッシュテーブルだということはもう言った。ではハッシュ
+テーブルは何かと言うと一対一対応を記録するデータ構造である。一対一の対
+応とは例えば変数名とその値、関数名とその実体、などだ。
+
+ただしもちろんハッシュテーブル以外でも一対一対応は表せる。
+例えば次のような構造体のリストを使ってもいい。
+
+<pre class="emlist">
+struct entry {
+    ID key;
+    VALUE val;
+    struct entry *next;  /* 次のエントリを指す */
+};
+</pre>
+
+しかしこの方法は「遅い」。もしリストが1000個あったら最悪1000回リンクを
+たぐって探さなければならない。つまり要素の個数に比例して検索時間が長く
+なってしまう。これはまずい、ということで古来からいろいろな高速化手法が
+考えられてきた。ハッシュテーブルはそのような手法の一つである。つまりハッ
+シュテーブルは「それでないとダメ」というよりは高速化できるというところ
+に意義がある。
+
+さて、それで`st_table`を見ていくわけだが、このライブラリは
+まつもとさんのオリジナルではなく、
+
+▼ `st.c`のクレジット
+<pre class="longlist">
+   1  /* This is a public domain general purpose hash table package
+         written by Peter Moore @ UCB. */
+
+(st.c)
+</pre>
+
+……だ、そうである。
+
+ちなみにGoogleで見付けた他のバージョンのコメントからすると
+`st_table`はSTring TABLEの略らしい。しかしgeneral purposeという文面と
+stringではまるきり矛盾していると思うのだが……。
+
+h4. ハッシュテーブルとは
+
+ハッシュテーブルの考えかたはこうだ。まず n 個の長さを持つ配列
+を用意しておく。例えば n=64 としよう(図1)。
+
+!images/ch_name_array.jpg(配列)!
+
+そしてキーから0〜 n-1 (0〜63)の範囲の整数 i を得る関数 f を用意す
+る。この f をハッシュ関数と言う。 f は同じキーに対しては常に同じ
+ i を返さなくてはいけない。例えば
+キーが正の整数だけと仮定できるなら、キーを64で割れば余りは必ず0〜63に
+なるはずだ。だからこの計算式は関数 f になりうる。
+
+対応関係を記録するときは、キーに対して f を呼んで i を求め、用意した配列の
+インデックス i に値を入れればよい(図2)。
+ようするに、配列へのインデックスアクセスなら超高速なのだから、キーをな
+んとかして整数に変換してしまおうというのがアイデアの根幹だ。
+
+!images/ch_name_aset.jpg(配列にセット)!
+
+しかし世の中そうそううまい話はないわけで、このアイデアには致命的
+な問題がある。 n は今64しかないから、64個以上の対応関係を記録しようと
+したら絶対に i が重複してしまう。64個未満だとしても別々のキーに対して同
+じインデックスが割り振られてしまうかもしれない。例えば先程のハッシュ関数
+「`key % 64`」の場合だと、キーが65でも129でもハッシュ値は1である。これを
+「ハッシュ値の衝突(collision)」と言う。衝突を解決する方法は何種類か
+存在する。
+
+例えば衝突が起こったらその次の要素に入れる方法がある。
+これは開番地法と言う(図3)。
+
+!images/ch_name_nexti.jpg(開番地法)!
+
+他に、配列をそのまま使うのではなくて、配列の要素一つ一つをリンクリ
+ストへのポインタにする方法もある。そして衝突が起こったらどんどん
+リストをつなげていく。こちらは連鎖法と言う(図4)。
+`st_table`はこの連鎖法を採用している。
+
+!images/ch_name_chain.jpg(連鎖法)!
+
+ところで、もし使う可能性のあるキーの集合が事前にわかっていたとしたら
+「絶対に衝突の起こらないハッシュ関数」を考えることもできるかもしれない。
+そのような関数を「完全ハッシュ関数」と言う。そして実は任意の文字列の集
+合に対してこの完全ハッシュ関数を作ってくれるツールがある。
+GNU gperfがソレだ。`ruby`のパーサの実装でも実際にこれを使っているの
+だが……まだその話をする時期ではない。これについては第二部で続きを話す
+ことにしよう。
+
+h3. データ構造
+
+ここからは実際のソースコードに入る。序章で書いたとおり、
+データとコードがあるならまずデータから読んだほうがいい。
+以下に`st_table`が使うデータ型を示す。
+
+▼ `st_table`
+<pre class="longlist">
+   9  typedef struct st_table st_table;
+
+  16  struct st_table {
+  17      struct st_hash_type *type;
+  18      int num_bins;                   /* スロットの数 */
+  19      int num_entries;                /* 格納している要素の総数*/
+  20      struct st_table_entry **bins;   /* スロット */
+  21  };
+
+(st.h)
+</pre>
+
+▼ `struct st_table_entry`
+<pre class="longlist">
+  16  struct st_table_entry {
+  17      unsigned int hash;
+  18      char *key;
+  19      char *record;
+  20      st_table_entry *next;
+  21  };
+
+(st.c)
+</pre>
+
+`st_table`がメインのテーブルの構造で、`st_table_entry`が値一つを格納する
+ホルダである。`st_table_entry`には`next`という名前のメンバがあるのでこれは
+当然リンクリストだ。連鎖法の連鎖の部分である。`st_hash_type`という型が使
+われているが、これはこの後で説明するのでまずはその他の部分について
+図5と見比べつつ役割を確認していただきたい。
+
+!images/ch_name_sttable.jpg(`st_table`のデータ構造)!
+
+では`st_hash_type`について註釈する。
+
+▼ `struct st_hash_type`
+<pre class="longlist">
+  11  struct st_hash_type {
+  12      int (*compare)();   /* 比較関数 */
+  13      int (*hash)();      /* ハッシュ関数 */
+  14  };
+
+(st.h)
+</pre>
+
+なにぶんまだ第3章なのでやや丁寧に見ていこう。
+
+<pre class="emlist">
+int (*compare)()
+</pre>
+
+の部分はもちろん「`int`を返す関数へのポインタ」型のメンバ`compare`、
+を表している。`hash`も同様だ。こういう変数には次のように代入し、
+
+<pre class="emlist">
+int
+great_function(int n)
+{
+    /* ToDo: なにかすごいことをする */
+    return n;
+}
+
+{
+    int (*f)();
+    f = great_function;
+</pre>
+
+次のように呼び出す。
+
+<pre class="emlist">
+    (*f)(7);
+}
+</pre>
+
+ここで`st_hash_type`の解説に戻ろう。`hash compare`と二つあるメンバの
+うち、`hash`が前述のハッシュ関数 f を表している。
+
+一方の`compare`はキーが同じであるかどうかを判定する関数である。連鎖法
+では同じハッシュ値 n のところに複数の要素が入ることがあるのだった。そ
+の要素のどれが本当に求めるものかを知るためには、今度は完全に信用できる
+比較関数が必要になる。そのための関数が`compare`だ。
+
+この`st_hash_type`はなかなかうまい汎用化技法である。ハッシュテーブル自
+体は格納するキーがどんな型なのか特定できない。例えば`ruby`では
+`st_table`のキーとして`ID`・`char*`・`VALUE`を使っているのだが、それぞ
+れに全く同じ仕組みのハッシュを書いてやるのはいくらなんでもバカらしい。
+キーの型が違ったところで変化するのはハッシュ関数などごく一部だけで、メ
+モリ割り当てや衝突検出など大部分のコードは同じだからだ。そこで型によっ
+て実装が違う部分「だけ」を関数としてくくりだし、それへのポインタを受け
+取って使うことにするのである。これによってコードの大部分を占めるハッシュ
+テーブル自体の実装を使いまわすことができる。
+
+オブジェクト指向言語だとそもそもオブジェクトに手続きをくっつけて持ち運
+ぶことができるのでこういう仕組みは必要ない。あるいは、こういう仕組みを
+言語の機能として組み込んでいる、というほうが正しいか。
+
+h3. `st_hash_type`の例
+
+`st_hash_type`のような構造体を使う方法は確かに汎用化としてはうまいのだ
+が、実際にどんなコードを通るのかということは逆にわかりにくくなる。
+`hash`や`compare`にどういう関数が使われるのか見てみないとどうも実感が
+つかめない。それには前章でも登場していた`st_init_numtable()`を見てみる
+といいだろう。これは整数型キーのためのテーブルを作る関数だ。
+
+▼ `st_init_numtable()`
+<pre class="longlist">
+ 182  st_table*
+ 183  st_init_numtable()
+ 184  {
+ 185      return st_init_table(&type_numhash);
+ 186  }
+
+(st.c)
+</pre>
+
+`st_init_table()`がテーブルのメモリを割り当ててたりする関数で、
+`type_numhash`が`st_hash_type`(メンバ名で言うと`type`)になる。
+その`type_numhash`はと言うと……
+
+▼ `type_numhash`
+<pre class="longlist">
+  37  static struct st_hash_type type_numhash = {
+  38      numcmp,
+  39      numhash,
+  40  };
+
+ 552  static int
+ 553  numcmp(x, y)
+ 554      long x, y;
+ 555  {
+ 556      return x != y;
+ 557  }
+
+ 559  static int
+ 560  numhash(n)
+ 561      long n;
+ 562  {
+ 563      return n;
+ 564  }
+
+(st.c)
+</pre>
+
+とても単純だ。`ruby`のインタプリタで使うテーブルは
+だいたいこの`type_numhash`を使っている。
+
+h3. `st_lookup()`
+
+では今度はこの構造を使う関数を見ていこう。最初は検索用の関数から見てい
+くのがいい。ハッシュテーブルを検索する関数`st_lookup()`を以下に示す。
+
+▼ `st_lookup()`
+<pre class="longlist">
+ 247  int
+ 248  st_lookup(table, key, value)
+ 249      st_table *table;
+ 250      register char *key;
+ 251      char **value;
+ 252  {
+ 253      unsigned int hash_val, bin_pos;
+ 254      register st_table_entry *ptr;
+ 255
+ 256      hash_val = do_hash(key, table);
+ 257      FIND_ENTRY(table, ptr, hash_val, bin_pos);
+ 258
+ 259      if (ptr == 0) {
+ 260          return 0;
+ 261      }
+ 262      else {
+ 263          if (value != 0)  *value = ptr->record;
+ 264          return 1;
+ 265      }
+ 266  }
+
+(st.c)
+</pre>
+
+重要なところはほとんど`do_hash()`と`FIND_ENTRY()`で行われているようだ。
+順番に見る。
+
+▼ `do_hash()`
+<pre class="longlist">
+  68  #define do_hash(key,table) (unsigned int)(*(table)->type->hash)((key))
+
+(st.c)
+</pre>
+
+念のため書くと、マクロ本体のややこしい部分は
+
+<pre class="emlist">
+(table)->type->hash
+</pre>
+
+という関数ポインタから、`key`を引数にして関数を起動する記法である。
+`*`は`table`にはかからない。つまり型ごとに用意されたハッシュ関数
+`type->hash`でもって`key`に対するハッシュ値を求めるのがこのマクロだ。
+
+続いて`FIND_ENTRY()`を見る。
+
+▼ `FIND_ENTRY()`
+<pre class="longlist">
+ 235  #define FIND_ENTRY(table, ptr, hash_val, bin_pos) do {\
+ 236      bin_pos = hash_val%(table)->num_bins;\
+ 237      ptr = (table)->bins[bin_pos];\
+ 238      if (PTR_NOT_EQUAL(table, ptr, hash_val, key)) {\
+ 239          COLLISION;\
+ 240          while (PTR_NOT_EQUAL(table, ptr->next, hash_val, key)) {\
+ 241              ptr = ptr->next;\
+ 242          }\
+ 243          ptr = ptr->next;\
+ 244      }\
+ 245  } while (0)
+
+ 227  #define PTR_NOT_EQUAL(table, ptr, hash_val, key) ((ptr) != 0 && \
+          (ptr->hash != (hash_val) || !EQUAL((table), (key), (ptr)->key)))
+
+  66  #define EQUAL(table,x,y) \
+          ((x)==(y) || (*table->type->compare)((x),(y)) == 0)
+
+(st.c)
+</pre>
+
+`COLLISION`はデバッグ用のマクロなので無視していい(すべきだ)。
+
+`FIND_ENTRY()`の引数は前から
+
+# `st_table`
+# 使うべきテンポラリ変数
+# ハッシュ値
+# 検索キー
+
+である。また二番目の引数には見付かった`st_table_entry*`が保存される。
+
+それと一番外側には複数の式からなるマクロを安全にくくるための`do`〜
+`while(0)`が使ってある。これは`ruby`の、と言うよりC言語のプリプロセッ
+サのイディオムだ。`if(1)`だと`else`が付いてしまう恐れがある。
+`while(1)`だと最後に`break`が必要になる。
+
+`while(0)`のあとにセミコロンを置かないのもポイントだ。なぜなら、
+
+<pre class="emlist">
+FIND_ENTRY();
+</pre>
+
+と普通に書いたときに文末のセミコロンが無駄にならないからである。
+
+h3. `st_add_direct()`
+
+続いてハッシュテーブルに新しい関連付けを登録する関数`st_add_direct()`を
+見よう。この関数はキーが既に登録されているかどうかを検査せず、無条件
+に新しいエントリを追加する。それがつまり関数名の「`direct`」の意味だ。
+
+▼ `st_add_direct()`
+<pre class="longlist">
+ 308  void
+ 309  st_add_direct(table, key, value)
+ 310      st_table *table;
+ 311      char *key;
+ 312      char *value;
+ 313  {
+ 314      unsigned int hash_val, bin_pos;
+ 315
+ 316      hash_val = do_hash(key, table);
+ 317      bin_pos = hash_val % table->num_bins;
+ 318      ADD_DIRECT(table, key, value, hash_val, bin_pos);
+ 319  }
+
+(st.c)
+</pre>
+
+先程と同じくハッシュ値を求めるマクロ`do_hash()`の呼び出しがある。その
+次の計算も`FIND_ENTRY()`の最初にあったもので、ハッシュ値を実際のインデッ
+クスに変換する。
+
+そして挿入操作自体は`ADD_DIRECT()`で実行されているようだ。これも、名前
+が大文字であることから想像できるように、マクロである。
+
+▼ `ADD_DIRECT()`
+<pre class="longlist">
+ 268  #define ADD_DIRECT(table, key, value, hash_val, bin_pos) \
+ 269  do {                                                     \
+ 270      st_table_entry *entry;                               \
+ 271      if (table->num_entries / (table->num_bins)           \
+                              > ST_DEFAULT_MAX_DENSITY) {      \
+ 272          rehash(table);                                   \
+ 273          bin_pos = hash_val % table->num_bins;            \
+ 274      }                                                    \
+ 275                                                           \
+          /*(A)*/                                            \
+ 276      entry = alloc(st_table_entry);                       \
+ 277                                                           \
+ 278      entry->hash = hash_val;                              \
+ 279      entry->key = key;                                    \
+ 280      entry->record = value;                               \
+          /*(B)*/                                            \
+ 281      entry->next = table->bins[bin_pos];                  \
+ 282      table->bins[bin_pos] = entry;                        \
+ 283      table->num_entries++;                                \
+ 284  } while (0)
+
+(st.c)
+</pre>
+
+最初の`if`は例外的な場合を扱っているので後にして、その次から。
+
+(A)`st_table_entry`を割り当て、初期化して、
+
+(B)`entry`をリストの先頭に追加する。
+こちらはリストを扱うときのイディオムだ。つまり
+
+<pre class="emlist">
+entry->next = list_beg;
+list_beg = entry;
+</pre>
+
+でリストの先頭にエントリを追加することができる。Lispの用語を使って
+「cons(コンス)する」と言うこともある。もし`list_beg`が`NULL`でも
+このコードは通用することを確認しよう。
+
+最後に、棚上げにしておいたコードを説明する。
+
+▼ `ADD_DIRECT()`-`rehash`
+<pre class="longlist">
+ 271      if (table->num_entries / (table->num_bins)           \
+                              > ST_DEFAULT_MAX_DENSITY) {      \
+ 272          rehash(table);                                   \
+ 273          bin_pos = hash_val % table->num_bins;            \
+ 274      }                                                    \
+
+(st.c)
+</pre>
+
+`DENSITY`とは「濃度」。つまりこの条件式ではハッシュテーブルが「混んで
+いないか」確かめている。
+`st_table`では同じ`bin_pos`を使っている値が増えるほどリンクリストが
+長くなる、つまり検索が遅くなる。だから`bin`の数に対
+して要素数が多くなりすぎたら、`bin`を増やして混雑を緩和するわけだ。
+
+現在`ST_DEFAULT_MAX_DENSITY`は
+
+▼ `ST_DEFAULT_MAX_DENSITY`
+<pre class="longlist">
+  23  #define ST_DEFAULT_MAX_DENSITY 5
+
+(st.c)
+</pre>
+
+と設定されているから、全ての`bin_pos`に五つの`st_table_entry`が連なって
+いるような状況になったらサイズを増やす、ということになる。
+
+h3. `st_insert()`
+
+`st_insert()`は`st_add_direct()`と`st_lookup()`の組み合わせにすぎないので
+この二つが分かれば簡単である。
+
+▼ `st_insert()`
+<pre class="longlist">
+ 286  int
+ 287  st_insert(table, key, value)
+ 288      register st_table *table;
+ 289      register char *key;
+ 290      char *value;
+ 291  {
+ 292      unsigned int hash_val, bin_pos;
+ 293      register st_table_entry *ptr;
+ 294
+ 295      hash_val = do_hash(key, table);
+ 296      FIND_ENTRY(table, ptr, hash_val, bin_pos);
+ 297
+ 298      if (ptr == 0) {
+ 299          ADD_DIRECT(table, key, value, hash_val, bin_pos);
+ 300          return 0;
+ 301      }
+ 302      else {
+ 303          ptr->record = value;
+ 304          return 1;
+ 305      }
+ 306  }
+
+(st.c)
+</pre>
+
+既に要素がテーブルに登録されているかどうか調べ、
+登録されていないときにだけ追加する。
+実際に追加したら真を返す。追加しなかったら偽を返す。
+
+h2. `ID`とシンボル
+
+`ID`というものが何であるかということは既に述べた。任意の文字列と一対一
+に対応する数値のことで、いろいろな名前を表すために使われる。実際の型は
+`unsigned int`だ。
+
+h3. `char*`から`ID`
+
+文字列から`ID`への変換は`rb_intern()`で行っている。
+この関数はやや長いので途中を省略して掲載しよう。
+
+▼ `rb_intern()`(簡約版)
+<pre class="longlist">
+5451  static st_table *sym_tbl;       /*  char* → ID   */
+5452  static st_table *sym_rev_tbl;   /*  ID → char*   */
+
+5469  ID
+5470  rb_intern(name)
+5471      const char *name;
+5472  {
+5473      const char *m = name;
+5474      ID id;
+5475      int last;
+5476
+          /* 既にnameに対応するIDが登録されていたらそれを返す */
+5477      if (st_lookup(sym_tbl, name, &id))
+5478          return id;
+
+          /* 省略……新しいIDを作る */
+
+          /* nameとIDの関連を登録する */
+5538    id_regist:
+5539      name = strdup(name);
+5540      st_add_direct(sym_tbl, name, id);
+5541      st_add_direct(sym_rev_tbl, id, name);
+5542      return id;
+5543  }
+
+(parse.y)
+</pre>
+
+文字列と`ID`の一対一対応は`st_table`を使って実現できる。
+特に難しいところはないだろう。
+
+省略しているところでは何をしているかと言うと、グローバル変数名や
+インスタンス変数名を特別扱いしてフラグを立てているのである。
+パーサで、`ID`から変数
+の種類を知る必要があるからだ。だが`ID`の原理自体にはあまり関りがないこと
+なので、ここには載せない。
+
+h3. `ID`から`char*`
+
+`rb_intern()`の逆、`ID`から`char*`を得るために使うのが`rb_id2name()`である。
+御存知と思うが、`id2name`の2はtoのことだ。toとtwoの発音が同じだから
+代わりに使っているのだ。この記法はプログラムではわりとよく見かける。
+
+この関数も`ID`の種別フラグをいろいろしているために長いので、思い切り
+簡単にしてものを見ておくことにする。
+
+▼ `rb_id2name()`(簡約版)
+<pre class="longlist">
+char *
+rb_id2name(id)
+    ID id;
+{
+    char *name;
+
+    if (st_lookup(sym_rev_tbl, id, &name))
+        return name;
+    return 0;
+}
+</pre>
+
+ちょっと簡単にしすぎたような気もするが、
+実際に小細工を削ればこんなものなのだ。
+
+ここで注目したいのは、検索した`name`をコピーしていないことである。`ruby`の
+APIでは返り値は常に、`free()`する必要はない(してはならない)。また引数
+を渡した場合は常にコピーして使ってくれる。つまり生成と解放が常にユーザか
+`ruby`か、片方で完結するようになっているのだ。
+
+では生成と解放を対応させることができない(渡したら渡しっぱなしになる)
+値の場合はどうするかというと、その時はRubyオブジェクトを使うようにする。
+まだ話していないが、Rubyのオブジェクトは我々が面倒を見なくとも必要が
+なくなったときに自動的に解放されるからだ。
+
+h3. `VALUE`と`ID`の変換
+
+`ID`はRubyレベルでは`Symbol`クラスのインスタンスとして表され、`"string".intern`の
+ようにして得ることができる。その`String#intern`の実体が`rb_str_intern()`だ。
+
+▼ `rb_str_intern()`
+<pre class="longlist">
+2996  static VALUE
+2997  rb_str_intern(str)
+2998      VALUE str;
+2999  {
+3000      ID id;
+3001
+3002      if (!RSTRING(str)->ptr || RSTRING(str)->len == 0) {
+3003          rb_raise(rb_eArgError, "interning empty string");
+3004      }
+3005      if (strlen(RSTRING(str)->ptr) != RSTRING(str)->len)
+3006          rb_raise(rb_eArgError, "string contains `\\0'");
+3007      id = rb_intern(RSTRING(str)->ptr);
+3008      return ID2SYM(id);
+3009  }
+
+(string.c)
+</pre>
+
+この関数は`ruby`のクラスライブラリのコード例としてもなかなか手頃だ。
+`RSTRING()`を使ってキャストし、構造体メンバにアクセスしているところに
+注目してほしい。
+
+コードを読もう。まず`rb_raise()`は単なるエラー処理なのでとりあえず無視。
+先程見たばかりの`rb_intern()`があり、`ID2SYM()`がある。`ID2SYM()`は`ID`を
+`Symbol`に変換するマクロだった。
+
+またこの逆の操作は`Symbol#to_s`などで行える。
+その実体は`sym_to_s`である。
+
+▼ `sym_to_s()`
+<pre class="longlist">
+ 522  static VALUE
+ 523  sym_to_s(sym)
+ 524      VALUE sym;
+ 525  {
+ 526      return rb_str_new2(rb_id2name(SYM2ID(sym)));
+ 527  }
+
+(object.c)
+</pre>
+
+`SYM2ID()`は`Symbol`(`VALUE`)を`ID`に変換するマクロである。
+
+なんてことはない関数に見えるが、メモリ処理まわりには注意すべきだろう。
+`rb_id2name()`は`free()`してはならない`char*`を返し、`rb_str_new2()`は引数の
+`char*`をコピーして使う(また引数を変更したりはしない)。このように
+方針が一貫しているからこそ関数の連鎖だけで書けるのである。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

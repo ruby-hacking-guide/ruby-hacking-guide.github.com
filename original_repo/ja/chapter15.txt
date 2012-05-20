@@ -1,0 +1,894 @@
+h1. 第15章 メソッド
+
+この章ではメソッドの探索と起動について話す。
+
+h2. メソッドの探索
+
+h3. 用語
+
+この章ではメソッド呼び出しとメソッド定義の話を両方やる関係で、
+実に様々な「引数」が出てくる。そこで紛らわしくならないように
+ここで厳密に用語を決めてしまうことにしよう。
+
+<pre class="emlist">
+m(a)          # aは「通常の引数」
+m(*list)      # listは「配列引数」
+m(&block)     # blockは「ブロック引数」
+
+def m(a)      # aは「通常のパラメータ」
+def m(a=nil)  # aは「オプションパラメータ」、nilは「そのデフォルト値」
+def m(*rest)  # restは「restパラメータ」
+def m(&block) # blockは「ブロックパラメータ」
+</pre>
+
+ようするに渡すときは全部「引数」、受けるほうは全部「パラメータ」で
+種類によってそれぞれ形容詞を付ける、ということだ。
+
+ただし、ここで挙げたうち「ブロック引数」と「ブロックパラメータ」に
+ついては次章『ブロック』で扱うことになる。
+
+h3. 調査
+
+▼ ソースプログラム
+<pre class="longlist">
+obj.method(7,8)
+</pre>
+
+▼ 対応する構文木
+<pre class="longlist">
+NODE_CALL
+nd_mid = 9049 (method)
+nd_recv:
+    NODE_VCALL
+    nd_mid = 9617 (obj)
+nd_args:
+    NODE_ARRAY [
+    0:
+        NODE_LIT
+        nd_lit = 7:Fixnum
+    1:
+        NODE_LIT
+        nd_lit = 8:Fixnum
+    ]
+</pre>
+
+メソッド呼び出しのノードは`NODE_CALL`だ。
+`nd_args`には`NODE_ARRAY`のリストとして引数が格納されている。
+
+それとこの他にメソッド呼び出しノードとしては`NODE_FCALL`と
+`NODE_VCALL`とい
+うのもある。`NODE_FCALL`が「`method(args)`」の形式で、`NODE_VCALL`はローカル
+変数と同じ「`method`」という形式の呼び出しに対応している。実際には
+`FCALL`と`VCALL`は一つにまとめることもできるが、`VCALL`のときには引数を準備
+するためのコードが必要ないので、その分のメモリと時間を節約するためだけに
+区別されている。
+
+では`rb_eval()`での`NODE_CALL`のハンドラを見てみよう。
+
+▼ `rb_eval()`-`NODE_CALL`
+<pre class="longlist">
+2745  case NODE_CALL:
+2746    {
+2747        VALUE recv;
+2748        int argc; VALUE *argv; /* used in SETUP_ARGS */
+2749        TMP_PROTECT;
+2750
+2751        BEGIN_CALLARGS;
+2752        recv = rb_eval(self, node->nd_recv);
+2753        SETUP_ARGS(node->nd_args);
+2754        END_CALLARGS;
+2755
+2756        SET_CURRENT_SOURCE();
+2757        result = rb_call(CLASS_OF(recv),recv,node->nd_mid,argc,argv,0);
+2758    }
+2759    break;
+
+(eval.c)
+</pre>
+
+問題は三つのマクロ、`BEGIN_CALLARGS SETUP_ARGS() END_CALLARGS`だろう。
+`rb_eval()`がレシーバの評価で`rb_call()`がメソッド起動らしいので、この三つ
+のマクロでは引数の評価をしているんだろうなあ、とはなんとなく想像できる
+が、実際のところ何をしているのだろうか。`BEGIN_CALLARGS`と`END_CALLARGS`は
+イテレータの話をしてからでないとわかりづらいので次章『ブロック』で
+改めて説明する。ここでは`SETUP_ARGS()`についてだけ調査しよう。
+
+h3. `SETUP_ARGS()`
+
+`SETUP_ARGS()`はメソッドの引数部分を評価するマクロである。このマクロ内
+では、元プログラムのコメントにもあるように、`argc`と`argv`という変数を
+使うのでそれをあらかじめ定義しておかなければならない。また
+`TMP_ALLOC()`を使うので`TMP_PROTECT`も使っておかなければならない。
+だから以下のようにするのが定型である。
+
+<pre class="emlist">
+int argc; VALUE *argv;   /* used in SETUP_ARGS */
+TMP_PROTECT;
+
+SETUP_ARGS(args_node);
+</pre>
+
+`args_node`がメソッドの引数(を表現するノード)で、それを評価した
+値の配列に変え、`argv`に格納する。では見てみよう。
+
+▼ `SETUP_ARGS()`
+<pre class="longlist">
+1780  #define SETUP_ARGS(anode) do {\
+1781      NODE *n = anode;\
+1782      if (!n) {\                             引数なし
+1783          argc = 0;\
+1784          argv = 0;\
+1785      }\
+1786      else if (nd_type(n) == NODE_ARRAY) {\  通常引数のみ
+1787          argc=n->nd_alen;\
+1788          if (argc > 0) {\   引数あり
+1789              int i;\
+1790              n = anode;\
+1791              argv = TMP_ALLOC(argc);\
+1792              for (i=0;i<argc;i++) {\
+1793                  argv[i] = rb_eval(self,n->nd_head);\
+1794                  n=n->nd_next;\
+1795              }\
+1796          }\
+1797          else {\            引数なし
+1798              argc = 0;\
+1799              argv = 0;\
+1800          }\
+1801      }\
+1802      else {\                                 配列引数や
+1803          VALUE args = rb_eval(self,n);\      ブロック引数がある
+1804          if (TYPE(args) != T_ARRAY)\
+1805              args = rb_ary_to_ary(args);\
+1806          argc = RARRAY(args)->len;\
+1807          argv = ALLOCA_N(VALUE, argc);\
+1808          MEMCPY(argv, RARRAY(args)->ptr, VALUE, argc);\
+1809      }\
+1810  } while (0)
+
+(eval.c)
+</pre>
+
+ちょっと長いが、キッパリと三つに分岐しているので実はたいして恐くない。
+それぞれの枝の意味はコメントに入れておいた通りだ。
+
+引数なしのときはどうでもいいとして、残りの二つの枝では似たようなことを
+やっている。おおまかに言うとやっていることは三段階で、
+
+# 引数を入れる領域を確保する
+# 引数の式を評価
+# 値を変数領域にコピー
+
+である。コードに書き込んでみるとこうだ
+(ついでにちょっと整形しておいた)。
+
+<pre class="emlist">
+/***** else if節、argc!=0 *****/
+int i;
+n = anode;
+argv = TMP_ALLOC(argc);                         /* 1 */
+for (i = 0; i < argc; i++) {
+    argv[i] = rb_eval(self, n->nd_head);        /* 2,3 */
+    n = n->nd_next;
+}
+
+/***** else節 *****/
+VALUE args = rb_eval(self, n);                  /* 2 */
+if (TYPE(args) != T_ARRAY)
+    args = rb_ary_to_ary(args);
+argc = RARRAY(args)->len;
+argv = ALLOCA_N(VALUE, argc);                   /* 1 */
+MEMCPY(argv, RARRAY(args)->ptr, VALUE, argc);   /* 3 */
+</pre>
+
+`else if`側では`TMP_ALLOC()`を使っているのに`else`側では
+`ALLOCA_N()`、つまり普通の`alloca()`を使っているのはどうしてだろう。
+`C_ALLOCA`な環境では`alloca()`は`malloc()`に等しいのだから、危険では
+ないだろうか。
+
+この点は「`else`側では引数の値が`args`にも入っている」ことが
+ポイントである。図にすれば図1のようになる。
+
+!images/ch_method_anchor.jpg(ヒープにあっても大丈夫)!
+
+一つでも`VALUE`がスタック上にあればそこを経由して連鎖的にマークされる。
+そのような`VALUE`は他の`VALUE`をスタックに繁ぎ止める錨(anchor)のような
+役割を果たす、即ち「anchor `VALUE`」となる。
+`else`側では`args`がanchor `VALUE`である。
+
+ちなみにanchor `VALUE`というのは今作った造語だ。
+
+h3. `rb_call()`
+
+`SETUP_ARGS()`はどちらかといえば横道だ。ここからは本筋に戻ろう。メソッド
+を起動する関数`rb_call()`である。本物には見付からなかった場合に例外を上
+げたりするコードがあるのだが、例によって全部省略する。
+
+▼ `rb_call()`(簡約版)
+<pre class="longlist">
+static VALUE
+rb_call(klass, recv, mid, argc, argv, scope)
+    VALUE klass, recv;
+    ID    mid;
+    int argc;
+    const VALUE *argv;
+    int scope;
+{
+    NODE  *body;
+    int    noex;
+    ID     id = mid;
+    struct cache_entry *ent;
+
+    /* メソッドキャッシュを検索 */
+    ent = cache + EXPR1(klass, mid);
+    if (ent->mid == mid && ent->klass == klass) {
+        /* キャッシュにヒットした */
+        klass = ent->origin;
+        id    = ent->mid0;
+        noex  = ent->noex;
+        body  = ent->method;
+    }
+    else {
+        /* キャッシュミス。地道に検索 */
+        body = rb_get_method_body(&klass, &id, &noex);
+    }
+
+    /* ……可視性チェックをする…… */
+
+    return rb_call0(klass, recv, mid, id,
+                    argc, argv, body, noex & NOEX_UNDEF);
+}
+</pre>
+
+基本的なメソッド探索の方法については第2章『オブジェクト』で話した。スーパー
+クラスをたどりながら`m_tbl`を検索すればいい。それをやるのが
+`search_method()`であった。
+
+原理はその通りなのだがしかし実際に実行する段になるとメソッド呼び出しの
+たびに何回もハッシュを引いて検索していたのでは速度が遅すぎる。これを改
+善するため`ruby`では一回呼び出したメソッドはキャッシュされるようになって
+いる。一回呼ばれたメソッドはすぐにまた呼び出されることが多い、ということ
+が経験上の事実として知られており、このキャッシュのヒット率は高い。
+
+そのキャッシュを索いているのが`rb_call()`の前半である。この
+
+<pre class="emlist">
+ent = cache + EXPR1(klass, mid);
+</pre>
+
+の一行だけでキャッシュが検索されている。仕組みはあとで詳しく見よう。
+
+キャッシュが外れたときはその次の`rb_get_method_body()`で地道にクラスツリー
+を検索して、ついでにその結果をキャッシュしておくようになっている。
+検索全体の流れを図にすれば図2のような感じだ。
+
+!images/ch_method_msearch.jpg(メソッド探索)!
+
+h3. メソッドキャッシュ
+
+次にメソッドキャッシュの構造を詳しく見てみよう。
+
+▼ メソッドキャッシュ
+<pre class="longlist">
+ 180  #define CACHE_SIZE 0x800
+ 181  #define CACHE_MASK 0x7ff
+ 182  #define EXPR1(c,m) ((((c)>>3)^(m))&CACHE_MASK)
+ 183
+ 184  struct cache_entry {            /* method hash table. */
+ 185      ID mid;                     /* method's id */
+ 186      ID mid0;                    /* method's original id */
+ 187      VALUE klass;                /* receiver's class */
+ 188      VALUE origin;               /* where method defined  */
+ 189      NODE *method;
+ 190      int noex;
+ 191  };
+ 192
+ 193  static struct cache_entry cache[CACHE_SIZE];
+
+(eval.c)
+</pre>
+
+仕組みを一言で言えばハッシュテーブルである。ハッシュテーブルの原理とは
+ようするにテーブル検索を配列のインデクシングに変換することであった。そ
+の時に必要になるものは三つ。データを格納する配列、キー、そしてハッシュ
+関数だ。
+
+まず配列はここでは`struct cache_entry`の配列である。そしてメソッドはクラ
+スとメソッド名だけで一意に決まるから、この二つがハッシュ計算のキーとな
+る。あとはそのキーからキャッシュ配列のインデックス(`0x000`〜`0x7ff`)を生
+成するハッシュ関数を作ればよい。それが`EXPR1()`だ。引数の`c`はクラスオブ
+ジェクトで、`m`はメソッド名(の`ID`)である(図3)。
+
+!images/ch_method_mhash.jpg(メソッドキャッシュ)!
+
+ただし`EXPR1()`は完全ハッシュ関数でもなんでもないので違うメソッドが偶然
+同じインデックスを生成してしまうこともありうる。だがこれはあくまでキャッ
+シュなので衝突しても問題はない。ただ動作が少し遅くなるだけである。
+
+h4. メソッドキャッシュの効果
+
+ところでメソッドキャッシュは実際どのくらいの効果があるのだろうか。
+「……ことが知られている」と言われても納得できない。自分で計測だ。
+
+|種類|プログラム|ヒット率|
+|LALR(1)パーサ生成|`racc ruby.y`|99.9%|
+|メールスレッド生成|とあるメーラ|99.1%|
+|ドキュメント生成|`rd2html rubyrefm.rd`|97.8%|
+
+なんと、実験した三つの例すべてでヒット率95%以上を記録した。
+これは凄い。どうやら「……ことが知られている」の効果は
+抜群のようだ。
+
+h2. 起動
+
+h3. `rb_call0()`
+
+いろいろあってようやくメソッド起動に辿りついたわけだが、この`rb_call0()`が
+またデカい。200行以上ということはページ上では5、6ページになるだろうか。
+ビューアならともかく、紙で一気に並べると悲惨なことになるので細かく分割
+しながら見ていくことにしよう。まずは概形から。
+
+▼ `rb_call0()`(概形)
+<pre class="longlist">
+4482  static VALUE
+4483  rb_call0(klass, recv, id, oid, argc, argv, body, nosuper)
+4484      VALUE klass, recv;
+4485      ID    id;
+4486      ID    oid;
+4487      int argc;                   /* OK */
+4488      VALUE *argv;                /* OK */
+4489      NODE *body;                 /* OK */
+4490      int nosuper;
+4491  {
+4492      NODE *b2;           /* OK */
+4493      volatile VALUE result = Qnil;
+4494      int itr;
+4495      static int tick;
+4496      TMP_PROTECT;
+4497
+4498      switch (ruby_iter->iter) {
+4499        case ITER_PRE:
+4500          itr = ITER_CUR;
+4501          break;
+4502        case ITER_CUR:
+4503        default:
+4504          itr = ITER_NOT;
+4505          break;
+4506      }
+4507
+4508      if ((++tick & 0xff) == 0) {
+4509          CHECK_INTS;             /* better than nothing */
+4510          stack_check();
+4511      }
+4512      PUSH_ITER(itr);
+4513      PUSH_FRAME();
+4514
+4515      ruby_frame->last_func = id;
+4516      ruby_frame->orig_func = oid;
+4517      ruby_frame->last_class = nosuper?0:klass;
+4518      ruby_frame->self = recv;
+4519      ruby_frame->argc = argc;
+4520      ruby_frame->argv = argv;
+4521
+4522      switch (nd_type(body)) {
+              /* ……本処理…… */
+4698
+4699        default:
+4700          rb_bug("unknown node type %d", nd_type(body));
+4701          break;
+4702      }
+4703      POP_FRAME();
+4704      POP_ITER();
+4705      return result;
+4706  }
+
+(eval.c)
+</pre>
+
+まず`ITER`を積んでこのメソッドがイテレータかどうかを最終的に決定する。そ
+の後の`PUSH_FRAME()`でその値がすぐに使われるので`PUSH_ITER()`はその前にな
+ければいけない。`PUSH_FRAME()`はすぐあとで見る。
+
+そして先に「……本処理……」のところの話をすると、ここには
+以下のようなノード別に分かれてそれぞれ起動処理をする。
+
+|`NODE_CFUNC`|Cで定義されたメソッド|
+|`NODE_IVAR`|`attr_reader`|
+|`NODE_ATTRSET`|`attr_writer`|
+|`NODE_SUPER`|`super`|
+|`NODE_ZSUPER`|引数なしの`super`|
+|`NODE_DMETHOD`|`UnboundMethod`の起動|
+|`NODE_BMETHOD`|`Method`の起動|
+|`NODE_SCOPE`|Rubyで定義されたメソッド|
+
+本書では説明していないものもあるが、どれもさして重要でないので無視して
+いい。重要なのは`NODE_CFUNC`と`NODE_SCOPE`、それに`NODE_ZSUPER`だけだ。
+
+h3. `PUSH_FRAME()`
+
+▼ `PUSH_FRAME() POP_FRAME()`
+<pre class="longlist">
+ 536  #define PUSH_FRAME() do {               \
+ 537      struct FRAME _frame;                \
+ 538      _frame.prev = ruby_frame;           \
+ 539      _frame.tmp  = 0;                    \
+ 540      _frame.node = ruby_current_node;    \
+ 541      _frame.iter = ruby_iter->iter;      \
+ 542      _frame.cbase = ruby_frame->cbase;   \
+ 543      _frame.argc = 0;                    \
+ 544      _frame.argv = 0;                    \
+ 545      _frame.flags = FRAME_ALLOCA;        \
+ 546      ruby_frame = &_frame
+
+ 548  #define POP_FRAME()                     \
+ 549      ruby_current_node = _frame.node;    \
+ 550      ruby_frame = _frame.prev;           \
+ 551  } while (0)
+
+(eval.c)
+</pre>
+
+まず`FRAME`がスタックベタ置き確保であることを確認したい。ここは
+`module_setup()`と同じだ。あとは基本的に普通の初期化をしているだけである。
+
+一つだけ付け加えるなら、`FRAME_ALLOCA`というフラグが`FRAME`の
+割り当てかたを示していること、くらいだろうか。`FRAME_ALLOCA`とは
+もちろん「スタック上にある」ことを示している。
+
+h3. `rb_call0()`-`NODE_CFUNC`
+
+ここのコードには本物を見るといろいろ書いてあるのだが、ほとんどが
+`trace_func`関係なので実質的なコードは以下の一行で終わりだ。
+
+▼ `rb_call0()`-`NODE_CFUNC`(簡約版)
+<pre class="longlist">
+case NODE_CFUNC:
+  result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
+  break;
+</pre>
+
+では`call_cfunc()`はと言うと……
+
+▼ `call_cfunc()`(簡約版)
+<pre class="longlist">
+4394  static VALUE
+4395  call_cfunc(func, recv, len, argc, argv)
+4396      VALUE (*func)();
+4397      VALUE recv;
+4398      int len, argc;
+4399      VALUE *argv;
+4400  {
+4401      if (len >= 0 && argc != len) {
+4402          rb_raise(rb_eArgError, "wrong number of arguments(%d for %d)",
+4403                   argc, len);
+4404      }
+4405
+4406      switch (len) {
+4407        case -2:
+4408          return (*func)(recv, rb_ary_new4(argc, argv));
+4409          break;
+4410        case -1:
+4411          return (*func)(argc, argv, recv);
+4412          break;
+4413        case 0:
+4414          return (*func)(recv);
+4415          break;
+4416        case 1:
+4417          return (*func)(recv, argv[0]);
+4418          break;
+4419        case 2:
+4420          return (*func)(recv, argv[0], argv[1]);
+4421          break;
+                :
+                :
+4475        default:
+4476          rb_raise(rb_eArgError, "too many arguments(%d)", len);
+4477          break;
+4478      }
+4479      return Qnil;                /* not reached */
+4480  }
+
+(eval.c)
+</pre>
+
+このように、引数の数に応じて分岐するだけだ。
+ちなみに引数の最大個数は15である。
+
+一つ注意してほしいのは、`NODE_CFUNC`のときには`SCOPE`や`VARS`を積んでいない
+ことだ。メソッドが`C`で定義されていればRubyのローカル変数は使わないので
+当然と言えば当然である。しかしそれは同時に`C`から「現在の」ローカル変数
+にアクセスすると一つ前の`FRAME`のローカル変数が見えてしまうということを
+意味している。そして実際にそれをやっているところもある。例えば
+`rb_svar`(`eval.c`)など。
+
+h3. `rb_call0()`-`NODE_SCOPE`
+
+`NODE_SCOPE`即ちRubyで定義したメソッドの起動である。
+Rubyの基礎をなす部分だ。
+
+▼ `rb_call0()`-`NODE_SCOPE`(概形)
+<pre class="longlist">
+4568  case NODE_SCOPE:
+4569    {
+4570        int state;
+4571        VALUE *local_vars;  /* OK */
+4572        NODE *saved_cref = 0;
+4573
+4574        PUSH_SCOPE();
+4575
+            /* (A)CREFの伝達 */
+4576        if (body->nd_rval) {
+4577            saved_cref = ruby_cref;
+4578            ruby_cref = (NODE*)body->nd_rval;
+4579            ruby_frame->cbase = body->nd_rval;
+4580        }
+            /* (B)ruby_scope->local_varsの初期化 */
+4581        if (body->nd_tbl) {
+4582            local_vars = TMP_ALLOC(body->nd_tbl[0]+1);
+4583            *local_vars++ = (VALUE)body;
+4584            rb_mem_clear(local_vars, body->nd_tbl[0]);
+4585            ruby_scope->local_tbl = body->nd_tbl;
+4586            ruby_scope->local_vars = local_vars;
+4587        }
+4588        else {
+4589            local_vars = ruby_scope->local_vars = 0;
+4590            ruby_scope->local_tbl  = 0;
+4591        }
+4592        b2 = body = body->nd_next;
+4593
+4594        PUSH_VARS();
+4595        PUSH_TAG(PROT_FUNC);
+4596
+4597        if ((state = EXEC_TAG()) == 0) {
+4598            NODE *node = 0;
+4599            int i;
+
+                /* ……(C)引数をローカル変数に代入…… */
+
+4666            if (trace_func) {
+4667                call_trace_func("call", b2, recv, id, klass);
+4668            }
+4669            ruby_last_node = b2;
+                /* (D)メソッド本体 */
+4670            result = rb_eval(recv, body);
+4671        }
+4672        else if (state == TAG_RETURN) { /* returnで戻った */
+4673            result = prot_tag->retval;
+4674            state = 0;
+4675        }
+4676        POP_TAG();
+4677        POP_VARS();
+4678        POP_SCOPE();
+4679        ruby_cref = saved_cref;
+4680        if (trace_func) {
+4681            call_trace_func("return", ruby_last_node, recv, id, klass);
+4682        }
+4683        switch (state) {
+4684          case 0:
+4685            break;
+4686
+4687          case TAG_RETRY:
+4688            if (rb_block_given_p()) {
+4689               JUMP_TAG(state);
+4690            }
+4691            /* fall through */
+4692          default:
+4693            jump_tag_but_local_jump(state);
+4694            break;
+4695        }
+4696    }
+4697    break;
+
+(eval.c)
+</pre>
+
+(A)前章の定数のところで話した`CREF`の伝達を行う。
+つまりメソッドエントリから`FRAME`に`cbase`を移植する。
+
+(B)ここの内容は`module_setup()`でやったのと全く同じである。
+`SCOPE`の`local_vars`に配列を割り当ててやる。これと`PUSH_SCOPE()`、
+`PUSH_VARS()`でローカル変数のスコープ生成が完了した。これ以後は
+メソッド内部と全く同じ環境で`rb_eval()`することができる。
+
+(C)受け取った引数をメソッドのパラメータ変数にセットしていく。
+パラメータ変数とはようするにローカル変数と同じものだ。引数の
+数などが`NODE_ARGS`で指定されているから地道にセットしてやればいい。
+詳しいことはこのあとすぐに説明しよう。そして、
+
+(D)メソッド本体を実行する。当然ながらレシーバ(`recv`)を`self`にする。
+つまり`rb_eval()`の第一引数にする。これでメソッドは完全に起動した。
+
+h3. 引数のセット
+
+ではすっとばした引数セット部分を詳しく見ていくが、
+その前にまずメソッドの構文木をもう一度見てほしい。
+
+<pre class="screen">
+% ruby -rnodedump -e 'def m(a) nil end'
+NODE_SCOPE
+nd_rval = (null)
+nd_tbl = 3 [ _ ~ a ]
+nd_next:
+    NODE_BLOCK
+    nd_head:
+        NODE_ARGS
+        nd_cnt  = 1
+        nd_rest = -1
+        nd_opt = (null)
+    nd_next:
+        NODE_BLOCK
+        nd_head:
+            NODE_NEWLINE
+            nd_file = "-e"
+            nd_nth  = 1
+            nd_next:
+                NODE_NIL
+        nd_next = (null)
+</pre>
+
+`NODE_ARGS`がメソッドのパラメータを指定するノードだ。
+いくつかダンプしまくってみたところ、そのメンバは以下のように
+使われているようだ。
+
+|`nd_cnt`|通常のパラメータの数。|
+|`nd_rest`|`rest`パラメータの変数`ID`。`rest`パラメータがなければ`-1`。|
+|`nd_opt`|オプションパラメータのデフォルト値を表現する構文木が入っている。`NODE_BLOCK`のリスト。|
+
+これだけの情報があれば各パラメータ変数に対応するローカル変数IDが一意に
+決まる。まず0と1は常に`$_`と`$~`だった。その次の2から通常のパラメータ
+がその数だけ並ぶ。そのまた次にオプションパラメータが並ぶ。オプションパ
+ラメータの数は`NODE_BLOCK`の長さでわかる。そのまた後にrestパラメータが来
+る。
+
+例えば次のような定義をすると、
+
+<pre class="emlist">
+def m(a, b, c = nil, *rest)
+  lvar1 = nil
+end
+</pre>
+
+ローカル変数IDは次のように割り当てられる。
+
+<pre class="emlist">
+0   1   2   3   4   5      6
+$_  $~  a   b   c   rest   lvar1
+</pre>
+
+いいだろうか。ではこれを踏まえてコードを見てみよう。
+
+▼ `rb_call0()`-`NODE_SCOPE`-引数の代入
+<pre class="longlist">
+4601  if (nd_type(body) == NODE_ARGS) { /* 本体なし */
+4602      node = body;           /* NODE_ARGS */
+4603      body = 0;              /* メソッド本体 */
+4604  }
+4605  else if (nd_type(body) == NODE_BLOCK) { /* 本体がある */
+4606      node = body->nd_head;  /* NODE_ARGS */
+4607      body = body->nd_next;  /* メソッド本体 */
+4608  }
+4609  if (node) {  /* なんらかのパラメータがある */
+4610      if (nd_type(node) != NODE_ARGS) {
+4611          rb_bug("no argument-node");
+4612      }
+4613
+4614      i = node->nd_cnt;
+4615      if (i > argc) {
+4616          rb_raise(rb_eArgError, "wrong number of arguments(%d for %d)",
+4617                   argc, i);
+4618      }
+4619      if (node->nd_rest == -1) {  /* restパラメータがない */
+              /* パラメータの数を数える */
+4620          int opt = i;   /* パラメータの数(iはnd_cnt) */
+4621          NODE *optnode = node->nd_opt;
+4622
+4623          while (optnode) {
+4624              opt++;
+4625              optnode = optnode->nd_next;
+4626          }
+4627          if (opt < argc) {
+4628              rb_raise(rb_eArgError,
+4629                  "wrong number of arguments(%d for %d)", argc, opt);
+4630          }
+              /* rb_call0では二回目の代入 */
+4631          ruby_frame->argc = opt;
+4632          ruby_frame->argv = local_vars+2;
+4633      }
+4634
+4635      if (local_vars) { /* パラメータがある */
+4636          if (i > 0) {             /* 通常のパラメータがある */
+4637              /* $_と$~の領域をよけるために+2 */
+4638              MEMCPY(local_vars+2, argv, VALUE, i);
+4639          }
+4640          argv += i; argc -= i;
+4641          if (node->nd_opt) {      /* オプションパラメータがある */
+4642              NODE *opt = node->nd_opt;
+4643
+4644              while (opt && argc) {
+4645                  assign(recv, opt->nd_head, *argv, 1);
+4646                  argv++; argc--;
+4647                  opt = opt->nd_next;
+4648              }
+4649              if (opt) {
+4650                  rb_eval(recv, opt);
+4651              }
+4652          }
+4653          local_vars = ruby_scope->local_vars;
+4654          if (node->nd_rest >= 0) { /* restパラメータがある */
+4655              VALUE v;
+4656
+                  /* 余っている引数を配列化して変数に代入 */
+4657              if (argc > 0)
+4658                  v = rb_ary_new4(argc,argv);
+4659              else
+4660                  v = rb_ary_new2(0);
+4661              ruby_scope->local_vars[node->nd_rest] = v;
+4662          }
+4663      }
+4664  }
+
+(eval.c)
+</pre>
+
+今までより多めにコメントを入れておいたのでそれを見ながら地道に追っても
+らえればやっていることはわかるだろう。
+
+一つ気になったのは`ruby_frame`の`argc`と`argv`のことである。restパラメータが
+ないときだけ更新しているようなのだが、どうしてrestパラメータがないとき
+だけでいいのだろうか。
+
+この点は`argc`と`argv`の使い道を考えるとわかる。このメンバは実は
+引数を省略した`super`のためにあるのだ。つまり以下のような形式だ。
+
+<pre class="emlist">
+super
+</pre>
+
+こちらの`super`には現在実行中のメソッドのパラメータをそのまま引き渡す働
+きがある。そのときに渡せるように`ruby_frame->argv`に引数を保存しておくわ
+けだ。
+
+ここで元の話に戻ると、restパラメータがあるときには`super`では元の引数リ
+ストを渡すほうがなんとなく都合がよさそうな気がする。ないときには、オプ
+ションパラメータが代入されたあとのもののほうがよさそうだ。
+
+<pre class="emlist">
+def m(a, b, *rest)
+  super     # たぶん5, 6, 7, 8を渡すべき
+end
+m(5, 6, 7, 8)
+
+def m(a, b = 6)
+  super     # たぶん5, 6を渡すべき
+end
+m(5)
+</pre>
+
+これは「そうでなければならない」というよりは仕様としてどちらがいいか、
+という問題である。メソッドにrestパラメータがあるならそのスーパークラス
+でも同じくrestパラメータがあると考えられるから、まとめた後の値を渡すと
+不便になる可能性が非常に高いのだ。
+
+さて、いろいろ言ったがメソッドの起動の話はこれで全ておしまいだ。
+あとはこの章の締めくくりとしていま話題にした`super`の実装を見ておく
+ことにしよう。
+
+h3. `super`
+
+`super`に対応するのは`NODE_SUPER`と`NODE_ZSUPER`である。
+`NODE_SUPER`が普通の`super`で、
+`NODE_ZSUPER`は引数指定なしの`super`だ。
+
+▼ `rb_eval()`-`NODE_SUPER`
+<pre class="longlist">
+2780        case NODE_SUPER:
+2781        case NODE_ZSUPER:
+2782          {
+2783              int argc; VALUE *argv; /* used in SETUP_ARGS */
+2784              TMP_PROTECT;
+2785
+                  /*(A)superが禁止されている場合 */
+2786              if (ruby_frame->last_class == 0) {
+2787                  if (ruby_frame->orig_func) {
+2788                      rb_name_error(ruby_frame->last_func,
+2789                                    "superclass method `%s' disabled",
+2790                                    rb_id2name(ruby_frame->orig_func));
+2791                  }
+2792                  else {
+2793                      rb_raise(rb_eNoMethodError,
+                                   "super called outside of method");
+2794                  }
+2795              }
+                  /*(B)引数の準備または評価 */
+2796              if (nd_type(node) == NODE_ZSUPER) {
+2797                  argc = ruby_frame->argc;
+2798                  argv = ruby_frame->argv;
+2799              }
+2800              else {
+2801                  BEGIN_CALLARGS;
+2802                  SETUP_ARGS(node->nd_args);
+2803                  END_CALLARGS;
+2804              }
+2805
+                  /*(C)まだ謎のPUSH_ITER() */
+2806              PUSH_ITER(ruby_iter->iter?ITER_PRE:ITER_NOT);
+2807              SET_CURRENT_SOURCE();
+2808              result = rb_call(RCLASS(ruby_frame->last_class)->super,
+2809                               ruby_frame->self, ruby_frame->orig_func,
+2810                               argc, argv, 3);
+2811              POP_ITER();
+2812          }
+2813          break;
+
+(eval.c)
+</pre>
+
+引数指定なしの`super`では`ruby_frame->argv`をそのまま引数にすると
+言ったが、それが(B)にそのまま出ている。
+
+(C)`rb_call()`を呼ぶ直前に`PUSH_ITER()`している。これもまた詳しくは説
+明できないのだが、こうしておくと現在のメソッドに渡されたブロックをそっ
+くりそのまま次のメソッド(つまりこれから呼ぶスーパークラスのメソッド)
+に委譲できる。
+
+そして最後に(A)`ruby_frame->last_class`が0であるときは`super`の
+呼び出しを禁止しているようだ。エラーメッセージには
+「`must be enabled by rb_enable_super()`」
+とあるので、`rb_enable_super()`を呼べば無事呼べるようになるらしい。
+どうしてだろう。
+
+まず`last_class`が0になるときはどういうときか調べてみると、どうも実体が
+Cで定義されているメソッド(`NODE_CFUNC`)を実行中だとそうなるようだ。
+さらにそういうメソッドを`alias`したり置き換えたりしたときも同じだ。
+
+そこまではわかったのだが、ソースコードを読んでみてもどうしてもその続き
+がわからない。わからないので仕方なく`ruby`のメーリングリストのログを
+「`rb_enable_super`」で検索して発見した。そのメールによると、次のような
+ことらしい。
+
+例えば`String.new`というメソッドがある。もちろん、文字列を生成するメソッ
+ドである。`String.new`は`T_STRING`な構造体を作る。従って`String`の
+インスタンスメソッドはレシーバが常に`T_STRING`であると期待して書いていい。
+
+さて、`String.new`の`super`は`Object.new`である。`Object.new`は
+`T_OBJECT`な構造体を作る。では`String.new`を置き換え定義して`super`して
+しまったらどうなるだろう。
+
+<pre class="emlist">
+def String.new
+  super
+end
+</pre>
+
+結果として、構造体は`T_OBJECT`なのにクラスが`String`、というオブジェクトが
+できる。しかし`String`のメソッドは`T_STRING`の構造体を期待して書いているの
+で当然落ちる。
+
+それを避けるにはどうしたらいいかと言うと、違う構造体型を期待しているメ
+ソッドは呼べないようにすればよい。しかしメソッドには「期待する構造体型」
+なんて情報は付いていないし、クラスにもない。例えば`String`クラスから
+`T_STRING`を取る方法があれば呼ぶ前にチェックできそうだが、そういうこと
+は現時点ではできない。だから次善の策として「Cで定義したメソッドからの
+`super`は禁止」ということにしてあるのだ。それなら、Cレベルのメソッド階層
+をきっちり作っておけばとりあえず落とすことはできない。そうして、「絶対
+に大丈夫だから`super`させてほしい」という場合は`rb_enable_super()`を
+呼んでおけば`super`できるようになる。
+
+ようするに問題の本質は構造体型ミスマッチである。
+アロケーションフレームワークで起こった問題と同じだ。
+
+それで解決策としてはどうすればいいかと言うと、問題の根源である「クラ
+スがインスタンスの構造体型を知らない」という点を解決すればよい。だがそ
+のためには最低でも新しいAPIが必要になるし、もっと徹底的にやるなら互換性
+がなくなる。そういうわけでいまのところはまだ最終的な解決策は決まってい
+ない。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

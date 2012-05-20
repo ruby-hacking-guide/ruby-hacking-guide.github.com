@@ -1,0 +1,2052 @@
+h1. 第11章 状態付きスキャナ
+
+h2. 概要
+
+理論のように、スキャナはただひたすらトークンに区切り、パーサはその並び
+だけを扱い、両者は完璧に独立している……という段階で済むならば、それは
+とてもありがたいことだ。しかし現実はそううまくはいかない。プログラムの
+文脈によってトークンの切りかたや記号を変えなければならないということは
+よくある。この章ではスキャナとパーサの連携について見ていくことにする。
+
+h3. 具体例
+
+普通のプログラム言語なら、空白は単語の区切りになる以外はたいし
+て意味を持たない。しかしRubyは普通ではないので空白のあるなしで全く意味
+が変わってしまうことがある。例えば次のような場合だ。
+
+<pre class="emlist">
+a[i] = 1      # a[i] = (1)
+a [i]         # a([i])
+</pre>
+
+前者はインデックス代入であり、後者はメソッド呼び出しの括弧を省略して引
+数に配列の要素を渡している。
+
+また次のような場合もある。
+
+<pre class="emlist">
+a  +  1    # (a) + (1)
+a  +1      # a(+1)
+</pre>
+
+このあたりの仕様は一部の地域でやたらと嫌われているようだ。
+
+しかしこのままだとメソッド括弧の省略だけが悪いかのような印象を
+与えてしまいそうなので別の例も挙げておこう。
+
+<pre class="emlist">
+`cvs diff parse.y`          # コマンド呼び出し文字列
+obj.`("cvs diff parse.y")   # 通常形式のメソッド呼び出し
+</pre>
+
+これは、前者がリテラルの形を取ったメソッド呼び出しであるのに対し、
+後者は通常形式のメソッド呼び出しである(「```」がメソッド名)。
+コンテキストによって随分と扱いが違う。
+
+次の例もかなり激しく働きが変わる。
+
+<pre class="emlist">
+print(<<EOS)   # ヒアドキュメント
+......
+EOS
+
+list = []
+list << nil    # list.push(nil)
+</pre>
+
+前者はヒアドキュメントで、後者は演算子形式のメソッド呼び出しである。
+
+このようにRubyの文法には実装するのには不都合なところがたくさん
+存在する。とてもではないが丁寧にやっていたら一章で全部紹介しき
+れるような量ではない。そこでこの章では根本原理と、難易度の高いところに
+限って見ていくことにする。
+
+h3. `lex_state`
+
+`lex_state`という変数がある。`lex`はもちろんlexerのlexだから、これは
+スキャナの状態(state)を示す変数だ。
+
+どういう状態があるのだろうか。定義を見てみよう。
+
+▼ `enum lex_state`
+<pre class="longlist">
+  61  static enum lex_state {
+  62      EXPR_BEG,      /* ignore newline, +/- is a sign. */
+  63      EXPR_END,      /* newline significant, +/- is a operator. */
+  64      EXPR_ARG,      /* newline significant, +/- is a operator. */
+  65      EXPR_CMDARG,   /* newline significant, +/- is a operator. */
+  66      EXPR_ENDARG,   /* newline significant, +/- is a operator. */
+  67      EXPR_MID,      /* newline significant, +/- is a operator. */
+  68      EXPR_FNAME,    /* ignore newline, no reserved words. */
+  69      EXPR_DOT,      /* right after `.' or `::', no reserved words. */
+  70      EXPR_CLASS,    /* immediate after `class', no here document. */
+  71  } lex_state;
+
+(parse.y)
+</pre>
+
+プリフィクスの`EXPR_`はexpression、「式」だろう。`EXPR_BEG`なら「式の頭」
+だし`EXPR_DOT`は「式の中の、ドットの後」だ。
+
+具体的に説明しよう。`EXPR_BEG`は「式の先頭にいる」ことを示している。
+`EXPR_END`は「式の最後にいる」ことを示す。`EXPR_ARG`は「メソッドの引数の前」
+を示す。`EXPR_FNAME`は「(`def`などの)メソッド名の前」を示す。説明を飛ば
+したものはあとで詳しく解析していく。
+
+ところで、`lex_state`が示しているものは「括弧のあと」「文の頭」というよ
+うな情報なのだから、これはスキャナの状態ではなくてパーサの状態のような
+気がする。だが普通はスキャナの状態と呼ぶ。なぜだろうか。
+
+実はこの場合の「状態」は普段使う「状態」とちょっと意味が違うのだ。
+`lex_state`のような「状態」とは、「スキャナがこういう振舞いをする状態」
+という意味である。例えば`EXPR_BEG`を正確に言えば「いまスキャナを働かせ
+たら文頭にいるかのように動く状態」である。
+
+また専門用語を使うと、スキャナをステートマシンと見たときの状態、と言え
+る。しかしそこまで説明するのはさすがに骨が折れるしあまりに話題が離れす
+ぎる。詳しいことはデータ構造に関する教科書を適当に見繕って読んでいただ
+きたい。
+
+h3. 状態付きスキャナの読解
+
+状態付きスキャナを読むコツは、一度に全部をつかもうとしないことだ。パー
+サを書く人間にとっては、状態付きスキャナはあまり使いたくないものである。
+ということは当然、それを処理の本筋にはしたくないはずだ。だからスキャナ
+の状態管理というのは「その他の本筋部分に付随したおまけ部分」であること
+が多い。つまりスキャナの状態遷移全体の美しい全体像なんてものは最初から
+存在しないのである。
+
+ではどうするかというと、徹底的に目的指向で読んでいくのがよい。「これを
+解決するためにこの部分がある」「この問題を解消するためのこのコードがあ
+る」というふうに、目的に沿ってコードを切り刻む。問題の相互関連なんても
+のを考え始めると絶対に行き詰まる。もう一度言うが、そんなものは元からな
+いのだ。
+
+とは言えそれにしたってある程度の目標は必要だ。状態付きスキャナを読むと
+きの目標は、何よりも各状態がどういう状態かを知ることに置く
+べきである。例えば`EXPR_BEG`はどういう状態か。それはパーサが式の頭にい
+るということである。というように。
+
+h4. 静的な方法
+
+ではそれはどうやったらわかるだろうか。三通りの方法がある。
+
+* 状態の名前を見る
+
+もっとも簡単であたりまえの方法。例えば`EXPR_BEG`なら当然なにかの先頭
+(beginning)なんだろうというのは予測が付く。
+
+* その状態においてどう挙動が変わるか見る
+
+状態によってトークンの切りかたがどう変わるか見る。そして現実の動きと比
+べて当たりをつける。
+
+* どういう状態から遷移してくるか見る
+
+どの状態からどういうトークンで遷移してくるか見る。例えば`'\n'`の後に必
+ず`HEAD`という状態に遷移しているとしたら、それはきっと行頭を表しているに
+違いない。
+
+`EXPR_BEG`を例にして考えてみよう。
+`ruby`の場合は状態遷移は全て`lex_state`への代入で表現されているので、ま
+ず`EXPR_BEG`の代入を`grep`して洗う。次にそれがどこにあるか書き出す。例えば
+`yylex()`の`'#'`と`'*'`と`'!'`と……のように。そして遷移する前の状態を考慮して
+それがどういう場合にあてはまるか考える(図1)。
+
+!images/ch_contextual_transittobeg.jpg(`EXPR_BEG`への遷移)!
+
+ああなるほど、これはいかにも文の先頭っぽいな。とわかる。
+特に`'\n'`や`';'`のあたりがそれっぽい。そして開き括弧やカンマも
+あることから、これは文だけではなくて式の先頭だろうと言える。
+
+h4. 動的な方法
+
+もっとお手軽に現実の挙動を確かめる方法もある。例えばデバッガで
+`yylex()`にフックをかけて`lex_state`を見ると簡単だ。
+
+あるいはソースコードを書き換えて状態遷移を出力するようにしてしまっても
+いい。`lex_state`の場合は代入や比較が数パターンしかないので、それをテキ
+ストのパターンでとらえて遷移を出力するように書き換えればよい。今回は添
+付CD-ROMに`rubylex-analyser`というツールを付け
+た\footnote{`rubylex-analyser`:添付CD-ROMの`tools/rubylex-analyser.tar.gz`}。
+本書でも必要に応じてこのツールを使いつつ説明していく。
+
+全体的な手順としては、まずデバッガやツールを使ってなんとなくの動きを
+確認する。そしてその情報をソースコードを見て確認・敷衍していくという
+のがよいだろう。
+
+h3. 各状態について
+
+`lex_state`の状態について簡単に説明しておく。
+
+* `EXPR_BEG`
+
+式の先端。`\n ( { [ ! ? : ,` 演算子 `op=`などの直後。
+最も一般的な状態である。
+
+* `EXPR_MID`
+
+予約語の`return break next rescue`の直後。
+二項演算子の`*`や`&`が無効になる。
+挙動は`EXPR_BEG`と似ている。
+
+* `EXPR_ARG`
+
+メソッド呼び出しのメソッド名部分である可能性がある要素の直後、
+または`'['`の直後。
+ただし`EXPR_CMDARG`である場所を除く。
+
+* `EXPR_CMDARG`
+
+通常形式のメソッド呼び出しの最初の引数の前。
+詳しくは「`do`の衝突」の節を参照。
+
+* `EXPR_END`
+
+文が終端可能なところ。例えばリテラルや括弧のあと。ただし`EXPR_ENDARG`で
+ある場所は除く。
+
+* `EXPR_ENDARG`
+
+`EXPR_END`の特殊版。`tLPAREN_ARG`に対応する閉じ括弧の直後。
+「括弧でくくられた第一引数」の項を参照。
+
+* `EXPR_FNAME`
+
+メソッド名の前。具体的には`def`・`alias`・`undef`・シンボルの`':'`の
+直後である。「```」が単独で名前になる。
+
+* `EXPR_DOT`
+
+メソッド呼び出しのドットのあと。`EXPR_FNAME`と扱いは似ている。
+あらゆる予約語がただの識別子として扱われる。
+`'`'`が単独で名前になる。
+
+* `EXPR_CLASS`
+
+予約語`class`の後ろ。この状態だけはかなり限定的である。
+
+まとめると、
+
+* `BEG MID`
+* `END ENDARG`
+* `ARG CMDARG`
+* `FNAME DOT`
+
+はそれぞれ似たような状況を表す。`EXPR_CLASS`だけはちょっと特殊だが、
+出てくる場所が非常に限定されているのでそもそもあまり考えなくて済む。
+
+h2. 改行の制御
+
+h3. 問題
+
+Rubyの文には必ずしも終端が必要なかった。例えばCやJavaでは必ず文末に
+セミコロンを置かないといけないが、Rubyではそういうものは必要ない。
+一行一文が基本なので、行末で勝手に文が終わるのである。
+
+ところがその一方で「明らかに続きがある」場合は自動的に文が継続すること
+になっている。「明らかに続きがある」状態とは、
+
+* カンマのあと
+* インフィックス演算子のあと
+* 括弧がバランスしていない
+* 予約語`if`の直後
+
+などである。
+
+h3. 実装
+
+このような文法を実現するためにはどうしたらいいのだろう。単にスキャナで
+改行を読み飛ばすだけではだめである。Rubyのように文の両端が予約語で区切
+られている文法ならC言語ほどは衝突しないが、軽く試してみたところ、`return`、
+`next`、`break`、メソッド呼び出しの括弧省略は全て削らないと通らなかった。
+そういうものを残しておくには文末にはなんらかの終端記号がないといけない。
+それが`\n`であるか`';'`であるかは問わないが、とにかくなんらかの終端記号は
+必要なのだ。
+
+そこで解決策は二つある。即ちパーサで解決するかスキャナで解決するかだ。
+パーサで解決するとしたら、`\n`が許されるところ全てにオプションで`\n`を置
+けるような文法を書いてしまえばよい。スキャナで解決するなら、`\n`に意味の
+あるところでだけ`\n`をパーサに渡せばよい(その他の場所で読み飛ばす)。
+
+どちらを使うかは趣味の問題だが、普通はスキャナで対応する。そのほうがた
+いていコードがコンパクトになるし、どうでもいい記号で規則がぐちゃぐちゃ
+になってしまったらパーサジェネレータを使う意味がなくなってしまうからだ。
+
+そういうわけで結論から言うと`ruby`でも改行にはスキャナで対応する。行を継
+続したいときは`\n`を読み飛ばし、終端したいときは`\n`をトークンとして送る。
+それが`yylex()`のここだ。
+
+▼ `yylex()`-`'\n'`
+<pre class="longlist">
+3155        case '\n':
+3156          switch (lex_state) {
+3157            case EXPR_BEG:
+3158            case EXPR_FNAME:
+3159            case EXPR_DOT:
+3160            case EXPR_CLASS:
+3161              goto retry;
+3162            default:
+3163              break;
+3164          }
+3165          command_start = Qtrue;
+3166          lex_state = EXPR_BEG;
+3167          return '\n';
+
+(parse.y)
+</pre>
+
+`EXPR_BEG`・`EXPR_FNAME`・`EXPR_DOT`・`EXPR_CLASS`では`goto retry`、
+つまり意味がないので読み飛ばす。ラベル`retry`は`yylex()`の巨大`switch`の
+前にある。
+
+その他のところでは改行が意味を持つのでパーサに渡し、ついでに
+`lex_state`を`EXPR_BEG`に戻す。改行が意味のあるところは即ち`expr`の切れめ
+だからだ。
+
+また`command_start`は当面無視しておくべきである。最初に言ったように、
+一度にいろいろなところを追うと必ず混乱する。
+
+具体的な例を少し見てみよう。さっそく添付の解析ツール
+`rubylex-analyser`を使う。
+
+<pre class="screen">
+% rubylex-analyser -e '
+m(a,
+  b, c) unless i
+'
++EXPR_BEG
+EXPR_BEG     C      "\nm"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           "("  '('                  EXPR_BEG
+                                              0:cond push
+                                              0:cmd push
+EXPR_BEG     C        "a"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           ","  ','                  EXPR_BEG
+EXPR_BEG    S     "\n  b"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG    S         "c"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                              0:cmd lexpop
+EXPR_END    S    "unless"  kUNLESS_MOD          EXPR_BEG
+EXPR_BEG    S         "i"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+EXPR_BEG     C       "\n"  '                    EXPR_BEG
+</pre>
+
+いろいろ出力が出ているが、ここで必要なのは左と真ん中の欄だけである。左
+の欄は`yylex()`に入るの前の`lex_state`を示し、真ん中の欄はトークンとそ
+の記号を示す。
+
+まず最初のトークン`m`の前と第二引数`b`の前では、改行しているが`\n`がトー
+クンの前にくっついていて終端記号として出てきていない。`lex_state`が
+`EXPR_BEG` だからだ。
+
+しかし下から二行目では`\n`が終端記号としても出てきている。`EXPR_ARG`だ
+からだ。
+
+というように、使っていけばいい。もうちょっとだけ例を見てみる。
+
+<pre class="screen">
+% rubylex-analyser -e 'class
+C < Object
+end'
++EXPR_BEG
+EXPR_BEG     C    "class"  kCLASS               EXPR_CLASS
+EXPR_CLASS          "\nC"  tCONSTANT            EXPR_END
+EXPR_END    S         "<"  '<'                  EXPR_BEG
++EXPR_BEG
+EXPR_BEG    S    "Object"  tCONSTANT            EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+EXPR_BEG     C      "end"  kEND                 EXPR_END
+EXPR_END             "\n"  \n                   EXPR_BEG
+</pre>
+
+予約語`class`のあとは`EXPR_CLASS`なので改行が無視される。
+しかしスーパークラス式`Object`のあとは`EXPR_ARG`なので`\n`が出てきた。
+
+<pre class="screen">
+% rubylex-analyser -e 'obj.
+class'
++EXPR_BEG
+EXPR_BEG     C      "obj"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           "."  '.'                  EXPR_DOT
+EXPR_DOT        "\nclass"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+</pre>
+
+`'.'`の後は`EXPR_DOT`なので`\n`が無視された。
+
+ところで、`class`は予約語のはずなのに、なんで`tIDENTIFIER`になるのだろう。
+次の節に続く。
+
+h2. 予約語と同じメソッド名
+
+h3. 問題
+
+Rubyでは予約語をメソッド名に使うことができる。ただしメソッド名に使える
+と一口に言ってもコンテキストがいくつかあって、
+
+* メソッド定義(`def xxxx`)
+* 呼び出し(`obj.xxxx`)
+* シンボルリテラル(`:xxxx`)
+
+という三つが考えられる。Rubyではこの全てが可能である。以下それぞれに
+考えてみよう。
+
+まずメソッド定義は、専用の予約語`def`が先行するのでなんとかなりそうだ。
+
+メソッド呼び出しについては、レシーバを省略されるとかなり面倒なことにな
+るのだが、実はさらに仕様が限定されていて、そういうのは許可されない。つ
+まりメソッド名が予約語の場合は決してレシーバを省略できないのだ。あるい
+は、ちゃんとパースできるようにそういう仕様になっていると言うべきかもし
+れない。
+
+そしてシンボルの場合は、やはり終端記号`':'`が先行するのでなんとか通せそう
+である。ただしこの場合は予約語とは関係なく`':'`が`a?b:c`のコロンと衝突する
+という問題がある。これさえ解決できればなんとかなる。
+
+いずれのケースにしてもやはり方法は二つ考えられる。即ちスキャナで解決す
+るかパーサで解決するかだ。スキャナで解決する場合、`def`や`.`や`:`の次に来る
+予約語を`tIDENTIFIER`(など)にすればよい。パーサで解決するなら、そうい
+う規則を書けばよい。`ruby`では三つそれぞれに両方を使い分けている。
+
+h3. メソッド定義
+
+メソッド定義の名前部分。ここではパーサ側で対処する。
+
+▼ メソッド定義の規則
+<pre class="longlist">
+                | kDEF fname
+                  f_arglist
+                  bodystmt
+                  kEND
+                | kDEF singleton dot_or_colon  fname
+                  f_arglist
+                  bodystmt
+                  kEND
+</pre>
+
+メソッド定義を表す規則は二つだけで、それぞれ通常のメソッド定義と特異メ
+ソッド定義に対応する。いずれも`fname`が名前部分で、その`fname`は次のように
+定義されている。
+
+▼ `fname`
+<pre class="longlist">
+fname           : tIDENTIFIER
+                | tCONSTANT
+                | tFID
+                | op
+                | reswords
+</pre>
+
+`reswords`が予約語で`op`が二項演算子だ。どちらの規則も単に終端記号を全部並
+べてあるだけなので省略する。それから`tFID`は`gsub!`や`include?`のように語尾
+に記号が付くものである。
+
+h3. メソッド呼び出し
+
+予約語と同名のメソッド呼び出しに対してはスキャナで対処する。
+予約語のスキャンのコードはこうなっていた。
+
+<pre class="emlist">
+識別子をスキャン
+result = (tIDENTIFIERまたはtCONSTANT)
+
+if (lex_state != EXPR_DOT) {
+    struct kwtable *kw;
+
+    /* See if it is a reserved word.  */
+    kw = rb_reserved_word(tok(), toklen());
+    予約語を処理する
+}
+</pre>
+
+`EXPR_DOT`がメソッド呼び出しドットの後を表す。`EXPR_DOT`のときには無条件で
+予約語の処理を抜かすから、ドットの後の予約語の記号は`tIDENTIFIER`か
+`tCONSTANT`になる。
+
+h3. シンボル
+
+予約語のシンボルはパーサとスキャナの両方で対処される。
+まず規則から。
+
+▼ `symbol`
+<pre class="longlist">
+symbol          : tSYMBEG sym
+
+sym             : fname
+                | tIVAR
+                | tGVAR
+                | tCVAR
+
+fname           : tIDENTIFIER
+                | tCONSTANT
+                | tFID
+                | op
+                | reswords
+</pre>
+
+このように、パーサで明示的に予約語(`reswords`)を通すようにしている。こ
+うできるのはあくまで`tSYMBEG`という専用の終端記号が前にあるからで、記号
+が`':'`だったりしたらこううまくはいかない。条件演算子(`a?b:c`)と衝突して
+おしまいだ。つまりスキャナレベルで`tSYMBEG`を見分けるのがポイントである
+ことに変わりはない。
+
+ではその区別はどうやっているのだろうか。スキャナの実装を見てみよう。
+
+▼ `yylex`-`':'`
+<pre class="longlist">
+3761        case ':':
+3762          c = nextc();
+3763          if (c == ':') {
+3764              if (lex_state == EXPR_BEG ||  lex_state == EXPR_MID ||
+3765                  (IS_ARG() && space_seen)) {
+3766                  lex_state = EXPR_BEG;
+3767                  return tCOLON3;
+3768              }
+3769              lex_state = EXPR_DOT;
+3770              return tCOLON2;
+3771          }
+3772          pushback(c);
+3773          if (lex_state == EXPR_END ||
+                  lex_state == EXPR_ENDARG ||
+                  ISSPACE(c)) {
+3774              lex_state = EXPR_BEG;
+3775              return ':';
+3776          }
+3777          lex_state = EXPR_FNAME;
+3778          return tSYMBEG;
+
+(parse.y)
+</pre>
+
+前半の`if`は`':'`が二つ続いた場合。このときは最左最長一致原則で
+優先的に`'::'`をスキャンする。
+
+その次の`if`は先程言った条件演算子の`':'`だ。`EXPR_END`と`EXPR_ENDARG`は
+どちらも式の終わりだから、引数が来ない……つまりシンボルはありえないので
+条件演算子の`':'`にする。
+また次の文字がスペースだった(`ISSPACE(c)`)ときもシンボルでは
+なさそうなので条件演算子だ。
+
+そして上記のどちらでもない場合は全てシンボルである。そのときは
+`EXPR_FNAME`に遷移してあらゆるメソッド名に備える。パースではなんでも困ら
+ないのだが、これを忘れるとスキャナが予約語に対して値を渡してくれないの
+で値の計算が変になる。
+
+h2. 修飾子
+
+h3. 問題
+
+例えば`if`には通常の記法と後置修飾するものがある。
+
+<pre class="emlist">
+# 通常記法
+if cond then
+  expr
+end
+
+# 後置
+expr if cond
+</pre>
+
+これも衝突の原因になる。なぜかというと、これまたやっぱりメソッド括弧の
+省略が原因である。例えばこんな場合だ。
+
+<pre class="emlist">
+call if cond then a else b end
+</pre>
+
+この式は`if`まで読んだところで次の二通りに解釈できる。
+
+<pre class="emlist">
+call((if ....))
+call() if ....
+</pre>
+
+よくわからなければものは試しで、衝突するかどうかやってみよう。文法の中
+の`kIF_MOD`を`kIF`に変えて`yacc`で処理してみる。
+
+<pre class="screen">
+% yacc parse.y
+parse.y contains 4 shift/reduce conflicts and 13 reduce/reduce conflicts.
+</pre>
+
+目論見通り衝突しまくっている。興味があれば`yacc`に`-v`オプションを
+付けてログを取り、中を読んでみよう。どう衝突したのか詳細に書いてある。
+
+h3. 実装
+
+さてどうしたらいいだろうか。`ruby`では普通の`if`を`kIF`、後置の`if`を
+`kIF_MOD`というように記号レベルで(つまりスキャナレベルで)区別してし
+まう。他の後置系演算子も全く同じで、
+`kUNLESS_MOD kUNTIL_MOD kWHILE_MOD` `kRESCUE_MOD`に`kIF_MOD`の
+合わせて五種類がある。この判断を行っているのは次のところだ。
+
+▼ `yylex`-予約語
+<pre class="longlist">
+4173                  struct kwtable *kw;
+4174
+4175                  /* See if it is a reserved word.  */
+4176                  kw = rb_reserved_word(tok(), toklen());
+4177                  if (kw) {
+4178                      enum lex_state state = lex_state;
+4179                      lex_state = kw->state;
+4180                      if (state == EXPR_FNAME) {
+4181                          yylval.id = rb_intern(kw->name);
+4182                      }
+4183                      if (kw->id[0] == kDO) {
+4184                          if (COND_P()) return kDO_COND;
+4185                          if (CMDARG_P() && state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+4187                          if (state == EXPR_ENDARG)
+4188                              return kDO_BLOCK;
+4189                          return kDO;
+4190                      }
+4191                      if (state == EXPR_BEG)  /*** ここ ***/
+4192                          return kw->id[0];
+4193                      else {
+4194                          if (kw->id[0] != kw->id[1])
+4195                              lex_state = EXPR_BEG;
+4196                          return kw->id[1];
+4197                      }
+4198                  }
+
+(parse.y)
+</pre>
+
+これがあるのは`yylex`の末尾、識別子をスキャンしたあとだ。最後の(一番内
+側の)`if`〜`else`が修飾子を扱う部分である。`EXPR_BEG`かどうかで返り値を
+変えていることがわかる。ここが修飾子かどうかの判定だ。つまり変数`kw`が
+カギである。そして`kw`は……とずっと上を見ていくと、`struct kwtable`だと
+わかる。
+
+`struct kwtable`は`keywords`内で定義されている構造体で、
+ハッシュ関数`rb_reserved_word()`は`gperf`が作ってくれるということは
+前章で話した。もう一度構造体を紹介しよう。
+
+▼ `keywords `- `struct kwtable`
+<pre class="longlist">
+   1  struct kwtable {char *name; int id[2]; enum lex_state state;};
+
+(keywords)
+</pre>
+
+`name`と`id[0]`については説明済みである。予約語名とその記号だ。
+今回は残りのメンバについて話す。
+
+まず`id[1]`がいま問題の修飾子に対応する記号である。例えば`if`なら
+`kIF_MOD`だ。
+修飾子版がない予約語だと`id[0]`と`id[1]`には同じものが入っている。
+
+そして`state`は`enum lex_state`だから、予約語を読んだあとに遷移すべき状態だ。
+とりあえずその組み合わせを一覧しておく。この出力は筆者の自作
+ツール`kwstat.rb`で得られる。これも添付CD-ROMに収録し
+た\footnote{`kwstat`:添付CD-ROMの`tools/kwstat.rb`}。
+
+<pre class="screen">
+% kwstat.rb ruby/keywords
+---- EXPR_ARG
+defined?  super     yield
+
+---- EXPR_BEG
+and     case    else    ensure  if      module  or      unless  when
+begin   do      elsif   for     in      not     then    until   while
+
+---- EXPR_CLASS
+class
+
+---- EXPR_END
+BEGIN     __FILE__  end       nil       retry     true
+END       __LINE__  false     redo      self
+
+---- EXPR_FNAME
+alias  def    undef
+
+---- EXPR_MID
+break   next    rescue  return
+
+---- modifiers
+if      rescue  unless  until   while
+</pre>
+
+h2. `do`の衝突
+
+h3. 問題
+
+イテレータの書式には`do`〜`end`と`{`〜`}`の二種類があるのだった。この二つの
+違いは優先順で、`{`〜`}`のほうがずっと高い。優先順位が高いということは
+文法として単位が「小さい」ということで、より小さい規則に入れることが
+できる。例えば`stmt`でなく`expr`や`primary`に入れることができる。例えば
+昔は`{`〜`}`イテレータが`primary`で`do`〜`end`イテレータが`stmt`にあった。
+
+ところが途中で次のような式に対する要求が出てきた。
+
+<pre class="emlist">
+m do .... end + m do .... end
+</pre>
+
+これを許すには`do`〜`end`イテレータを`arg`や`primary`に入れればいい。
+ところが`while`の条件式は`expr`、つまり`arg`や`primary`を含むので、
+ここで`do`が衝突してしまう。具体的には次のようなときだ。
+
+<pre class="emlist">
+while m do
+  ....
+end
+</pre>
+
+ちょっと見では`do`は`while`の`do`になるのが正しそうである。しか
+しよくよく見ると`m do`〜`end`というくくりも考えられる。人間が混同でき
+るということは`yacc`なら確実に衝突する。実際にやってみよう。
+
+<pre class="emlist">
+/* doの衝突の実験 */
+%token kWHILE kDO tIDENTIFIER kEND
+%%
+expr: kWHILE expr kDO expr kEND
+    | tIDENTIFIER
+    | tIDENTIFIER kDO expr kEND
+</pre>
+
+`while`、変数参照、イテレータだけに問題を単純化した。この規則は条件式の
+冒頭に`tIDENTIFIER`が来るとshift/reduce conflictを起こす。`tIDENTIFIER`を
+変数参照にして`do`を`while`に付けるのが還元、イテレータの`do`にするのが
+シフトだ。
+
+悪いことにshift/reduce conflictはシフト優先なので放置しておくと`do`はイ
+テレータの`do`になる。かと言って演算子優先順位その他で還元に倒すと`do`が全
+くシフトされなくなり、`do`それ自体が使えなくなる。つまり全ての問題を矛
+盾なく解決するには、`do`〜`end`イテレータを`expr`にすることなく演算子が使え
+る規則を書くか、スキャナレベルで解決するしかない。
+
+しかし`do`〜`end`イテレータを`expr`に入れないというのはとても非現実的である。
+`expr`のための規則(ということは`arg`と`primary`もだ)を全て繰り返さないと
+いけなくなる。従ってこの問題はスキャナで解決するのが適切だ。
+
+h3. 規則レベルの解決
+
+以下に関連規則を簡約化したものを示す。
+
+▼ `do`の記号
+<pre class="longlist">
+primary         : kWHILE expr_value do compstmt kEND
+
+do              : term
+                | kDO_COND
+
+primary         : operation brace_block
+                | method_call brace_block
+
+brace_block     : '{' opt_block_var compstmt '}'
+                | kDO opt_block_var compstmt kEND
+</pre>
+
+見てのとおり、`while`の`do`とイテレータの`do`で終端記号が違う。
+`while`が`kDO_COND`、イテレータが`kDO`だ。あとはスキャナでこの
+区別をすればよい。
+
+h3. 記号レベルの解決
+
+以下は、何度も見てきた`yylex`の予約語の処理部分の一部である。
+`do`の処理をしているのはここだけなので、ここのコードを
+調べれば判断基準がわかるはずだ。
+
+▼ `yylex`-識別子-予約語
+<pre class="longlist">
+4183                      if (kw->id[0] == kDO) {
+4184                          if (COND_P()) return kDO_COND;
+4185                          if (CMDARG_P() && state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+4187                          if (state == EXPR_ENDARG)
+4188                              return kDO_BLOCK;
+4189                          return kDO;
+4190                      }
+
+(parse.y)
+</pre>
+
+ぐちゃぐちゃとあるが、`kDO_COND`に関係するところだけ見ればよい。なぜなら、
+`kDO_COND`と`kDO`/`kDO_BLOCK`という比較、`kDO`と`kDO_BLOCK`という
+比較は意味があるが、それ以外の比較は意味がないからだ。いまは条件の
+`do`さえ区別できればよいのであって、他の条件を一緒に追ってはいけない。
+
+つまり`COND_P()`が鍵となる。
+
+h3. `COND_P()`
+
+h4. `cond_stack`
+
+`COND_P()`は`parse.y`の先頭近くで定義されている。
+
+▼ `cond_stack`
+<pre class="longlist">
+  75  #ifdef HAVE_LONG_LONG
+  76  typedef unsigned LONG_LONG stack_type;
+  77  #else
+  78  typedef unsigned long stack_type;
+  79  #endif
+  80
+  81  static stack_type cond_stack = 0;
+  82  #define COND_PUSH(n) (cond_stack = (cond_stack<<1)|((n)&1))
+  83  #define COND_POP() (cond_stack >>= 1)
+  84  #define COND_LEXPOP() do {\
+  85      int last = COND_P();\
+  86      cond_stack >>= 1;\
+  87      if (last) cond_stack |= 1;\
+  88  } while (0)
+  89  #define COND_P() (cond_stack&1)
+
+(parse.y)
+</pre>
+
+型`stack_type`は`long`(32ビット以上)か`long long`(64ビット以上)だ。
+`cond_stack`はパース開始時に`yycompile()`で初期化され、後は常にマクロ
+経由で扱われるので、そのマクロを把握すればよい。
+
+そのマクロ`COND_PUSH`/`POP`を見ると、どうやら整数をビット単位のスタック
+として使うようである。
+
+<pre class="emlist">
+MSB←   →LSB
+...0000000000         初期値0
+...0000000001         COND_PUSH(1)
+...0000000010         COND_PUSH(0)
+...0000000101         COND_PUSH(1)
+...0000000010         COND_POP()
+...0000000100         COND_PUSH(0)
+...0000000010         COND_POP()
+</pre>
+
+そして`COND_P()`はというと、最下位ビット(LSB)が1かどうか
+判定しているから、スタックの先頭が1かどうかの判定ということになる。
+
+残る`COND_LEXPOP()`はちょっと不思議な動きだ。現在の`COND_P()`を
+スタック先頭に残したまま右シフトしている。つまり下から2ビットめを
+1ビットめで踏み潰すようになる。
+
+<pre class="emlist">
+MSB←   →LSB
+...0000000000         初期値0
+...0000000001         COND_PUSH(1)
+...0000000010         COND_PUSH(0)
+...0000000101         COND_PUSH(1)
+...0000000011         COND_LEXPOP()
+...0000000100         COND_PUSH(0)
+...0000000010         COND_LEXPOP()
+</pre>
+
+これがどういう意味を持つのかは後で説明しよう。
+
+h4. 目的の調査
+
+ではこのスタックの目的を調べるために、
+`COND_PUSH() COND_POP()`を使っているところを全部リストアップしてみよう。
+
+<pre class="emlist">
+        | kWHILE {COND_PUSH(1);} expr_value do {COND_POP();}
+--
+        | kUNTIL {COND_PUSH(1);} expr_value do {COND_POP();}
+--
+        | kFOR block_var kIN {COND_PUSH(1);} expr_value do {COND_POP();}
+--
+      case '(':
+                :
+                :
+        COND_PUSH(0);
+        CMDARG_PUSH(0);
+--
+      case '[':
+                :
+                :
+        COND_PUSH(0);
+        CMDARG_PUSH(0);
+--
+      case '{':
+                :
+                :
+        COND_PUSH(0);
+        CMDARG_PUSH(0);
+--
+      case ']':
+      case '}':
+      case ')':
+        COND_LEXPOP();
+        CMDARG_LEXPOP();
+</pre>
+
+ここから次のような法則を発見できる。
+
+* 条件式の最初で`PUSH(1)`
+* 開き括弧で`PUSH(0)`
+* 条件式の終わりで`POP()`
+* 閉じ括弧で`LEXPOP()`
+
+とすると、なんとなく
+使い道が見えてくる。`cond_stack`という名前も考えると、条件式と同じレベルに
+いるかどうか判定するマクロに違いない(図2)。
+
+!images/ch_contextual_condp.jpg(`COND_P()`の移り変わり)!
+
+この仕掛けによって次のような場合にもうまく対処できるようになる。
+
+<pre class="emlist">
+while (m do .... end)   # doはイテレータのdo(kDO)
+  ....
+end
+</pre>
+
+ということは、32ビットマシンで`long long`がない場合には括弧か条件式が
+32レベルネストしたあたりで変なことになる可能性がある。とはいえ普通は
+そんなにネストしないから実害は出ない。
+
+また`COND_LEXPOP()`の定義がちょっと不思議なことになっていたのは、どうやら
+先読み対策らしい。ただ現在はうまいこと先読みが起こらないような規則に
+なっているために`POP`と`LEXPOP`を分ける意味がなくなっている。つまり
+現時点では「`COND_LEXPOP()`は無意味」という解釈が正しい。
+
+h2. `tLPAREN_ARG`(1)
+
+h3. 問題
+
+この問題は、非常にややこしい。これが通るようになったのは`ruby` 1.7に
+なってから、それもごく最近の話である。どういうことかというと……
+
+<pre class="emlist">
+call (expr) + 1
+</pre>
+
+を
+
+<pre class="emlist">
+(call(expr)) + 1
+call((expr) + 1)
+</pre>
+
+のどちらに解釈するか、という話だ。以前は全て前者のように処理されてい
+た。つまり括弧は常に「メソッド引数の括弧」だった。しかし
+`ruby` 1.7では後者のように処理されるようになったのである。
+つまり空白が入ると括弧は「`expr`の括弧」になる。
+
+なぜ解釈が変わったのか、例を紹介しておこう。まず次のような文を書いた。
+
+<pre class="emlist">
+p m() + 1
+</pre>
+
+ここまでなら問題はない。しかし`m`の返す値が実は小数で、桁数が多す
+ぎたとしよう。そこで表示するときは整数にしてしまうことにする。
+
+<pre class="emlist">
+p m() + 1 .to_i   # ??
+</pre>
+
+しまった、括弧が必要だ。
+
+<pre class="emlist">
+p (m() + 1).to_i
+</pre>
+
+これはどう解釈されるだろうか? 1.6までなら、これは
+
+<pre class="emlist">
+(p(m() + 1)).to_i
+</pre>
+
+となる。つまりせっかく付けた`to_i`が何の意味もなくなってしまう。これは困る。
+そこで括弧との間に空白がある場合だけは特別扱いして`expr`の括弧にすることに
+したのである。
+
+自分で調査してみたい人のために書いておくと、
+この変更が実装されたのは`parse.y`のリビジョン1.100(2001-05-31)である。
+だから1.99との差分を見ていくと比較的わかりやすい。
+差分を取るコマンドはこうだ。
+
+<pre class="screen">
+~/src/ruby % cvs diff -r1.99 -r1.100 parse.y
+</pre>
+
+h3. 調査
+
+まず現実に仕組みがどう動いているか見てみることにしよう。添付の
+ツール`ruby-lexer`\footnote{`ruby-lexer`:添付CD-ROMの`tools/ruby-lexer.tar.gz`}を
+使うとプログラムに対応する記号列を調べられる。
+
+<pre class="screen">
+% ruby-lexer -e 'm(a)'
+tIDENTIFIER '(' tIDENTIFIER ')' '\n'
+</pre>
+
+`-e`は`ruby`と同じくプログラムをコマンドラインから直接渡すオプションだ。
+これを使っていろいろ試してみよう。
+まず問題の、第一引数が括弧でくくられている場合。
+
+<pre class="screen">
+% ruby-lexer -e 'm  (a)'
+tIDENTIFIER tLPAREN_ARG tIDENTIFIER ')' '\n'
+</pre>
+
+スペースを入れたら開き括弧の記号が`tLPAREN_ARG`になった。
+ついでに普通の式括弧も見ておこう。
+
+<pre class="screen">
+% ruby-lexer -e '(a)'
+tLPAREN tIDENTIFIER ')' '\n'
+</pre>
+
+普通の式括弧は`tLPAREN`らしい。
+
+まとめるとこうなる。
+
+|入力|開き括弧の記号|
+|`m(a)`|`'('`|
+|`m  (a)`|`tLPAREN_ARG`|
+|`(a)`|`tLPAREN`|
+
+つまりこの三つをどう区別するかが焦点となる。
+今回は特に`tLPAREN_ARG`が重要だ。
+
+h3. 一引数の場合
+
+まずは素直に`yylex()`の`'('`の項を見てみよう。
+
+▼ `yylex`-`'('`
+<pre class="longlist">
+3841        case '(':
+3842          command_start = Qtrue;
+3843          if (lex_state == EXPR_BEG || lex_state == EXPR_MID) {
+3844              c = tLPAREN;
+3845          }
+3846          else if (space_seen) {
+3847              if (lex_state == EXPR_CMDARG) {
+3848                  c = tLPAREN_ARG;
+3849              }
+3850              else if (lex_state == EXPR_ARG) {
+3851                  c = tLPAREN_ARG;
+3852                  yylval.id = last_id;
+3853              }
+3854          }
+3855          COND_PUSH(0);
+3856          CMDARG_PUSH(0);
+3857          lex_state = EXPR_BEG;
+3858          return c;
+
+(parse.y)
+</pre>
+
+最初の`if`は`tLPAREN`だから、通常の式括弧だ。その判断基準は`lex_state`が
+`BEG`か`MID`、つまり確実に式の始まりにいるときである。
+
+その次の`space_seen`は括弧の前に「空白があるかどうか」を表している。
+空白があり、かつ`lex_state`が`ARG`か`CMDARG`のとき……つまり第一引数の
+前なら、記号は`'('`でなく`tLPAREN_ARG`になる。これで例えば次のような
+場合を排除できるわけだ。
+
+<pre class="emlist">
+m(              # 括弧の前に空白がない……メソッド括弧('(')
+m arg, (        # 第一引数以外……式括弧(tLPAREN)
+</pre>
+
+`tLPAREN`でも`tLPAREN_ARG`でもなければ入力文字の`c`がそのまま
+使われて`'('`になる。これはきっとメソッド呼び出しの括弧になるのだろう。
+
+記号レベルでこのようにキッパリと区別されていれば、普通に規則を書いても
+衝突しなくて済む。簡略化して書けば次のようになるだろう。
+
+<pre class="emlist">
+stmt         : command_call
+
+method_call  : tIDENTIFIER '(' args ')'    /* 通常メソッド */
+
+command_call : tIDENTIFIER command_args    /* 括弧省略メソッド */
+
+command_args : args
+
+args         : arg
+             : args ',' arg
+
+arg          : primary
+
+primary      : tLPAREN compstmt ')'        /* 通常の式括弧 */
+             | tLPAREN_ARG expr ')'        /* 括弧でくくられた第一引数 */
+             | method_call
+</pre>
+
+`method_call`と`command_call`に注目してほしい。もし`tLPAREN_ARG`を導入せず
+`'('`のままにすると、`command_args`から`args`が出る、`args`から`arg`が出る、
+`arg`から`primary`が出る、そして`tLPAREN_ARG`のところから`'('`が出て
+`method_call`と衝突してしまう(図3)。
+
+!images/ch_contextual_trees.jpg(`method_call`と`command_call`)!
+
+h3. 二引数以上の場合
+
+さてうまいこと括弧が`tLPAREN_ARG`になってこれでバッチリか、と思いきや
+実はそうではない。例えば次のような場合はどうなるのだろう。
+
+<pre class="emlist">
+m  (a, a, a)
+</pre>
+
+このような式はこれまではメソッド呼び出しとして扱われてきたので
+エラーにならなかった。しかし`tLPAREN_ARG`が導入されると開き括弧が
+`expr`括弧になってしまうので二個以上の引数があるとパースエラーになる。
+互換性を考えるとなんとか配慮しなければならない。
+
+しかし何も考えずに
+
+<pre class="emlist">
+command_args : tLPAREN_ARG args ')'
+</pre>
+
+などという規則を追加してしまうとあっさり衝突する。全体を見てよく考えて
+みよう。
+
+<pre class="emlist">
+stmt         : command_call
+             | expr
+
+expr         : arg
+
+command_call : tIDENTIFIER command_args
+
+command_args : args
+             | tLPAREN_ARG args ')'
+
+args         : arg
+             : args ',' arg
+
+arg          : primary
+
+primary      : tLPAREN compstmt ')'
+             | tLPAREN_ARG expr ')'
+             | method_call
+
+method_call  : tIDENTIFIER '(' args ')'
+</pre>
+
+`command_args`の一つめの規則を見てほしい。`args`からは`arg`が出る。
+`arg`からは`primary`が出る。そこからは`tLPAREN_ARG`の規則が出る。
+そして`expr`は`arg`を含むから、展開の方法次第で
+
+<pre class="emlist">
+command_args : tLPAREN_ARG arg ')'
+             | tLPAREN_ARG arg ')'
+</pre>
+
+という状況になる。即ちreduce/reduce conflictであり非常にまずい。
+
+ではどうやったら衝突させずに二引数以上にだけ対処できるだろうか。
+やはりそのむね限定して書くしかない。現実には次のように解決された。
+
+▼ `command_args`
+<pre class="longlist">
+command_args    : open_args
+
+open_args       : call_args
+                | tLPAREN_ARG   ')'
+                | tLPAREN_ARG call_args2  ')'
+
+call_args       : command
+                | args opt_block_arg
+                | args ',' tSTAR arg_value opt_block_arg
+                | assocs opt_block_arg
+                | assocs ',' tSTAR arg_value opt_block_arg
+                | args ',' assocs opt_block_arg
+                | args ',' assocs ',' tSTAR arg opt_block_arg
+                | tSTAR arg_value opt_block_arg
+                | block_arg
+
+call_args2      : arg_value ',' args opt_block_arg
+                | arg_value ',' block_arg
+                | arg_value ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' tSTAR arg_value opt_block_arg
+                | assocs opt_block_arg
+                | assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' assocs opt_block_arg
+                | arg_value ',' args ',' assocs opt_block_arg
+                | arg_value ',' assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' assocs ','
+                                  tSTAR arg_value opt_block_arg
+                | tSTAR arg_value opt_block_arg
+                | block_arg
+
+primary         : literal
+                | strings
+                | xstring
+                       :
+                | tLPAREN_ARG expr  ')'
+</pre>
+
+こちらでは`command_args`の次にもう一段、`open_args`がはさまっているが
+規則上はなくても同じだ。この`open_args`の二つめ三つめの規則がカギであ
+る。この形は先程書いた例と似てはいるが、微妙に違う。それは
+`call_args2`というのを導入していることだ。この`call_args2`の特徴はと言
+うと、引数が必ず二つ以上あることである。その証拠にほとんどの規則が
+`','`を含んでいる。例外は`assocs`の規則だが、`expr`からは`assocs`が出
+てこないので`assocs`はそもそも衝突しない。
+
+やや説明がわかりにくかった。もうちょっと平易に言うと、
+
+<pre class="emlist">
+command_args    : call_args
+</pre>
+
+では通らない文法だけを、その次の規則でもって追加しているのである。
+だから「この規則で通らない文法」とはどういうものか考えればいい。
+また衝突するのは`call_args`の先頭に`tLPAREN_ARG`の`primary`が来るときだけ
+なのだから、さらに限定して
+「`tIDENTIFIER tLPAREN_ARG`という並びが来たとして、この規則だけでは
+通らない文法」を考えればいい。その例をいくつか挙げる。
+
+<pre class="emlist">
+m (a, a)
+</pre>
+
+これは`tLPAREN_ARG`リストの中に二つ以上の要素があるもの。
+
+<pre class="emlist">
+m ()
+</pre>
+
+その逆に、`tLPAREN_ARG`リストの中が空であるもの。
+
+<pre class="emlist">
+m (*args)
+m (&block)
+m (k => v)
+</pre>
+
+`tLPAREN_ARG`リストの中に、メソッド呼び出し特有の(`expr`にはない)
+表現があるもの。
+
+というあたりでだいたいカバーできるだろう。実装と照らし合わせて
+見てみよう。
+
+▼ `open_args`(1)
+<pre class="longlist">
+open_args       : call_args
+                | tLPAREN_ARG   ')'
+</pre>
+
+まずこの規則が空リストに対応する。
+
+▼ `open_args`(2)
+<pre class="longlist">
+                | tLPAREN_ARG call_args2  ')'
+
+call_args2      : arg_value ',' args opt_block_arg
+                | arg_value ',' block_arg
+                | arg_value ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' tSTAR arg_value opt_block_arg
+                | assocs opt_block_arg
+                | assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' assocs opt_block_arg
+                | arg_value ',' args ',' assocs opt_block_arg
+                | arg_value ',' assocs ',' tSTAR arg_value opt_block_arg
+                | arg_value ',' args ',' assocs ','
+                                  tSTAR arg_value opt_block_arg
+                | tSTAR arg_value opt_block_arg
+                | block_arg
+</pre>
+
+そして`call_args2`では、二つ以上の要素のリストと、`assocs`や
+配列渡し、ブロック渡しなどの特殊型を含むものを扱う。
+これでかなりの範囲に対応できるようになった。
+
+h2. `tLPAREN_ARG`(2)
+
+h3. 問題
+
+前の節でメソッド呼び出し特有の表現が「だいたい」カバーできると言ったの
+には訳がある。これだけではまだイテレータがカバーされていないからだ。
+例えば以下のような文が通らない。
+
+<pre class="emlist">
+m (a) {....}
+m (a) do .... end
+</pre>
+
+この節ではさらにこの点を解決すべく導入された部分を突っこんで見ていこう。
+
+h3. 規則レベルの解決
+
+まず規則から見ていく。
+前のほうは既に登場した規則ばかりなので`do_block`のあたりに注目してほしい。
+
+▼ `command_call`
+<pre class="longlist">
+command_call    : command
+                | block_command
+
+command         : operation command_args
+
+command_args    : open_args
+
+open_args       : call_args
+                | tLPAREN_ARG ')'
+                | tLPAREN_ARG call_args2 ')'
+
+block_command   : block_call
+
+block_call      : command do_block
+
+do_block        : kDO_BLOCK opt_block_var compstmt '}'
+                | tLBRACE_ARG opt_block_var compstmt '}'
+</pre>
+
+`do`、`{`の両方ともが全く新しい記号`kDO_BLOCK`と`tLBRACE_ARG`になっている。
+なぜ`kDO`や`'{'`ではいけないのだろう。そういうときはとりあえず試してみろ、
+ということで、`kDO_BLOCK`を`kDO`に、`tLBRACE_ARG`を`'{'`にして`yacc`で
+処理してみた。すると……
+
+<pre class="screen">
+% yacc parse.y
+conflicts:  2 shift/reduce, 6 reduce/reduce
+</pre>
+
+思い切り衝突する。調べてみると、次のような文が原因であった。
+
+<pre class="emlist">
+m (a), b {....}
+</pre>
+
+なぜなら、この形の文は既に通るようになっているからだ。`b{....}`が
+`primary`になる。そこにブロックが`m`と連結する規則を追加してしまったので、
+
+<pre class="emlist">
+m((a), b) {....}
+m((a), (b {....}))
+</pre>
+
+の二通りの解釈ができてしまい、衝突するのだ。
+これが2 shift/reduce conflict。
+
+もう一方は`do`〜`end`がらみだ。こっちは
+
+<pre class="emlist">
+m((a)) do .... end     # block_callでdo〜end追加
+m((a)) do .... end     # primaryでdo〜end追加
+</pre>
+
+の二つが衝突する。これが6 reduce/reduce conflict。
+
+h3. `{`〜`}`イテレータ
+
+ここからが本番である。先程見たように、`do`と`'{'`の記号を変えることで
+衝突は回避できる。`yylex()`の`'{'`の項を見てみよう。
+
+▼ `yylex`-`'{'`
+<pre class="longlist">
+3884        case '{':
+3885          if (IS_ARG() || lex_state == EXPR_END)
+3886              c = '{';          /* block (primary) */
+3887          else if (lex_state == EXPR_ENDARG)
+3888              c = tLBRACE_ARG;  /* block (expr) */
+3889          else
+3890              c = tLBRACE;      /* hash */
+3891          COND_PUSH(0);
+3892          CMDARG_PUSH(0);
+3893          lex_state = EXPR_BEG;
+3894          return c;
+
+(parse.y)
+</pre>
+
+`IS_ARG()`は
+
+▼ `IS_ARG`
+<pre class="longlist">
+3104  #define IS_ARG() (lex_state == EXPR_ARG || lex_state == EXPR_CMDARG)
+
+(parse.y)
+</pre>
+
+と定義されているから、`EXPR_ENDARG`のときには確実に偽になる。
+つまり`lex_state`が`EXPR_ENDARG`のときは常に`tLBRACE_ARG`になるのだから、
+`EXPR_ENDARG`に遷移することこそが全ての鍵である。
+
+h4. `EXPR_ENDARG`
+
+では`EXPR_ENDARG`はどうやってセットされているのだろうか。
+代入しているところを`grep`してみた。
+
+▼ `EXPR_ENDARG`への遷移
+<pre class="longlist">
+open_args       : call_args
+                | tLPAREN_ARG  {lex_state = EXPR_ENDARG;} ')'
+                | tLPAREN_ARG call_args2 {lex_state = EXPR_ENDARG;} ')'
+
+primary         : tLPAREN_ARG expr {lex_state = EXPR_ENDARG;} ')'
+</pre>
+
+おかしい。`tLPAREN_ARG`に対応する閉じ括弧のあとで`EXPR_ENDARG`に遷移すると
+いうのならわかるが、実際には`')'`の前で代入
+している。他に`EXPR_ENDARG`をセットしている個所があるのかと思って`grep`し
+まくってみたが、やはりない。
+
+もしかするとどこかで道を誤ったのだろうか。何か全く別の方法で
+`lex_state`が変更されているのかもしれない。確認のため、
+`rubylex-analyser`で`lex_state`の遷移を視覚化してみよう。
+
+<pre class="screen">
+% rubylex-analyser -e 'm (a) { nil }'
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "("  tLPAREN_ARG          EXPR_BEG
+                                              0:cond push
+                                              0:cmd push
+                                              1:cmd push-
+EXPR_BEG     C        "a"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                              1:cmd lexpop
++EXPR_ENDARG
+EXPR_ENDARG S         "{"  tLBRACE_ARG          EXPR_BEG
+                                              0:cond push
+                                             10:cmd push
+                                              0:cmd resume
+EXPR_BEG    S       "nil"  kNIL                 EXPR_END
+EXPR_END    S         "}"  '}'                  EXPR_END
+                                              0:cond lexpop
+                                              0:cmd lexpop
+EXPR_END             "\n"  \n                   EXPR_BEG
+</pre>
+
+大きく三つに分かれている行が`yylex()`による状態遷移を表している。
+左が`yylex()`前の状態、真ん中の二つが単語のテキストとその記号、
+右が`yylex()`後の`lex_state`だ。
+
+問題は単独の行に`+EXPR_ENDARG`のように出ている部分である。これはパーサ
+のアクション中で遷移が起こっていることを示す。これによると、なぜか
+`')'`を読んだあとにアクションが実行されて`EXPR_ENDARG`に遷移し
+ており、うまいこと`'{'`が`tLBRACE_ARG`に変わっている。実はこれは
+LALR(1)の(1)までを惜しみなく活用(逆用)したかなりの上級技なの
+である。
+
+h4. 先読み逆用
+
+`ruby -y`を使うと`yacc`のパーサエンジンの動きを逐一表示させることができる。
+今度はこれを使ってさらに詳しくパーサをトレースしてみよう。
+
+<pre class="screen">
+% ruby -yce 'm (a) {nil}' 2>&1 | egrep '^Reading|Reducing'
+Reducing via rule 1 (line 303),  -> @1
+Reading a token: Next token is 304 (tIDENTIFIER)
+Reading a token: Next token is 340 (tLPAREN_ARG)
+Reducing via rule 446 (line 2234), tIDENTIFIER  -> operation
+Reducing via rule 233 (line 1222),  -> @6
+Reading a token: Next token is 304 (tIDENTIFIER)
+Reading a token: Next token is 41 (')')
+Reducing via rule 392 (line 1993), tIDENTIFIER  -> variable
+Reducing via rule 403 (line 2006), variable  -> var_ref
+Reducing via rule 256 (line 1305), var_ref  -> primary
+Reducing via rule 198 (line 1062), primary  -> arg
+Reducing via rule 42 (line 593), arg  -> expr
+Reducing via rule 260 (line 1317),  -> @9
+Reducing via rule 261 (line 1317), tLPAREN_ARG expr @9 ')'  -> primary
+Reading a token: Next token is 344 (tLBRACE_ARG)
+                         :
+                         :
+</pre>
+
+コンパイルだけで中断する`-c`オプションと、コマンドラインからプログラムを
+与える`-e`を併用している。そして`grep`でトークンの読み込みと還元の報告だけ
+を抜き出す。
+
+そこでまずリストの真ん中あたりを見てほしい。`')'`が読み込まれている。そ
+して次に最後のほうを見ると……なんと、ここでようやく埋め込みアクション
+(`@9`)の還元が起こっている(実行されている)。確かにこれなら`')'`の後・
+`'{'`の前に`EXPR_ENDARG `をセットできそうだ。しかし、これは常に起こることな
+のだろうか。もう一度セットしているところを見てみよう。
+
+<pre class="emlist">
+規則1    tLPAREN_ARG  {lex_state = EXPR_ENDARG;} ')'
+規則2    tLPAREN_ARG call_args2 {lex_state = EXPR_ENDARG;} ')'
+規則3    tLPAREN_ARG expr {lex_state = EXPR_ENDARG;} ')'
+</pre>
+
+埋め込みアクションは空の規則で代用することができるのだった。例えば
+規則1を例に取ると、全く意味を変えずに次のように書き換えられる。
+
+<pre class="emlist">
+target  : tLPAREN_ARG tmp ')'
+tmp     :
+            {
+                lex_state = EXPR_ENDARG;
+            }
+</pre>
+
+いま`tmp`の前にいるとすると、終端記号一つ分は先読みされる可能性が
+あるので(空の)`tmp`をすりぬけて次を読むことは確かにありうる。
+そして、確実に先読みが起こるとわかっていれば、`lex_state`への代入が
+`')'`の後で`EXPR_ENDARG`に変わることを保証できる。
+ではこの規則では`')'`の先読みは確実に起こるだろうか。
+
+h4. 先読みの保証
+
+これが、実は確かなのである。次のような三通りの入力で考えよう。
+
+<pre class="emlist">
+m () { nil }        # A
+m (a) { nil }       # B
+m (a,b,c) { nil }   # C
+</pre>
+
+ついでに規則も少し見やすく(しかし状況は変えずに)書き直した。
+
+<pre class="emlist">
+rule1: tLPAREN_ARG             e1  ')'
+rule2: tLPAREN_ARG  one_arg    e2  ')'
+rule3: tLPAREN_ARG  more_args  e3  ')'
+
+e1:   /* empty */
+e2:   /* empty */
+e3:   /* empty */
+</pre>
+
+ではまず入力Aの場合。
+
+<pre class="emlist">
+m (         # ... tLPAREN_ARG
+</pre>
+
+まで読んだところで`e1`の前に来る。もしここで`e1`を還元してしまったら
+もう別の規則は選べないので、このまま`e1`を還元して`rule1`と心中するか、
+それとも他の規則を選ぶのか確認するためにここで先読みが起こる。
+従って入力が`rule1`に合致する場合は必ず`')'`が先読みされる。
+
+次に入力Bの場合。まず
+
+<pre class="emlist">
+m (         # ... tLPAREN_ARG
+</pre>
+
+まで読んだところで先程と同じ理由で先読みがかかる。そしてさらに
+
+<pre class="emlist">
+m (a        # ... tLPAREN_ARG '(' tIDENTIFIER
+</pre>
+
+まで読んだところでまた先読みする。なぜなら次が`','`か`')'`かで`rule2`と
+`rule3`に分かれるからだ。もし`','`だったらこれは引数区切りのカンマとしか
+考えられないので即座に二引数以上、即ち`rule3`と確定する。もし入力が
+単なる`a`ではなく`if`だったりリテラルの「93」だったりしても同じことである。
+その入力が完了したところで`rule2`と`rule3`を区別するために、即ち
+一引数か二引数以上かを区別するために先読みが起こる。
+
+この場合、全ての規則で`')'`の前に(別々の)埋め込みアクションがあると
+いうことが重要なのだ。アクションというものは一回実行してしまうともう取
+り返しが付かないので、パーサは「絶対確実」な状況になるまでアクションの
+実行を先延ばししようとする。だからこそ先読み一つでそういう状況が作れな
+いの場合はパーサ生成時に排除する必要があり、つまりそれが「衝突」である。
+
+入力Cはどうだろうか。
+
+<pre class="emlist">
+m (a, b, c
+</pre>
+
+ここまで来た時点でもう`rule3`しか可能性がないので、先読みはなさそうな気
+がする。
+
+ところがそうはいかない。次が`'('`ならメソッド呼び出しだし、`','`か`')'`なら
+変数参照にしないといけない。つまり今度は埋め込みアクションの還元ではな
+くて、引数の要素を確定するために先読みが起こる。
+
+では他の入力ではどうなのだろうか。例えば第三引数がメソッド呼び出し
+だったらどうだろう。
+
+<pre class="emlist">
+m (a, b, c(....)    # ... ',' method_call
+</pre>
+
+これもやっぱり先読みが必要なのだ。なぜなら、次が`','`か`')'`かでシフトと還
+元に分かれる。だから、この規則では結局あらゆる場合に埋め込みアクション
+の実行よりも早く`')'`が読まれる。実にややこしい。よく思い付いたなあと感
+動してしまう。
+
+ところで埋め込みアクションではなく通常のアクションで`lex_state`をセット
+してはいけないのだろうか。例えばこのように。
+
+<pre class="emlist">
+                | tLPAREN_ARG ')' { lex_state = EXPR_ENDARG; }
+</pre>
+
+これは、いけない。なぜならアクションの還元の前に(また)先読みが起こる
+可能性があるからだ。今度は先読みが裏目に出てしまうのである。このことか
+らもわかるように、LALRパーサの先読みを逆用するなんてのは相当な裏技である。
+素人にはお勧めできない。
+
+h3. `do`〜`end`イテレータ
+
+ここまでで`{`〜`}`イテレータには対処できたがまだ`do`〜`end`イテレータが残って
+いる。同じイテレータなら同じ方法で対処できそうだが、それは違う。
+`{`〜`}`と`do`〜`end`では優先順位が違うのだ。例えば次のように。
+
+<pre class="emlist">
+m a, b {....}          # m(a, (b{....}))
+m a, b do .... end     # m(a, b) do....end
+</pre>
+
+だから当然対処の方法も違って然るべきである。
+
+とは言え、もちろん同じ対処で済む場合もある。例えば次のような場合は
+どちらでも同じになるだろう。
+
+<pre class="emlist">
+m (a) {....}
+m (a) do .... end
+</pre>
+
+とにかく現物を見てみることにする。
+`do`だから、`yylex()`の予約語のところを見ればいい。
+
+▼ `yylex`-識別子-予約語-`do`
+<pre class="longlist">
+4183                      if (kw->id[0] == kDO) {
+4184                          if (COND_P()) return kDO_COND;
+4185                          if (CMDARG_P() && state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+4187                          if (state == EXPR_ENDARG)
+4188                              return kDO_BLOCK;
+4189                          return kDO;
+4190                      }
+
+(parse.y)
+</pre>
+
+今回注目するのは`kDO_BLOCK`と`kDO`を区別する部分だけだ。`kDO_COND`のことは考
+えてはいけない。状態付きスキャナでは常に関係するところだけ見るのだ。
+
+まず`EXPR_ENDARG`を使った判定の部分が`tLBRACE_ARG`と同じ状況である。
+このときは優先順位の違いは関係しないので`'{'`と同じで`kDO_BLOCK`に
+するのが適切だろう。
+
+問題はその前の`CMDARG_P()`と`EXPR_CMDARG`だ。順番に見ていこう。
+
+h4. `CMDARG_P()`
+
+▼ `cmdarg_stack`
+<pre class="longlist">
+  91  static stack_type cmdarg_stack = 0;
+  92  #define CMDARG_PUSH(n) (cmdarg_stack = (cmdarg_stack<<1)|((n)&1))
+  93  #define CMDARG_POP() (cmdarg_stack >>= 1)
+  94  #define CMDARG_LEXPOP() do {\
+  95      int last = CMDARG_P();\
+  96      cmdarg_stack >>= 1;\
+  97      if (last) cmdarg_stack |= 1;\
+  98  } while (0)
+  99  #define CMDARG_P() (cmdarg_stack&1)
+
+(parse.y)
+</pre>
+
+このように`cmdarg_stack`の構造とインターフェイス(マクロ)は
+`cond_stack`と全く同じだ。ビット単位のスタックである。モノが同じという
+ことは調査方法も同じ手が通用する。使っている場所をリストアップしてみよ
+う。まずアクション中に
+
+<pre class="emlist">
+command_args    :  {
+                        $<num>$ = cmdarg_stack;
+                        CMDARG_PUSH(1);
+                    }
+                  open_args
+                    {
+                        /* CMDARG_POP() */
+                        cmdarg_stack = $<num>1;
+                        $$ = $2;
+                    }
+</pre>
+
+というのがあった。
+
+`$<num>$`は強制キャスト付きで左辺の
+値を意味するのだった。この場合はそれが埋め込みアクション自体の値となっ
+て出てくるから、その次のアクションでは`$<num>1`で取り出せる。つまり
+`cmdarg_stack`を`open_args`の前で`$$`に退避して、アクションで復帰する、と
+いう構造になっているわけだ。
+
+なぜ単純なプッシュ・ポップではなくて退避・復帰にするのだろう。
+それはこの節の最後で解説する。
+
+また`yylex()`の中で`CMDARG`関係を探すと次のものが見付かった。
+
+|`'('  '['  '{'`|`CMDARG_PUSH(0)`|
+|`')'  ']'  '}'`|`CMDARG_LEXPOP()`|
+
+つまり括弧にくくられていたらその括弧の中にいるあいだ`CMDARG_P()`は偽、
+ということだ。
+
+両方を合わせて考えると、`command_args`つまり括弧省略のメソッド呼び出し引
+数中で、括弧にくくられていないときに`CMDARG_P()`が真になると言える。
+
+h4. `EXPR_CMDARG`
+
+次にもう一つの条件、`EXPR_CMDARG`について調べる。
+まず定石通り`EXPR_CMDARG`に遷移している場所を探すことにする。
+
+▼ `yylex`-識別子-状態遷移
+<pre class="longlist">
+4201              if (lex_state == EXPR_BEG ||
+4202                  lex_state == EXPR_MID ||
+4203                  lex_state == EXPR_DOT ||
+4204                  lex_state == EXPR_ARG ||
+4205                  lex_state == EXPR_CMDARG) {
+4206                  if (cmd_state)
+4207                      lex_state = EXPR_CMDARG;
+4208                  else
+4209                      lex_state = EXPR_ARG;
+4210              }
+4211              else {
+4212                  lex_state = EXPR_END;
+4213              }
+
+(parse.y)
+</pre>
+
+これは`yylex()`の中の識別子を扱うコードだ。
+うじゃうじゃと`lex_state`のテストがあるのはまあ置いておくとして、
+`cmd_state`は初めて見る。これはなんだろう。
+
+▼ `cmd_state`
+<pre class="longlist">
+3106  static int
+3107  yylex()
+3108  {
+3109      static ID last_id = 0;
+3110      register int c;
+3111      int space_seen = 0;
+3112      int cmd_state;
+3113
+3114      if (lex_strterm) {
+              /* ……略…… */
+3132      }
+3133      cmd_state = command_start;
+3134      command_start = Qfalse;
+
+(parse.y)
+</pre>
+
+`yylex`のローカル変数だった。しかも`grep`して調べたところ、値を変えている
+のはここしかない。つまりこれは`command_start`を`yylex`一回の間だけ保存して
+おく一時変数にすぎない。
+
+では`command_start`はどういうときに真になるのだろうか。
+
+▼ `command_start`
+<pre class="longlist">
+2327  static int command_start = Qtrue;
+
+2334  static NODE*
+2335  yycompile(f, line)
+2336      char *f;
+2337      int line;
+2338  {
+                   :
+2380      command_start = 1;
+
+      static int
+      yylex()
+      {
+                   :
+            case '\n':
+              /* ……略…… */
+3165          command_start = Qtrue;
+3166          lex_state = EXPR_BEG;
+3167          return '\n';
+
+3821        case ';':
+3822          command_start = Qtrue;
+
+3841        case '(':
+3842          command_start = Qtrue;
+
+(parse.y)
+</pre>
+
+`command_start`は`parse.y`のスタティック変数で、
+「`\n ; (`」のいずれかをスキャンすると真になる、とわかる。
+
+ここまでをまとめる。まず「`\n ; (`」を読むと`command_start`が真になり、
+次の`yylex()`のあいだ`cmd_state`が真になる。
+
+そして`yylex()`で`cmd_state`を使うコードはこうだったから、
+
+▼ `yylex`-識別子-状態遷移
+<pre class="longlist">
+4201              if (lex_state == EXPR_BEG ||
+4202                  lex_state == EXPR_MID ||
+4203                  lex_state == EXPR_DOT ||
+4204                  lex_state == EXPR_ARG ||
+4205                  lex_state == EXPR_CMDARG) {
+4206                  if (cmd_state)
+4207                      lex_state = EXPR_CMDARG;
+4208                  else
+4209                      lex_state = EXPR_ARG;
+4210              }
+4211              else {
+4212                  lex_state = EXPR_END;
+4213              }
+
+(parse.y)
+</pre>
+
+「`\n ; (`の後で`EXPR_BEG MID DOT ARG CMDARG`の状態にあるときに識別子を読
+むと`EXPR_CMDARG`に遷移する」ということになる。しかし`\n ; (`の後にはそも
+そも`lex_state`は`EXPR_BEG`にしかならないので、`EXPR_CMDARG`へ遷移する場合に
+は`lex_state`はあまり意味がない。`lex_state`の限定は`EXPR_ARG`に対する遷移に
+とってだけ重要なのだ。
+
+さて、以上を踏まえると`EXPR_CMDARG`である状況が考えられる。
+例えば以下のような場合だ。アンダーバーが現在位置である。
+
+<pre class="emlist">
+m _
+m(m _
+m m _
+</pre>
+
+h4. まとめ
+
+ここで`do`の判定コードに戻ろう。
+
+▼ `yylex`-識別子-予約語-`kDO`-`kDO_BLOCK`
+<pre class="longlist">
+4185                          if (CMDARG_P() && state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+
+(parse.y)
+</pre>
+
+括弧を省略したメソッド呼び出しの引数の中で、かつ第一引数の前でないとき。
+ということは`command_call`の第二引数以降だ。つまりこういう場面だ。
+
+<pre class="emlist">
+m arg, arg do .... end
+m (arg), arg do .... end
+</pre>
+
+なぜ`EXPR_CMDARG`の場合を排除するかと言えば……例を書いてみればわかる。
+
+<pre class="emlist">
+m do .... end
+</pre>
+
+このパターンは既に`primary`で定義されている、`kDO`を使う`do`〜`end`イテ
+レータでカバーできる。よってこの場合を含めるとまた衝突してしまうのである。
+
+h3. 事実と真実
+
+終わりだと思っただろうか。まだ終わりではない。
+確かに論理は完結しているのだが、それは書いたことが正しければの話だ。
+実はこの節の中には一つ嘘がある。
+
+正しくは嘘というより厳密でないと言うべきだろうか。それは
+`CMDARG_P()`について書いたこの部分だ。
+
+どうやら、`command_args`つまり括弧省略のメソッド呼び出し引数中に
+いるときは`CMDARG_P()`が真になるようだ。
+
+「括弧省略のメソッド呼び出し引数中にいるときは……」と言ったが、
+引数「中」とはどこのことだろうか。再び`rubylex-analyser`を使って
+厳密なところを確かめてみる。
+
+<pre class="screen">
+% rubylex-analyser -e  'm a,a,a,a;'
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "a"  tIDENTIFIER          EXPR_ARG
+                                              1:cmd push-
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ";"  ';'                  EXPR_BEG
+                                              0:cmd resume
+EXPR_BEG     C       "\n"  '                    EXPR_BEG
+</pre>
+
+右側の欄に「`1:cmd push-`」と出ているところが`cmd_stack`へのプッシュだ。そ
+の行の数字の下一桁が1のときに`CMDARG_P()`は真になる。つまり`CMDARG_P()`で
+ある期間は
+
+括弧を省略したメソッド呼び出しの第一引数の直後から
+最後の引数のその次の終端記号まで
+
+と言うべきらしい。
+
+だが本当に本当のことを言えばまだこれでも厳密ではない。
+例えば次のような例がある。
+
+<pre class="screen">
+% rubylex-analyser -e  'm a(),a,a;'
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "a"  tIDENTIFIER          EXPR_ARG
+                                              1:cmd push-
+EXPR_ARG              "("  '('                  EXPR_BEG
+                                              0:cond push
+                                             10:cmd push
+EXPR_BEG     C        ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                              1:cmd lexpop
+EXPR_END              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ","  ','                  EXPR_BEG
+EXPR_BEG              "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG              ";"  ';'                  EXPR_BEG
+                                              0:cmd resume
+EXPR_BEG     C       "\n"  '                    EXPR_BEG
+</pre>
+
+第一引数の中の、その最初の終端記号を読んだ時点で`CMDARG_P()`は真に
+なっている。従って
+
+括弧を省略したメソッド呼び出しの第一引数の
+最初の終端記号の直後から、最後の引数のその次の終端記号まで
+
+が完全な答えである。
+
+この事実は何を意味だろうか。思い出してほしいのだが、`CMDARG_P()`を
+使うのはこういうコードだった。
+
+▼ `yylex`-識別子-予約語-`kDO`-`kDO_BLOCK`
+<pre class="longlist">
+4185                          if (CMDARG_P() && state != EXPR_CMDARG)
+4186                              return kDO_BLOCK;
+
+(parse.y)
+</pre>
+
+`EXPR_CMDARG`は「`command_call`の最初の引数の前」という意味で、それを除外
+している。ところが、`CMDARG_P()`は既にその意味をも含んでいるではないか。
+つまりこの節最後の結論はこうである。
+
+EXPR_CMDARGはあるだけ無駄。
+
+本当に、これがわかったときは筆者のほうが泣きそうになってしまった。「絶
+対意味がある、何かおかしい」と思ってひたすらソースを解析しまくってみ
+ても全然わからないのだ。だが最終的に`rubylex-analyser`でいろいろなコー
+ドを試しまくってやっぱり効果がないので、これは無意味なのだと結論した。
+
+意味がないことをえんえんとやってきたのは別に単なるページ稼ぎというわけ
+ではなく、現実に起こりうる状況をシミュレートしたつもりである。この世に
+あるプログラムはどれも完全ではなく、間違いが含まれている。特に今回のよ
+うな微妙なところでは間違いが起こりやすい。そのとき原本を「絶対に正しい
+もの」として読んでいるとこのような間違いに出会ったときにハマる。結局ソー
+スコードを読むとき最後に信じられるのはそこで起こった事実だけなのだ。
+
+こういう点からも動的な解析の大切さがわかってもらえると思う。調査すると
+きはまず事実を見るべきなのである。ソースコードは決して事実を語らない。
+そこにあるのは読む人間の推測だけだ。
+
+などといかにももっともらしい教訓を垂れたところで長く辛かった本章を終わ
+りとする。
+
+h4. 終わりじゃなかった
+
+一つ忘れていた。`CMDARG_P()`がなぜそういう値を取るのかを
+説明しなければこの章は終われないのだ。問題はここだ。
+
+▼ `command_args`
+<pre class="longlist">
+1209  command_args    :  {
+1210                          $<num>$ = cmdarg_stack;
+1211                          CMDARG_PUSH(1);
+1212                      }
+1213                    open_args
+1214                      {
+1215                          /* CMDARG_POP() */
+1216                          cmdarg_stack = $<num>1;
+1217                          $$ = $2;
+1218                      }
+
+1221  open_args       : call_args
+
+(parse.y)
+</pre>
+
+結論から言うと、またもや先読みの影響である。`command_args`は常に
+次のようなコンテキストにある。
+
+<pre class="emlist">
+tIDENTIFIER _
+</pre>
+
+ということは、これは変数参照にも見えるしメソッド呼び出しにも見える。も
+し変数参照だとしたら`variable`に、メソッド呼び出しなら`operation`に還元し
+なければいけない。だから先読みをしなければ進む方向を決定できないのであ
+る。それゆえ`command_args`の先頭では必ず先読みが起こり、第一引数の
+最初の終端記号を読んだ後に`CMDARG_PUSH()`が実行されるのだ。
+
+`cmdarg_stack`で`POP`と`LEXPOP`が分かれている理由もここにある。
+次の例を見てほしい。
+
+<pre class="screen">
+% rubylex-analyser -e 'm m (a), a'
+-e:1: warning: parenthesize argument(s) for future version
++EXPR_BEG
+EXPR_BEG     C        "m"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG S         "m"  tIDENTIFIER          EXPR_ARG
+                                              1:cmd push-
+EXPR_ARG    S         "("  tLPAREN_ARG          EXPR_BEG
+                                              0:cond push
+                                             10:cmd push
+                                            101:cmd push-
+EXPR_BEG     C        "a"  tIDENTIFIER          EXPR_CMDARG
+EXPR_CMDARG           ")"  ')'                  EXPR_END
+                                              0:cond lexpop
+                                             11:cmd lexpop
++EXPR_ENDARG
+EXPR_ENDARG           ","  ','                  EXPR_BEG
+EXPR_BEG    S         "a"  tIDENTIFIER          EXPR_ARG
+EXPR_ARG             "\n"  \n                   EXPR_BEG
+                                             10:cmd resume
+                                              0:cmd resume
+</pre>
+
+`cmd`関係だけを見て対応関係を取っていくと……
+
+<pre class="emlist">
+  1:cmd push-       パーサpush(1)
+ 10:cmd push        スキャナpush
+101:cmd push-       パーサpush(2)
+ 11:cmd lexpop      スキャナpop
+ 10:cmd resume      パーサpop(2)
+  0:cmd resume      ハーサpop(1)
+</pre>
+
+「`cmd push-`」というように末尾にマイナスが付いているものがパーサでの
+`push`だ。つまり`push`と`pop`の対応関係がずれている。本来は
+`push-`が二回連続で起きてスタックは110になるはずなのに、先読みのせいで
+101になってしまった。`CMDARG_LEXPOP()`が用意してあるのはこの現象に対応する
+ための苦肉の策だ。そもそもスキャナではいつも0を`push`するのだから、スキャ
+ナが`pop`するのも常に0であるはずなのだ。そこが0にならないのならば、パー
+サの`push`が遅くなって1になっていると考えるしかない。だからその値を残す。
+
+逆に言うと、パーサの`pop`に来たところではスタックはもう正常な状態に戻っ
+ているはずである。だから本当は普通に`pop`しても問題ない。そうしていない
+のは、とにかく正しく動けばいい、という理由からではないかと思われる。ポッ
+プしようが`$$`に保存して復帰しようが動きは同じなのだ。特にこれからいろい
+ろ変更していくことを考えると先読みの挙動がどう変わるかわからない。しか
+もこの問題が起こるのは、将来禁止されることが決まっている文法だ(だから
+警告が出ている)。そんなものを通すためにいろいろな場合を考え対処するの
+は骨である。だから現実の`ruby`はこういう実装でいいのだと、筆者は思う。
+
+これで本当に解決である。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

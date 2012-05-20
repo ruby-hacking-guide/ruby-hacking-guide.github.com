@@ -1,0 +1,26 @@
+require 'generate_html'
+
+SRC= FileList['*.txt']
+HTML=SRC.ext( 'html')
+
+DPI=180.0
+IMAGE_DIR='images/'
+DIAGRAM_DIR='diagrams/'
+
+SVG = FileList["#{DIAGRAM_DIR}*.svg"]
+PNG = SVG.ext('png').sub!(/^#{Regexp.escape DIAGRAM_DIR}/, IMAGE_DIR)
+
+task :default => [:rhg]
+task :rhg => HTML+PNG
+
+rule( '.html' => '.txt'){|t|
+  generate_html( t.name, t.source )
+}
+
+INKSCAPE = if(ENV['INKSCAPE_PATH']) then ENV['INKSCAPE_PATH'] + "/inkscape" else "inkscape" end
+
+PNG.zip( SVG).each{|png, svg|
+  file( png => svg){
+    sh "#{INKSCAPE} -z --export-png=#{png} --export-dpi=#{DPI} --file=#{svg}"
+  }
+}

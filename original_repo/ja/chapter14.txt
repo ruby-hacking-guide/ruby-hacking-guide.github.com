@@ -1,0 +1,1599 @@
+h1. 第14章 コンテキスト
+
+本章の範囲は随分と広い。まず最初に評価器の内部状態がどうやって表現され
+ているかという話をする。その後、その実例としてクラス定義文でのその状態
+の変化を読む。続いて内部状態がメソッド定義文にどう影響を与えるかを見る。
+最後に、その双方によって変数の定義と参照の挙動が変わる様子を観察していく。
+
+h2. Rubyスタック
+
+h3. コンテキストとスタック
+
+典型的な手続き型言語のイメージだと、手続き呼び出しのたびに、ローカル変
+数領域や戻る場所など手続き一つの実行のために必要な情報を構造体
+(スタックフレーム)に格納し、
+それをスタックに積む。手続きから戻るとスタックの
+先頭の構造体がポップされて前のメソッドに戻る。例えば
+第5章『ガ-ベージコレクション』で解説した
+Cプログラムの実行イメージはそれにピッタリ当てはまる。
+
+ここで注意したいのは、プログラムの実行中に変わるのはスタックだけで、プ
+ログラムのほうは場所によって変わったりしないことだ。例えば「ローカル変
+数`i`の参照」なら、「いまのフレームの`i`をください」という命令があ
+るだけで、「このフレームの`i`をください」とは書かない。つまりスタックの
+状態「だけ」によって結果が変わってくるわけである。だからこそ手続きがど
+んなときに何回呼ばれようとも、そのコードは一つだけで済む(図1)。
+
+!images/ch_module_stack.jpg(変わるのはスタックだけ)!
+
+Rubyの実行も基本的にはメソッドつまり手続きの呼び出しの連鎖に他ならない
+から、本質的にはこれと同じ実行イメージを持っている。つまりコードは同じ
+で、アクセスされる側のローカル変数スコープやブロックローカル変数スコー
+プのほうが変化する。そしてそういうスコープはスタックで表現される。
+
+ただしRubyではイテレータや`Proc`を使うと以前に使ったスコープに一時的に戻
+れたりするからスタックの単純なプッシュ・ポップだけでは実装できない。そ
+のためRubyスタックは実行中に複雑に積み変えられる。だからいちおうスタック
+とは言ってはいるが単なるリストと考えたほうがいいかもしれない。
+
+またメソッド呼び出し以外にクラス定義でもローカル変数スコープが変わった
+りするので、メソッド呼び出しとローカル変数スコープの遷移が一致しない。
+他にブロックもあるのでそれも分割しないといけない。そんなこんなで理由が
+いろいろあって、スタックはなんと七本もある。
+
+|スタックポインタ|スタックフレーム型|説明|
+|`ruby_frame`|`struct FRAME`|メソッド呼び出し記録|
+|`ruby_scope`|`struct SCOPE`|ローカル変数スコープ|
+|`ruby_block`|`struct BLOCK`|ブロックスコープ|
+|`ruby_iter`|`struct iter`|現在の`FRAME`がイテレータか|
+|`ruby_dyna_vars`|`struct Varmap`|ブロックローカル変数スコープ|
+|`ruby_class`|`VALUE`|メソッド定義先クラス|
+|`ruby_cref`|`NODE`(`NODE_CREF`)|クラスのネスト情報|
+
+Cはスタック一本でRubyが七本ということは、単純計算するとRubyの実行イメー
+ジはCより七倍は手強いはずである。だが実際には七倍なんてことは全くな
+くて、Rubyのほうが二十倍は手強い。
+
+ではまずこれらのスタックと、そのスタックフレーム(である)構造体について
+簡単に解説していこう。定義されているファイルは`eval.c`か`env.h`だ。基本的
+にはこれらのスタックフレームをさわるのは`eval.c`だけ……にしたいわけだが、
+`gc.c`でマークするときに構造体型を知る必要があるため`env.h`に出されている
+ものもある。
+
+もちろんマークするのは`gc.c`でなくても可能だが、そうすると関数を分ける必
+要がある。すると当然遅くなる。普通のプログラムではそんなことを気にして
+はいけないけれども、ガーベージコレクタや評価器の核心部は`ruby`最大のボト
+ルネックなので、たとえ関数呼び出し一回と言えどもバカにならないのだ。
+
+h3. `ruby_frame`
+
+`ruby_frame`はメソッド呼び出しを記録するスタックである。スタックフレーム
+構造体は`struct FRAME`だ。ちょっと用語が紛らわしいが、一般的な名詞の「ス
+タックフレーム」のことを単にフレーム、`struct FRAME`のことを`FRAME`と書き
+分けるので注意してほしい。
+
+▼ `ruby_frame`
+<pre class="longlist">
+  16  extern struct FRAME {
+  17      VALUE self;          /* self */
+  18      int argc;            /* 引数の個数 */
+  19      VALUE *argv;         /* 引数の値の配列 */
+  20      ID last_func;        /* このFRAMEのメソッド名(呼んだ名前) */
+  21      ID orig_func;        /* このFRAMEのメソッド名(定義時の名前) */
+  22      VALUE last_class;    /* last_funcのレシーバのクラス */
+  23      VALUE cbase;         /* 定数・クラス変数の検索の起点 */
+  24      struct FRAME *prev;
+  25      struct FRAME *tmp;   /* GC避け。後述 */
+  26      struct RNode *node;  /* 実行中の行のファイル名と行番号 */
+  27      int iter;            /* ブロック付き呼び出しか? */
+  28      int flags;           /* 以下の二つ */
+  29  } *ruby_frame;
+
+  33  #define FRAME_ALLOCA 0   /* FRAMEはスタック上に確保されている */
+  34  #define FRAME_MALLOC 1   /* FRAMEはmallocで確保されている */
+
+(env.h)
+</pre>
+
+まず、`prev`メンバがあることからこのスタックはリンクリストで作られている
+とわかる(図2)。
+
+!images/ch_module_framestack.jpg(`ruby_frame`)!
+
+`ruby_xxxx`が先端のスタックフレームを指すというのは以後全てのスタックに
+共通なのでいちいち書かない。
+
+構造体の最初のメンバは`self`だ。`rb_eval()`の引数にも`self`があったの
+にこちらでまた別に`self`を記憶しているのはなぜだろう。それはCレベルの
+関数のためである。もっと言うと`super`に対応する`rb_call_super()`という
+関数のためである。`super`を実行するには現在のメソッドのレシーバが必要
+だが、`rb_call_super()`を呼ぶ側にはそんな情報があるはずがない。かと言っ
+てユーザのCコードに制御が移っている時点で`rb_eval()`の連鎖はもう途切れ
+ている。だから情報ゼロの状態から`self`の情報を得られるようにしておかな
+ければならないという結論になる。そして`FRAME`はその置き場所としてちょ
+うどいい。
+
+もう少し考えてみると、`argc`や`argv`があるのも不思議だ。パラメータ変数
+なんてのは結局ローカル変数なのだから、メソッド開始時に同名のローカル変
+数に代入してしまえばその後はもらった引数をとっておく必要などないのでは
+ないだろうか。ではこれは何に使うのかと言えば、実はこれまた`super`のた
+めなのだ。Rubyでは引数なしで`super`を呼ぶとメソッドのパラメータ変数の
+値がスーパークラスのメソッドに引き渡されることになっている。そのために
+はどうしてもパラメータ変数(に相当するローカル変数の領域)をとっておか
+なければならないのだ。
+
+それと`last_func`と`orig_func`の違いは`alias`したメソッドなどで出てくる。
+例えば
+
+<pre class="emlist">
+class C
+  def orig() end
+  alias ali orig
+end
+C.new.ali
+</pre>
+
+という場合なら、`last_func=ali`で`orig_func=orig`だ。
+このメンバにもやっぱり`super`がからんでいたりする。
+
+h3. `ruby_scope`
+
+`ruby_scope`はローカル変数スコープを表すスタックである。
+メソッド・クラス定義文・モジュール定義文・特異クラス定義文などが
+独立したスコープだ。スタックフレーム構造体は`struct SCOPE`である。
+このフレームは`SCOPE`と呼ぼう。
+
+▼ `ruby_scope`
+<pre class="longlist">
+  36  extern struct SCOPE {
+  37      struct RBasic super;
+  38      ID *local_tbl;        /* ローカル変数名の配列 */
+  39      VALUE *local_vars;    /* ローカル変数の格納領域 */
+  40      int flags;            /* 以下の四つ */
+  41  } *ruby_scope;
+
+  43  #define SCOPE_ALLOCA  0         /* local_varsはalloca割り当て */
+  44  #define SCOPE_MALLOC  1         /* local_varsはmalloc割り当て */
+  45  #define SCOPE_NOSTACK 2         /* POP_SCOPEされている */
+  46  #define SCOPE_DONT_RECYCLE 4    /* このSCOPEでProcが生成された */
+
+(env.h)
+</pre>
+
+最初の要素が`struct RBasic`だからこれはRubyオブジェクトである。そうなっ
+ているのは`Proc`オブジェクトに対処するためだ。例えば次のような場合を考
+えてみよう。
+
+<pre class="emlist">
+def make_counter
+  lvar = 0
+  return Proc.new { lvar += 1 }
+end
+
+cnt = make_counter()
+p cnt.call    # 1
+p cnt.call    # 2
+p cnt.call    # 3
+cnt = nil  # 参照を切る。作ったProcはここでやっと不要になる
+</pre>
+
+このメソッドで作った`Proc`オブジェクトは作成元のメソッド自体よりも
+長生きする。そしてその`Proc`からもローカル変数`lvar`が参照できるので、
+作った`Proc`が消滅するまでローカル変数は保持しておかねばならない。
+だからガーベージコレクタで扱うようにしないと解放の時期がわからない
+のである。
+
+またわざわざ`struct SCOPE`が`struct FRAME`から切り離されている理由は二
+点ある。一つめは、クラス定義文などはメソッド呼び出しではないがローカル
+変数スコープが独立していること。二つめは、Cで定義したメソッドを呼び出
+すときにはRubyのローカル変数領域が必要ないことだ。
+
+h3. `ruby_block`
+
+`struct BLOCK`はRubyのイテレータブロックや`Proc`オブジェクトの実体で、
+ある時点での評価器のスナップショットのようなものである。このフレー
+ムも`FRAME`・`SCOPE`と同じように`BLOCK`と略記しよう。
+
+▼ `ruby_block`
+<pre class="longlist">
+ 580  static struct BLOCK *ruby_block;
+
+ 559  struct BLOCK {
+ 560      NODE *var;               /* ブロックパラメータ(mlhs) */
+ 561      NODE *body;              /* ブロック本体のコード */
+ 562      VALUE self;              /* BLOCK生成時のself */
+ 563      struct FRAME frame;      /* BLOCK生成時のruby_frameのコピー */
+ 564      struct SCOPE *scope;     /* BLOCK生成時のruby_scope */
+ 565      struct BLOCKTAG *tag;    /* BLOCKのアイデンティティ */
+ 566      VALUE klass;             /* BLOCK生成時のruby_class */
+ 567      int iter;                /* BLOCK生成時のruby_iter */
+ 568      int vmode;               /* BLOCK生成時のscope_vmode */
+ 569      int flags;               /* BLOCK_D_SCOPE, BLOCK_DYNAMIC */
+ 570      struct RVarmap *dyna_vars;   /* ブロックローカル変数領域 */
+ 571      VALUE orig_thread;       /* ブロックを生成したスレッド */
+ 572      VALUE wrapper;           /* ブロック生成時のruby_wrapper */
+ 573      struct BLOCK *prev;
+ 574  };
+
+ 553  struct BLOCKTAG {
+ 554      struct RBasic super;
+ 555      long dst;                /* destinationつまり戻り先のこと */
+ 556      long flags;              /* BLOCK_DYNAMIC, BLOCK_ORPHAN */
+ 557  };
+
+ 576  #define BLOCK_D_SCOPE 1      /* 独立したブロック変数スコープを持つ */
+ 577  #define BLOCK_DYNAMIC 2      /* BLOCKがRubyプログラムから取り出された */
+ 578  #define BLOCK_ORPHAN  4      /* 生成元のFRAMEが終了している */
+
+(eval.c)
+</pre>
+
+`frame`がポインタではないことに注目。これはつまり`struct FRAME`の内容をま
+るごとコピーして保持するということである。`struct FRAME`は(速度のために)
+マシンスタック上にベタ置きで確保されるのだが、`BLOCK`は生成元`FRAME`よりも
+長生きする可能性があるので、その場合に備えてコピーしてある。
+
+また`struct BLOCKTAG`が分離されているのは、一つのブロックから複数の
+`Proc`を生成した場合にも同じブロックであることを判定するためだ。同じブ
+ロックから生成した`Proc`は同じ`BLOCKTAG`を持つ。
+
+h3. `ruby_iter`
+
+スタック`ruby_iter`は現在呼び出し中のメソッドがイテレータであるか
+(ブロック付き呼び出しかどうか)を示す。フレームは`struct iter`である。
+だが他のスタックフレームとの統一感を考えて`ITER`と呼ぶことにしよう。
+
+▼ `ruby_iter`
+<pre class="longlist">
+ 767  static struct iter *ruby_iter;
+
+ 763  struct iter {
+ 764      int iter;           /* 以下の三つ */
+ 765      struct iter *prev;
+ 766  };
+
+ 769  #define ITER_NOT 0      /* 現在評価中のメソッドはイテレータでない */
+ 770  #define ITER_PRE 1      /* これから呼ぶメソッドがイテレータである */
+ 771  #define ITER_CUR 2      /* 現在評価中のメソッドはイテレータである */
+
+(eval.c)
+</pre>
+
+イテレータであるかそうでないかはメソッド単位で決まるはずなのに、
+こうして`struct FRAME`とは別の構造体が用意されているのはなぜだろうか。
+
+メソッドに「イテレータである」場合にそれを知らせる必要があるのは当然と
+して、「イテレータではない」場合にもその事実を知らせなければならない。
+しかしそのために`BLOCK`をまるごと積むのはとても重い。呼び出し側の変数
+参照などの処理も無駄に増えてしまう。そこで`BLOCK`の代わりにもっと小さ
+くて軽い`ITER`を積もう、というわけだ。詳しいことは
+第16章『ブロック』で解説する。
+
+h3. `ruby_dyna_vars`
+
+ブロックローカル変数領域。フレーム構造体は第二部でも見た
+`struct RVarmap`である。今後は単に`VARS`と呼ぶ。
+
+▼ `struct RVarmap`
+<pre class="longlist">
+  52  struct RVarmap {
+  53      struct RBasic super;
+  54      ID id;                  /* 変数名 */
+  55      VALUE val;              /* その値 */
+  56      struct RVarmap *next;
+  57  };
+
+(env.h)
+</pre>
+
+注意してほしいのは、`struct RVarmap`はリストになって初めて一つのフレー
+ムなのだということだ(図3)。そして一つのフレームが一つのロー
+カル変数スコープに対応している。「ローカル変数スコープ」であって「ブロッ
+クローカル変数スコープ」ではないので、ブロックがネストしているような場
+合はリスト一つで表現される。ブロックの区切りはパーサのときと似ていて、
+`id=0`の`RVarmap`(ヘッダ)で表現される。詳しいことはこれまた先送りだ。
+第16章『ブロック』で解説する。
+
+!images/ch_module_vars.jpg(`ruby_dyna_vars`)!
+
+h3. `ruby_class`
+
+`ruby_class`は`def`でメソッドを定義するときに対象となるクラスを表す。
+普通のクラス定義文では`self`がそのクラスになるので`ruby_class == self`だ
+が、トップレベルや`eval`、`instance_eval`という特殊なメソッドの途中では
+`self != ruby_class`になることがある。
+
+`ruby_class`のフレームは単純な`VALUE`で、フレーム構造体はない。ではど
+うやってスタックぽくするのだろうか。いやそれよりも、今までも`prev`ポ
+インタがない構造体がたくさんあったのだが、一体どうやってスタックにして
+いるのだろう。答えは次の節で。
+
+以後このフレームは`CLASS`と呼ぶことにする。
+
+h3. `ruby_cref`
+
+`ruby_cref`はクラスのネスト関係を表している。
+フレームはこれまでと同じ命名法で`CREF`とする。
+その構造体は……
+
+▼ `ruby_cref`
+<pre class="longlist">
+ 847  static NODE *ruby_cref = 0;
+
+(eval.c)
+</pre>
+
+……なぜか`NODE`だ。これは単に「新しく定義する必要のない、`VALUE`で指
+せる構造体」として使われているにすぎない。ノードタイプは`NODE_CREF`で、
+メンバ割り当ては以下のようになっている。
+
+|共用体メンバ|アクセスマクロ|使われかた|
+|`u1.value`|`nd_clss`|外のクラス(`VALUE`)|
+|`u2`|-|-|
+|`u3.node`|`nd_next`|前の`CREF`を保持|
+
+メンバ名が`nd_next`でも実際に保持するのは「前(prev)」の`CREF`である。
+例えば以下のプログラムを例にして実際の姿を説明しよう。
+
+<pre class="emlist">
+class A
+  class B
+    class C
+      nil   # (A)
+    end
+  end
+end
+</pre>
+
+(A)のコードを評価しているとき、`ruby_cref`は図4の
+ようになっている。
+
+!images/ch_module_crefstack.jpg(`ruby_cref`)!
+
+だが毎回この図を書くのは繁雑なうえに意図が不明瞭になる。そこで以下では
+図4と同じ状態を次のように表記することにしよう。
+
+<pre class="emlist">
+A ← B ← C
+</pre>
+
+h3. `PUSH`/`POP`マクロ
+
+以上のスタックフレーム構造体にはどれもプッシュ・ポップのためのマクロが
+用意されている。例えば`FRAME`なら`PUSH_FRAME()`と`POP_FRAME()`、という
+ように。すぐに実物が登場するので使いかたや内容はそのときに説明していく
+ことにする。
+
+h3. その他の状態
+
+これらのメインスタックほどは重要ではないものの、`ruby`の評価器には他
+にもいくつか状態がある。簡単に一覧しておこう。ただしこれらはスタックと
+は限らない。むしろそうでないことのほうが多い。
+
+|変数名|型|意味|
+|`scope_vmode`|`int`|メソッド定義時のデフォルトの可視性|
+|`ruby_in_eval`|`int`|評価開始後のパースであるか|
+|`ruby_current_node`|`NODE*`|現在評価中のファイル名と行番号|
+|`ruby_safe_level`|`int`|`$SAFE`|
+|`ruby_errinfo`|`VALUE`|現在処理中の例外|
+|`ruby_wrapper`|`VALUE`|環境を隔離するためのラッパーモジュール|
+
+h2. モジュール定義
+
+`class`文と`module`文、それに特異クラス定義文はどれも実装が
+似ている。
+似ているものを三つ続けて見ていっても面白くないので、今回は一番
+要素数が少ない(従って簡単な)`module`文を見ていくことにしよう。
+
+ではまず、`module`文とはなんだろうか。逆に言うと、何が起こるべきなのが
+`module`文なのだろうか。いくつか特徴を挙げてみよう。
+
+* 新しいモジュールオブジェクトが生成される
+* そのモジュールオブジェクトが`self`になる
+* 独立したローカル変数スコープを持つ
+* 定数の代入を書くとそのモジュールに定数が定義される
+* クラス変数の代入を書くとそのモジュールにクラス変数が定義される
+* `def`文を書くとそのモジュールにメソッドが定義される。
+
+こういうことをどうやって起こしているのか、それが今回のポイントだ。
+それではコードを見ていくことにしよう。
+
+h3. 調査
+
+▼ ソースプログラム
+<pre class="longlist">
+module M
+  a = 1
+end
+</pre>
+
+▼ 対応する構文木
+<pre class="longlist">
+NODE_MODULE
+nd_cname = 9621 (M)
+nd_body:
+    NODE_SCOPE
+    nd_rval = (null)
+    nd_tbl = 3 [ _ ~ a ]
+    nd_next:
+        NODE_LASGN
+        nd_cnt = 2
+        nd_value:
+            NODE_LIT
+            nd_lit = 1:Fixnum
+</pre>
+
+`nd_cname`がモジュール名らしい。`cname`はConst NAMEかClass NAMEか、ど
+ちらかだろう。またいくつかダンプしてみたが`nd_body`には必ず
+`NODE_SCOPE`が入っている。そのメンバ`nd_tbl`にローカル変数のテーブルが
+入っているし、`struct SCOPE`と名前が似ているところを考えても、この
+`NODE_SCOPE`がローカル変数スコープを作り出すために重要な役割を果たすの
+は間違いないようだ
+
+h3. `NODE_MODULE`
+
+では`rb_eval()`の`NODE_MODULE`のハンドラを見てみよう。`rb_raise()`関係、
+エラー処理、本筋と関係の薄いところはバッサリ削ってある。ここまで200ページ以
+上も削る作業をやってきたわけだから、もういちいち元のコードを示さなくても
+いいだろう。
+
+▼ `rb_eval()`-`NODE_MODULE`(簡約版)
+<pre class="longlist">
+case NODE_MODULE:
+  {
+      VALUE module;
+
+      if (rb_const_defined_at(ruby_class, node->nd_cname)) {
+          /* 既に作成済のモジュールを得るだけ */
+          module = rb_const_get(ruby_class, node->nd_cname);
+      }
+      else {
+          /* 新しいモジュールを作成し定数にセットする */
+          module = rb_define_module_id(node->nd_cname);
+          rb_const_set(ruby_cbase, node->nd_cname, module);
+          rb_set_class_path(module,ruby_class,rb_id2name(node->nd_cname));
+      }
+
+      result = module_setup(module, node->nd_body);
+  }
+  break;
+</pre>
+
+まずモジュールが`ruby_class`(に入っているモジュール)の上にネストして
+定義されているということを確認したい。それは`ruby_class`に対して
+`rb_const_xxxx()`を呼んでいることからわかる。一回だけ`ruby_cbase`というのも
+登場しているのだが、普通は`ruby_class`と同じなので無視して構わない。
+この違いが問題になることもまずない。
+
+前半、`if`で分かれているのは、既に定義済のモジュールであるかどうかの
+チェックだ。Rubyでは一つのモジュールに対して何度でも「追加」定義が
+できるからである。
+
+<pre class="emlist">
+module M
+  def a    # M#aを定義
+  end
+end
+module M   # 定義の追加(再定義や上書きではない)
+  def b    # M#bを定義
+  end
+end
+</pre>
+
+このプログラムではモジュール`M`に`a`と`b`二つのメソッドが定義される。
+
+このような場合、二回目の`M`の定義ではモジュール`M`は既に定数に入っているか
+ら、それを取り出して使うだけでいい。定数`M`がない場合は初めての定義なの
+で(`rb_define_module_id()`で)モジュールを作る。
+
+最後に`module_setup()`だが、この関数がモジュール文本体の実行を行っている。
+モジュール文だけでなくクラス文や特異クラス文も`module_setup()`で実行する。
+「三つの文はどれも似たようなもの」と言ったのはそれが理由だ。
+とりあえず引数に`node->nd_body`(`NODE_SCOPE`)を渡しているということに
+注目しておいてほしい。
+
+h3. `module_setup()`
+
+モジュール文、クラス文、特異クラス文の本体の実行を行うのが
+`module_setup()`だ。いよいよRubyスタックの操作が大量に登場してくる。
+
+▼ `module_setup()`
+<pre class="longlist">
+3424  static VALUE
+3425  module_setup(module, n)
+3426      VALUE module;
+3427      NODE *n;
+3428  {
+3429      NODE * volatile node = n;
+3430      int state;
+3431      struct FRAME frame;
+3432      VALUE result;               /* OK */
+3433      TMP_PROTECT;
+3434
+3435      frame = *ruby_frame;
+3436      frame.tmp = ruby_frame;
+3437      ruby_frame = &frame;
+3438
+3439      PUSH_CLASS();
+3440      ruby_class = module;
+3441      PUSH_SCOPE();
+3442      PUSH_VARS();
+3443
+          /* (A)ruby_scope->local_varsの初期化 */
+3444      if (node->nd_tbl) {
+3445          VALUE *vars = TMP_ALLOC(node->nd_tbl[0]+1);
+3446          *vars++ = (VALUE)node;
+3447          ruby_scope->local_vars = vars;
+3448          rb_mem_clear(ruby_scope->local_vars, node->nd_tbl[0]);
+3449          ruby_scope->local_tbl = node->nd_tbl;
+3450      }
+3451      else {
+3452          ruby_scope->local_vars = 0;
+3453          ruby_scope->local_tbl  = 0;
+3454      }
+3455
+3456      PUSH_CREF(module);
+3457      ruby_frame->cbase = (VALUE)ruby_cref;
+3458      PUSH_TAG(PROT_NONE);
+3459      if ((state = EXEC_TAG()) == 0) {
+3460          if (trace_func) {
+3461              call_trace_func("class", ruby_current_node, ruby_class,
+3462                              ruby_frame->last_func,
+3463                              ruby_frame->last_class);
+3464          }
+3465          result = rb_eval(ruby_class, node->nd_next);
+3466      }
+3467      POP_TAG();
+3468      POP_CREF();
+3469      POP_VARS();
+3470      POP_SCOPE();
+3471      POP_CLASS();
+3472
+3473      ruby_frame = frame.tmp;
+3474      if (trace_func) {
+3475          call_trace_func("end", ruby_last_node, 0,
+3476                          ruby_frame->last_func, ruby_frame->last_class);
+3477      }
+3478      if (state) JUMP_TAG(state);
+3479
+3480      return result;
+3481  }
+
+(eval.c)
+</pre>
+
+一息で読むにはやや大きすぎる。
+いらなそうなところから削っていくことにしよう。
+
+まず`trace_func`周辺は無条件に消せる。
+
+タグ関係のイディオムが見えるので、これももっとわかりやすく
+Rubyの`ensure`で表現してしまおう。
+
+関数開始直後、わざわざ引数の`n`をローカル変数`node`に代入しているが、
+`node`には`volatile`が付いておりしかもそのあと全く代入していない
+ことからこれはGC避けとわかる。よって最初から引数を`node`にしても
+意味は変わらない。
+
+関数前半、`ruby_frame`をグチャグチャといじってるところと
+後半の`ruby_frame = frame.tmp`はどう見ても対になっている。
+ここには後で注目するとして、とりあえず`ruby_frame`の`push pop`と
+考えておく。
+
+また(A)のコードはコメントの通り`ruby_scope->local_vars`の初期化、とま
+とめられそうだ。後で詳述する。
+
+結果的に以下だけにまとめられた。
+
+▼ `module_setup`(簡約版)
+<pre class="longlist">
+static VALUE
+module_setup(module, node)
+    VALUE module;
+    NODE *node;
+{
+    struct FRAME frame;
+    VALUE result;
+
+    push FRAME
+    PUSH_CLASS();
+    ruby_class = module;
+    PUSH_SCOPE();
+    PUSH_VARS();
+    ruby_scope->local_varsの初期化
+    PUSH_CREF(module);
+    ruby_frame->cbase = (VALUE)ruby_cref;
+    begin
+        result = rb_eval(ruby_class, node->nd_next);
+    ensure
+        POP_TAG();
+        POP_CREF();
+        POP_VARS();
+        POP_SCOPE();
+        POP_CLASS();
+        pop FRAME
+    end
+    return result;
+}
+</pre>
+
+`node->nd_next`を`rb_eval()`しているのでこれがモジュール文本体のコードで
+あることはいいとしよう。問題はそれ以外だ。見るべきポイントは五つある。
+
+* `PUSH_SCOPE() PUSH_VARS()`で起こること
+* どうやってローカル変数領域を割り当てているか
+* `PUSH_CLASS()`の効果
+* `ruby_cref`と`ruby_frame->cbase`の関係
+* `ruby_frame`をいじって何をしているのか
+
+順番に調査していこう。
+
+h3. ローカル変数スコープの生成
+
+`PUSH_SCOPE()`がローカル変数領域を積み、`PUSH_VARS()`がブロックローカル
+変数領域を積むわけだから、この二つで新しいローカル変数スコープが作り
+出されることになる。これらのマクロの中身を追って、実際に何をして
+いるのか見てみよう。
+
+▼ `PUSH_SCOPE() POP_SCOPE()`
+<pre class="longlist">
+ 852  #define PUSH_SCOPE() do {               \
+ 853      volatile int _vmode = scope_vmode;  \
+ 854      struct SCOPE * volatile _old;       \
+ 855      NEWOBJ(_scope, struct SCOPE);       \
+ 856      OBJSETUP(_scope, 0, T_SCOPE);       \
+ 857      _scope->local_tbl = 0;              \
+ 858      _scope->local_vars = 0;             \
+ 859      _scope->flags = 0;                  \
+ 860      _old = ruby_scope;                  \
+ 861      ruby_scope = _scope;                \
+ 862      scope_vmode = SCOPE_PUBLIC
+
+ 869  #define POP_SCOPE()                                      \
+ 870      if (ruby_scope->flags & SCOPE_DONT_RECYCLE) {        \
+ 871         if (_old) scope_dup(_old);                        \
+ 872      }                                                    \
+ 873      if (!(ruby_scope->flags & SCOPE_MALLOC)) {           \
+ 874          ruby_scope->local_vars = 0;                      \
+ 875          ruby_scope->local_tbl  = 0;                      \
+ 876          if (!(ruby_scope->flags & SCOPE_DONT_RECYCLE) && \
+ 877              ruby_scope != top_scope) {                   \
+ 878              rb_gc_force_recycle((VALUE)ruby_scope);      \
+ 879          }                                                \
+ 880      }                                                    \
+ 881      ruby_scope->flags |= SCOPE_NOSTACK;                  \
+ 882      ruby_scope = _old;                                   \
+ 883      scope_vmode = _vmode;                                \
+ 884  } while (0)
+
+(eval.c)
+</pre>
+
+`SCOPE`もタグと一緒で、マシンスタックと同期させてスタックを作り出してい
+るようだ。ただ微妙に違うのは、こちらはスタックフレームの領域自体はヒー
+プから確保しており、スタック構造を作り出すためにマシンスタックを使っ
+ているというところだろう(図5)。
+
+!images/ch_module_scopestack.jpg(マシンスタックとSCOPEスタック)!
+
+それとマクロの中で何度も出てくる`SCOPE_`なんたらというフラグについては、
+各スタックフレームの記憶形式とブロックのことを全て話してからでないと
+説明できない。第16章『ブロック』でまとめてやることにする。
+
+h3. ローカル変数領域の確保
+
+何度も言っている通りローカル変数スコープは`struct SCOPE`で表されるの
+だが、`struct SCOPE`は文字通り「スコープ」であって、ローカル変数を
+格納する実体がない。もうちょっと直截的に言うと、領域へのポインタは
+あってもその先の配列がないのだ。その配列を準備しているのが
+`module_setup()`の次の部分である。
+
+▼ ローカル変数スロットの準備
+<pre class="longlist">
+3444  if (node->nd_tbl) {
+3445      VALUE *vars = TMP_ALLOC(node->nd_tbl[0]+1);
+3446      *vars++ = (VALUE)node;
+3447      ruby_scope->local_vars = vars;
+3448      rb_mem_clear(ruby_scope->local_vars, node->nd_tbl[0]);
+3449      ruby_scope->local_tbl = node->nd_tbl;
+3450  }
+3451  else {
+3452      ruby_scope->local_vars = 0;
+3453      ruby_scope->local_tbl  = 0;
+3454  }
+
+(eval.c)
+</pre>
+
+冒頭の`TMP_ALLOC()`は次の項で見る。一言で言うと「確実にスタックに
+割り当ててくれる(従ってGCを考慮しなくてよい)`alloca()`」だ。
+
+それで`node->nd_tbl`には実は第12章『構文木の構築』でやったローカル変数名の
+テーブルが入っている。つまり`nd_tbl[0]`にテーブルサイズが入っていて、
+残りは`ID`の配列になっている。そのテーブルは`SCOPE`の`local_tbl`にその
+まま移植し、またローカル変数の値を格納するために`local_vars`を割り当て
+ているようだ。このあたりは紛らわしいので「こっちが変数名」「こっちが値」
+と書き込んでおくといい。`tbl`が付くほうが名前である。
+
+さて、`local_vars`の割り当てを細かく見てみよう。`local_tbl[0]`がローカ
+ル変数の数だから、なぜかサイズを+1して割り当てている。ここには今度は
+`module_setup()`の引数`node`(`NODE_SCOPE`)を入れているようだ。
+つまりこの文が終わったところで図6のようになる。
+
+!images/ch_module_localvars.jpg(`ruby_scope->local_vars`)!
+
+この`node`はどこで使われているのだろう。
+`local_vars`メンバを洗ってみたが`eval.c`ではインデックス`-1`へのアクセスは
+見当たらない。対象ファイルを広げてみると、`gc.c`でアクセスしていた。
+
+▼ `rb_gc_mark_children()`-`T_SCOPE`
+<pre class="longlist">
+ 815  case T_SCOPE:
+ 816    if (obj->as.scope.local_vars &&
+            (obj->as.scope.flags & SCOPE_MALLOC)) {
+ 817        int n = obj->as.scope.local_tbl[0]+1;
+ 818        VALUE *vars = &obj->as.scope.local_vars[-1];
+ 819
+ 820        while (n--) {
+ 821            rb_gc_mark(*vars);
+ 822            vars++;
+ 823        }
+ 824    }
+ 825    break;
+
+(gc.c)
+</pre>
+
+つまりどうやらこれは`node`をGCから保護するための仕掛けらしい。だがなぜマー
+クしないといけないのだろう。`node`はわざわざ`volatile`なローカル変数に入れ
+てあるのだから、`module_setup()`の実行中はGCされないはずである。
+
+正直に言うと筆者はしばらくは単なる間違いだろうと思っていたのだが、
+実はとても意味があることがわかった。問題はその次の次の行のこれだ。
+
+▼ `ruby_scope->local_tbl`
+<pre class="longlist">
+3449  ruby_scope->local_tbl = node->nd_tbl;
+
+(eval.c)
+</pre>
+
+パーサで用意したローカル変数名のテーブルをそのまま使っている。このテー
+ブルはいつ解放されるのだろう。それはこの`node`が参照されなくなったときで
+ある。では`node`はいつ解放されるべきだろう。それはこの行で代入を行った
+`SCOPE`が全て消えてからである。ではそれはいつのことだろうか。
+
+`SCOPE`はそれが生成される原因になった文よりも長生きすることがある。
+第16章『ブロック』で説明するとおり、`Proc`オブジェクトを生成するとそ
+こから`SCOPE`が参照されるからだ。つまり`module_setup()`が終わってもそ
+こで作った`SCOPE`が用済みになるとは限らない。だから`node`は
+`module_setup()`(のスタックフレーム)から参照されているだけでは不十分
+で、`SCOPE`から「直接に」参照されていなくてはならないのだ。
+
+またその一方でローカル変数の`volatile node`も外せない。でないと
+`local_vars`に代入するまでのあいだ`node`が宙に浮いてしまう。
+
+しかし、それなら今度は`SCOPE`の`local_vars`がまずいのではないだろうか。
+`TMP_ALLOC()`は言ったとおりスタック割り当てなので、`module_setup()`の
+終了と同時に無効になってしまう。これが実は、`Proc`を生成した時点で
+いきなり`malloc()`割り当てに切り替えるようになっているのだ。詳しいことは
+第16章『ブロック』で解説する。
+
+そして最後に、`rb_mem_clear()`は0充填かと思いきや実は`VALUE`の配列に
+対する`Qnil`充填である(`array.c`)。これで全ての定義済みローカル変数が
+`nil`に初期化される。
+
+h3. `TMP_ALLOC()`
+
+次にローカル変数の領域を実際に割り当てていた`TMP_ALLOC()`を読もう。
+このマクロは実は`module_setup()`の最初のほうにひっそりと存在する
+`TMP_PROTECT`と組になっている。典型的な使いかたはこうだ。
+
+<pre class="emlist">
+VALUE *ptr;
+TMP_PROTECT;
+
+ptr = TMP_ALLOC(size);
+</pre>
+
+なぜ`TMP_PROTECT`がローカル変数定義の位置にあるかというと……
+定義を見てみよう。
+
+▼ `TMP_ALLOC()`
+<pre class="longlist">
+1769  #ifdef C_ALLOCA
+1770  # define TMP_PROTECT NODE * volatile tmp__protect_tmp=0
+1771  # define TMP_ALLOC(n) \
+1772      (tmp__protect_tmp = rb_node_newnode(NODE_ALLOCA,                 \
+1773                               ALLOC_N(VALUE,n), tmp__protect_tmp, n), \
+1774       (void*)tmp__protect_tmp->nd_head)
+1775  #else
+1776  # define TMP_PROTECT typedef int foobazzz
+1777  # define TMP_ALLOC(n) ALLOCA_N(VALUE,n)
+1778  #endif
+
+(eval.c)
+</pre>
+
+……ローカル変数を定義しているから。というのが答えだ。
+
+第5章『ガ-ベージコレクション』で解説したとおり、`#ifdef C_ALLOCA`の(ネイティブの
+`alloca()`がない)環境では`malloc()`で`alloca()`をエミュレートしている。
+しかしメソッドの引数というのは当然`VALUE`であり、ヒープに`VALUE`を置い
+てしまうとGCで検出できなくなってしまう。そこで`NODE`を経由して無理矢理
+GCの対象にする(図7)。
+
+!images/ch_module_tmpprotecttmp.jpg(`NODE`経由で領域をスタックに繁ぎ止める)!
+
+一方、真の`alloca()`がある環境では普通に`alloca()`を使えばいいので
+`TMP_PROTECT`は必要ない。そこで無害な式を適当に入れておく。
+
+ところで、なぜここまでして`alloca()`を使いたがるのだろうか。
+その理由は単に「`alloca()`のほうが`malloc()`より速いから」だそうだ。
+そのくらいの違いはどうでもいいような気もするのだが、なにしろ
+評価器コアは`ruby`最大のボトルネックなので、以下同文。
+
+h3. メソッド定義先の変更
+
+スタック`ruby_class`の値がそのときのメソッドの定義先クラスになる。逆に言
+うと`ruby_class`に値をプッシュすると定義先クラスが変わる。それこそがクラ
+ス文に必要なことだ。従って`module_setup()`でも`PUSH_CLASS()`しなければなら
+ない。それがこのコードだ。
+
+<pre class="emlist">
+PUSH_CLASS();
+ruby_class = module;
+     :
+     :
+POP_CLASS();
+</pre>
+
+なぜ`PUSH_CLASS()`してから`ruby_class`に改めて代入しているのだろう。
+これは定義を見ると意外とあっさりわかる。
+
+▼ `PUSH_CLASS() POP_CLASS()`
+<pre class="longlist">
+ 841  #define PUSH_CLASS() do { \
+ 842      VALUE _class = ruby_class
+
+ 844  #define POP_CLASS() ruby_class = _class; \
+ 845  } while (0)
+
+(eval.c)
+</pre>
+
+`PUSH_CLASS()`しても`ruby_class`が書き換わるわけではないので、そのあとに手
+でセットしないと本当にプッシュしたことにならないのだ。だからこの二つは
+「プッシュ・ポップ」というよりは「保存・復帰」に近い。
+
+`PUSH_CLASS()`の引数にクラスを渡すようにすればもっときれいなマクロにな
+るじゃないか……というのは全くその通りなのだが、プッシュする前にクラス
+が得られない場所があるためにこういうことになっている。
+
+h3. クラスのネスト
+
+`ruby_cref`は実行中のクラスネスト情報を表現しているのだった。
+だからモジュール文やクラス文で`ruby_cref`が積まれるのは当然予想できる。
+`module_setup()`ではこんなふうに積んでいた。
+
+<pre class="emlist">
+PUSH_CREF(module);
+ruby_frame->cbase = (VALUE)ruby_cref;
+   :
+   :
+POP_CREF();
+</pre>
+
+ここで、`module`は定義中のモジュールである。
+`PUSH_CREF()`と`POP_CREF()`の定義も見ておこう。
+
+▼ `PUSH_CREF() POP_CREF()`
+<pre class="longlist">
+ 849  #define PUSH_CREF(c) \
+          ruby_cref = rb_node_newnode(NODE_CREF,(c),0,ruby_cref)
+ 850  #define POP_CREF() ruby_cref = ruby_cref->nd_next
+
+(eval.c)
+</pre>
+
+`PUSH_SCOPE()`などのようなとんでもない工夫があるわけでもなく、
+非常に扱いやすい。やはりたまにはこういうのもないと困る。
+
+すると残る問題は`ruby_frame->cbase`が何を意味しているのかということだが、
+これは現在の`FRAME`内から定数やクラス変数を参照するのに使う情報である。
+詳しいことは本章の最後の節で見ていく。
+
+h3. フレームのすりかえ
+
+最後に`ruby_frame`の操作に注目する。まずは定義のところから。
+
+<pre class="emlist">
+struct FRAME frame;
+</pre>
+
+ポインタではない。つまりこれはマシンスタック上に`FRAME`をベタ置きで確保
+するという意味である。Rubyスタックの管理構造もローカル変数領域もマシン
+スタック上だったが、なんと`FRAME`に至っては構造体まるごとスタック上に置
+いてしまおうというのだ。`ruby`がマシンスタックをバカ食いするのもこういう
+「小さな工夫」が積み重なった成果なのである。
+
+そして次に`frame`を何やらいろいろしているところを見よう。
+
+<pre class="emlist">
+frame = *ruby_frame;      /* 構造体まるごとコピー */
+frame.tmp = ruby_frame;   /* 元のFRAMEをGCから保護する */
+ruby_frame = &frame;      /* ruby_frameを差し替える */
+       :
+       :
+ruby_frame = frame.tmp;   /* 戻す */
+</pre>
+
+つまり`ruby_frame`を一時的に差し替えている(プッシュではない)ようだ。ど
+うしてこんなことをしているのだろう。
+
+`FRAME`というのは「メソッド呼び出しで積まれる」と説明したが、より厳密に
+言うと「Rubyプログラムを実行するうえでの主な環境」を表すスタックフレーム
+なのだ。例えば先程出てきた`ruby_frame->cbase`などを見るとそういう意味合いが
+見て取れる。他にも「最後に呼んだメソッド名」を表す`last_func`などもそうだ。
+
+ではどうしてここで素直に`FRAME`を積まないかというと、ここは`FRAME`を積んで
+いい場所ではないからである。仕組みから言えば本当は`FRAME`を積みたいわけ
+だが、`FRAME`を積むと例外が発生したときにプログラムのバックトレースにそ
+れが出てしまう。バックトレースというのは次のような表示のことだ。
+
+<pre class="screen">
+% ruby t.rb
+t.rb:11:in `c': some error occured (ArgumentError)
+        from t.rb:7:in `b'
+        from t.rb:3:in `a'
+        from t.rb:14
+</pre>
+
+しかしモジュール文やクラス文はメソッド呼び出しではないからこの中には
+出てきてほしくない。だから「積まずに」、「差し替える」わけだ。
+
+h2. メソッドの定義
+
+モジュール定義の次はメソッドの定義を見ていくことにしよう。
+
+h3. 調査
+
+▼ ソースプログラム
+<pre class="longlist">
+def m(a, b, c)
+  nil
+end
+</pre>
+
+▼ 対応する構文木
+<pre class="longlist">
+NODE_DEFN
+nd_mid  = 9617 (m)
+nd_noex = 2 (NOEX_PRIVATE)
+nd_defn:
+    NODE_SCOPE
+    nd_rval = (null)
+    nd_tbl = 5 [ _ ~ a b c ]
+    nd_next:
+        NODE_ARGS
+        nd_cnt  = 3
+        nd_rest = -1
+        nd_opt = (null)
+        NODE_NIL
+</pre>
+
+いくつかダンプしてみたところ、`nd_defn`には常に`NODE_SCOPE`が入って
+いるようだ。`NODE_SCOPE`と言えばモジュール文のところでも見たようにロー
+カル変数スコープを積むための情報を格納するノードである。
+
+h3. `NODE_DEFN`
+
+続いて`rb_eval()`の該当コードを見ていく。エラー処理がやたら多くて
+面倒だったので再び全部まとめて省略した。
+その方法はいつもと同じである。即ち`rb_raise() rb_warn() rb_warning()`を呼ぶ
+だけのもの、および間接的にそれを呼ぶものを全部消した。
+
+▼ `rb_eval()`-`NODE_DEFN`(簡約版)
+<pre class="longlist">
+NODE *defn;
+int noex;
+
+if (SCOPE_TEST(SCOPE_PRIVATE) || node->nd_mid == init) {
+    noex = NOEX_PRIVATE;                 (A)
+}
+else if (SCOPE_TEST(SCOPE_PROTECTED)) {
+    noex = NOEX_PROTECTED;               (B)
+}
+else if (ruby_class == rb_cObject) {
+    noex =  node->nd_noex;               (C)
+}
+else {
+    noex = NOEX_PUBLIC;                  (D)
+}
+
+defn = copy_node_scope(node->nd_defn, ruby_cref);
+rb_add_method(ruby_class, node->nd_mid, defn, noex);
+result = Qnil;
+</pre>
+
+前半には`private`だの`protected`だのという単語が出てくるので可視
+性関係だろう。フラグの名前に使われている`noex`は`NOde EXposure`(ノー
+ドの可視性)だと思われる。`if`文の節を順番に見ていこう。
+
+(A)`SCOPE_TEST()`は`scope_vmode`に引数のフラグが立っているか確認する
+マクロである。従ってこの条件文の前半は「`private`スコープであるか」と
+いう意味だ。後半は「`initialize`の定義なら`private`」である。オブジェ
+クトの初期化用メソッド`initialize`は問答無用で`private`になるのだ。
+
+(B)`protected`スコープだったら`protected`(あたりまえ)。
+Rubyでは`protected`はいまいち使い手がないような気がする。
+
+(C)ここはバグっている。本書の入稿直前に発見したので修正は間に合わな
+かった。最新のコードではなくなっているはずだ。トップレベルで定義された
+メソッドを確実に`private`にしようとした、というのが元々の意図である。
+
+(D)これまでのどれでもなかったら、`public`だ。
+
+さて、実はここまではどうでもいい。重要なのはその次の二行である。
+
+<pre class="emlist">
+defn = copy_node_scope(node->nd_defn, ruby_cref);
+rb_add_method(ruby_class, node->nd_mid, defn, noex);
+</pre>
+
+`copy_node_scope()`はメソッド本体の先頭に付いている
+`NODE_SCOPE`(だけ)を
+コピーする関数だ。`ruby_cref`を渡しているところがポイントなのだ
+が……詳しくはすぐ後で見ていく。
+
+コピーしたあと、それを`rb_add_method()`で追加すれば定義は完了である。
+定義する先はもちろん`ruby_class`だ。
+
+h3. `copy_node_scope()`
+
+`copy_node_scope()`は`rb_eval()`のメソッド定義(`NODE_DEFN`)と
+特異メソッド定義(`NODE_DEFS`)だけから呼ばれるので、その二ヶ所だけ
+見れば使われかたを特定できる。そしてその二ヶ所での使いかたはほぼ
+同じだ。
+
+▼ `copy_node_scope()`
+<pre class="longlist">
+1752  static NODE*
+1753  copy_node_scope(node, rval)
+1754      NODE *node;
+1755      VALUE rval;
+1756  {
+1757      NODE *copy = rb_node_newnode(NODE_SCOPE,0,rval,node->nd_next);
+1758
+1759      if (node->nd_tbl) {
+1760          copy->nd_tbl = ALLOC_N(ID, node->nd_tbl[0]+1);
+1761          MEMCPY(copy->nd_tbl, node->nd_tbl, ID, node->nd_tbl[0]+1);
+1762      }
+1763      else {
+1764          copy->nd_tbl = 0;
+1765      }
+1766      return copy;
+1767  }
+
+(eval.c)
+</pre>
+
+引数の`rval`はメソッドが定義された時のクラスのネスト情報(`ruby_cref`)
+だった。`nd_rval`にセットされるから`rval`ということだろう。
+
+本体の`if`文では`NODE_SCOPE`の`nd_tbl`をコピーしている。つまりローカル
+変数名のテーブルである。`ALLOC_N()`で+1しているのは`nd_tbl[0]`の分も合
+わせて確保するためだ。第二部で見たとおり`nd_tbl[0]`にはローカル変数の
+数が入っており、それはつまり「`nd_tbl`の実際の長さ-1」だった。
+
+まとめると、`copy_node_scope()`はメソッド本体のヘッダである`NODE_SCOPE`を
+複製する、ただし`nd_rval`が追加でセットされる。そしてそれはクラスを定義
+したときの`ruby_cref`(クラスのネスト情報)である。この情報は後で定数や
+クラス変数の参照のときに使われる。
+
+h3. `rb_add_method()`
+
+次にメソッドエントリを登録する関数`rb_add_method()`だ。
+
+▼ `rb_add_method()`
+<pre class="longlist">
+ 237  void
+ 238  rb_add_method(klass, mid, node, noex)
+ 239      VALUE klass;
+ 240      ID mid;
+ 241      NODE *node;
+ 242      int noex;
+ 243  {
+ 244      NODE *body;
+ 245
+ 246      if (NIL_P(klass)) klass = rb_cObject;
+ 247      if (ruby_safe_level >= 4 &&
+              (klass == rb_cObject || !OBJ_TAINTED(klass))) {
+ 248          rb_raise(rb_eSecurityError, "Insecure: can't define method");
+ 249      }
+ 250      if (OBJ_FROZEN(klass)) rb_error_frozen("class/module");
+ 251      rb_clear_cache_by_id(mid);
+ 252      body = NEW_METHOD(node, noex);
+ 253      st_insert(RCLASS(klass)->m_tbl, mid, body);
+ 254  }
+
+(eval.c)
+</pre>
+
+`NEW_METHOD()`は`NODE`を生成するマクロだ。
+`rb_clear_cache_by_id()`はメソッドキャッシュを操作する関数である。
+次章『メソッド』で説明する。
+
+では、最終的にクラスの`m_tbl`に格納される構文木を見てみよう。
+こういうときのために用意しておいた
+`nodedump-method`\footnote{`nodedump-method`:`nodedump`に同梱。`nodedump`は添付CD-ROMの`tools/nodedump.tar.gz`}を
+使う。
+
+<pre class="screen">
+% ruby -e '
+class C
+  def m(a)
+    puts "ok"
+  end
+end
+require "nodedump-method"
+NodeDump.dump C, :m        # クラスCのメソッドmをダンプする
+'
+NODE_METHOD
+nd_noex = 0 (NOEX_PUBLIC)
+nd_cnt = 0
+nd_body:
+    NODE_SCOPE
+    nd_rval = Object <- C
+    nd_tbl = 3 [ _ ~ a ]
+    nd_next:
+        NODE_ARGS
+        nd_cnt  = 1
+        nd_rest = -1
+        nd_opt = (null)
+        U牙S頏著
+
+** unhandled**
+
+</pre>
+
+恐らくメソッドのヘッダを意味するのだろう、`NODE_METHOD`が先頭に付いて
+おり、その次に先程`copy_node_scope()`でコピーした`NODE_SCOPE`が付く。
+いくつかダンプしてみたところCで定義したメソッドには`NODE_SCOPE`は付いて
+いなかったので、これがRubyレベルで定義したメソッドの印らしい。
+
+また`NODE_SCOPE`の`nd_tbl`にメソッドのパラメータ変数名(`a`)が登場し
+ている。以前、パラメータ変数は普通のローカル変数と同じだと言ったが、そ
+れがここに端的に出ているわけだ。
+
+`NODE_ARGS`については次の次章『メソッド』で扱うので省略。
+
+それと最後に`NODE_METHOD`の`nd_cnt`だが、これは今回はあまり気にしなく
+ていい。`alias`がからんだときに使うものだ。
+
+h2. 代入と参照
+
+考えてみればスタックのほとんどは各種変数を実現するために存在するわけ
+だ。ここまででいろいろスタックを積めるようになったので、今度は変数参照
+のコードを見ていこう。
+
+h3. ローカル変数
+
+ローカル変数の代入・参照に必要な情報はここまでで全て
+登場しているので予測が付くだろう。ポイントは以下の二点だ。
+
+# ローカル変数領域は`ruby_scope->local_vars`が指す配列である。
+# ローカル変数名と配列インデックスの対応はパーサレベルで解決済み。
+
+ということでローカル変数参照のノード`NODE_LVAR`のコードはこうなる。
+
+▼ `rb_eval()`-`NODE_LVAR`
+<pre class="longlist">
+2975  case NODE_LVAR:
+2976    if (ruby_scope->local_vars == 0) {
+2977        rb_bug("unexpected local variable");
+2978    }
+2979    result = ruby_scope->local_vars[node->nd_cnt];
+2980    break;
+
+(eval.c)
+</pre>
+
+言うまでもないと思うが`node->nd_cnt`が
+パーサの`local_cnt()`で返していた値である。
+
+h3. 定数
+
+h4. 完全仕様
+
+第6章『変数と定数』で定数の格納形式とAPIについては話した。定数はクラ
+スに所属し、メソッドと同じように継承する。また現実の姿としては
+`struct RClass`の`iv_tbl`にインスタンス変数やクラス変数と一緒に登録
+されているのであった。
+
+しかし定数の検索パスはまず外のクラス、次にスーパークラスを探すはずなの
+に、`rb_const_get()`ではスーパークラスしか検索していなかった。それはどう
+してだろうか。それについて話すには定数に隠された最後の仕様について話さ
+なくてはならない。次のコードを見てほしい。
+
+<pre class="emlist">
+class A
+  C = 5
+  def A.new
+    puts C
+    super
+  end
+end
+</pre>
+
+`A.new`は`A`の特異メソッドなので所属クラスは特異クラス`(A)`である。
+だから規則通りに解釈するならば`A`に所属する定数`C`を取れるわけがない。
+
+しかしこう近くに書いてあれば定数`C`を参照したくなるのが人情というものだ。
+それゆえRubyではこういう参照もできてしまう。このような仕様は「ソースコー
+ドの見ためを重視する」というRubyの性格を反映していると言えるだろう。
+
+この規則を一般化するとこうなる。即ちメソッドの内部から定数を参照した場
+合、メソッド定義を「書いた」場所のクラスを起点にして外のクラスの定数を
+参照する。そして「メソッドを書いた場所のクラス」はコンテキスト依存であ
+りパーサと評価器両方の情報がなければ扱えない。それが`rb_const_get()`に外
+のクラスの検索パスがなかった理由である。
+
+h4. `cbase`
+
+そこで外のクラスまで含めた定数参照のコードを見てみよう。
+`::`が付かない普通の定数参照は構文木では`NODE_CONST`になる。
+`rb_eval()`でのそのコードはと言うと……
+
+▼ `rb_eval()`-`NODE_CONST`
+<pre class="longlist">
+2994  case NODE_CONST:
+2995    result = ev_const_get(RNODE(ruby_frame->cbase), node->nd_vid, self);
+2996    break;
+
+(eval.c)
+</pre>
+
+まず`nd_vid`が`Variable ID`で定数名だろう。そして`ruby_frame->cbase`が
+「メソッド定義を書いた場所のクラス」である。この値はメソッドを起動した
+ときにセットされるものなのでまだそのコードは登場していないが、そのセッ
+トする値がさらにどこから来ているかと言うと、これがメソッド定義の
+`copy_node_scope()`で出てきた`nd_rval`なのである。少し戻ってきて見てほ
+しいのだが、このメンバにはメソッド定義時の`ruby_cref`が入っているはず
+だ。
+
+つまり、まずクラスやモジュール定義のときに`ruby_cref`のリンクが
+形成される。いま定義したクラスを`C`としよう(図81)。
+
+ここでメソッド`m`を定義すると(たぶん`C#m`)、
+そのときの`ruby_cref`がメソッドエントリに記憶される(図82)。
+
+その後クラス文が終われば`ruby_cref`は別のノードを指していくわけだが、
+`node->nd_rval`は当然同じものを指し続ける(図83)。
+
+そしてメソッド`C#m`を起動するときには`node->nd_rval`を取り出して、
+積んだばかりの`ruby_frame->cbase`に入れる(図84)。
+
+……という仕組みなのである。ややこしい。
+
+!images/ch_module_cbase.jpg(CREFの伝達)!
+
+h4. `ev_const_get()`
+
+では`NODE_CONST`のコードに戻るとしよう。
+残りは`ev_const_get()`だけだから、それを見る。
+
+▼ `ev_const_get()`
+<pre class="longlist">
+1550  static VALUE
+1551  ev_const_get(cref, id, self)
+1552      NODE *cref;
+1553      ID id;
+1554      VALUE self;
+1555  {
+1556      NODE *cbase = cref;
+1557      VALUE result;
+1558
+1559      while (cbase && cbase->nd_next) {
+1560          VALUE klass = cbase->nd_clss;
+1561
+1562          if (NIL_P(klass)) return rb_const_get(CLASS_OF(self), id);
+1563          if (RCLASS(klass)->iv_tbl &&
+                  st_lookup(RCLASS(klass)->iv_tbl, id, &result)) {
+1564              return result;
+1565          }
+1566          cbase = cbase->nd_next;
+1567      }
+1568      return rb_const_get(cref->nd_clss, id);
+1569  }
+
+(eval.c)
+</pre>
+
+引数の`cref`、つまり元は`ruby_cref`、は`NODE`を利用したリンクリストであった。
+そのリストを辿りながら直接`st_lookup()`で`iv_tbl`を調べる。外のクラスのスー
+パークラスまでは調べないのが仕様だから、`rb_const_get()`ではいけない。
+
+そして`klass`が`nil`になったら……つまりトップレベルを越えたら、もうネスト
+しているクラスはないのでスーパークラス方向を調べる。こちらは
+`rb_const_get()`一発でよい。
+
+さらに、スーパークラス方向を調べるときは一転して`self`が起点になる。
+本当にややこしい。
+
+h3. クラス変数
+
+クラス変数の参照先も`ruby_cref`である。ただしもちろん、定数のように外の
+クラスを次々と探したりはしないので使うのは最初の一つだけだ。クラス変数
+参照のノード、`NODE_CVAR`のコードを見てみよう。
+
+▼ `rb_eval()`-`NODE_CVAR`
+<pre class="longlist">
+2998        case NODE_CVAR:
+2999          result = rb_cvar_get(cvar_cbase(), node->nd_vid);
+3000          break;
+
+(eval.c)
+</pre>
+
+`cvar_cbase()`というのはなんだろうか。`cbase`と付くところを見ると
+`ruby_frame->cbase`と関係がありそうだが、どう違うのだろうか。見てみよう。
+
+▼ `cvar_cbase()`
+<pre class="longlist">
+1571  static VALUE
+1572  cvar_cbase()
+1573  {
+1574      NODE *cref = RNODE(ruby_frame->cbase);
+1575
+1576      while (cref && cref->nd_next &&
+                 FL_TEST(cref->nd_clss, FL_SINGLETON)) {
+1577          cref = cref->nd_next;
+1578          if (!cref->nd_next) {
+1579    rb_warn("class variable access from toplevel singleton method");
+1580          }
+1581      }
+1582      return cref->nd_clss;
+1583  }
+
+(eval.c)
+</pre>
+
+特異クラスでないところまで`cbase`を遡る、らしい。
+これは次のようなコード対策のために付け加えられたものだ。
+
+<pre class="emlist">
+class C                           class C
+  @@cvar = 1                        @@cvar = 1
+  class << C                        def C.m
+    def m                             @@cvar
+      @@cvar                        end
+    end                             def C.m2
+    def m2                            @@cvar + @@cvar
+      @@cvar + @@cvar               end
+    end                           end
+  end
+end
+</pre>
+
+このプログラムは左右どちらのように書いても定義されるメソッドは同じだ。
+だが右の書きかたはメソッドが増えてくると何度もクラス名を書かなくてはい
+けないので面倒くさい。だから特異メソッドを複数定義するときは左のように
+特異クラス定義文でまとめてしまう人も多いのだ。
+
+ところがこの二つの書き方では`ruby_cref`の値が違う。特異クラス定義を使う
+ほうは`ruby_cref=(C)`であり、バラバラに特異メソッドを定義するほうでは
+`ruby_cref=C`である。これではクラス変数の参照先が変わってしまい不便だ。
+
+そこで、特異クラスにクラス変数を定義することはあまりないだろうと判断し
+て特異クラスは飛び越えるようになっているのである。ここでもまた一貫性よ
+り使いやすさ重視の仕様になっているわけだ。
+
+ちなみに定数参照の場合は外のクラスを全て探すからどちらの書きかたでも
+`C`が検索パスに入るので問題ない。また代入のほうはそもそもメソッド中に
+書けないのでこれも関係ない。
+
+h3. 多重代入
+
+Rubyで一番複雑な仕様はどこだ、と問われれば筆者は即座に多重代入と答える。
+多重代入の全体像を把握するなんて無理だ。そう思う根拠もある。ようするに、
+多重代入の仕様は仕様全体をきれいに設計しようなんてこれっぱかしも思わず
+に作られているのだ。仕様の基準になるのは常に「いくつかの典型的な使用パ
+ターンで便利だと思われる挙動」である。このことはRuby全体に言えるが、多
+重代入は特にそれが顕著だ。
+
+ではどうすればコードの密林で迷わずに済むだろうか。これは状態付きスキャナ
+を読むのと似ていて、全体を見ないことである。そもそも全体像がないのだか
+ら、全体像を把握することもできないのだ。コードをブツ切りにして、このコー
+ドはこの仕様のためにある、ここのコードはこの仕様のためにある……という
+ふうに逐一対応を取っていくしかない。
+
+ただ本書は`ruby`の構造を包括的に理解する本であって『Rubyプログラミング
+上級編』ではないので、あまりに細かいことをやっても仕方がない。そこでここ
+では多重代入の基本的な仕組みと、ごく簡単な「多対多」の場合だけを考える
+ことにする。
+
+ではまず定番通り構文木から見ていくことにする。
+
+▼ ソースプログラム
+<pre class="longlist">
+a, b = 7, 8
+</pre>
+
+▼ 対応する構文木
+<pre class="longlist">
+NODE_MASGN
+nd_head:
+    NODE_ARRAY [
+    0:
+        NODE_LASGN
+        nd_cnt = 2
+        nd_value:
+    1:
+        NODE_LASGN
+        nd_cnt = 3
+        nd_value:
+    ]
+nd_value:
+    NODE_REXPAND
+    nd_head:
+        NODE_ARRAY [
+        0:
+            NODE_LIT
+            nd_lit = 7:Fixnum
+        1:
+            NODE_LIT
+            nd_lit = 8:Fixnum
+        ]
+</pre>
+
+右辺・左辺がともに`NODE_ARRAY`のリストになり、
+右辺には`NODE_REXPAND`も付く。`REXPAND`はRight value EXPANDだろうか。
+このノードが何をやっているのか気になる。見てみよう。
+
+▼ `rb_eval()`-`NODE_REXPAND`
+<pre class="longlist">
+2575  case NODE_REXPAND:
+2576    result = avalue_to_svalue(rb_eval(self, node->nd_head));
+2577    break;
+
+(eval.c)
+</pre>
+
+`avalue_to_svalue()`は無視していい。
+`rb_eval()`で`NODE_ARRAY`が評価され、(それは配列リテラルのノードなので、)
+Rubyの配列になって返ってくる。つまり左辺を扱う前に右辺は全て評価されて
+しまうわけだ。だからこそ次のようなこともできる。
+
+<pre class="emlist">
+a, b = b, a    # 一行で書く変数スワップ
+</pre>
+
+では左辺側の`NODE_MASGN`も見てみよう。
+
+▼ `rb_eval()`-`NODE_MASGN`
+<pre class="longlist">
+2923  case NODE_MASGN:
+2924    result = massign(self, node, rb_eval(self, node->nd_value),0);
+2925    break;
+
+(eval.c)
+</pre>
+
+ここでは右辺の評価だけで残りは`massign()`に委譲だ。
+
+h4. `massign()`
+
+▼ `massi`……
+<pre class="longlist">
+3917  static VALUE
+3918  massign(self, node, val, pcall)
+3919      VALUE self;
+3920      NODE *node;
+3921      VALUE val;
+3922      int pcall;
+3923  {
+
+(eval.c)
+</pre>
+
+リストの途中で申し訳ないが、ここで止まって第四引数に注目してほしい。
+`pcall`は`Proc CALL`、つまりこの関数が`Proc`オブジェクトの呼び出しのために使
+われているのかどうかを示している。`Proc`呼び出しとその他では多重代入の
+チェックの厳しさが少し違うので、ここでフラグをもらってチェックしている
+わけだ。当然、値は0か1のどちらかと決まっている。
+
+そこで先程の`massign()`の呼び出しコードを見てほしいのだが、`pcall=0`だ。そ
+れならとりあえず`pcall=0`と決め打ちにして変数を展開してしまっても構わな
+いのではないだろうか。というのも、`pcall`のように動作を微妙に変える引数
+があると常に二通りの筋書きを考えながら読まないとならず、非常に面倒くさ
+いからだ。たとえ実際の関数`massign()`は一つだとしても、読むときには
+`pcall=0`と`pcall=1`の場合の二つの関数があると考えたほうがずっと読みやすい。
+
+プログラムを書くときには二重化は是非とも避けなければならないが、読むとき
+に限ってはその原則は無関係である。パターンが限られているならむしろコピー
+して冗長化するほうが正しい。「速度に関して最適化」「コードサイズに関して
+最適化」という言葉があるが、この場合は「読みやすさに関して最適化」する
+のである。
+
+そこで`pcall=0`として削れるところを全部削った姿を以下に示す。
+
+▼ `massign()`(簡約版)
+<pre class="longlist">
+static VALUE
+massign(self, node, val  /* , pcall=0 */)
+    VALUE self;
+    NODE *node;
+    VALUE val;
+{
+    NODE *list;
+    long i = 0, len;
+
+    val = svalue_to_mvalue(val);
+    len = RARRAY(val)->len;
+    list = node->nd_head;
+    /* (A) */
+    for (i=0; list && i<len; i++) {
+        assign(self, list->nd_head, RARRAY(val)->ptr[i], pcall);
+        list = list->nd_next;
+    }
+    /* (B) */
+    if (node->nd_args) {
+        if (node->nd_args == (NODE*)-1) {
+            /* no check for mere `*' */
+        }
+        else if (!list && i<len) {
+            assign(self, node->nd_args,
+                   rb_ary_new4(len-i, RARRAY(val)->ptr+i), pcall);
+        }
+        else {
+            assign(self, node->nd_args, rb_ary_new2(0), pcall);
+        }
+    }
+
+    /* (C) */
+    while (list) {
+        i++;
+        assign(self, list->nd_head, Qnil, pcall);
+        list = list->nd_next;
+    }
+    return val;
+}
+</pre>
+
+`val`が右辺の値だ。また`svalue_to_mvalue()`という怪しい変換をかけているが、
+先程が`mvalue_to_svalue()`、今回が`svalue_to_mvalue()`だから「きっと元に戻っ
+ているはずだ」と考えられる。従って両方まとめて消す。また次の行で
+`RARRAY()`を使っているから、右辺の値はRubyの`Array`になっているらしいとわ
+かる。一方左辺は`node->nd_head`、つまりローカル変数`list`に代入されている
+値である。この`list`もまたノード(`NODE_ARRAY`)だ。
+
+以下はコードを節ごとに追っていく。
+
+(A)`assign()`はその名前通り、一対一の代入を行う関数である。左辺はノー
+ドで表現されているから、例えば`NODE_IASGN`(インスタンス変数への代入)な
+ら`rb_ivar_set()`で代入する、というようにすればいい。つまりここでは
+`list`と`val`の短いほうに合わせて一対一の代入を行っている
+(図9)。
+
+!images/ch_module_massign.jpg(対応するものは代入)!
+
+(B)右辺が余っていたら残りをRubyの配列にして`node->nd_args`(が表現
+している左辺)に代入する。
+
+(C)左辺が余っていたらその全部に`nil`を代入する。
+
+ところで、`pcall=0`にして削る、という作業はコンパイラの最適化フェイズ
+で使うデータフロー解析/定数畳み込みとそっくりだ。つまりある程度自動化
+できるのではないかと考えられる。
+
+<hr>
+
+御意見・御感想・誤殖の指摘などは
+"青木峰郎 &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net
+までお願いします。
+
+"『Rubyソースコード完全解説』
+はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&amp;spm_id=1&amp;GM_ID=1721
+
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.
