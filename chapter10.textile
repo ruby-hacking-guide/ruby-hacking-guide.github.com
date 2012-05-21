@@ -307,17 +307,13 @@ stmts           : none
                 | stmts terms stmt
 </pre>
 
-As mentioned earlier, `program` represents an entire program in the grammar.
-For all intents and purposes `compstmts` is equivilent to `program`.
+As mentioned earlier, in the grammar, `program` represents an entire program.
+For all intents and purposes `compstmts` is equivalent to `program`. `stmts` is
+almost equivalent to `compstmts`. In turn, `stmts` is a list of `stmt` nonterminals,
+delimited by `terms`.
 
-前述の通り`program`は文法全体、即ちプログラム全体を表している。その
-`program`は`compstmts`と同じであり、`compstmts`は`stmts`とほぼ同じである。
-その`stmts`は`terms`区切りの`stmt`のリストである。つまりプログラム全体は
-`terms`区切りの`stmt`のリストである。
-
-`terms`はもちろんterminatorsの略で、文を終端する記号、セミコロンだとか
-改行のことだ。`opt_terms`はOPTional `terms`(省略可能な`terms`)だろう。
-定義は次のようになっている。
+`terms` is (of course) an abbreviation for "terminators", either semicolons or newlines.
+`opt_terms` means "OPTional terms". The definitions are as follows:
 
 ▼ `opt_terms`
 <pre class="longlist">
@@ -331,9 +327,7 @@ term            : ';'
                 | '\n'
 </pre>
 
-`terms`は`';'`か`'\n'`の後に任意の数だけ`';'`が続く並びなので、
-この規則だけから考えると二個以上の改行があるとまずいように
-思える。実際に試してみよう。
+The initial `;` or `\n` of a `terms` can be followed by any number of `;` only; based on that, you might start thinking that if there are 2 or more consecutive newlines, it could cause a problem. Let's try and see what actually happens.
 
 <pre class="emlist">
 1 + 1   # 改行一つめ
@@ -342,21 +336,16 @@ term            : ';'
 1 + 1
 </pre>
 
-再び`ruby -c`を使う。
+Run that with `ruby -c`.
 
 <pre class="screen">
 % ruby -c optterms.rb
 Syntax OK
 </pre>
 
-おかしい。通ってしまった。実を言うと、連続した改行はスキャナのレベルで
-捨てられてしまってパーサには最初の一つしか渡らないようになっているのだ。
+Strange, it worked! What actually happens is: consecutive newlines are discarded by the scanner, which passes on only the first newline in a series.
 
-ところで、`program`と`compstmt`は同じものだと言ったが、それならこの規則は
-何のために存在するのだろう。実はこれはアクションを実行するためだけにあ
-るのだ。例えば`program`ならプログラム全体について一度だけ必要な処理を実
-行するために用意されている。純粋に文法のことだけ考えるなら`program`は省
-略しても全く問題ない。
+By the way, although we said that `program` is the same as `compstmt`, if that was really true, you would question why `compstmt` exists at all. Actually, the distinction is there only for execution of semantic actions. `program` exists to execute any semantic actions which should be done once in the processing of an entire program. If it was only a question of parsing, `program` could be omitted with no problems at all. 
 
 これを一般化すると、規則には見ための解析のために必要なものと、アクショ
 ンを実行するために必要なものの二種類があるということになる。`stmts`のと
