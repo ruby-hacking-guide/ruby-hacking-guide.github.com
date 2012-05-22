@@ -27,7 +27,7 @@ the C pre-processor.
 
 !images/ch_parser_build.png(Parser construction process)!
 
-h3. Disecting `parse.y`
+h3. Dissecting `parse.y`
 
 Let's now look at `parse.y` in a bit more detail. The following figure presents
 a rough outline of the contents of `parse.y`.
@@ -147,12 +147,12 @@ to represent them.
 |Function definition|`defun definition function fndef`|
 |Declarations|`declaration decl`|
 
-In general, programming lanaguages tend to have the following symbol heiarchy.
+In general, programming languages tend to have the following symbol hierarchy.
 
 |Program element|Properties|
 |Statement|Can not be combined with other symbols. A syntax tree trunk.|
 |Expression|Can be combined with itself or be part of other
-expressions. A syntax tree interal node.|
+expressions. A syntax tree internal node.|
 |Primary|An element which can not be further decomposed. A syntax tree leaf node.|
 
 C function definitions and Java class definitions are examples of statements in
@@ -179,8 +179,8 @@ h3. Program structure
 Now let's turn our attention to the grammer rules of `ruby`. Firstly,
 `yacc` will begin by examining the first rule defined in `parse.y`, and as
 we can see from the following table, this is `program`. From here we can see
-the ruby grammar unfold and the existance of the `program stmt expr primary`
-heierarchy mentioned earlier. However there is an extra rule here for `arg`.
+the ruby grammar unfold and the existence of the `program stmt expr primary`
+hierarchy mentioned earlier. However there is an extra rule here for `arg`.
 Let's now take a look at this.
 
 ▼ `ruby` grammar (outline)
@@ -330,9 +330,9 @@ term            : ';'
 The initial `;` or `\n` of a `terms` can be followed by any number of `;` only; based on that, you might start thinking that if there are 2 or more consecutive newlines, it could cause a problem. Let's try and see what actually happens.
 
 <pre class="emlist">
-1 + 1   # 改行一つめ
-        # 改行二つめ
-        # 改行三つめ
+1 + 1   # first newline
+        # second newline
+        # third newline
 1 + 1
 </pre>
 
@@ -343,17 +343,15 @@ Run that with `ruby -c`.
 Syntax OK
 </pre>
 
-Strange, it worked! What actually happens is: consecutive newlines are discarded by the scanner, which passes on only the first newline in a series.
+Strange, it worked! What actually happens is this: consecutive newlines are simply discarded by the scanner, which returns only the first newline in a series.
 
 By the way, although we said that `program` is the same as `compstmt`, if that was really true, you would question why `compstmt` exists at all. Actually, the distinction is there only for execution of semantic actions. `program` exists to execute any semantic actions which should be done once in the processing of an entire program. If it was only a question of parsing, `program` could be omitted with no problems at all. 
 
-これを一般化すると、規則には見ための解析のために必要なものと、アクショ
-ンを実行するために必要なものの二種類があるということになる。`stmts`のと
-ころにある`none`もアクションのために必要な規則の一つで、空リストに対して
-(`NODE*`型の)`NULL`ポインタを返すために用意されている。
+To generalize this point, the grammar rules can be divided into 2 groups: those which are needed for parsing the program structure, and those which are needed for execution of semantic actions. The `none` rule which was mentioned earlier when talking about `stmts` is another one which exists for executing actions -- it's used to return a `NULL` pointer for an empty list of type `NODE*`.
 
 h3. `stmt`
 
+Next is `stmt`. *** We'll look into it a bit at a time.
 次に文、`stmt`だ。`stmt`の規則はわりと量があるので、少しずつ見ていく
 ことにする。
 
@@ -373,18 +371,11 @@ stmt            : kALIAS fitem  fitem
                 | klEND '{' compstmt '}'
 </pre>
 
-なんとなくわかる。最初にいくつかあるのは`alias`だし、
-次が`undef`、その後にいくつか並ぶ「なんたら`_MOD`」は
-modifier(修飾子)のことだろうから、後置系構文だと想像が付く。
+Looking at that, somehow things start to make sense. The first few have `alias`, then `undef`, then the next few are all something followed by `_MOD` -- those should be statements with modifiers -- 後置系構文だと想像が付く。
 
-`expr_value`や`primary_value`はアクションのために用意されている規則である。
-例えば`expr_value`なら値(value)を持つ`expr`であることを示す。値
-を持たない`expr`とは`return`や`break`、あるいはそういうものを含む`if`文
-などのことだ。「値を持つ」の詳しい定義は
-第12章『構文木の構築』で見る。
-`primary_value`も同じく「値を持つ」`primary`である。
+`expr_value` and `primary_value` are grammar rules which exist to execute semantic actions. For example, `expr_value` represents an `expr` which has a value. Expressions which don't have values are `return` and `break`, as well as `if`-modifier statements, etc., which contain either `return` or `break`. For a detailed definition of what it means to "have a value", see chapter 12 『構文木の構築』. In the same way, `primary_value` is a `primary` which has a value.
 
-`klBEGIN`と`klEND`は説明した通り`BEGIN`と`END`のこと。
+Just as they say, `klBEGIN` and `klEND` represent `BEGIN` and `END`.
 
 ▼ `stmt`(2)
 <pre class="longlist">
@@ -464,7 +455,7 @@ expr kAND expr
 expr kOR expr
 </pre>
 
-`kAND`は「`and`」で`kOR`は「`or`」。この二つは制御構造としての役割があ
+`kAND` is `and`, and `kOR` is `or`. この二つは制御構造としての役割があ
 るので、`command_call`以上に「大きい」構文単位に入れなければならない。
 そして`command_call`は`expr`にある。だから最低でも`expr`にしてやらない
 とうまくいかない。例えば次のような使いかたが存在するのだが……
@@ -528,7 +519,7 @@ arg             : lhs '=' arg
                 | primary
 </pre>
 
-規則の数は多いが、文法の複雑さは規則の数には比例しない。単に場合分けが
+Although there are many rules here, the complexity of the grammar is not in proportion to the number of rules. 単に場合分けが
 多いだけの文法は`yacc`にとっては非常に扱いやすく、むしろ規則の深さである
 とか再帰のほうが複雑さに影響する。
 
