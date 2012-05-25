@@ -14,13 +14,13 @@ h3. Parser construction
 The parser is defined in the `yacc` source file `parse.y`, which `yacc` uses to
 produce a working parser, `parse.c`.
 
-Although one would expect `lex.c` to contain the scanner this is not the case.
+Although one would expect `lex.c` to contain the scanner, this is not the case.
 This file is created by `gperf`, taking the file `keywords` as input, and
 defines the reserved word hashtable. This tool-generated `lex.c` is `#include`d
 in (the also tool-generated) `parse.c`. The details of this process is somewhat
 difficult to explain at this time, so we shall return to this later.
 
-Figure 1 shows the parser construction process. For the benifit of those readers
+Figure 1 shows the parser construction process. For the benefit of those readers
 using Windows who may not be aware, the `mv` (move) command creates a new copy
 of a file and removes the original. `cc` is, of course, the C compiler and `cpp`
 the C pre-processor.
@@ -59,8 +59,8 @@ Previously we briefly mentioned the rules and user code sections. With this
 chapter we begin to study the parser in some detail and so turn our attention to
 these sections.
 
-There is a considerable number of support functions defined in the user code
-section, however roughly speaking they can be divided into the six parts
+There are a considerable number of support functions defined in the user code
+section, but roughly speaking, they can be divided into the six parts
 previously mentioned. The following table shows where each of parts are
 explained in this book.
 
@@ -103,7 +103,7 @@ symbol names were required.
 
 h3. Important symbols
 
-`parse.y` contains both grammar rules and actions, however for now I would like
+`parse.y` contains both grammar rules and actions, however, for now I would like
 to concentrate on the grammar rules alone. The script sample/exyacc.rb can be
 used to extract the grammar rules from this file. Aside from this, running `yacc
 -v` will create a logfile `y.output` which also contains the grammar rules,
@@ -130,7 +130,7 @@ only included the most important parts in this chapter.
 
 Which symbols, then, are the most important? Symbols such as `program`, `expr`,
 `stmt`,`primary`, `arg` etc. represent the more general grammatical elements of
-a programming language and it is to these which we shall focus our attention.
+a programming language and it is on these which we shall focus our attention.
 The following table outlines these general elements and the symbol names used
 to represent them.
 
@@ -157,15 +157,15 @@ expressions. A syntax tree internal node.|
 
 C function definitions and Java class definitions are examples of statements in
 other languages. An expression can be a procedure call, an arithmetic expression
-etc. while a primary usually refers to a string literal or number. Some languages
+etc., while a primary usually refers to a string literal or number. Some languages
 do not contain all of these symbol types, however they generally contain some
 kind of hierarchy of symbols such as `program`→`stmt`→`expr`→`primary`.
 
-It is often the case that symbol types lower in this heirarchy can be promoted
+It is often the case that symbol types lower in this hierarchy can be promoted
 to higher levels and vice versa. For example, in C function calls are expressions
 yet can be may also be statements.
 
-Conversely, when surrounded in parenthesis expressions become primaries.
+Conversely, when surrounded in parentheses, expressions become primaries.
 
 Scoping rules differ considerably between programming languages. Consider
 substitution. In C, the value of expressions can be used in substitutions
@@ -176,7 +176,7 @@ expressions. Ruby follows Lisp's design in this regard.
 
 h3. Program structure
 
-Now let's turn our attention to the grammer rules of `ruby`. Firstly,
+Now let's turn our attention to the grammar rules of `ruby`. Firstly,
 `yacc` will begin by examining the first rule defined in `parse.y`, and as
 we can see from the following table, this is `program`. From here we can see
 the ruby grammar unfold and the existence of the `program stmt expr primary`
@@ -283,7 +283,7 @@ output.
 Syntax OK
 </pre>
 
-Although it might look surprising at first, yes you really can do this in Ruby!
+Although it might look surprising at first, yes, you really can do this in Ruby!
 
 The details of this are covered when we look at semantic analysis (in Chaper 12
 "Syntax tree construction") however it is important to note there are exceptions
@@ -351,9 +351,7 @@ To generalize this point, the grammar rules can be divided into 2 groups: those 
 
 h3. `stmt`
 
-Next is `stmt`. *** We'll look into it a bit at a time.
-次に文、`stmt`だ。`stmt`の規則はわりと量があるので、少しずつ見ていく
-ことにする。
+Next is `stmt`. This one is rather involved, so we'll look into it a bit at a time.
 
 ▼ `stmt`(1)
 <pre class="longlist">
@@ -371,11 +369,11 @@ stmt            : kALIAS fitem  fitem
                 | klEND '{' compstmt '}'
 </pre>
 
-Looking at that, somehow things start to make sense. The first few have `alias`, then `undef`, then the next few are all something followed by `_MOD` -- those should be statements with modifiers -- 後置系構文だと想像が付く。
+Looking at that, somehow things start to make sense. The first few have `alias`, then `undef`, then the next few are all something followed by `_MOD` -- those should be statements with postposition modifiers, as you can imagine.
 
-`expr_value` and `primary_value` are grammar rules which exist to execute semantic actions. For example, `expr_value` represents an `expr` which has a value. Expressions which don't have values are `return` and `break`, as well as `if`-modifier statements, etc., which contain either `return` or `break`. For a detailed definition of what it means to "have a value", see chapter 12 『構文木の構築』. In the same way, `primary_value` is a `primary` which has a value.
+`expr_value` and `primary_value` are grammar rules which exist to execute semantic actions. For example, `expr_value` represents an `expr` which has a value. Expressions which don't have values are `return` and `break`, or `return`/`break` followed by a postposition modifier, such as an `if` clause. For a detailed definition of what it means to "have a value", see chapter 12, "Syntax Tree Construction". In the same way, `primary_value` is a `primary` which has a value.
 
-Just as they say, `klBEGIN` and `klEND` represent `BEGIN` and `END`.
+Just as the names say, `klBEGIN` and `klEND` represent `BEGIN` and `END`.
 
 ▼ `stmt`(2)
 <pre class="longlist">
@@ -390,17 +388,15 @@ Just as they say, `klBEGIN` and `klEND` represent `BEGIN` and `END`.
 </pre>
 
 この規則は全部くくって見るのが正しい。
-共通点は右辺に`command_call`が来る代入であることだ。
-`command_call`は引数括弧を省略したメソッド呼び出しである。
-新しく出てきた記号は以下に表を置いておくので対照しながら確かめてほしい。
+The common point is that they all have `command_call` on the right-hand side. `command_call` represents a method call with the parentheses omitted. The new symbols which are introduced here are explained in the following table. I hope you'll refer to the table as you check over each grammar rule.
 
-|`lhs`|代入の左辺(Left Hand Side)|
-|`mlhs`|多重代入の左辺(Multiple Left Hand Side)|
-|`var_lhs`|代入の左辺、ただし変数系のみ(VARiable Left Hand Side)|
-|`tOP_ASGN`|`+=`や`*=`など組み合わせ代入記号(OPerator ASsiGN)|
-|`aref_args`|`[]`メソッド呼び出しの引数に使える表現(Array REFerence)|
-|`tIDENTIFIER`|ローカル変数に使える識別子|
-|`tCONSTANT`|定数に使える識別子(一文字目が大文字)|
+|`lhs`|assignment left hand side|
+|`mlhs`|assignment multiple left hand side|
+|`var_lhs`|assignment left hand side, which must be a variable|
+|`tOP_ASGN`|compound assignment operator like `+=` or `*=` (OPerator ASsiGN)|
+|`aref_args`|argument to a `[]` method call (Array REFerence)|
+|`tIDENTIFIER`|local variable identifier|
+|`tCONSTANT`|constant identifier (with leading uppercase letter)|
 |`tCOLON2`|`::`|
 |`backref`|`$1 $2 $3...`|
 
@@ -519,7 +515,7 @@ arg             : lhs '=' arg
                 | primary
 </pre>
 
-Although there are many rules here, the complexity of the grammar is not in proportion to the number of rules. 単に場合分けが
+Although there are many rules here, the complexity of the grammar is not proportionate to the number of rules. 単に場合分けが
 多いだけの文法は`yacc`にとっては非常に扱いやすく、むしろ規則の深さである
 とか再帰のほうが複雑さに影響する。
 
@@ -565,7 +561,7 @@ arg: lhs '=' arg              /* 1 */
 
 h3. `primary`
 
-`primary`は規則が多いので最初から分割して示す。
+Because `primary` has a lot of grammar rules, we'll split them up and show them in parts.
 
 ▼ `primary`(1)
 <pre class="longlist">
