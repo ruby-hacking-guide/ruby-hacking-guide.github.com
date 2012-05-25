@@ -79,7 +79,7 @@ to post suggestions on the mailing list.
 
 h3. Part 1: Objects
 
-* Chapter 1: Ruby language minimum
+* "Chapter 1: A Minimal Introduction to Ruby":chapter01.html
 * "Chapter 2: Objects":chapter02.html
 * "Chapter 3: Names and name tables":chapter03.html
 * "Chapter 4: Classes and modules":chapter04.html
