@@ -89,7 +89,7 @@ h3. Part 1: Objects
 
 h3. Part 2: Syntax analysis
 
-* Chapter 8: Ruby language details
+* "Chapter 8: Ruby Language Details":chapter08.html
 * Chapter 9: yacc crash course
 * "Chapter 10: Parser":chapter10.html
 * Chapter 11: Context-dependent scanner
