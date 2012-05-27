@@ -914,10 +914,9 @@ for procedures like `sin`. That's why they are called module functions.
 
 h2. Iterators
 
-Ruby's iterators differ a bit Java's or C++'s 
-iterator classes or 'Iterator' design patterns.
-Precisely speaking those iterators are exterior iterators.
-Ruby's iterators are called interior iterators.
+Ruby's iterators differ a bit from Java's or C++'s iterator classes 
+or 'Iterator' design patterns. Precisely speaking those iterators 
+are exterior iterators. Ruby's iterators are called interior iterators.
 It's difficult to understand from the definition so
 let's explain it with a concrete example.
 
@@ -944,7 +943,7 @@ arr.each do |item|
 end
 </pre>
 
-From `each do` to `end` is all the call to an iterator method.
+Everything from `each do` to `end` is the call to an iterator method.
 More precisely `each` is the iterator method and between
 `do` and `end` is the iterator block.
 The part between the vertical bars are the block parameters.
@@ -961,24 +960,24 @@ We can also think the other way round. The other parts except `print item`
 are being cut out and inserted into the `each` method.
 
 <pre class="emlist">
-<span class="ami">i = 0
-while i < arr.length</span>
-  print <span class="ami">arr[i]</span>
-  <span class="ami">i += 1
-end</span>
+i = 0
+while i < arr.length
+  print arr[i]
+  i += 1
+end
 
-<span class="ami">arr.each do |item|</span>
+arr.each do |item|
   print item
-<span class="ami">end</span>
+end
 </pre>
 
 h3. Comparison with higher order functions
 
-What comes closest to iterators in C are function which receive function pointers,
+What comes closest in C to iterators are functions which receive function pointers,
 or higher order functions. But there are two points in which iterators in Ruby
-and higher functions in C differ.
+and higher order functions in C differ.
 
-Firstly, Ruby's iterators can only take one block. For instance we can't
+Firstly, Ruby iterators can only take one block. For instance we can't
 do the following.
 
 <pre class="emlist">
@@ -990,7 +989,7 @@ end do |j|
 end
 </pre>
 
-Secondly, Ruby's block's can share local variables with the code outside.
+Secondly, Ruby's blocks can share local variables with the code outside.
 
 <pre class="emlist">
 lvar = 'ok'
@@ -1004,11 +1003,8 @@ That's where iterators are convenient.
 But variables can only be shared with the outside. They cannot be shared
 with the inside of the iterator method ( e.g. `each`). Putting it intuitively,
 only the local variables can be seen, which are on the  outside of the code.
-ただし変数を共有できるのはあくまでブロックの外側とだ。イテレータメソッ
-ド(例えば`each`)の中と共有するようなことはない。直感的に言うと、ソー
-スコードの外見がつながっている場所のローカル変数だけしか見えない。
 
-h3. Block local variables
+h3. Block Local Variables
 
 Local variables which are assigned inside a block stay local to that block.
 They become block local variables. Let's check it out.
@@ -1020,10 +1016,9 @@ They become block local variables. Let's check it out.
 end
 </pre>
 
-とりあえずブロックを作るために、長さ1の配列に対して`each`で繰り返して
-おくことにする(ブロックパラメータは丸ごと省略してしまってもいいのだ)。
-そのブロックの中で変数`i`に初めて代入した……即ち宣言した。
-これでこの`i`はブロックローカルになる。
+For the time being we apply each to an array of length 1. ( We can
+leave out the block parameter.) The variable @i@ is first assigned
+and declared inside the block. So @i@ becomes a block local variable. 
 
 Block local means that it cannot be accessed from the outside.
 Let's test it.
@@ -1042,7 +1037,7 @@ for #<Object:0x40163a9c> (NameError)
 When we referenced a block local variable from outside the block
 an error occured. Without a doubt it stayed local to the block.
 
-Iterator can also be nested repeatedly. Each time
+Iterators can also be nested repeatedly. Each time
 the new block creates another scope.
 
 <pre class="emlist">
@@ -1079,12 +1074,11 @@ variables `i` are different.
 }
 </pre>
 
-内側のブロックの中にいる間はあたかも内側の`i`が外側の`i`を覆い隠して
-いるかのようだ。その「覆い隠すこと」をshadowingという。shadowは影だか
-ら、自分の影の中に入れて(その結果隠して)しまう、という意味である。
+Inside the block the @i@ inside overshadows the @i@ outside.
+That's why it's called shadowing.
 
-ではshadowingをしないRubyのブロックローカル変数の場合はどうなるか。
-次の例を見てほしい。
+But what happens in Ruby where there's no shadowing.
+Let's look at this example.
 
 <pre class="emlist">
 i = 0
@@ -1093,14 +1087,14 @@ p i           # 0
   i = 1
   p i         # 1
 end
-p i           # 1(変更されたまま)
+p i           # 1 the change is preserved
 </pre>
 
-ブロックの内側で`i`に代入しても外側に同じ名前があればそれを使う。
-だから内側で`i`に代入すれば外側の`i`の値が変わる。
-この点に関しては何度も何度も「間違いやすいからshadowingしてくれ」
-という文句が出てそのたびにフレーム寸前になるのだが、
-いまだに結論は出ていない。
+When we assign @i@ inside the block and if there is a variable @i@
+that same variable will be used. Hence if we assign to @i@ inside
+the value for @i@ on the outside changes. On this point there
+came many complains: "This is error prone. Please do shadowing."
+Each time there's flaming but till now no conclusion was reached.
 
 h3. The syntax of iterators
 
@@ -1167,10 +1161,10 @@ end
 end
 </pre>
 
-`yield`がブロックの呼び出しだ。その時点で渡されたブロックに制御が移り、
-ブロックの実行が終われば同じ場所に戻ってくる。特殊な関数呼び出しみたい
-なものだと思えばいい。もし現在のメソッドがブロック付き呼び出し(イテレー
-タ)でなければ実行時エラーになる。
+@yield@ calls the block. At this point control is passed to the block,
+when the execution of the block finishes it returns back to the same
+location. Think about it like calling a special function. When the 
+present method does not have a block a runtime error will occur.
 
 <pre class="screen">
 % ruby -e '[0,1,2].each'
@@ -1180,74 +1174,76 @@ end
 
 h3. `Proc`
 
-イテレータはコードを切り取って引数として渡すようなものだ、と話した。
-だが実はもっと直接的に、コードをオブジェクトにして持ち運ぶことも
-できる。
+I said, that iterators are like cut out code which is passed as an 
+argument. But we can even more directly make code to an object
+and carry it around.
 
 <pre class="emlist">
 twice = Proc.new {|n| n * 2 }
-p twice.call(9)   # 18と表示される
+p twice.call(9)   # 18 will be printed
 </pre>
 
-ようするに関数みたいなものだ。`new`を使って生成していることからも
-想像できるとおり、`Proc.new`の返り値は`Proc`クラスのインスタンスである。
+In short, it is like a function. It can be created with @new@ and 
+as might be expected, the return value of @Proc.new@ is an instance
+of the @Proc@ class.
 
-`Proc.new`の見ためは明らかにイテレータだし、実際その通りである。
-これは普通のイテレータだ。ただちょっと`Proc.new`の内部でゴソゴソやって、
-イテレータブロックをオブジェクト化するような仕掛けを動かしているに
-すぎない。
+@Proc.new@ looks surely like an iterator and it is indeed so.
+It is an ordinary iterator. There's only some mechanism inside @Proc.new@
+which turns an iterator block into an object. 
 
-ちなみに`Proc.new`と同じ効果の`lambda`という関数風メソッドも用意されて
-いる。好みで選んでもらえばよい。
+Besides there is a function style method @lambda@ provided which
+has the same effect as @Proc.new@. Choose whatever suits you.
 
 <pre class="emlist">
 twice = lambda {|n| n * 2 }
 </pre>
 
-h4. イテレータと`Proc`
+h4. Iterators and `Proc`
 
-なぜ突然`Proc`の話を始めたかと言うと、イテレータと`Proc`にはとても深い関係
-があるからだ。実のところイテレータブロックと`Proc`オブジェクトとは「同じ
-もの」なのである。だから相互に変換可能だ。
+Why did we start talking all of a sudden about @Proc@? Because there
+is a deep relationship between iterators and @Proc@.
+In fact iterators and @Proc@ objects are quite the same thing.
+That's why one can be transformed into the other.
 
-まずイテレータブロックを`Proc`オブジェクトにするには
-パラメータ名の前に`&`を付ければよい。
+First, to turn an iterator block into a @Proc@ object
+one has to put an @&@ in front of the parameter name.
 
 <pre class="emlist">
 def print_block( &block )
   p block
 end
 
-print_block() do end   # #<Proc:0x40155884>のように表示される
-print_block()          # ブロックなしなのでnilと表示される
+print_block() do end   # Shows something like <Proc:0x40155884>
+print_block()          # Without a block nil is printed
 </pre>
 
-引数名の前に`&`を付けると、ブロックが`Proc`オブジェクトに変換されその変数
-に代入される。メソッドがイテレータでないとき
-(ブロック付き呼び出しではないとき)には`nil`が入る。
+With an @&@ in front of the argument name, the block is transformed to
+a @Proc@ object and assigned to the variable. If the method is not an
+iterator (there's no block attached) @nil@ is assigned.
 
-そしてその逆、`Proc`をイテレータブロックとして渡すにもやはり`&`を使う。
+And in the other direction, if we want to pass a @Proc@ to an iterator
+we also use @&@.
 
 <pre class="emlist">
 block = Proc.new {|i| p i }
 [0,1,2].each(&block)
 </pre>
 
-このコードは以下と全く同じ意味を持つ。
+This code means exactly the same as the code below.
 
 <pre class="emlist">
 [0,1,2].each {|i| p i }
 </pre>
 
-この両方を組み合わせると、イテレータブロックを
-他所のメソッドに丸投げすることもできるようになる。
+If we combine these two, we can delegate an iterator
+block to a method somewhere else.
 
 <pre class="emlist">
 def each_item( &block )
   [0,1,2].each(&block)
 end
 
-each_item do |i|    # [0,1,2].each do |i|と同じこと
+each_item do |i|    # same as [0,1,2].each do |i|
   p i
 end
 </pre>
