@@ -1248,18 +1248,20 @@ each_item do |i|    # same as [0,1,2].each do |i|
 end
 </pre>
 
-h2. 式
+h2. Expressions
 
-Rubyで言う「式」とは、「他のものと組み合わせて別の式や文を作れる」もの
-のことである。例えばメソッド呼び出しはまた別のメソッド呼び出しの引数
-にしたりできるので式である。各種リテラルも同様だ。ただしリテラルやメソッ
-ドが必ずしも他の要素の組み合わせでないのに対して、これから紹介する「式」
-は必ず組み合わせからなる。
+Expressions in Ruby are things which can be combined to build new 
+expressions and statements. For instance a method call can be
+used as an argument of another method call. It is an expression.
+Also all literals. But literals and method calls are not combinations
+of other elements, we will now get to know expressions which are
+necessarily combinations.
 
 h3. `if`
 
-`if`式は説明不要だろう。条件式が真のとき本体を実行する。なお第一部で説明
-したようにRubyでは「`nil`/`false`以外の全オブジェクト」が真である。
+We probably do not need to explain the @if@ expression. If the conditional
+expression is true the body expression is executed. As explained in the
+first part in Ruby every object except @nil@ and @false@ is true.
 
 <pre class="emlist">
 if cond0 then
@@ -1273,9 +1275,10 @@ else
 end
 </pre>
 
-`elsif`・`else`節は省略可。各`then`も省略可。ただ`then`のあたりに
-関してはもうちょっと細かい条件がある。こういうものは例を見る
-のに限るので、以下の記述が全て通る、とだけ言っておこう。
+@elsif@ and @else@ can be omitted. Each @then@ can also be omitted
+`elsif`・But there are some finer requirements concerning @then@.
+It will be apparent by looking at the examples below.
+All of them are valid.
 
 <pre class="emlist">
 # 1                                    # 4
@@ -1289,9 +1292,11 @@ if cond then; .... end                   ....
                                        end
 </pre>
 
-またRubyでは`if`は式なので、`if`式全体の値というものがある。
-それは条件式が合致した本体の値である。例えば最初の`if`の条件が
-真ならその本体の値だ。
+Furthermore, as every expression has a return value, there
+is also a return value here. It is the return value of the
+body expression which holds. For instance if the condition 
+at the beginning is true it is the return value of the 
+following expression.
 
 <pre class="emlist">
 p(if true  then 1 else 2 end)   #=> 1
@@ -1299,8 +1304,7 @@ p(if false then 1 else 2 end)   #=> 2
 p(if false then 1 elsif true then 2 else 3 end)   #=> 2
 </pre>
 
-マッチする節がなかったり、マッチした節が空だったりしたときは
-`nil`になる。
+If there's no match, or the match is empty @nil@ is returned.
 
 <pre class="emlist">
 p(if false then 1 end)    #=> nil
@@ -1309,8 +1313,8 @@ p(if true  then   end)    #=> nil
 
 h3. `unless`
 
-`if`と条件を逆にしたのが`unless`だ。
-以下の左右の式は全く同じ意味になる。
+An @if@ with a negated condition is the same as an @unless@.
+The following two examples have the same meaning. 
 
 <pre class="emlist">
 unless cond then          if not (cond) then
@@ -1318,17 +1322,17 @@ unless cond then          if not (cond) then
 end                       end
 </pre>
 
-`unless`にも`else`は付けられるが`elsif`は付けられない。
-`then`が省略できるのは言うまでもなし。
+@unless@ can also have an @else@ clause but there cannot be an @elsif@.
+Of course @then@ can be omitted.
 
-`unless`にも値があり、その決定条件は`if`と全く同じである。つまり条件が
-マッチした節の本体の値が全体の値になる。どの節にもマッチしないかマッチ
-した節が空のときは`nil`になる。
+@unless@ also has a value. Analogous to @if@ it is the value of the of the
+clause which matches. If there's no match or the match is empty @nil@
+is returned.
 
 h3. `and && or ||`
 
-`and`の一番ありがちな使いかたと言えばブール演算だろうか。
-例えば`if`の条件式で使ったりする。
+The most useful utilization of the @and@ is probably as a boolean operator.
+For instance in the conditional clause of an @if@.
 
 <pre class="emlist">
 if cond1 and cond2
@@ -1336,8 +1340,9 @@ if cond1 and cond2
 end
 </pre>
 
-だがPerlや`sh`やLispと同じように、条件分岐構文として使うこともできる。
-次の左右の式は同じ意味だ。
+But as in Perl, the Shell or Lisp it can also be used as a conditional 
+branch expression.
+The two following expressions have the same meaning.
 
 <pre class="emlist">
                                         if invalid?(key)
@@ -1345,24 +1350,26 @@ invalid?(key) and return nil              return nil
                                         end
 </pre>
 
-また`&&`と`and`は同じ意味である。違うのは結合順位だ。
+@&&@ and @and@ have the same meaning. Different is the binding order.
 
 <pre class="emlist">
 method arg0 &&  arg1    # method(arg0 && arg1)
 method arg0 and arg1    # method(arg0) and arg1
 </pre>
 
-基本的に、記号系演算子は引数になれる式(`arg`)を作る。
-アルファベット系演算子は引数になれない式(`expr`)を作る。
+Basically the symbolic operator is used in an expression which becomes an argument.
+The alphabetical operator is used in an expression which will not become
+an argument.
 
-一方の`or`は`and`の逆である。つまり、左辺の評価値が偽であるときに右辺も
-評価する。
+On the other hand @or@ is the opposite of @and@. If the evaluation of the left hand
+side is false, the right hand side will also be evaluated.
 
 <pre class="emlist">
 valid?(key) or return nil
 </pre>
 
-そして`or`と`||`の関係は`and`と`&&`の関係と同じだ。優先順位だけが違う。
+@or@ and @||@ have the same relationship as @&&@ and @and@. Only the precedence is 
+different.
 
 h3. The Conditional Operator
 
@@ -1379,8 +1386,8 @@ If they bump together the following weirdness happens.
 cond?iftrue:iffalse   # cond?(iftrue(:iffalse))
 </pre>
 
-条件演算子の値は、式で最後に実行された式の値である。
-つまり真側か偽側、いずれかの式の値だ。
+The value of the conditional operator is the value of the last executed expression.
+Either the value of the true side or the value of the false side.
 
 h3. `while until`
 
@@ -1392,8 +1399,8 @@ while cond do
 end
 </pre>
 
-最も単純なループ構文である。`cond`が真のあいだ本体を実行する。
-`while`の`do`も省略できる。
+This is the most basic loop construct. As long as @cond@ is true
+the body is executed. The @do@ can be omitted.
 
 <pre class="emlist">
 until io_ready?(id) do
@@ -1401,27 +1408,28 @@ until io_ready?(id) do
 end
 </pre>
 
-`until`は条件判断が逆のループだ。条件が偽のあいだ本体を実行する。
-`until`の`do`も省略できる。
+@until@ comes to the exact opposite conclusion as the @while@.
+As long as the body expression is false it is executed.
+The @do@ can be omitted. 
 
-それともちろんループから抜けたりするためのジャンプ構文も存在する。
-C/C++/Javaで言う`break`はそのまま`break`。`continue`は`next`。
-`next`はPerl由来だろうか。
+There is also a jump construct which exits the loop.
+As in C/C++/Java it is called @break@. Instead of @continue@ there
+is @next@. That seems to have come from Perl.
 
 <pre class="emlist">
 i = 0
 while true
   if i > 10
-    break   # ループを抜ける
+    break   # exit the loop
   elsif i % 2 == 0
     i *= 2
-    next    # 次のループ
+    next    # next loop iteration
   end
   i += 1
 end
 </pre>
 
-さらにこれもPerl由来だろうが、`redo`というのがある。
+And there is another Perlism: the @redo@.
 
 <pre class="emlist">
 while cond
@@ -1432,17 +1440,17 @@ while cond
 end
 </pre>
 
-と書くと、(A)の地点まで戻ってその繰り返しをやりなおす。
-`next`と違うのは条件をチェックしないことだ。
+It will return to @(A)@ and repeat from there. With next there
+is a condition @check@, with @redo@ there is none.
 
-筆者は一生で書いたRubyプログラムの量なら世界で二桁の中には入る自信があるが、
-`redo`なんて一度も使ったことがない。それでも幸せに生きていられるというこ
-とは、たぶんさほど必要ないものなんだろう。
+I might come into the world top 100, if the amount of Ruby programs
+would be counted, but I haven't used @redo@ yet. It does not seem to be
+that necessary after all.
 
 h3. `case`
 
-`if`式の特殊形。連続した条件分岐を行う。
-次の左右の式は全く同じ意味だ。
+A special form of the @if@ form. It performs branching on a series of
+conditions. The following two expression are identical in meaning.
 
 <pre class="emlist">
 case value
@@ -1457,12 +1465,14 @@ else                           else
 end                            end
 </pre>
 
-イコールが三つの「`===`」は「`==`」と同じく実際にはメソッド呼び出しで
-ある。左辺の値がレシーバ(メソッドを呼ぶオブジェクト)になることに注意
-しよう。具体的な効果としては、`Array`の`===`なら要素に`value`が含まれ
-るかを試す。`Hash`ならキーに`value`があるかどうか試す。正規表現なら
-`value`とのマッチを試す。などなど。`case`は文法の要素数が多くて例にす
-るには面倒なので本書では扱わない。
+The threefold equals @===@ is like the @==@ really a method call.
+The receiver is the object on the left hand side. Concretely,
+in @Array@ a @===@ checks which values the elements contain.
+For a @Hash@ it tests whether the keys have a value. For regular
+expression it tests if the @value@ matches. (??? can't find good documentation 
+to @===@) There are many grammatical
+elements to @case@. To list them all would be tedious, we will not 
+cover them in this book.
 
 h3. Exceptions
 
@@ -1478,24 +1488,25 @@ In Ruby exceptions come in the form of the function style method `raise`.
 raise ArgumentError, "wrong number of argument"
 </pre>
 
-Rubyでは例外は`Exception`クラス(またはその下位クラス)のインスタンスだ。
-この形式では例外のクラスを第一引数に、エラーメッセージを第二引数に指
-定している。すると`raise`は`ArgumentError`のインスタンスを作成し、それを
-「投げる」。例外オブジェクトは`raise`の後にあったコードをすっとばしてメ
-ソッド呼び出しのスタックを戻りはじめる。
+In Ruby exception are instances of the @Exception@ class and it's
+subclasses. This form takes an exception class as its first argument 
+and an error message as its second argument. In the above case 
+an instance of @ArgumentError@ is created and "thrown". Exception 
+object ditch the part after the @raise@ and return upwards the
+method call stack.
 
 <pre class="emlist">
 def raise_exception
   raise ArgumentError, "wrong number of argument"
-  # このあとのコードは実行されない
+  # the code after the exception will not be executed
   puts 'after raise'
 end
 raise_exception()
 </pre>
 
-何も遮るものがなければ例外オブジェクトはどこまでも進みついにはトップ
-レベルまで戻ってしまう。戻るところがなくなると`ruby`はメッセージを出して
-非ゼロ終了する。
+If nothing blocks the exception it will move to the top level.
+When it reaches the top level, @ruby@ gives out a message and ends
+with a non-zero exit code.
 
 <pre class="screen">
 % ruby raise.rb
@@ -1503,9 +1514,9 @@ raise.rb:2:in `raise_exception': wrong number of argument (ArgumentError)
         from raise.rb:7
 </pre>
 
-しかしそれだけなら`exit`で十分なのであって、例外というからには
-ハンドラを設定できなくてはいけない。Rubyでは`begin`〜`rescue`〜`end`で
-それを行う。C++やJavaで言うところの`try`〜`catch`である。
+However, for this an @exit@ would be sufficient, for an exception ther 
+should be ways to handle it. In Ruby there is the @begin@, @rescue@, @end@ for this.
+It resembles the @try@ and @catch@ in C++ and Java.
 
 <pre class="emlist">
 def raise_exception
@@ -1520,11 +1531,11 @@ rescue ArgumentError => err then
 end
 </pre>
 
-`rescue`は例外を捕らえる制御構造で、指定したクラスと、その下位クラスの例
-外オブジェクトを捕らえる。この場合`ArgumentError`を捕らえろと命令したと
-ころに丁度よく`ArgumentError`のインスタンスが飛んできたのでこの`rescue`に
-マッチする。すると`=>err`によって例外オブジェクトがローカル変数`err`に
-代入され、この`rescue`節が実行される。
+@rescue@ is a control structure which captures an exception, it catches 
+the exceptions of the declared class and its subclasses. If in the 
+above example an instance of @ArgumentError@ comes flying this @rescue@
+matches it. By @=>err@ the exception object will be assigned to the local variable
+@err@, after that the @rescue@ part is executed.
 
 <pre class="screen">
 % ruby rescue.rb
@@ -1532,24 +1543,24 @@ exception catched
 #<ArgumentError: wrong number of argument>
 </pre>
 
-例外が`rescue`されると何もなかったかのように`rescue`の後ろに抜けて
-続きを実行しはじめるわけだが、
-`begin`からやりなおさせることも可能である。それには`retry`を使う。
+If the exception is resuced the execution carries on after the rescue
+as if nothing happened. We can also make it retry the critical part
+with @retry@.
 
 <pre class="emlist">
-begin    # ここに戻る
+begin    # return here
   ....
 rescue ArgumentError => err then
-  retry  # 人生やりなおしてきなさい
+  retry  # beginning anew
 end
 </pre>
 
-なお`rescue`の`=>err`と`then`は省略してよい。また捕らえる例外クラスも省略で
-き、そのときは`StandardError`を指定したのと同じことになる。
+We can omit the @=>err@ and the @then@ after @rescue@. We can also leave
+out the exception class. In this case the class @StandardError@ is matched.
 
-もっとたくさんの種類の例外を補足したいときは例外クラスを並べて書けばい
-い。また例外によって処理を変えたいときは`rescue`節自体を複数指定すればい
-い。
+If we want to add more exception classes we can just list them after @rescue@.
+When we want to handle different errors differently we can use several @rescue@s
+in one @begin@~@end@ block.
 
 <pre class="emlist">
 begin
@@ -1560,44 +1571,43 @@ rescue NameError
 end
 </pre>
 
-こう書くと上から順番にクラスがマッチする`rescue`節を探し。マッチした節だ
-けが実行される。つまりこの場合は`IOError`の節だけが実行される。
+In this case the exception class is checked in order until there is a match.
+Only the one matched part is executed. For instance in the above case only
+@IOError@ is executed.
 
-その逆に、`else`節を追加しておくと
-例外が発生しなかった場合にだけその節が実行される。
+On the othor hand, when there is an @else@ clause, it is executed
+only when there is no exception.
 
 <pre class="emlist">
 begin
-  nil    # もちろん例外は起きない
+  nil    # Of course here will no error occur
 rescue ArgumentError
-  # 例外は起きないのでここは通らない
+  # This part will not be executed
 else
-  # 例外が起きないのでここが実行される
+  # This part will be executed
 end
 </pre>
 
-さらに`ensure`節を追加すると今度は例外が起きた場合も起きない場合も
-`rescue`されたときも、その節が必ず実行される。
+Moreover an @ensure@ clause will be executed in every case: 
+when there is no exception, when there is an exception, rescued or not.
 
 <pre class="emlist">
 begin
   f = File.open('/etc/passwd')
-  # いろいろする
-ensure   # 例外が起きても起きなくても常に実行される
+  # do stuff
+ensure   # this part will be executed anyway
   f.close
 end
 </pre>
 
-ところで、この`begin`式にも値がある。`begin`〜`end`全体の値は、
-`begin`・`rescue`・`else`いずれかの節のうち最後の通った節の最後の文の値である。
-つまり`ensure`以外の節のうち最後の文だ。`ensure`が除外されているのは、
-`ensure`はだいたい後始末のために使われる(本処理ではない)からだろう。
+Besides, this @begin@ expression also has a value. The value of the 
+whole @begin@~@end@ expression is the value of the part which was executed
+last. The @ensure@ part does not count as it is normally used for cleanup only.
 
 h3. Variables and Constants
 
-Referring 
-変数および定数の参照。値は変数の指すオブジェクト。
-それぞれの挙動は既に詳しすぎるほど説明したので省略する。
+Referring a variable or a constant. The value is the object the variable points to.
+We already talked in too much detail about the various behaviors.
 
 <pre class="emlist">
 lvar
@@ -1607,16 +1617,19 @@ CONST
 $gvar
 </pre>
 
-一点だけ追加。`$`で始まる変数には特殊な種類のものが存在する。変な名前
-のものが存在するうえに、グローバル変数であるとも限らない。
+I want to add one more thing. The variables starting with @$@ are
+of a special kind. Some have strange names, but they are not 
+necessarily global.
 
-まずPerl由来の`$_`と`$~`。`$_`は`gets`などの返り値を保存する
-変数で、`$~`は最後の正規表現マッチの結果を保持する。この二つはローカル
-変数にしてスレッドローカルというとんでもない変数である。
+First the Perlish variables @$_@ and @$~@. @$_@ saves the return 
+value of @gets@ and other methods, @$~@ contains the last match
+of a regular expression. They are called local and thread local.
+Incredible variables. 
 
-また例外が発生したとき例外オブジェクトを保持する`$!`や、
-子プロセスのステータスを保持する`$?`、セキュリティレベルを表す
-`$SAFE`はスレッドローカルである。
+And the variable @$!@ which saves the exceptional object when
+an exception has occurred as well as the variable @$?@ which 
+saves the status of a child process and @$SAFE@ which represents
+the security level are all thread local.
 
 h3. Assignment
 
@@ -1647,19 +1660,17 @@ As in C/C++/Java this is a shortcut for
 var = var + 1
 </pre>
 
-`+`
+Differing from C the Ruby @+@ is a method and thus part of the library.
+In the the whole meaning of @+=@ is dealt with in the language itself(?).
+In @C++@ @+=@ and @*=@ are (?can be) overwritten, we cannot do this in Ruby.
+In Ruby @+=@ is always the combination of @+@ and assignment.
 
-のショートカットである。Cと違うのは、`+`はRubyではメソッドなのでライブ
-ラリで実行されるという点だ。Cでは`+=`全体の意味が言語処理系に組み込ま
-れていた。またC++では`+=`や`*=`全体をオーバーライドできたがRubyではで
-きない。`+=`ならば常に`+`と代入の組み合わせ操作として定義される。
-
-自己代入と属性アクセス風メソッドを組み合わせることもできる。
-こうするとさらに属性っぽい。
+We can also combine self assignment and attribute access.
+The result looks like an attribute.
 
 <pre class="emlist">
 class C
-  def i() @i end          # defは一行でも書けるのだ
+  def i() @i end          # A method definition can be written in one line.
   def i=(n) @i = n end
 end
 
@@ -1669,34 +1680,34 @@ obj.i += 2    # obj.i = obj.i + 2
 p obj.i       # 3
 </pre>
 
-`+=`があるなら`++`もあるのかな、と思いきや`++`はない。なぜだろうか。
-Rubyでは代入は言語処理系が扱うものである。一方メソッドはライブラリが実
-行するものである。この二つ、即ち変数世界とオブジェクト世界、をきっ
-ぱり分けるというのはRubyの重要な特徴である。`++`を導入するとその区別が
-壊れてしまいかねない。というのが`++`のない理由だ。
+If there is `+=` there might also be `++` but this is not the case.
+Why is that so? In Ruby assignment is dealt with on the language level.
+But on the other hand methods are in the library. Keeping these two, 
+the world of variables and the world of objects, strictly apart is an 
+important peculiarity of Ruby. If @++@ were introduced the separation
+might easily be broken. That's why there's no @++@
 
-それでも`++`の簡潔さが捨てきれない人は多いらしく、メーリングリストで何度
-も何度も提案されては却下され続けてきた。筆者もわりと`++`欲しい派なのだが、
-我慢できないほどではないし、Rubyではそもそも`++`はあまり使わないので
-黙って忘れることにしている。
+Some people don't want to go without the brevity of @++@. It has been
+proposed again and again in the mailing list but was always turned down.
+I also am in favor of @++@ but I can do without, there has never been 
+a @++@ in Ruby so let's forget about it.
 
 h3. `defined?`
 
-`defined?`はRubyの中ではかなり異色の構文である。
-実行時に式の値が「定義」されているかどうか判別する。
+@defined?@ is a strange construct in Ruby. It tells whether an
+expression value is defined or not.
 
 <pre class="emlist">
 var = 1
 defined?(var)   #=> true
 </pre>
 
-言い換えると、引数(と言っていいのかどうか?)に受けた式を評価したとき
-値を得られるかどうかを判別する。とは言ってももちろんパースエラーになる
-式は書けないし、メソッド呼び出しの中で例外が発生したりするものは
-検出できない。
+In other words it tells whether the received argument (is it okay to call
+it so?) returns a value after evaluation. But it won't tell you if there's
+a parse error or an exception is raised.
 
-`defined?`についてはぜひやりたかったのだが、
-本書では以後いっさい出てこない。残念だ。
+I would have loved to tell you more about @defined?@ 
+but it will not appear again in this book. What a pity.
 
 h2. Statements
 
