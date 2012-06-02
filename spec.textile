@@ -1794,9 +1794,11 @@ end
 
 Defines the class `C` which inherits from `SuperClass`
 
-クラスについては第一部でかなりしつこく説明した。実行される文であること、
-文内では定義中のクラスが`self`になること、本体には任意の式が書けること、
-クラス定義文はネストできること。いずれもRubyの実行イメージの根幹をなす。
+We talked quite extensively about classes in the first part.
+This statement will be executed, within the definition the class will
+become @self@, arbitrary expressions can be written within. Class
+definitions can be nested. They form the foundation of Ruby execution 
+image (???).
 
 h3. Method Definition
 
@@ -1805,20 +1807,16 @@ def m(arg)
 end
 </pre>
 
-I leave this out as I've already written about method definition.
-
-メソッドの定義は既に書いたので略。
-ここに入れたのは文の仲間だということを明示したかっただけだ。
+I've already written about method definition and won't add more.
+They also belong to statements.
 
 h3. Singleton method definition
 
 We already talked a lot about singleton methods in the first part.
 They do not belong to classes but to objects, in fact, they belong
-to singleton classes.
-特異メソッドについては第一部でさんざん説明した。クラスでなくオブジェク
-トに所属するメソッドのことで、実は特異クラスというクラスに定義されるの
-だった。定義方法はメソッド名の前にレシーバを書くだけだ。パラメータ宣言
-でも通常のメソッドと同じ表記が全て使える。
+to singleton classes. We define singleton methods by putting the
+receiver in front of the method name. Parameter declaration is done
+the same way like with ordinary methods.
 
 <pre class="emlist">
 def obj.some_method
@@ -1882,28 +1880,27 @@ a, b, c = tmp
 ret1, ret2 = some_method()   # some_method might probably return several values
 </pre>
 
-Precisely speaking it is as follows.
+Precisely speaking it is as follows. We will write the value of the
+left hand side as @obj@.
 
-厳密に言うと次のようになる。左辺の評価値(のオブジェクト)を`obj`と置くと、
-
-# `obj`が配列であればそれを使う
-# `obj`に`to_ary`メソッドが定義されていればそれで配列に変換する
+# `obj` if it is an array
+# if `obj` に`to_ary`メソッドが定義されていればそれで配列に変換する
 # `[obj]`を使う
+
 
 この手順に従って右辺を決定し、代入を行う。つまり右辺の評価と代入の操作は
 完全に独立している。
 
-まだ先がある。実は左辺・右辺とも無限にネストできる。
-
+And it goes on, the left and right hand side can be arbitrarily nested.
 <pre class="emlist">
 a, (b, c, d) = [1, [2, 3, 4]]
 a, (b, (c, d)) = [1, [2, [3, 4]]]
 (a, b), (c, d) = [[1, 2], [3, 4]]
 </pre>
 
-このプログラムでは各行を実行後、`a=1 b=2 c=3 d=4`になる。
+The result after each line will be the assignments @a=1 b=2 c=3 d=4@.
 
-まだまだある。左辺にはインデックス代入や属性代入も可能。
+And it goes on. The left hand side can be index or parameter assignments.
 
 <pre class="emlist">
 i = 0
@@ -1914,7 +1911,7 @@ p arr    # [0, 2, 4]
 obj.attr0, obj.attr1, obj.attr2 = "a", "b", "c"
 </pre>
 
-メソッドのパラメータのように、`*`を使ってまとめ受けできる。
+And like with method parameters, @*@ can be received.
 
 <pre class="emlist">
 first, *rest = 0, 1, 2, 3, 4
@@ -1922,7 +1919,7 @@ p first  # 0
 p rest   # [1, 2, 3, 4]
 </pre>
 
-一度に全部使うともう、何がなんだかわからない。
+If you start using them all, you will easily get confused.
 
 h4. Block parameter and multiple assignment
 
@@ -1936,11 +1933,10 @@ array.each do |i|
 end
 </pre>
 
-When the block is called with a `yield`, the provided parameters are assigned to `i`.
-ブロックが呼ばれるたびに`yield`された引数が`i`に多重代入されているのである。
-ここでは左辺が変数一つだけなので多重代入に見えないのだが、二つ以上にす
-るとちょっと見えてくる。例えば`Hash#each`はキーと値の組に対する繰り返しな
-ので、普通はこのように呼ぶ。
+When the block is called with a `yield`, the provided parameters are multi-assigned to `i`.
+Here there's only one variable on the left hand side, so it does not look like multi assignment.
+But if there are two or more variables we see what's going on. For instance @Hash#each@
+provides a key and a value we usually call it like that:
 
 <pre class="emlist">
 hash.each do |key, value|
@@ -1948,12 +1944,13 @@ hash.each do |key, value|
 end
 </pre>
 
-この場合、実はキーと値の配列がハッシュから`yield`されている。
+In this case an array with elements key and value are yielded
+from the hash.
 
-そういうわけだから、ネストした多重代入を使って次のようなこともできる。
+Hence we can also use nested multiple assignment as shown below.
 
 <pre class="emlist">
-# [[キー,値],インデックス]がyieldされている
+# [[key,value],index] are given to yield
 hash.each_with_index do |(key, value), index|
   ....
 end
@@ -2037,15 +2034,15 @@ The program reads and ignores it like a simple comment.
 
 h3. Multi-byte strings
 
-グローバル変数`$KCODE`が`"EUC"`・`"SJIS"`・`"UTF8"`のいずれかに
-なっているとデータの文字列の中で
-euc-jpやshift_jisやutf8の文字列を使うことができる。
+When the global variable @$KCODE@ is set to either @EUC@, @SJIS@
+or @UTF8@ the strings can be encoded in EUC-JP, SHIFT-JIS or UTF-8
+respectively. (?)
 
-さらに`ruby`コマンドに`-Ke`・`-Ks`・`-Ku`のどれかの
-オプションを付けると、
-コード中にすらマルチバイト文字列を使うことができるようになる。例えば
-文字列リテラルや正規表現リテラル、さらには識別子にさえも使える。だから
-こんなことをしてもよい。
+And if the option @-Ke@, @-Ks@ or @-Ku@ is given to the @ruby@
+command multibyte strings can be used within the Ruby code.
+String literals, regular expressions and even operator names 
+can contain multibyte characters. Hence it is possible to do 
+something like this:
 
 <pre class="emlist">
 def 表示( arg )
@@ -2055,7 +2052,7 @@ end
 表示 'にほんご'
 </pre>
 
-しかしこういうことをやるのは全くお勧めできない。
+But I really cannot recommend doing things like that.
 
 <hr>
 
