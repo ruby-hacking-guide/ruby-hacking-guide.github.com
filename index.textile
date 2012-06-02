@@ -109,6 +109,3 @@ As for now the contributors to that repo were:
 * Laurent Sansonetti
 * Clifford Caoile
 * Jean-Denis Vauguet
-
-
-

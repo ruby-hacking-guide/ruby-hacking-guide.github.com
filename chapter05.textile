@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Classes and modules
+title: Garbage Collection
 ---
 
 Translated by Sebastian Krause
@@ -20,34 +20,41 @@ h3. Memory Segments
 The memory space of a general C program has the following parts:
 
 # the text area
-# a place for static variable and global variable
+# a place for static and global variables
 # the machine stack
 # the heap
 
-The text area is where the code lies. Obviously the second area holds static and global variables.
-The text area is a place with the code. As you see, the second area holds static and global variables. Function calls, along with their arguments and local variables are piled up in the machine stack. The heap is allocated by `malloc()`. 
-
+The text area is where the code lies. Obviously the second area holds static and global variables. 
+Function calls, along with their arguments and local variables are piled up in the machine stack. 
+The heap is allocated by `malloc()`. 
 
 Let's talk a bit about number three,  the machine stack. 
 Obviously, because it's the machine-"stack" it has the structure of a stack. 
 In other words new stuff is piled on top of it. 
 The new in a word fast one is piled up. There is a large a little more unit when logically seeing when the value is actually piled up in the machine stack because it piles up by a detailed unit of `int` 1 piece etc. It is called stack frame (stack frame). 
 
-As for the stack frame, one corresponds to one time of the function call. When the function is called, one stack frame is piled up. When `return` is done, one stack frame is unloaded. The appearance of the machine stack is shown in Figure 1.
+One stack frame corresponds to one function call. Or in other words when there is a function call, one stack frame is added.
+With the @return@ the stack frame descends by one. Really simplified the stack frame looks as shown below.
 
 !images/ch_gc_macstack.jpg(Machine stack)!
+上（先端）above (top)
+下（末端）below (bottom)
+スタックフレーム stack frame
+現在実行中の関数フレーム presently executing function frame
 
-In this picture the tip of the stack is above but that isn't
-necessarily the case. For instance on a x86 machine the stack
-extends towards the lower ranked addresses.
+
+In this picture the top of the stack is depicted above, 
+but this it is not necessarily always the case that it goes
+from low addresses to high addresses. For instance on the x86
+machine the stack goes from high to low addresses.
 
 h3. `alloca()`
 
 By using `malloc()` it's possible to get an abitrarily large memory
 area of the heap. `alloca()` is the machine stack version of it.
-But inlike `malloc()` it's not necessary to free the memory allocated
+But unlike `malloc()` it's not necessary to free the memory allocated
 with `alloca()`. Or one should say: 
-it is freed automatically with the `return` of the function. 
+it is freed automatically with the @return@ of the function. 
 That's why it's not possible to have an allocated value as the return
 value (?). It's the same as "You must not return the pointer to
 a local variable."
@@ -56,28 +63,29 @@ a local variable."
 ここまではいい。長さを実行時に変えられる配列をローカルに割り当てられる、
 という程度のことだ。
 
-But there exist environments without a native `alloca()`.
+However there exist environments where there is no native `alloca()`.
+In this case there are still many who would like to use @alloca()@,
+they write versions of this function in @C@. 
 
 だが世の中にはネイティブの`alloca()`がない環境というのがある。そういう場
 合でも`alloca()`は使いたいと思う人は多いので、同じ働きをする関数がCで
 書いてあったりする。ただこの場合は「解放する必要がない」という特徴だけ
 が実装されていて、マシンスタック上にメモリを割り当ててくれるとは限らな
 い。と言うか、普通は取らない。それができるならそもそもネイティブの
-`alloca()`が実装できるということだからだ。
+`alloca()`が実装できるということだからだ。If you could do this a native
+@alloca()@ could have been implemented in the first place.
 
-How can one implement `alloca()` in C? The simplest implementation is:
-first allocate memory normally with `malloc()`
-
-`alloca()`をCで実装するにはどうするか。一番簡単な実装だと、まず
-普通に`malloc()`でメモリを割り当てる。そして`alloca()`を呼び出した関数と
-割り当てたアドレスの組をグローバルなリストに覚えさせておく。
-あとは次に`alloca()`が呼び出されたときについでにそのリストをチェックし、
-既に終了した関数で割り当てたメモリがあったら`free()`で解放すればいい
-(図2)。
+How can one implement @alloca()@ in C? The simplest implementation is:
+first allocate memory normally with @malloc()@. Then remember the function
+which called @alloca()@ and the assigned addresses in a global list.
+After that whenever @alloca()@ is called check this list if the calling 
+function has already finished. If so set the allocated memory free with
+@free()@. 
 
 !images/ch_gc_calloca.jpg(Cで実装した`alloca()`の動き)!
 
-`ruby`の`missing/alloca.c`がこのエミュレート版`alloca()`の実装例だ。
+ The @missing/alloca.c@ in @ruby@ is an example of an emulated @alloca()@.
+
 
 h2. Overview
 
@@ -86,20 +94,26 @@ garbage collection.
 
 h3. What is GC?
 
-There is usually an object in the memory. If a lot of objects are made, a lot of memories are used as a natural result. There must actually be a limit in the amount of the memory though there is no problem if the memory can be infinitely used. Therefore, the memory not used should be collected and be recycled. It is necessary to return the memory gotten by `malloc() ` by `free() ` if it says a little more concretely.
+Objects are normally on top of the memory. Naturally, if a lot of objects are created, a lot of memory is used. If memory
+were infinite there would be no problem but at present there is always a limit to memory. That's why the memory which is not
+used anymore must be collected and recycled. More concretely the memory received through @malloc()@ must be returned with
+@free()@.
 
-しかし`malloc()`と`free()`の管理を全てプログラマにやらせるとプログラマはと
-ても大変である。特にオブジェクト指向プログラムではオブジェクト同士が相
-互に参照しあっていて、どのタイミングでメモリを解放すればいいのかわかり
-にくい。
+However, it is difficult to leave the management of @malloc()@ and @free()@ to the
+program. Especially in object oriented programming if objects reference each other,
+it is difficult to tell when to release memory.
 
 そこでガーベージコレクションだ。
-ガーベージコレクション(garbage collection、以下GC)とは、
-必要のなくなった
-メモリを自動的に検出し解放してくれる機能である。GCさえ
-あれば「いつ`free()`したらいいんだー」などと悩む必要がない。これがあるのと
-ないのではプログラムの書きやすさが格段に違うのだ。
+There garbage collection comes in.
+With garbage collection the memory which has become unnecessary,
+is gathered and automatically freed. With garbage collection
+the worry, when to release some memory with @free(), has become
+unnecessary. Depending on this the writing of a program becomes
+considerably easier.
 
+Besides, in some book there was written: Garbage collection cleans up
+usable memory which has become fragmented. This is an action called 
+compaction. It makes the memory more compact.
 ところで、以前何かの本に「使えるメモリがこまぎれになっているのを整理す
 るのがGC」と書いてあったのを見たことがある。これは「
 コンパクション(compaction)」と言う作業だ。
@@ -119,37 +133,36 @@ Boehm GC\footnote{Boehm GC `http://www.hpl.hp.com/personal/Hans_Boehm/gc`}と
 
 h3. What does GC do?
 
-GCのアルゴリズムについて説明するにはまず、「GCとは何であるか」を
-説明しないといけない。つまり「必要のないメモリ」とはどういう状態に
-あるメモリか、ということである。
+Before we explain the GC algorithm, we should explain what garbage collection
+is. In other words how can we tell that memory has become unnecessary?
 
-話を具体的にするためにオブジェクトとリンクだけに構造を単純化しよう。
-つまり図3のような状態になっている。
+To keep it more concrete let's simplify the structure and assume that there
+are only objects and links. This would look as shown in figure 3.
 
 !images/ch_gc_objects.jpg(Objects)!
 
-グローバル変数から指されていたり、言語のスタック上にあるオブジェクトは
-まず「確実に必要」である。さらにそのオブジェクトのインスタンス変数など
-から指されているオブジェクトも必要である。さらにそれらのオブジェトから
-リンクを辿って到達できるオブジェクトもやはり必要だ。
+Object referred in global variables or objects on top of the language stack
+are surely necessary. And objects referred to in instance variables of these
+objects are also necessary. Again following links we reach more necessary 
+objects.
 
-これをもう少し論理的に言うと、「確実に必要」なオブジェクトを起点として
-再帰的にリンクを辿ったときに到達できるオブジェクト全てが必要である、と
-なる。図4にそのイメージを書いた。線の左側にあるのが「確実
-に必要なオブジェクト」で、そこから辿れるものが黒く塗りつぶされている。
-この黒く塗られたオブジェクトが必要なものだ。残りは解放してよい。
+To put it more systematically, the necessary objects are all objects which
+can be reached recursively via links starting at the surely necessary objects.
+This is depicted in figure 4. Left of the line are all obviously necessary objects.
+The objects which can be reached from them are colored black. These are the
+necessary objects. The rest of the objects can be released.
 
 !images/ch_gc_gcimage.jpg(Necessary and unnecessary objects)!
 
-専門用語だとこの「確実に必要なオブジェクト」のことを
-「GCのルート」と呼ぶことになっている。
-必要なオブジェクトを辿った結果として見えて
-くるツリー構造の根(root)になるからだ。
+To put it into jargon , the surely necessary objects 
+are the garbage collection root. It becomes the root 
+of the tree of object links.
 
 h3. Mark and Sweep
 
-GC was first implemented in Lisp. The GC in Lisp, so the world's first
-GC was of the type _mark&sweep_. Ruby's GC is of the same type.
+GC was first implemented in Lisp. The GC in Lisp, the world's first
+GC was of the type mark&amp;sweep. Ruby's GC is of the same type.
+
 
 マーク&amp;スイープGCのイメージは「必要なオブジェクト」の定義にかなり近い。
 まずルートオブジェクトに「マーク」を付ける。そしてこれを出発点として、
@@ -160,27 +173,26 @@ GC was of the type _mark&sweep_. Ruby's GC is of the same type.
 全部チェックし、マークのついていないオブジェクトを全部解放する(スイー
 プ)。スイープはマインスイーパのsweep(掃除する)だ。
 
-長所は二点である。
+There are two advantages.
 
-* GCの実装以外の場所ではGCのことを(あまり)考えなくていい
-* サイクルも解放できる(サイクルについてはリファレンスカウントの項を参照)
+* There does not need to be any (or almost any) concern for garbage collection
+outside the implementation of GC.
+* Cycles can also be released. (Look up cycles in the section "Reference Count" below)
 
-短所もやはり二点。
+There are also two disadvantages.
 
-* スイープのため最低一度はオブジェクトを全部なめる必要がある
-* GCの負荷が一点に集中する
+* In order to make the sweep every object must be touched at least once.
+* The load of the GC is concentrated at one point.
 
-エディタのEmacsを使っているとときどき「`Garbage collecting...`」と出て
-反応が全くなくなることがあるのだが、そのときにGCをやっているのである。
-これは二点目の短所がモロに出る例だ。ただしこの点はアルゴリズムを変える
-ことで改善できる(インクリメンタルGCと言う)。
+If you use the emacs editor there appears sometimes a @Garbage collecting...@
+and it completely stops reacting. That is an example of the second disadvantage.
+But this point can be alleviated by modifying the algorithm (incremental GC).
 
 h3. Stop and Copy
 
-ストップ&amp;コピーGCはマーク&amp;スイープGCの変形である。まずオブジェクト領域
-を複数用意する。ここでは話を単純にするために領域AとBの二つとしよう。そ
-して片方に「active」マークを付けておき、オブジェクトを生成するときは
-activeなほうにだけ作る(図5)。
+Stop and Copy is a variation of Mark and Sweep. First we prepare the object area in several
+ways. We simplify by assuming there are two areas @A@ and @B@. We mark both as @active@.
+Always when creating an object we mark it as @active@.
 
 !images/ch_gc_stop2.jpg(Stop and Copy (1))!
 
@@ -201,10 +213,11 @@ The second point is both good and bad:
 * The area needed for storing objects needs to be twice as big
 * The position of the object changes
 
-世の中うまいことばかりではないようだ。
+There does not seem to be an allaround positive thing. 
 
 h3. Reference counting
 
+Reference count differs a bit from the aforementioned,
 リファレンスカウントはこれまでのものとは少し違い、到達チェックを
 コードのあちこちに分散させるようになっている。
 
@@ -220,14 +233,15 @@ There are two advantages:
 * The load of GC is distributed to the entire program. 
 * The object that became unnecessary is immediately freed. 
 
-そして短所も二点だ。
+And there are two disadvantages.
 
-* カウンタ操作を忘れがち
-* 単純にやるとサイクルを解放できない
+* Handling the counters tends to be forgotten.
+* When doing it naively cycles are not released.
 
-二点目について解説しておこう。サイクル(cycle)とは
-図8のように参照関係が循環している状態のことだ。
-こうなってしまうとカウンタが減らなくなり、絶対に解放されなくなる。
+Let's explain about the second point. A cycle is 
+a cycle of references as shown in figure 8.
+If this is the case the counters will never vanish
+and the objects will not be released. 
 
 !images/ch_gc_cycle.jpg(Cycle)!
 
@@ -243,7 +257,7 @@ h2. Object Management
 <pre class="emlist">
 void not_ok()
 {
-    malloc(1024);  /* メモリをもらっては捨てる */
+    malloc(1024);  /* receive memory and discard it */
 }
 </pre>
 
@@ -252,24 +266,24 @@ However, the following functions do not cause the memory leak.
 <pre class="emlist">
 void this_is_ok()
 {
-    rb_ary_new();  /* Rubyの配列を作っては捨てる */
+    rb_ary_new();  /* create a ruby array and discard it */
 }
 </pre>
 
-`rb_ary_new()`はその中で`ruby`の正式インターフェイスを使ってメ
-モリを割り当てるので`ruby`のGCの管理下にあり、`ruby`が面倒を
-見てくれる。
+@rb_ary_new()@ uses Ruby's proper interface to allocate memory.
+Ruby's garbage collection will take care of it.
 
 h3. `struct RVALUE`
 
-オブジェクトの実体は構造体だったから、オブジェクトの管理とは即ちこの構
-造体の管理だ。もちろん非ポインタの`Fixnum Symbol nil true false`などは
-例外だが、しつこくなるのでそれはいちいち書かない。
+As objects are really structures, object management is really
+management of these structures. Of course there are also the non-pointer 
+objects like @Fixnum Symbol nil true false@ which are not of this form.
+We will not deal with this distinction here. 
 
-実体の構造体のサイズは型ごとにマチマチだが、恐らく管理が大変になるの
-を避けるためだろう、組み込みクラスの構造体の共用体を宣言して、メモリを
-さわるときは常にその共用体を介して扱うようになっている。その共用
-体の宣言がこれだ。
+The size of the structure varies for the different types, how can we
+keep management simple? We declare a union type of all the structures of 
+embedded classes. When we deal with memory we will deal with this union type.
+The declaration of this union type is as follows.
 
 ▼ `RVALUE`
 <pre class="longlist">
@@ -301,6 +315,7 @@ h3. `struct RVALUE`
 (gc.c)
 </pre>
 
+The elements of @struct RVALUE@ is only one @struct@. 
 `struct RVALUE`は要素が一つだけの構造体だ。`union`を直接使わないのはデバッ
 グや将来の拡張のときに簡単にメンバを増やせるようにするためだそうである。
 
@@ -334,19 +349,20 @@ The memory for all the object structures has been brought together in global var
 (gc.c)
 </pre>
 
-`heaps`は`struct RVALUE`の配列の配列だ。`heapS`だから、入っている配列
-一本一本が`heap`だろう。`heap`の要素一つ一つは`slot`である
+@heaps@ is an array of arrays of @struct RVALUE@. The contained arrays
+are each a @heap@. The elements of @heap@ are each a @slot@.
 (図9)。
 
 !images/ch_gc_heapitems.jpg(Heap slots)!
 
-`heaps`の長さは`heaps_length`で可変。そのうち実際に使っているスロット
-の数が`heaps_used`。`heap`一本の長さは対応する`heaps_limits[index]`に
-入っている。つまりオブジェクトヒープの構造は図10のようになる
-だろう。
+The length of @heaps@ can be changed in @heap_length@. The number of 
+the slots actually in use is @heaps_used@. The length of each heap
+is in the corresponding @heaps_limits[index]@. In other words the 
+structure of the object heap is as depicted in figure 10.
 
 !images/ch_gc_heaps.jpg(conceptual diagram of `heaps` in memory)!
 
+This structure must necessarily be this way.
 この構造には必然性がある。例えば全ての構造体を一つの配列に配置すると
 メモリ空間は最もコンパクトになるが、アドレスが変わってしまう恐れがある
 ので`realloc()`できない。`VALUE`は単なるポインタだからだ。
@@ -461,7 +477,7 @@ h3. `rb_newobj()`
 領域を割り当ててくれるので問題ない。そして`freelist`から構造体を
 一つ取り出し、`MEMZERO()`で0を充填、それを返す、となる。
 
-h2. マーク
+h2. Mark
 
 説明したとおり、`ruby`のGCはマーク&amp;スイープである。マークとは具体的には
 `FL_MARK`フラグをセットすることだ。使われている`VALUE`を探しては
@@ -507,7 +523,7 @@ h3. `rb_gc_mark()`
 (gc.c)
 </pre>
 
-まず`RANY()`の定義はこうだ。特にたいしたものではない。
+The definition of @RANY()@ is as follows. It is not particularly important.
 
 ▼ `RANY()`
 <pre class="longlist">
@@ -711,11 +727,11 @@ h3. Ruby Stack
 
 The frame, the class scope, the local variable scope, and the block local variable at that time are maintained respectively by the variable to which `ruby_frame ruby_class ruby_scope ruby_dyna_vars` points at the head of the stack of the evaluation machine respectively. 
 
-h3. レジスタ
+h3. Register
 
 次にCPUのレジスタをマークする。
 
-▼ レジスタのマーク
+▼ marking the registers
 <pre class="longlist">
 1148      FLUSH_REGISTER_WINDOWS;
 1149      /* ここで全てのレジスタがjmp_bufに保存されなければならない */
@@ -726,7 +742,7 @@ h3. レジスタ
 (gc.c)
 </pre>
 
-`FLUSH_REGISTER_WINDOWS`は特殊なので後にまわす。
+`FLUSH_REGISTER_WINDOWS` is special. We will come to it later.
 
 `setjmp()`は本当は遠隔ジャンプのための関数なのだけど、
 その副作用として引数(`jmp_buf`型の変数)にレジスタの内容を
@@ -885,7 +901,7 @@ h4. `is_pointer_to_heap()`
 限りそうそう`VALUE`でない値を拾うことはないと思われるので、GCで
 得られる利点を考えれば十分に妥協できる。というわけだ。
 
-h4. レジスタウィンドウ
+h4. The Register Window
 
 最後に後回しにしておいた`FLUSH_REGISTER_WINDOWS()`について。
 
@@ -1126,7 +1142,7 @@ Cのグローバル変数に`VALUE`を入れる場合は`rb_gc_register_address(
 
 ここまででマークフェイズは終わりだ。
 
-h2. スイープ
+h2. Sweep
 
 h3. `NODE`の特別扱い
 
@@ -1288,7 +1304,7 @@ h3. `rb_gc_force_recycle()`
 仕組みはたいしたことはないが、第二部・第三部で何度か出会うことになるので
 紹介しておいた。
 
-h2. 考察
+h2. Closing Thoughts
 
 h3. 領域の解放
 
@@ -1465,7 +1481,7 @@ h3. インタプリタ内
 `ruby.c`ではファイルをロードしたあとで`rb_gc()`することがある。スイープの
 ところで書いたとおり、コンパイル中に`NODE`をGCできないのを補うためである。
 
-h2. オブジェクトの生成
+h2. Object Creation
 
 GCの話が終わってRubyオブジェクトの生成から解放までを扱えるように
 なったので、ここでオブジェクトの生成についての話をしておこう。これは
