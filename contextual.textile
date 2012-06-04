@@ -1,60 +1,63 @@
+---
+layout: default
+---
 
 h1. Chapter 11: State Equipped Scanner
 
 
 h2. Summary
- 
+
 In theory, the scanner simply  divides a source line in tokens.&nbsp&nbsp The parser
-then steps through the tokens branching as appropriate to compute the desired action.&nbsp&nbsp 
-It would seem that scanner and the parser could act independently.&nbsp&nbsp But as usual with 
+then steps through the tokens branching as appropriate to compute the desired action.&nbsp&nbsp
+It would seem that scanner and the parser could act independently.&nbsp&nbsp But as usual with
 real world,&nbsp it does not work out that way.
- 
- 
+
+
 It turns out that the scanner and parser have to work together.&nbsp&nbsp The result for Ruby is a reasonably complex state machine driven scanner that feeds the parser to produce the correct result.&nbsp&nbsp To be clear,&nbsp  both the scanner and the parser manipulate the state variable of the scanner.&nbsp&nbsp In other words, the scanner and the parser are talking to each other.
- 
+
 
 
 
 h3. Concrete example
 
- 
-In many languages white-space outside string literals does not greatly effect the language.&nbsp&nbsp Source lines are often terminated explicitly.&nbsp&nbsp  In 'C' a source line is terminated with a semi-colon ( ';' )&nbsp  or the closing of a block (i.e. '}' ). 
 
- 
+In many languages white-space outside string literals does not greatly effect the language.&nbsp&nbsp Source lines are often terminated explicitly.&nbsp&nbsp  In 'C' a source line is terminated with a semi-colon ( ';' )&nbsp  or the closing of a block (i.e. '}' ).
+
+
 For Ruby the interpretation of a statement can change completely when additional tokens are processed.&nbsp&nbsp The source fragment "a[i]" can be,&nbsp depending on context,&nbsp either an <i>indexed variable</i>&nbsp or a <i>method call with implicit parenthesis's</i>.
- 
+
 <pre class="graylist">
-a[i] = 1                # a[i] = (1) - Index substitution 
+a[i] = 1                # a[i] = (1) - Index substitution
 a[i]                    # a([i])     - Method with implicit parameter.
 </pre>
- 
-This sort of dramatic change in interpretation occurs in Ruby because the language itself is has a very flexible syntax.&nbsp&nbsp Ask yourself,&nbsp how many languages allow implicit parenthesis's?&nbsp&nbsp 
- 
- 
-Ruby's flexible syntax means that a blank can change how a statement is interpreted by Ruby.&nbsp  Consider the following two statements: 
- 
+
+This sort of dramatic change in interpretation occurs in Ruby because the language itself is has a very flexible syntax.&nbsp&nbsp Ask yourself,&nbsp how many languages allow implicit parenthesis's?&nbsp&nbsp
+
+
+Ruby's flexible syntax means that a blank can change how a statement is interpreted by Ruby.&nbsp  Consider the following two statements:
+
 <pre class="graylist">
 a + 1              # (a) + (1)
 a +1               #  a (+1)
 </pre>
- 
+
 The first example is interpreted as:  &lt;variable&gt &lt;op&gt &lt;literal integer&gt.&nbsp&nbsp The second is interpreted as: &lt;method&gt &lt;literal integer parameter&gt.&nbsp&nbsp The same setup in 'C',&nbsp for example,&nbsp  would be interpreted identically.
- 
- 
+
+
 The bottom line is that the parsing and scanning is more complex with Ruby.&nbsp&nbsp The following sections will attempt to break the scanner down into small enough pieces to be understood.
- 
+
 
 h3. `Function yylex()`
- 
-The heart of the lexical scanner is <b>yylex()</b>.&nbsp&nbsp This function is often generated with the programs such as <b>lex</b>&nbsp or <b>flex</b>.&nbsp&nbsp In the case of Ruby,&nbsp the complexity of this function necessitated a hand written <i>State Equipped Scanner</i>&nbsp  that interacts the a <i>Bison</i> generated parser. 
- 
- 
-The following sections discuss the various scanner states and their functions. 
- 
+
+The heart of the lexical scanner is <b>yylex()</b>.&nbsp&nbsp This function is often generated with the programs such as <b>lex</b>&nbsp or <b>flex</b>.&nbsp&nbsp In the case of Ruby,&nbsp the complexity of this function necessitated a hand written <i>State Equipped Scanner</i>&nbsp  that interacts the a <i>Bison</i> generated parser.
+
+
+The following sections discuss the various scanner states and their functions.
+
 h3. `Lex_state`
 
 The current <i>state</i>&nbsp of the scanner is maintained the variable <b><i>lex_state</i></b>.&nbsp&nbsp It's declaration and the definition of it's enumerated states follows:
- 
+
 <pre class="greenlist">
 static enum lex_state {
     EXPR_BEG,        /* ignore newline, +/- is a sign.              */
@@ -70,839 +73,256 @@ static enum lex_state {
 
 (parse.y)
 </pre>
- 
+
 The prefix <b>'EXPR_'</b>&nbsp means <i>expression</i>.&nbsp&nbsp It is used remind us that the scanner is a expression processing engine.
- 
- 
+
+
 Specifically, EXPR_BEG indicates the <i>beginning of the expression</i>. EXPR_END indicates the <i>end of the expression</i>, EXPR_ARG <i>before method arguments</i>, and EXPR_FNAME before the name of the method (def, etc).
- 
+
 <hr>
 <font size=+3 color=BLUE>Rest of Chapter is Machine Translation</font>
 <hr>
- 
-The prefix ` EXPR_ ` of expression, "expression". ` EXPR_BEG `, "the head of the expression" 
-However ` EXPR_DOT ` "during the ceremony, after the dot." 
- 
-
- 
-Specifically explain. ` EXPR_BEG ` is "the beginning of expression," it shows. 
-` EXPR_END ` "at the end of the expression" the war. ` EXPR_ARG ` "method of argument" 
-Show. ` EXPR_FNAME ` is "(` def ` and others) in the name of the method".飛ばexplanation 
-After the analysis of them in detail. 
- 
-
- 
-By the way, ` lex_state ` shows that are "in parentheses after" "head sentence", rather it 
-The addition of that information, so that the scanner rather than the state of the state like parser 
-Feel. But the scanner is usually called the state. Why? 
- 
-
- 
-In fact, in this case, "state" is usually used "state" is a little different meaning. 
-` lex_state ` like "state" and the "state of the scanner would behave" 
-Means. For example ` EXPR_BEG ` to precisely "We own head scanner 
-Beginning of a sentence or salted cod to move like a state. " 
- 
-
- 
-In technical terms, use the scanner to see if the state machine and the state, say 
-Be. But what is there to explain the topics are too hard to break away from the SU 
-GIRU. Details of the structure of the data to the proper textbooks to read the見繕っ. 
-KITAI. 
- 
-
-
-
-h3.  state with a scanner reading  
-
- 
-State with a scanner to read the tips at any one time and not win them all. Par 
-Write for human services, with state does not want to use the scanner. 
-It is only natural that I do not want to be the main topic of the process. So scanner 
-The state management that is "associated with other parts of the trail as a bonus part" of 
-There are many. That is the entire state transition scanner It's a beautiful picture of the whole thing from the beginning 
-Existent. 
- 
-
- 
-What to do, and that the purpose-oriented and thorough It's a good read. "The 
-Solve this part, "" to solve this problem, this code is Oh 
-Of "the way the code to hack purpose. It's also the problem of interconnectedness 
-And never to start thinking about the shot. Say again, that is from the original source of 
-INODA. 
- 
-
- 
-Yet it is a certain amount of goals is necessary. Read with a scanner and the state 
-KINO goal is for each state than any other state to know what it is to put 
-Should be. For example ` EXPR_BEG ` What kind of state? It is an expression of the head and parser 
-Of it. And so on. 
- 
-
-h4.  static way  
-
- 
-That is, how can I know? Three ways. 
- 
-
- 
-*  state to see the name  
- 
-
- 
-ATARIMAE the easiest way. For example ` EXPR_BEG ` of course, the beginning of something 
-(Beginning) of what is expected, which they knew. 
- 
-
- 
-How *  behavior change in the status or details  
- 
-
- 
-Cutting the state-token or change in the way of what is. And the ratio of real movement and 
-Shown to all. 
- 
-
- 
-*  transition from state to tell me what you see  
- 
-
- 
-What kind of tokens from any state, or out of the transition. For example ` '\ n' ` after the Essential 
-ZU ` HEAD `, the status of the transition, it is sure to represent the beginning of the line 
-Sure. 
- 
-
- 
-` EXPR_BEG ` as an example to think. 
-` ruby ` If the state transition are all ` lex_state ` expressed in the assignment because it will 
-ZU ` EXPR_BEG ` assignment ` grep ` in the wash. That's where it is then exported. For example 
-` yylex () `-<code >'#'` and <code >'*'` and <code >'!'`…… and the like. And before the transition into consideration the state 
-That's true if you consider what (Figure 1). 
- 
-
- 
-<img src="images/ch_contextual_transittobeg.jpg" alt="(transittobeg)"> <br> 
-Figure 1: ` EXPR_BEG ` to transition 
- 
-
- 
-Oh I see, this is exactly the type of top-laden statement. Known. 
-In particular ` '\ n' ` and <code >';'`-tempered around it. And also open parentheses or comma 
-From there, this statement is not only an expression would be the beginning. 
- 
-
-h4.  dynamic way  
-
- 
-With a more convenient way to ascertain the actual behavior. For example debugger 
-` yylex () ` on a hook ` lex_state ` easy to see. 
- 
-
- 
-Or source code to modify the output to a state of transition, while making it 
-. ` lex_state ` If the assignment and the comparison is only a few patterns, which Tekito 
-Variations in the strike they perceive as a transition to書き換えれI output. This is attached 
-CD-ROM with a ` rubylex-analyser ` as a tool to 
-Ta \ footnote (` rubylex-analyser `: The accompanying CD-ROM ` tools / rubylex-analyser.tar.gz `). 
-This document is needed while using this tool to explain it. 
- 
-
- 
-General steps include, first and debugger tools in the sort of movement 
-Check out. And that information to determine the source code to see into the敷衍 
-Is good. 
- 
-
-
-
-h3.  each state  
-
- 
-` lex_state ` briefly about the condition of it. 
- 
-
- 
-*  ` EXPR_BEG `  
- 
-
- 
-The tip of expression. ` \ n (([!?:, ` operator ` op = ` and immediately after. 
-The most common condition. 
- 
 
- 
-*  ` EXPR_MID `  
- 
+The prefix ` EXPR_ ` of expression, "expression". ` EXPR_BEG `, "the head of the expression"
+However ` EXPR_DOT ` "during the ceremony, after the dot."
 
- 
-Book word ` return break next rescue ` shortly after. 
-Binomial operator ` * ` and ` & ` is disabled. 
-The behavior of ` EXPR_BEG ` and the like. 
- 
 
- 
-*  ` EXPR_ARG `  
- 
 
- 
-The method calls part of the name of the method, they just might be, 
-Or <code >'['` shortly after. 
-However ` EXPR_CMDARG ` location of the airport. 
- 
+Specifically explain. ` EXPR_BEG ` is "the beginning of expression," it shows.
+` EXPR_END ` "at the end of the expression" the war. ` EXPR_ARG ` "method of argument"
+Show. ` EXPR_FNAME ` is "(` def ` and others) in the name of the method".飛ばexplanation
+After the analysis of them in detail.
 
- 
-*  ` EXPR_CMDARG `  
- 
 
- 
-Usually the first method calls the format of the arguments before. 
-For details, "` do ` clash" section. 
- 
 
- 
-*  ` EXPR_END `  
- 
+By the way, ` lex_state ` shows that are "in parentheses after" "head sentence", rather it
+The addition of that information, so that the scanner rather than the state of the state like parser
+Feel. But the scanner is usually called the state. Why?
 
- 
-Is at the end of a sentence. For example, in parentheses after the literal. However ` EXPR_ENDARG `, 
-Except for one place. 
- 
 
- 
-*  ` EXPR_ENDARG `  
- 
 
- 
-` EXPR_END ` special edition. ` tLPAREN_ARG ` respond immediately after a closed parenthesis. 
-"The first argument parenthetical" section. 
- 
+In fact, in this case, "state" is usually used "state" is a little different meaning.
+` lex_state ` like "state" and the "state of the scanner would behave"
+Means. For example ` EXPR_BEG ` to precisely "We own head scanner
+Beginning of a sentence or salted cod to move like a state. "
 
- 
-*  ` EXPR_FNAME `  
- 
 
- 
-The name of the method. Specifically, ` def ` ` alias ` ` undef ` symbol <code >':'` of 
-Immediately after that. "`` </Code> "name alone. 
- 
 
- 
-*  ` EXPR_DOT `  
- 
+In technical terms, use the scanner to see if the state machine and the state, say
+Be. But what is there to explain the topics are too hard to break away from the SU
+GIRU. Details of the structure of the data to the proper textbooks to read the見繕っ.
+KITAI.
 
- 
-After the dot method calls. ` EXPR_FNAME ` and handling are similar. 
-Book all languages are treated as just an identifier. 
-`'`'` name alone. 
- 
 
- 
-*  ` EXPR_CLASS `  
- 
 
- 
-Spanish Book ` class ` behind. The only condition is quite limited. 
- 
 
- 
-In summary, 
- 
+h3.  state with a scanner reading
 
- 
-*  ` BEG MID `  
-*  ` END ENDARG `  
-*  ` ARG CMDARG `  
-*  ` FNAME DOT `  
- 
 
- 
-Each representing a similar situation. ` EXPR_CLASS `, but only a little special, 
-Some places are very limited in the first place because they do not have to think about. 
- 
+State with a scanner to read the tips at any one time and not win them all. Par
+Write for human services, with state does not want to use the scanner.
+It is only natural that I do not want to be the main topic of the process. So scanner
+The state management that is "associated with other parts of the trail as a bonus part" of
+There are many. That is the entire state transition scanner It's a beautiful picture of the whole thing from the beginning
+Existent.
 
 
 
+What to do, and that the purpose-oriented and thorough It's a good read. "The
+Solve this part, "" to solve this problem, this code is Oh
+Of "the way the code to hack purpose. It's also the problem of interconnectedness
+And never to start thinking about the shot. Say again, that is from the original source of
+INODA.
 
 
 
+Yet it is a certain amount of goals is necessary. Read with a scanner and the state
+KINO goal is for each state than any other state to know what it is to put
+Should be. For example ` EXPR_BEG ` What kind of state? It is an expression of the head and parser
+Of it. And so on.
 
 
+h4.  static way
 
 
+That is, how can I know? Three ways.
 
 
 
+*  state to see the name
 
 
 
+ATARIMAE the easiest way. For example ` EXPR_BEG ` of course, the beginning of something
+(Beginning) of what is expected, which they knew.
 
 
 
+How *  behavior change in the status or details
 
 
 
+Cutting the state-token or change in the way of what is. And the ratio of real movement and
+Shown to all.
 
 
 
+*  transition from state to tell me what you see
 
-h2.  new line of control  
 
-h3.  problem  
 
- 
-Ruby's sentence need not necessarily end. C or Java, for example, be sure to end 
-I have not put a semicolon is, Ruby does not need such things. 
-The basic line in one sentence, so the line at liberty to the end of the sentence. 
- 
+What kind of tokens from any state, or out of the transition. For example ` '\ n' ` after the Essential
+ZU ` HEAD `, the status of the transition, it is sure to represent the beginning of the line
+Sure.
 
- 
-But on the other hand "is more clear," If the sentence is automatically continue to 
-In the world. "Clearly there is more" state and the 
- 
 
- 
-*  comma after  
-*  INFIKKUSU operator after  
-*  parentheses not balanced  
-*  reserved word ` if ` immediately after  
- 
 
- 
-And so on. 
- 
+` EXPR_BEG ` as an example to think.
+` ruby ` If the state transition are all ` lex_state ` expressed in the assignment because it will
+ZU ` EXPR_BEG ` assignment ` grep ` in the wash. That's where it is then exported. For example
+` yylex () `-<code >'#'` and <code >'*'` and <code >'!'`…… and the like. And before the transition into consideration the state
+That's true if you consider what (Figure 1).
 
 
-h3.  implementation  
 
- 
-Such a grammar to achieve what? Simply scanner 
-Skip a line break is not alone. Ruby as a reserved word in a sentence ends区切 
-In the C language grammar is not about the collision, tried it lightly, ` return `, 
-` next `, ` break `, the method calls are cut back and通らなかったomitted parentheses. 
-That's the end of a sentence is to leave the sign will not have some form of termination. 
-That's ` \ n ` or <code >';'` regardless of whether they simply mark the end of some 
-Needed. 
- 
+<img src="images/ch_contextual_transittobeg.jpg" alt="(transittobeg)"> <br>
+Figure 1: ` EXPR_BEG ` to transition
 
- 
-There are two solutions. That is parser or resolve or settle in the scanner. 
-Parser would be resolved, ` \ n ` be allowed at all options ` \ n ` to rest 
-Grammar kick like if I can write. If you settle in the scanner, ` \ n ` meaningful 
-Where there is only ` \ n ` I pass a parser (skip other locations). 
- 
 
- 
-Whether to use is a question of taste, but usually respond to the scanner. The more you 
-I have a small number, and what the rules are messing about good sign 
-PASAJENERETA in the use of those means they are missing. 
- 
 
- 
-That's not to say in conclusion ` ruby ` new line is also dealing with the scanner. Successive lines 
-When you want to continue ` \ n ` skip to the end you want ` \ n ` send as a token. 
-That's ` yylex () ` here. 
- 
+Oh I see, this is exactly the type of top-laden statement. Known.
+In particular ` '\ n' ` and <code >';'`-tempered around it. And also open parentheses or comma
+From there, this statement is not only an expression would be the beginning.
 
- ▼  ` yylex () ` - ` '\ n' `  
-<pre class="longlist"> 
-3155 case '\ n': 
-3156 switch (lex_state) ( 
-3157 case EXPR_BEG: 
-3158 case EXPR_FNAME: 
-3159 case EXPR_DOT: 
-3160 case EXPR_CLASS: 
-3161 goto retry; 
-3162 default: 
-3163 break; 
-3164) 
-3165 command_start = Qtrue; 
-3166 lex_state = EXPR_BEG; 
-3167 return '\ n'; 
-
-(parse.y) 
-</pre> 
-
-
- 
-` EXPR_BEG ` ` EXPR_FNAME ` ` EXPR_DOT ` ` EXPR_CLASS `, ` goto retry `, 
-That is meaningless because it skipped. Labels ` retry ` is ` yylex () ` giant ` switch ` of 
-Before. 
- 
-
- 
-Others at the new line is meant to pass parser, incidentally 
-` lex_state ` and ` EXPR_BEG ` back. There is a new line means namely ` expr ` break 
-So. 
- 
 
- 
-Also ` command_start ` for the time being and should be ignored. The first said, 
-In many places at once and be sure to follow the confusion. 
- 
+h4.  dynamic way
 
- 
-Specifically, let's look at some examples. It's accompanying analysis tools 
-` rubylex-analyser ` to use. 
- 
 
-<pre class="screen"> 
-% Rubylex-analyser-e ' 
-m (a, 
-   b, c) unless i 
-' 
-+ EXPR_BEG 
-EXPR_BEG C "\ nm" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG "(" '(' EXPR_BEG 
-                                               0: cond push 
-                                               0: cmd push 
-EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG "," ',' EXPR_BEG 
-EXPR_BEG S "\ nb" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "," ',' EXPR_BEG 
-EXPR_BEG S "c" tIDENTIFIER EXPR_ARG 
-EXPR_ARG ")" ')' EXPR_END 
-                                               0: cond lexpop 
-                                               0: cmd lexpop 
-EXPR_END S "unless" kUNLESS_MOD EXPR_BEG 
-EXPR_BEG S "i" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "\ n" \ n EXPR_BEG 
-EXPR_BEG C "\ n" 'EXPR_BEG 
-</pre> 
+With a more convenient way to ascertain the actual behavior. For example debugger
+` yylex () ` on a hook ` lex_state ` easy to see.
 
- 
-There are a lot of output, we need only to the left and center field. Left 
-The field is ` yylex () ` before entering ` lex_state ` shows, and its token middle of the field 
-The symbol. 
- 
 
- 
-The first token ` m ` The second argument before and ` b ` in front of the new line that ` \ n ` to toe 
-Kung before the end of the stick and not come out as a symbol. ` lex_state ` is 
-` EXPR_BEG ` So. 
- 
 
- 
-But from the bottom of the second line ` \ n ` is at the end has emerged as a symbol. ` EXPR_ARG `. 
-. 
- 
+Or source code to modify the output to a state of transition, while making it
+. ` lex_state ` If the assignment and the comparison is only a few patterns, which Tekito
+Variations in the strike they perceive as a transition to書き換えれI output. This is attached
+CD-ROM with a ` rubylex-analyser ` as a tool to
+Ta \ footnote (` rubylex-analyser `: The accompanying CD-ROM ` tools / rubylex-analyser.tar.gz `).
+This document is needed while using this tool to explain it.
 
- 
-So, if using. The other example I would just take a look at. 
- 
 
-<pre class="screen"> 
-% Rubylex-analyser-e 'class 
-C <Object 
-end ' 
-+ EXPR_BEG 
-EXPR_BEG C "class" kCLASS EXPR_CLASS 
-EXPR_CLASS "\ nC" tCONSTANT EXPR_END 
-EXPR_END S "<" '<' EXPR_BEG 
-+ EXPR_BEG 
-EXPR_BEG S "Object" tCONSTANT EXPR_ARG 
-EXPR_ARG "\ n" \ n EXPR_BEG 
-EXPR_BEG C "end" kEND EXPR_END 
-EXPR_END "\ n" \ n EXPR_BEG 
-</pre> 
 
- 
-Spanish Book ` class ` After the ` EXPR_CLASS ` new line, so is ignored. 
-But superclass ceremony ` Object ` After the ` EXPR_ARG ` so ` \ n ` came. 
- 
+General steps include, first and debugger tools in the sort of movement
+Check out. And that information to determine the source code to see into the敷衍
+Is good.
 
-<pre class="screen"> 
-% Rubylex-analyser-e 'obj. 
-class' 
-+ EXPR_BEG 
-EXPR_BEG C "obj" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG "." '.' EXPR_DOT 
-EXPR_DOT "\ nclass" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "\ n" \ n EXPR_BEG 
-</pre> 
 
- 
-`'.'` after the ` EXPR_DOT ` so ` \ n ` were ignored. 
- 
 
- 
-By the way, ` class `, but is supposed to be reserved words, why ` tIDENTIFIER ` in the future. 
-To continue following paragraph. 
- 
 
+h3.  each state
 
 
+` lex_state ` briefly about the condition of it.
 
 
 
+*  ` EXPR_BEG `
 
 
 
+The tip of expression. ` \ n (([!?:, ` operator ` op = ` and immediately after.
+The most common condition.
 
 
 
+*  ` EXPR_MID `
 
 
-h2.  reserved words the same methods name  
 
-h3.  problem  
+Book word ` return break next rescue ` shortly after.
+Binomial operator ` * ` and ` & ` is disabled.
+The behavior of ` EXPR_BEG ` and the like.
 
- 
-Ruby is a reserved word in a method to use that name. However name of the method to use 
-And a mouthful to say but there are some context, 
- 
 
- 
-*  method definition (` def xxxx `)  
-*  call (` obj.xxxx `)  
-*  literal symbols (`: xxxx `)  
- 
 
- 
-The three could be used. Ruby is all this is possible. Each of the following 
-Let us consider. 
- 
+*  ` EXPR_ARG `
 
- 
-First, define the method has its own reserved words ` def ` likely to be preceded by, so we managed. 
- 
 
- 
-Method calls for the receiver to skip a lot of difficulty will be that of 
-Of them, but further specification is not limited to, and those are not allowed. - 
-Book word method means that if the name is never a receiver can not be omitted. Or 
-Is that right Perth designed to be able to say what might be the 
-. 
- 
 
- 
-And if the symbol is the termination symbol <code >':'` behind, so I managed to通せ 
-. However, in this case, but with the terms of the reservation <code >':'` is ` a? B: c ` collision with a colon 
-The problem. Even if you can get this resolved. 
- 
+The method calls part of the name of the method, they just might be,
+Or <code >'['` shortly after.
+However ` EXPR_CMDARG ` location of the airport.
 
- 
-In both cases the two are also possible. That is resolved scanner SU 
-Or resolution of the parser. If the resolution scanner, ` def ` and `. </Code> and `: ` Next to come 
-Book word ` tIDENTIFIER ` (and) I do. Parser resolve, SOUI 
-I write a thousand rules. ` ruby `, three each of both depending on the occasion. 
- 
 
 
+*  ` EXPR_CMDARG `
 
-h3.  method definition  
 
- 
-Methods defined portion of the name. This is the side deal with the parser. 
- 
 
- ▼  method defined rules  
-<pre class="longlist"> 
-                 | KDEF fname 
-                   f_arglist 
-                   bodystmt 
-                   kEND 
-                 | KDEF singleton dot_or_colon fname 
-                   f_arglist 
-                   bodystmt 
-                   kEND 
-</pre> 
+Usually the first method calls the format of the arguments before.
+For details, "` do ` clash" section.
 
 
- 
-There are two methods defined rules represent only their usual media-specific definitions and methods 
-Corresponds to the definition of sod. Both ` fname ` name is part of the ` fname ` is as follows: 
-Definition. 
- 
 
- ▼  ` fname `  
-<pre class="longlist"> 
-fname: tIDENTIFIER 
-                 | TCONSTANT 
-                 | TFID 
-                 | Op 
-                 | Reswords 
-</pre> 
+*  ` EXPR_END `
 
 
- 
-` reswords ` in terms of booking ` op ` is operator of two terms. Both rules are simply a symbolic end to all the ordinary 
-Only because all omitted. Then ` tFID ` is ` gsub! </Code> and ` include? </Code> like ending 
-A symbol of an eye. 
- 
 
+Is at the end of a sentence. For example, in parentheses after the literal. However ` EXPR_ENDARG `,
+Except for one place.
 
 
-h3.  method calls  
 
- 
-Booking terms and call on the scanner same name method to deal with. 
-Book scan the code word is the way they were. 
- 
+*  ` EXPR_ENDARG `
 
-<pre class="emlist"> 
-Scan identifier 
-result = (tIDENTIFIER or tCONSTANT) 
 
-if (lex_state! = EXPR_DOT) ( 
-     struct kwtable * kw; 
 
-     / * See if it is a reserved word. * / 
-     kw = rb_reserved_word (tok (), toklen ()); 
-     Book word processing 
-) 
-</pre> 
+` EXPR_END ` special edition. ` tLPAREN_ARG ` respond immediately after a closed parenthesis.
+"The first argument parenthetical" section.
 
- 
-` EXPR_DOT ` method is called after the dot, respectively. ` EXPR_DOT ` when the unconditional 
-Book word processing off from the dot after the punctuation is reserved word ` tIDENTIFIER `? 
-` tCONSTANT ` said. 
- 
 
 
+*  ` EXPR_FNAME `
 
-h3.  symbol  
 
- 
-Book parser terms and symbols are both addressed in the scanner. 
-First of all rules. 
- 
 
- ▼  ` symbol `  
-<pre class="longlist"> 
-symbol: tSYMBEG sym 
+The name of the method. Specifically, ` def ` ` alias ` ` undef ` symbol <code >':'` of
+Immediately after that. "`` </Code> "name alone.
 
-sym: fname 
-                 | TIVAR 
-                 | TGVAR 
-                 | TCVAR 
 
-fname: tIDENTIFIER 
-                 | TCONSTANT 
-                 | TFID 
-                 | Op 
-                 | Reswords 
-</pre> 
 
+*  ` EXPR_DOT `
 
- 
-In this way, explicitly reserved word parser (` reswords `) to pass. This 
-U can be used solely ` tSYMBEG ` is the only sign before the end of the symbol 
-Is <code >':'`だっor can not do so well. Conditional operator (` a? B: c `) and the collision 
-Doomed. In other words level scanner ` tSYMBEG ` The point is to tell 
-Particularly, remains unchanged. 
- 
-
- 
-How does the distinction between doing? Let's look at the implementation of the scanner. 
- 
 
- ▼  ` yylex ` - `':'`  
-<pre class="longlist"> 
-3761 case ':': 
-3762 c = nextc (); 
-3763 if (c == ':') ( 
-3764 if (lex_state == EXPR_BEG | | lex_state == EXPR_MID | | 
-3765 (IS_ARG () & & space_seen)) ( 
-3766 lex_state = EXPR_BEG; 
-3767 return tCOLON3; 
-3768) 
-3769 lex_state = EXPR_DOT; 
-3770 return tCOLON2; 
-3771) 
-3772 pushback (c); 
-3773 if (lex_state == EXPR_END | | 
-                   lex_state == EXPR_ENDARG | | 
-                   ISSPACE (c)) ( 
-3774 lex_state = EXPR_BEG; 
-3775 return ':'; 
-3776) 
-3777 lex_state = EXPR_FNAME; 
-3778 return tSYMBEG; 
-
-(parse.y) 
-</pre> 
-
-
- 
-The first half ` if ` is <code >':'` followed with two. When this principle is best left longest match 
-Priority <code >'::'` to scan. 
- 
-
- 
-The next ` if ` is just the operator said conditions <code >':'`. ` EXPR_END ` and ` EXPR_ENDARG ` is 
-Both at the end of the ceremony, the argument is a symbol that is coming is impossible because…… 
-Conditions operator <code >':'` said. 
-The following letter was space (` ISSPACE (c) `) even when it is a symbol 
-Maybe because of the conditional operator. 
- 
-
- 
-And above that are not in either case, every symbol. In this case 
-` EXPR_FNAME ` transition to prepare for any method name. Perth is anything bother 
-But no, this scanner is to forget the value of reserved words for me to pass the 
-Calculating the value in the bend. 
-
-h2> qualifier  
-
-h3.  problem  
-
- 
-For example ` if ` to the regular and post-qualified the notations. 
- 
-
-<pre class="emlist"> 
-Usually notation # 
-if cond then 
-   expr 
-end 
-
-# Postposing 
-expr if cond 
-</pre> 
-
- 
-This is also the cause of the collision. Why is that, I knew this method also parentheses 
-Back cause. For example, in this case. 
- 
-
-<pre class="emlist"> 
-call if cond then a else b end 
-</pre> 
-
- 
-This equation is ` if ` until I read it in the next two to interpretation. 
- 
-
-<pre class="emlist"> 
-call ((if ....)) 
-call () if .... 
-</pre> 
-
- 
-If you are unsure what I have to try it, whether we go conflict. During grammar 
-The ` kIF_MOD ` and ` kIF ` changing ` yacc ` handled it a try. 
- 
-
-<pre class="screen"> 
-% Yacc parse.y 
-parse.y contains 4 shift / reduce conflicts and 13 reduce / reduce conflicts. 
-</pre> 
-
- 
-まくっstreet clashes with the attempt. If you have any interest ` yacc ` in `-v ` options 
-As the log, while reading in the world. Details of the crash or how to write. 
- 
-
-
-h3.  implementation  
-
- 
-Now, what do I do? ` ruby `, normal ` if ` and ` kIF `, the post-` if ` to 
-` kIF_MOD ` as a symbol level (in other words, the scanner level) to distinguish between the 
-Syscall-hooking. After置系other operators are identical, 
-` kUNLESS_MOD kUNTIL_MOD kWHILE_MOD ` ` kRESCUE_MOD ` in ` kIF_MOD ` of 
-According to five. The decisions we are following him. 
- 
-
- ▼  ` yylex ` - reserved words  
-<pre class="longlist"> 
-4173 struct kwtable * kw; 
-4174 
-4175 / * See if it is a reserved word. * / 
-4176 kw = rb_reserved_word (tok (), toklen ()); 
-4177 if (kw) ( 
-4178 enum lex_state state = lex_state; 
-4179 lex_state = kw-> state; 
-4180 if (state == EXPR_FNAME) ( 
-4181 yylval.id = rb_intern (kw-> name); 
-4182) 
-4183 if (kw-> id [0] == kDO) ( 
-4184 if (COND_P ()) return kDO_COND; 
-4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
-4186 return kDO_BLOCK; 
-4187 if (state == EXPR_ENDARG) 
-4188 return kDO_BLOCK; 
-4189 return kDO; 
-4190) 
-4191 if (state == EXPR_BEG) / *** *** here / 
-4192 return kw-> id [0]; 
-4193 else ( 
-4194 if (kw-> id [0]! = Kw-> id [1]) 
-4195 lex_state = EXPR_BEG; 
-4196 return kw-> id [1]; 
-4197) 
-4198) 
 
-(parse.y) 
-</pre> 
+After the dot method calls. ` EXPR_FNAME ` and handling are similar.
+Book all languages are treated as just an identifier.
+`'`'` name alone.
 
 
- 
-This is because ` yylex ` at the end of the identifier after a scan. The last (most in 
-Side) ` if ` in ` else ` is qualified to handle part of the child. ` EXPR_BEG ` whether to return value 
-To see that change. This is qualified to determine whether the child. That is variable ` kw ` is 
-Key. And ` kw ` is much…… and we go on, ` struct kwtable ` and 
-Understandable. 
- 
 
- 
-` struct kwtable ` is ` keywords ` defined in the structure, 
-Hash function ` rb_reserved_word () ` is ` gperf ` would make it the 
-In the previous chapter. Invite people to re-structure. 
- 
+*  ` EXPR_CLASS `
 
- ▼  ` keywords ` - ` struct kwtable `  
-<pre class="longlist"> 
-    1 struct kwtable (char * name; int id [2]; enum lex_state state;); 
 
-(keywords) 
-</pre> 
 
+Spanish Book ` class ` behind. The only condition is quite limited.
 
- 
-` name ` and ` id [0] ` are illustrated. Italian names and symbols of the Book. 
-The remaining members talk about. 
- 
 
- 
-First ` id [1] ` qualifier problem now is a symbol of support. For example ` if `, 
-` kIF_MOD `. 
-Book version of Italian qualifier is not ` id [0] ` and ` id [1] ` is the same thing is going on. 
- 
 
- 
-And ` state ` is ` enum lex_state ` So, after I read the word reservation should be a state of transition. 
-Let's keep that combination to the list. The output of my own making 
-Tools ` kwstat.rb ` obtained. This is the accompanying CD-ROM. 
-Ta \ footnote (` kwstat `: The accompanying CD-ROM ` tools / kwstat.rb `). 
- 
+In summary,
 
-<pre class="screen"> 
-% Kwstat.rb ruby / keywords 
----- EXPR_ARG 
-defined? super yield 
 
----- EXPR_BEG 
-and case else ensure if module or unless when 
-begin do elsif for in not then until while 
 
----- EXPR_CLASS 
-class 
+*  ` BEG MID `
+*  ` END ENDARG `
+*  ` ARG CMDARG `
+*  ` FNAME DOT `
 
----- EXPR_END 
-BEGIN __FILE__ end nil retry true 
-END __LINE__ false redo self 
 
----- EXPR_FNAME 
-alias def undef 
 
----- EXPR_MID 
-break next rescue return 
+Each representing a similar situation. ` EXPR_CLASS `, but only a little special,
+Some places are very limited in the first place because they do not have to think about.
 
----- Modifiers 
-if rescue unless until while 
-</pre> 
 
 
 
@@ -921,1770 +341,2353 @@ if rescue unless until while
 
 
 
-h2.  ` do ` clash  
 
-h3.  problem  
 
 
- 
-The format is iterator ` do ` in ` end ` and ` (` in `) ` There are two types. These two 
-The difference in priority order, ` (` in `) ` it is much higher. It is a high priority 
-Grammar units as "small", it is smaller than the rule 
-. For example ` stmt ` well as ` expr ` and ` primary ` have access to. For example 
-I used to be ` (` in `) ` iterator is ` primary `, ` do ` in ` end ` iterator is < code> stmt ` was. 
- 
 
- 
-However, during a ceremony following the requests came. 
- 
 
-<pre class="emlist"> 
-m do .... end + m do .... end 
-</pre> 
 
- 
-This is to allow ` do ` in ` end ` iterator ` arg ` and ` primary `-money. 
-But ` while ` is conditional expression ` expr `, that is ` arg ` and ` primary `, including, 
-Here ` do ` conflict. Specifically, when the following. 
- 
 
-<pre class="emlist"> 
-while m do 
-   .... 
-end 
-</pre> 
 
- 
-Look at the kind of ` do ` is ` while `-` do ` rightness of becoming so. Only 
-And the common good of ` m do ` in ` end ` a tie is possible. And confuse people 
-It is of ` yacc ` If you run into a certainty. In fact, let's do it. 
- 
+h2.  new line of control
 
-<pre class="emlist"> 
-/ * Do * collision experiments / 
-% token kWHILE kDO tIDENTIFIER kEND 
-%% 
-expr: kWHILE expr kDO expr kEND 
-     | TIDENTIFIER 
-     | TIDENTIFIER kDO expr kEND 
-</pre> 
+h3.  problem
 
- 
-` while `, variable reference, a simple enumeration of only problem. This rule is conditional expression 
-At the beginning of ` tIDENTIFIER ` is coming shift / reduce conflict cause. ` tIDENTIFIER ` to 
-Reference to the variable ` do ` and ` while ` as a mark of the reduction, iterator ` do `, it's 
-Shift. 
- 
 
- 
-Worse shift / reduce conflict is a priority shift, so leave and ` do ` is Lee 
-The TERETA ` do ` said. Or operator, saying it wants to turn reduction and other priorities and ` do ` of all 
-It no longer shifts, ` do ` itself is not working. This means that all the problems pike 
-The solution is no shield, ` do ` in ` end ` iterator ` expr ` operator without having to use the 
-To write the rules of the scanner can only be resolved level. 
- 
+Ruby's sentence need not necessarily end. C or Java, for example, be sure to end
+I have not put a semicolon is, Ruby does not need such things.
+The basic line in one sentence, so the line at liberty to the end of the sentence.
 
- 
-But ` do ` in ` end ` iterator ` expr ` out is a very unrealistic. 
-` expr ` for the rule (that is ` arg ` and ` primary ` too) and repeat all 
-IKENAKU. Therefore this problem is solved in a proper scanner. 
- 
 
 
-h3.  level of resolution rules  
+But on the other hand "is more clear," If the sentence is automatically continue to
+In the world. "Clearly there is more" state and the
 
- 
-The following rules related to a reduction. 
- 
 
- ▼  ` do ` symbol  
-<pre class="longlist"> 
-primary: kWHILE expr_value do compstmt kEND 
 
-do: term 
-                 | KDO_COND 
+*  comma after
+*  INFIKKUSU operator after
+*  parentheses not balanced
+*  reserved word ` if ` immediately after
 
-primary: operation brace_block 
-                 | Method_call brace_block 
 
-brace_block: '(' opt_block_var compstmt ')' 
-                 | KDO opt_block_var compstmt kEND 
-</pre> 
 
+And so on.
 
- 
-Here's looking at, ` while `-` do ` and iterator ` do ` terminated by different symbols. 
-` while ` is ` kDO_COND `, will Iterators ` kDO `. After the scanner 
-I do distinguish. 
- 
 
 
+h3.  implementation
 
-h3.  symbolic level of resolution  
 
- 
-The following is many times seen ` yylex ` the word processing part of the reservation. 
-` do ` that the process is here only because the code here 
-See note on studying the criteria should be. 
- 
-
- ▼  ` yylex ` - identifier - Pre-language  
-<pre class="longlist"> 
-4183 if (kw-> id [0] == kDO) ( 
-4184 if (COND_P ()) return kDO_COND; 
-4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
-4186 return kDO_BLOCK; 
-4187 if (state == EXPR_ENDARG) 
-4188 return kDO_BLOCK; 
-4189 return kDO; 
-4190) 
-
-(parse.y) 
-</pre> 
-
-
- 
-What is messing about, ` kDO_COND ` related to only look at it. Because, 
-` kDO_COND ` and ` kDO ` / ` kDO_BLOCK ` a comparison, ` kDO ` and ` kDO_BLOCK `. 
-A comparison is meaningless, but the comparison is meaningless. Conditions are now 
-` do ` I can not even distinguish that, together with other conditions that do not follow. 
- 
-
- 
-In other words ` COND_P () ` is key. 
- 
-
-
-
-h3.  ` COND_P () `  
-
-h4.  ` cond_stack `  
-
- 
-` COND_P () ` is ` parse.y ` defined near the beginning. 
- 
-
- ▼  ` cond_stack `  
-<pre class="longlist"> 
-   75 # ifdef HAVE_LONG_LONG 
-   76 typedef unsigned LONG_LONG stack_type; 
-   77 # else 
-   78 typedef unsigned long stack_type; 
-   79 # endif 
-   80 
-   81 static stack_type cond_stack = 0; 
-   82 # define COND_PUSH (n) (cond_stack = (cond_stack <<1) | ((n) & 1)) 
-   83 # define COND_POP () (cond_stack>> = 1) 
-   84 # define COND_LEXPOP () do (\ 
-   85 int last = COND_P (); \ 
-   86 cond_stack>> = 1; \ 
-   87 if (last) cond_stack | = 1; \ 
-   88) while (0) 
-   89 # define COND_P () (cond_stack & 1) 
-
-(parse.y) 
-</pre> 
-
-
- 
-- <Code> stack_type ` is ` long ` (32 bits) or ` long long ` (64 bits). 
-` cond_stack ` in Perth at the start of ` yycompile () ` initialized, and always after the macro 
-To be handled through the macros do I know. 
- 
-
- 
-The macro ` COND_PUSH ` / ` POP ` to see that the unit's stack apparently bit integer 
-Use it as. 
- 
-
-<pre class="emlist"> 
-MSB ← → LSB 
-The initial value of 0 ... 0000000000 
-... 0000000001 COND_PUSH (1) 
-... 0000000010 COND_PUSH (0) 
-... 0000000101 COND_PUSH (1) 
-... 0000000010 COND_POP () 
-... 0000000100 COND_PUSH (0) 
-... 0000000010 COND_POP () 
-</pre> 
-
- 
-And ` COND_P () ` is not the least significant bit (LSB) is whether 
-We have to determine the top of the stack is determining whether or not there will be. 
- 
-
- 
-The remaining ` COND_LEXPOP () ` is a little strange movements. Current ` COND_P () ` to 
-Back stack shift to the right and left. That is because under a two-bit 
-For a bit of crushing to be trampled on. 
- 
-
-<pre class="emlist"> 
-MSB ← → LSB 
-The initial value of 0 ... 0000000000 
-... 0000000001 COND_PUSH (1) 
-... 0000000010 COND_PUSH (0) 
-... 0000000101 COND_PUSH (1) 
-... 0000000011 COND_LEXPOP () 
-... 0000000100 COND_PUSH (0) 
-... 0000000010 COND_LEXPOP () 
-</pre> 
-
- 
-This is what it is meant to explain later. 
- 
+Such a grammar to achieve what? Simply scanner
+Skip a line break is not alone. Ruby as a reserved word in a sentence ends区切
+In the C language grammar is not about the collision, tried it lightly, ` return `,
+` next `, ` break `, the method calls are cut back and通らなかったomitted parentheses.
+That's the end of a sentence is to leave the sign will not have some form of termination.
+That's ` \ n ` or <code >';'` regardless of whether they simply mark the end of some
+Needed.
 
-h4.  purpose of the survey  
 
- 
-The purpose of this stack to check, 
-` COND_PUSH () COND_POP () ` using it to the entire list to try. 
- 
 
-<pre class="emlist"> 
-         | KWHILE (COND_PUSH (1);) expr_value do (COND_POP ();) 
--- 
-         | KUNTIL (COND_PUSH (1);) expr_value do (COND_POP ();) 
--- 
-         | KFOR block_var kIN (COND_PUSH (1);) expr_value do (COND_POP ();) 
--- 
-       case '(': 
-                 : 
-                 : 
-         COND_PUSH (0); 
-         CMDARG_PUSH (0); 
--- 
-       case '[': 
-                 : 
-                 : 
-         COND_PUSH (0); 
-         CMDARG_PUSH (0); 
--- 
-       case '(': 
-                 : 
-                 : 
-         COND_PUSH (0); 
-         CMDARG_PUSH (0); 
--- 
-       case ']': 
-       case ')': 
-       case ')': 
-         COND_LEXPOP (); 
-         CMDARG_LEXPOP (); 
-</pre> 
+There are two solutions. That is parser or resolve or settle in the scanner.
+Parser would be resolved, ` \ n ` be allowed at all options ` \ n ` to rest
+Grammar kick like if I can write. If you settle in the scanner, ` \ n ` meaningful
+Where there is only ` \ n ` I pass a parser (skip other locations).
 
- 
-This follows from the law to find. 
- 
 
- 
-*  conditional expression in the first ` PUSH (1) `  
-*  open parentheses ` PUSH (0) `  
-*  conditions at the end of the ceremony ` POP () `  
-*  close in parentheses ` LEXPOP () `  
- 
 
- 
-The sort of 
-Uses comes out. ` cond_stack ` also named one of the same level as a conditional expression 
-Whether the decision must have a macro (Figure 2). 
- 
+Whether to use is a question of taste, but usually respond to the scanner. The more you
+I have a small number, and what the rules are messing about good sign
+PASAJENERETA in the use of those means they are missing.
 
- 
-<img src="images/ch_contextual_condp.jpg" alt="(condp)"> <br> 
-Figure 2: ` COND_P () ` transition 
- 
 
- 
-The gimmick of the following may also be able to cope. 
- 
 
-<pre class="emlist"> 
-while (m do .... end) # do the iterator do (kDO) 
-   .... 
-end 
-</pre> 
+That's not to say in conclusion ` ruby ` new line is also dealing with the scanner. Successive lines
+When you want to continue ` \ n ` skip to the end you want ` \ n ` send as a token.
+That's ` yylex () ` here.
 
- 
-It is a 32-bit machines ` long long ` If there are no conditions or the expression in parentheses 
-32-per-level nested in a strange It's possible. Although the Fair 
-Not so much from the nest actual harm is imminent. 
- 
 
- 
-Also ` COND_LEXPOP () ` definition is kind of strange thing is that I was, I guess 
-対策らしいprefetching. It is good that the current rules to prevent prefetching 
-Because of the ` POP ` and ` LEXPOP ` There is no meaning to separate. In other words 
-At this time "` COND_LEXPOP () ` would have no meaning" the interpretation is correct. 
- 
+ ▼  ` yylex () ` - ` '\ n' `
+<pre class="longlist">
+3155 case '\ n':
+3156 switch (lex_state) (
+3157 case EXPR_BEG:
+3158 case EXPR_FNAME:
+3159 case EXPR_DOT:
+3160 case EXPR_CLASS:
+3161 goto retry;
+3162 default:
+3163 break;
+3164)
+3165 command_start = Qtrue;
+3166 lex_state = EXPR_BEG;
+3167 return '\ n';
 
+(parse.y)
+</pre>
 
 
 
+` EXPR_BEG ` ` EXPR_FNAME ` ` EXPR_DOT ` ` EXPR_CLASS `, ` goto retry `,
+That is meaningless because it skipped. Labels ` retry ` is ` yylex () ` giant ` switch ` of
+Before.
 
 
 
+Others at the new line is meant to pass parser, incidentally
+` lex_state ` and ` EXPR_BEG ` back. There is a new line means namely ` expr ` break
+So.
 
 
 
+Also ` command_start ` for the time being and should be ignored. The first said,
+In many places at once and be sure to follow the confusion.
 
 
 
+Specifically, let's look at some examples. It's accompanying analysis tools
+` rubylex-analyser ` to use.
 
 
+<pre class="screen">
+% Rubylex-analyser-e '
+m (a,
+   b, c) unless i
+'
++ EXPR_BEG
+EXPR_BEG C "\ nm" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG "(" '(' EXPR_BEG
+                                               0: cond push
+                                               0: cmd push
+EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG "," ',' EXPR_BEG
+EXPR_BEG S "\ nb" tIDENTIFIER EXPR_ARG
+EXPR_ARG "," ',' EXPR_BEG
+EXPR_BEG S "c" tIDENTIFIER EXPR_ARG
+EXPR_ARG ")" ')' EXPR_END
+                                               0: cond lexpop
+                                               0: cmd lexpop
+EXPR_END S "unless" kUNLESS_MOD EXPR_BEG
+EXPR_BEG S "i" tIDENTIFIER EXPR_ARG
+EXPR_ARG "\ n" \ n EXPR_BEG
+EXPR_BEG C "\ n" 'EXPR_BEG
+</pre>
 
 
+There are a lot of output, we need only to the left and center field. Left
+The field is ` yylex () ` before entering ` lex_state ` shows, and its token middle of the field
+The symbol.
 
 
 
+The first token ` m ` The second argument before and ` b ` in front of the new line that ` \ n ` to toe
+Kung before the end of the stick and not come out as a symbol. ` lex_state ` is
+` EXPR_BEG ` So.
 
 
-h2.  ` tLPAREN_ARG ` (1)  
 
-h3.  problem  
+But from the bottom of the second line ` \ n ` is at the end has emerged as a symbol. ` EXPR_ARG `.
+.
 
- 
-This issue is very confusing. This was to pass ` ruby ` 1.7 to 
-Became, it's fairly recent story. What is that…… 
- 
 
-<pre class="emlist"> 
-call (expr) + 1 
-</pre> 
 
- 
-To 
- 
+So, if using. The other example I would just take a look at.
 
-<pre class="emlist"> 
-(call (expr)) + 1 
-call ((expr) + 1) 
-</pre> 
 
- 
-Whether or interpretation of the story. Previously the former All are being treated like 
-Hoops. That is always parentheses "method arguments in parentheses." But 
-` ruby ` 1.7, as the latter now being processed. 
-This means the space is in parentheses "` expr ` brackets". 
- 
+<pre class="screen">
+% Rubylex-analyser-e 'class
+C <Object
+end '
++ EXPR_BEG
+EXPR_BEG C "class" kCLASS EXPR_CLASS
+EXPR_CLASS "\ nC" tCONSTANT EXPR_END
+EXPR_END S "<" '<' EXPR_BEG
++ EXPR_BEG
+EXPR_BEG S "Object" tCONSTANT EXPR_ARG
+EXPR_ARG "\ n" \ n EXPR_BEG
+EXPR_BEG C "end" kEND EXPR_END
+EXPR_END "\ n" \ n EXPR_BEG
+</pre>
 
- 
-Why did you change your interpretation, let me introduce an example. First I wrote the following statement. 
- 
 
-<pre class="emlist"> 
-p m () + 1 
-</pre> 
+Spanish Book ` class ` After the ` EXPR_CLASS ` new line, so is ignored.
+But superclass ceremony ` Object ` After the ` EXPR_ARG ` so ` \ n ` came.
 
- 
-If there is no problem so far. But ` m ` was actually returns to scale, multi-digit number of SU 
-GITATOSHIYOU. So when you view it for a whole number. 
- 
 
-<pre class="emlist"> 
-p m () + 1. to_i #?? 
-</pre> 
+<pre class="screen">
+% Rubylex-analyser-e 'obj.
+class'
++ EXPR_BEG
+EXPR_BEG C "obj" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG "." '.' EXPR_DOT
+EXPR_DOT "\ nclass" tIDENTIFIER EXPR_ARG
+EXPR_ARG "\ n" \ n EXPR_BEG
+</pre>
 
- 
-Darn, parentheses are needed. 
- 
 
-<pre class="emlist"> 
-p (m () + 1). to_i 
-</pre> 
+`'.'` after the ` EXPR_DOT ` so ` \ n ` were ignored.
 
- 
-This is not to be interpreted? Up to 1.6, which is 
- 
 
-<pre class="emlist"> 
-(p (m () + 1)). to_i 
-</pre> 
-
- 
-Said. This means putting a long-awaited ` to_i ` What is the meaning they no longer exist. This is not it. 
-The space between parentheses but only with the special treatment is ` expr ` brackets to the 
-Of. 
- 
 
- 
-Self-study for those who want to keep writing, 
-This change was implemented ` parse.y ` revision 1.100 (2001-05-31). 
-1.99 and that's why we take a look at the differences between the relatively straightforward. 
-This difference is to take command. 
- 
+By the way, ` class `, but is supposed to be reserved words, why ` tIDENTIFIER ` in the future.
+To continue following paragraph.
 
-<pre class="screen"> 
-~ / src / ruby% cvs diff-r1.99-r1.100 parse.y 
-</pre> 
-
-
 
-h3.  survey  
-
- 
-First, how the system works in reality if you look at it. Attached 
-Tools ` ruby-lexer ` \ footnote (` ruby-lexer `: The accompanying CD-ROM ` tools / ruby-lexer.tar.gz `) a 
-Using string corresponding to the program are to be checked. 
- 
-
-<pre class="screen"> 
-% Ruby-lexer-e 'm (a)' 
-tIDENTIFIER '(' tIDENTIFIER ')' '\ n' 
-</pre> 
-
- 
-`-e ` is ` ruby ` program as well as the option to pass directly from the command line. 
-You can use it to try a lot. 
-First problem, the first argument is that parenthetical. 
- 
-
-<pre class="screen"> 
-% Ruby-lexer-e 'm (a)' 
-tIDENTIFIER tLPAREN_ARG tIDENTIFIER ')' '\ n' 
-</pre> 
 
- 
-入れたらopen spaces in parentheses symbol ` tLPAREN_ARG `. 
-Fair incidentally, let us also take a look at the expression in parentheses. 
- 
 
-<pre class="screen"> 
-% Ruby-lexer-e '(a)' 
-tLPAREN tIDENTIFIER ')' '\ n' 
-</pre> 
 
- 
-The ceremony is usually in parentheses ` tLPAREN ` like. 
- 
 
- 
-I put it all together. 
- 
 
- 
-<tr> <td> enter <td> <td> open parenthesis symbol <td> </tr> 
-<tr> <td> ` m (a) ` <td> <td> `'('` <td> </tr> 
-<tr> <td> ` m (a) ` <td> <td> ` tLPAREN_ARG ` <td> </tr> 
-<tr> <td> ` (a) ` <td> <td> ` tLPAREN ` <td> </tr> 
- 
 
- 
-That is how we distinguish between these three are the focus. 
-This is particularly ` tLPAREN_ARG ` is important. 
- 
 
 
 
-If h3.  an argument  
 
- 
-First meekly ` yylex () `-<code >'('` look at the section. 
- 
 
- ▼  ` yylex ` - `'('`  
-<pre class="longlist"> 
-3841 case '(': 
-3842 command_start = Qtrue; 
-3843 if (lex_state == EXPR_BEG | | lex_state == EXPR_MID) ( 
-3844 c = tLPAREN; 
-3845) 
-3846 else if (space_seen) ( 
-3847 if (lex_state == EXPR_CMDARG) ( 
-3848 c = tLPAREN_ARG; 
-3849) 
-3850 else if (lex_state == EXPR_ARG) ( 
-3851 c = tLPAREN_ARG; 
-3852 yylval.id = last_id; 
-3853) 
-3854) 
-3855 COND_PUSH (0); 
-3856 CMDARG_PUSH (0); 
-3857 lex_state = EXPR_BEG; 
-3858 return c; 
 
-(parse.y) 
-</pre> 
 
+h2.  reserved words the same methods name
 
- 
-The first ` if ` is ` tLPAREN ` So the usual formula in parentheses. The criterion is ` lex_state ` is 
-` BEG ` or ` MID `, that is absolutely the beginning when the ceremony. 
- 
+h3.  problem
 
- 
-The next ` space_seen ` parentheses is the "blank whether there is any" respectively. 
-Spaces, and ` lex_state ` is ` ARG ` or ` CMDARG ` That is when the first argument…… 
-Ago, the symbol <code >'('` well as ` tLPAREN_ARG ` said. This is such an example 
-If you can not eliminate. 
- 
 
-<pre class="emlist"> 
-m (# parentheses before the space is no method parentheses ('(')…… 
-m arg, (#…… except the first argument of expression in parentheses (tLPAREN) 
-</pre> 
+Ruby is a reserved word in a method to use that name. However name of the method to use
+And a mouthful to say but there are some context,
 
- 
-` tLPAREN ` or ` tLPAREN_ARG ` But if no input characters ` c ` still 
-Used <code >'('` said. It's going to be a method call parentheses. 
- 
 
- 
-Such a symbolic level, to distinguish it from the sea on the other hand, the normal rules of writing 
-Avoid collision. Simplify writing to the following will be. 
- 
 
-<pre class="emlist"> 
-stmt: command_call 
+*  method definition (` def xxxx `)
+*  call (` obj.xxxx `)
+*  literal symbols (`: xxxx `)
 
-method_call: tIDENTIFIER '(' args') '/ * usual method * / 
 
-command_call: tIDENTIFIER command_args / * * method omitted parentheses / 
 
-command_args: args 
+The three could be used. Ruby is all this is possible. Each of the following
+Let us consider.
 
-args: arg 
-              : Args', 'arg 
 
-arg: primary 
 
-primary: tLPAREN compstmt ')' / * * usual formula parentheses / 
-              | TLPAREN_ARG expr ')' / * parenthetical first argument * / 
-              | Method_call 
-</pre> 
+First, define the method has its own reserved words ` def ` likely to be preceded by, so we managed.
 
- 
-` method_call ` and ` command_call ` attention to the other. If ` tLPAREN_ARG ` without introducing 
-`'('` and leave, ` command_args ` and ` args ` out, ` args ` and ` arg ` out, 
-` arg ` and ` primary ` out, and ` tLPAREN_ARG ` away from <code >'('` came out 
-` method_call ` collided with it (see Figure 3). 
- 
 
- 
-<img src="images/ch_contextual_trees.jpg" alt="(trees)"> <br> 
-Figure 3: ` method_call ` and ` command_call ` 
- 
-
-
-
-More than two h3.  argument  
-
- 
-Now is a good parentheses ` tLPAREN_ARG ` in this BATCHIRI, or so someone thought 
-In fact, it is not. For example, the following cases: How would it be. 
- 
-
-<pre class="emlist"> 
-m (a, a, a) 
-</pre> 
-
- 
-Such expressions have been treated as the method calls have been so 
-Had errors. But ` tLPAREN_ARG ` will be introduced and open parentheses 
-` expr ` in parentheses, because two or more argument for the Perth and error. 
-Considering the compatibility considerations must be managed. 
- 
-
- 
-But without thinking 
- 
-
-<pre class="emlist"> 
-command_args: tLPAREN_ARG args') ' 
-</pre> 
-
- 
-, That rule would be simply to add the collision. Look at the whole think 
-? 
- 
-
-<pre class="emlist"> 
-stmt: command_call 
-              | Expr 
-
-expr: arg 
-
-command_call: tIDENTIFIER command_args 
-
-command_args: args 
-              | TLPAREN_ARG args') ' 
-
-args: arg 
-              : Args', 'arg 
-
-arg: primary 
-
-primary: tLPAREN compstmt ')' 
-              | TLPAREN_ARG expr ')' 
-              | Method_call 
-
-method_call: tIDENTIFIER '(' args') ' 
-</pre> 
-
- 
-` command_args `'s first look at the rules. ` args ` from ` arg ` is out. 
-` arg ` from ` primary ` is out. From there ` tLPAREN_ARG ` rules out. 
-And ` expr ` is ` arg `, including the deployment, depending on how 
- 
-
-<pre class="emlist"> 
-command_args: tLPAREN_ARG arg ')' 
-              | TLPAREN_ARG arg ')' 
-</pre> 
-
- 
-The situation. That is, reduce / reduce conflict and very bad. 
-
- 
-Then how do it without collision only deal with two or more arguments? 
-The possessive but not limited to just write. Reality is as follows resolved. 
- 
-
- ▼  ` command_args `  
-<pre class="longlist"> 
-command_args: open_args 
-
-open_args: call_args 
-                 | TLPAREN_ARG ')' 
-                 | TLPAREN_ARG call_args2 ')' 
-
-call_args: command 
-                 | Args opt_block_arg 
-                 | Args', 'tSTAR arg_value opt_block_arg 
-                 | Assocs opt_block_arg 
-                 | Assocs', 'tSTAR arg_value opt_block_arg 
-                 | Args', 'assocs opt_block_arg 
-                 | Args', 'assocs',' tSTAR arg opt_block_arg 
-                 | TSTAR arg_value opt_block_arg 
-                 | Block_arg 
-
-call_args2: arg_value ',' args opt_block_arg 
-                 | Arg_value ',' block_arg 
-                 | Arg_value ',' tSTAR arg_value opt_block_arg 
-                 | Arg_value ',' args', 'tSTAR arg_value opt_block_arg 
-                 | Assocs opt_block_arg 
-                 | Assocs', 'tSTAR arg_value opt_block_arg 
-                 | Arg_value ',' assocs opt_block_arg 
-                 | Arg_value ',' args', 'assocs opt_block_arg 
-                 | Arg_value ',' assocs', 'tSTAR arg_value opt_block_arg 
-                 | Arg_value ',' args', 'assocs',' 
-                                   tSTAR arg_value opt_block_arg 
-                 | TSTAR arg_value opt_block_arg 
-                 | Block_arg 
-
-
-primary: literal 
-                 | Strings 
-                 | Xstring 
-                        : 
-                 | TLPAREN_ARG expr ')' 
-</pre> 
-
-
- 
-You can ` command_args ` followed by another one stage, ` open_args ` is thatはさまっ 
-But the same rules. This ` open_args ` The second third of the key rules are concerned 
-Be. This form is similar to the just-written examples, but subtly different. It is 
-` call_args2 ` that have introduced it. This ` call_args2 ` and is characterized by words 
-UTO, the argument is always two or more. Most of the evidence rules 
-`','` in itself. The exception is ` assocs `, but the rules, ` expr ` from ` assocs ` is out 
-No leverage ` assocs ` collision is not the first place. 
- 
 
- 
-NIKUKATTA description is rather straightforward. A little plain speaking, 
- 
+Method calls for the receiver to skip a lot of difficulty will be that of
+Of them, but further specification is not limited to, and those are not allowed. -
+Book word method means that if the name is never a receiver can not be omitted. Or
+Is that right Perth designed to be able to say what might be the
+.
 
-<pre class="emlist"> 
-command_args: call_args 
-</pre> 
 
- 
-Not only do not go through grammar, with the following rules that add. 
-So "do not go through the rules of grammar" is what I think about it. 
-The conflict is ` call_args ` the top ` tLPAREN_ARG `-` primary ` will come only when 
-Because of the limited to 
-"` TIDENTIFIER tLPAREN_ARG ` The order came as the only rule is 
-Do not go through grammar "I think about it. Some cite an example. 
- 
 
-<pre class="emlist"> 
-m (a, a) 
-</pre> 
+And if the symbol is the termination symbol <code >':'` behind, so I managed to通せ
+. However, in this case, but with the terms of the reservation <code >':'` is ` a? B: c ` collision with a colon
+The problem. Even if you can get this resolved.
 
- 
-This is ` tLPAREN_ARG ` list of two or more elements there. 
- 
 
-<pre class="emlist"> 
-m () 
-</pre> 
 
- 
-Conversely, ` tLPAREN_ARG ` in the list is empty. 
- 
+In both cases the two are also possible. That is resolved scanner SU
+Or resolution of the parser. If the resolution scanner, ` def ` and `. </Code> and `: ` Next to come
+Book word ` tIDENTIFIER ` (and) I do. Parser resolve, SOUI
+I write a thousand rules. ` ruby `, three each of both depending on the occasion.
 
-<pre class="emlist"> 
-m (* args) 
-m (& block) 
-m (k => v) 
-</pre> 
 
- 
-` tLPAREN_ARG ` list of the specific method calls (` expr ` is not) 
-Have representation. 
- 
 
- 
-Roughly around the cover. Implementation and in light of 
-Let's see. 
- 
 
- ▼  ` open_args ` (1)  
-<pre class="longlist"> 
-open_args: call_args 
-                 | TLPAREN_ARG ')' 
-</pre> 
+h3.  method definition
 
 
- 
-First, the rule is to check a list of corresponding. 
- 
+Methods defined portion of the name. This is the side deal with the parser.
 
- ▼  ` open_args ` (2)  
-<pre class="longlist"> 
-                 | TLPAREN_ARG call_args2 ')' 
 
-call_args2: arg_value ',' args opt_block_arg 
-                 | Arg_value ',' block_arg 
-                 | Arg_value ',' tSTAR arg_value opt_block_arg 
-                 | Arg_value ',' args', 'tSTAR arg_value opt_block_arg 
-                 | Assocs opt_block_arg 
-                 | Assocs', 'tSTAR arg_value opt_block_arg 
-                 | Arg_value ',' assocs opt_block_arg 
-                 | Arg_value ',' args', 'assocs opt_block_arg 
-                 | Arg_value ',' assocs', 'tSTAR arg_value opt_block_arg 
-                 | Arg_value ',' args', 'assocs',' 
-                                   tSTAR arg_value opt_block_arg 
-                 | TSTAR arg_value opt_block_arg 
-                 | Block_arg 
-</pre> 
+ ▼  method defined rules
+<pre class="longlist">
+                 | KDEF fname
+                   f_arglist
+                   bodystmt
+                   kEND
+                 | KDEF singleton dot_or_colon fname
+                   f_arglist
+                   bodystmt
+                   kEND
+</pre>
 
 
- 
-And the ` call_args2 `, and a list of two or more elements, ` assocs ` and 
-An array of passing, blocking and special-delivery to include dealing with. 
-This is a considerable scope to respond to. 
- 
 
+There are two methods defined rules represent only their usual media-specific definitions and methods
+Corresponds to the definition of sod. Both ` fname ` name is part of the ` fname ` is as follows:
+Definition.
 
 
+ ▼  ` fname `
+<pre class="longlist">
+fname: tIDENTIFIER
+                 | TCONSTANT
+                 | TFID
+                 | Op
+                 | Reswords
+</pre>
 
 
 
+` reswords ` in terms of booking ` op ` is operator of two terms. Both rules are simply a symbolic end to all the ordinary
+Only because all omitted. Then ` tFID ` is ` gsub! </Code> and ` include? </Code> like ending
+A symbol of an eye.
 
 
 
 
+h3.  method calls
 
 
+Booking terms and call on the scanner same name method to deal with.
+Book scan the code word is the way they were.
 
 
+<pre class="emlist">
+Scan identifier
+result = (tIDENTIFIER or tCONSTANT)
 
+if (lex_state! = EXPR_DOT) (
+     struct kwtable * kw;
 
+     / * See if it is a reserved word. * /
+     kw = rb_reserved_word (tok (), toklen ());
+     Book word processing
+)
+</pre>
 
 
+` EXPR_DOT ` method is called after the dot, respectively. ` EXPR_DOT ` when the unconditional
+Book word processing off from the dot after the punctuation is reserved word ` tIDENTIFIER `?
+` tCONSTANT ` said.
 
 
 
 
+h3.  symbol
 
 
+Book parser terms and symbols are both addressed in the scanner.
+First of all rules.
 
 
+ ▼  ` symbol `
+<pre class="longlist">
+symbol: tSYMBEG sym
 
-h2.  ` tLPAREN_ARG ` (2)  
+sym: fname
+                 | TIVAR
+                 | TGVAR
+                 | TCVAR
 
-h3.  problem  
+fname: tIDENTIFIER
+                 | TCONSTANT
+                 | TFID
+                 | Op
+                 | Reswords
+</pre>
 
- 
-Previous calls to the section on specific methods of expression is "almost ready" and said cover 
-The reasons for this. This is not iterator is uncovered. 
-For example, the following sentence like water. 
- 
 
-<pre class="emlist"> 
-m (a) {....} 
-m (a) do .... end 
-</pre> 
 
- 
-The point of this section is introduced in efforts to resolve the突っこんsection, let's see. 
- 
+In this way, explicitly reserved word parser (` reswords `) to pass. This
+U can be used solely ` tSYMBEG ` is the only sign before the end of the symbol
+Is <code >':'`だっor can not do so well. Conditional operator (` a? B: c `) and the collision
+Doomed. In other words level scanner ` tSYMBEG ` The point is to tell
+Particularly, remains unchanged.
 
-h3.  level of resolution rules  
 
- 
-First look at the rules. 
-It has already appeared before the rules just because ` do_block ` around to watch them. 
- 
 
- ▼  ` command_call `  
-<pre class="longlist"> 
-command_call: command 
-                 | Block_command 
+How does the distinction between doing? Let's look at the implementation of the scanner.
 
-command: operation command_args 
 
-command_args: open_args 
+ ▼  ` yylex ` - `':'`
+<pre class="longlist">
+3761 case ':':
+3762 c = nextc ();
+3763 if (c == ':') (
+3764 if (lex_state == EXPR_BEG | | lex_state == EXPR_MID | |
+3765 (IS_ARG () & & space_seen)) (
+3766 lex_state = EXPR_BEG;
+3767 return tCOLON3;
+3768)
+3769 lex_state = EXPR_DOT;
+3770 return tCOLON2;
+3771)
+3772 pushback (c);
+3773 if (lex_state == EXPR_END | |
+                   lex_state == EXPR_ENDARG | |
+                   ISSPACE (c)) (
+3774 lex_state = EXPR_BEG;
+3775 return ':';
+3776)
+3777 lex_state = EXPR_FNAME;
+3778 return tSYMBEG;
 
-open_args: call_args 
-                 | TLPAREN_ARG ')' 
-                 | TLPAREN_ARG call_args2 ')' 
+(parse.y)
+</pre>
 
-block_command: block_call 
 
-block_call: command do_block 
 
-do_block: kDO_BLOCK opt_block_var compstmt ')' 
-                 | TLBRACE_ARG opt_block_var compstmt ')' 
-</pre> 
+The first half ` if ` is <code >':'` followed with two. When this principle is best left longest match
+Priority <code >'::'` to scan.
 
 
- 
-` do `, ` (` is both radically new symbol ` kDO_BLOCK ` and ` tLBRACE_ARG ` in the world. 
-Why ` kDO ` and <code >'{'` does not. That's the moment when you try a shot, 
-Well, that's all, ` kDO_BLOCK ` and ` kDO ` to, ` tLBRACE_ARG ` and <code >'{'` and ` yacc `, 
-Treated him. Then…… 
- 
 
-<pre class="screen"> 
-% Yacc parse.y 
-conflicts: 2 shift / reduce, 6 reduce / reduce 
-</pre> 
+The next ` if ` is just the operator said conditions <code >':'`. ` EXPR_END ` and ` EXPR_ENDARG ` is
+Both at the end of the ceremony, the argument is a symbol that is coming is impossible because……
+Conditions operator <code >':'` said.
+The following letter was space (` ISSPACE (c) `) even when it is a symbol
+Maybe because of the conditional operator.
 
- 
-Collision with abandon. Investigating the cause of the following statements. 
- 
 
-<pre class="emlist"> 
-m (a), b {....} 
-</pre> 
 
- 
-Because this form of sentence has been through already. ` b {....}` is 
-` primary ` said. There are blocks ` m ` and consolidated rules to add, however, 
- 
+And above that are not in either case, every symbol. In this case
+` EXPR_FNAME ` transition to prepare for any method name. Perth is anything bother
+But no, this scanner is to forget the value of reserved words for me to pass the
+Calculating the value in the bend.
 
-<pre class="emlist"> 
-m ((a), b) {....} 
-m ((a), (b {....})) 
-</pre> 
+h2> qualifier
 
- 
-The two were able to interpret it, a collision. 
-This is 2 shift / reduce conflict. 
- 
+h3.  problem
 
- 
-The other is ` do ` in ` end `-related. This is 
- 
 
-<pre class="emlist"> 
-m ((a)) do .... end # block_call do have to add end 
-m ((a)) do .... end # primary do have to add end 
-</pre> 
+For example ` if ` to the regular and post-qualified the notations.
 
- 
-The two collided. This is 6 reduce / reduce conflict. 
- 
 
+<pre class="emlist">
+Usually notation #
+if cond then
+   expr
+end
 
-h3.  ` (` in `) ` iterator  
+# Postposing
+expr if cond
+</pre>
 
- 
-Now for the production. Just as you saw, ` do ` and <code >'{'` symbol of change in 
-Conflict is avoided. ` yylex () `-<code >'{'` look at the section. 
- 
 
- ▼  ` yylex ` - `'{'`  
-<pre class="longlist"> 
-3884 case '(': 
-3885 if (IS_ARG () | | lex_state == EXPR_END) 
-3886 c = '('; / * block (primary) * / 
-3887 else if (lex_state == EXPR_ENDARG) 
-3888 c = tLBRACE_ARG; / * block (expr) * / 
-3889 else 
-3890 c = tLBRACE; / * hash * / 
-3891 COND_PUSH (0); 
-3892 CMDARG_PUSH (0); 
-3893 lex_state = EXPR_BEG; 
-3894 return c; 
+This is also the cause of the collision. Why is that, I knew this method also parentheses
+Back cause. For example, in this case.
 
-(parse.y) 
-</pre> 
 
+<pre class="emlist">
+call if cond then a else b end
+</pre>
 
- 
-` IS_ARG () ` is 
- 
 
- ▼  ` IS_ARG `  
-<pre class="longlist"> 
-3104 # define IS_ARG () (lex_state == EXPR_ARG | | lex_state == EXPR_CMDARG) 
+This equation is ` if ` until I read it in the next two to interpretation.
 
-(parse.y) 
-</pre> 
 
+<pre class="emlist">
+call ((if ....))
+call () if ....
+</pre>
 
- 
-From the definition, ` EXPR_ENDARG ` when it is absolutely false. 
-In other words ` lex_state ` is ` EXPR_ENDARG ` whenever the ` tLBRACE_ARG ` to it, 
-` EXPR_ENDARG ` transition that is all secret. 
- 
 
-h4.  ` EXPR_ENDARG `  
+If you are unsure what I have to try it, whether we go conflict. During grammar
+The ` kIF_MOD ` and ` kIF ` changing ` yacc ` handled it a try.
 
- 
-, <Code> EXPR_ENDARG ` How do you have been set? 
-Assigned to someone ` grep ` him. 
- 
 
- ▼  ` EXPR_ENDARG ` to transition  
-<pre class="longlist"> 
-open_args: call_args 
-                 | TLPAREN_ARG (lex_state = EXPR_ENDARG;) ')' 
-                 | TLPAREN_ARG call_args2 (lex_state = EXPR_ENDARG;) ')' 
+<pre class="screen">
+% Yacc parse.y
+parse.y contains 4 shift / reduce conflicts and 13 reduce / reduce conflicts.
+</pre>
 
-primary: tLPAREN_ARG expr (lex_state = EXPR_ENDARG;) ')' 
-</pre> 
 
+まくっstreet clashes with the attempt. If you have any interest ` yacc ` in `-v ` options
+As the log, while reading in the world. Details of the crash or how to write.
 
- 
-Funny. ` tLPAREN_ARG ` respond to close in parentheses after ` EXPR_ENDARG ` and transition 
-If you know it is not really the <code >')'` in front of the assignment 
-. Other ` EXPR_ENDARG ` set to the point that I think ` grep ` and 
-まくっhim, but no. 
- 
 
- 
-Maybe somewhere in the wrong way? Something completely different way 
-` lex_state ` changes that might be. For confirmation, 
-` rubylex-analyser `, ` lex_state ` transition to try to visualize. 
- 
-
-<pre class="screen"> 
-% Rubylex-analyser-e 'm (a) (nil)' 
-+ EXPR_BEG 
-EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG S "(" tLPAREN_ARG EXPR_BEG 
-                                               0: cond push 
-                                               0: cmd push 
-                                               1: cmd push - 
-EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG ")" ')' EXPR_END 
-                                               0: cond lexpop 
-                                               1: cmd lexpop 
-+ EXPR_ENDARG 
-EXPR_ENDARG S "(" tLBRACE_ARG EXPR_BEG 
-                                               0: cond push 
-                                              10: cmd push 
-                                               0: cmd resume 
-EXPR_BEG S "nil" kNIL EXPR_END 
-EXPR_END S ")" ')' EXPR_END 
-                                               0: cond lexpop 
-                                               0: cmd lexpop 
-EXPR_END "\ n" \ n EXPR_BEG 
-</pre> 
-
- 
-It is divided into three major lines of ` yylex () ` state of transition, respectively. 
-From the ` yylex () ` status before the middle of the two words in the text and symbols, 
-The right is ` yylex () ` after ` lex_state `. 
- 
-
- 
-The problem is a single line ` + EXPR_ENDARG ` as part of the out of the country. This is the parser 
-Action is happening in that transition. According to the report, why? 
-`')'` after I read it in action ` EXPR_ENDARG ` to the transition 
-And a good <code >'{'` is ` tLBRACE_ARG ` to the other. This is a matter of fact 
-LALR (1) (1) to town to take advantage of (逆用) of the considerable skills of senior 
-. 
- 
-
-h4.  prefetching逆用 
-
- 
-` ruby-y ` use ` yacc ` PASAENJIN of movement that can be displayed by the minute. 
-This is now using more detail to try to trace the parser. 
- 
-
-<pre class="screen"> 
-% Ruby-yce 'm (a) (nil)' 2> & 1 | egrep '^ Reading | Reducing' 
-Reducing via rule 1 (line 303), -> @ 1 
-Reading a token: Next token is 304 (tIDENTIFIER) 
-Reading a token: Next token is 340 (tLPAREN_ARG) 
-Reducing via rule 446 (line 2234), tIDENTIFIER -> operation 
-Reducing via rule 233 (line 1222), -> @ 6 
-Reading a token: Next token is 304 (tIDENTIFIER) 
-Reading a token: Next token is 41 (')') 
-Reducing via rule 392 (line 1993), tIDENTIFIER -> variable 
-Reducing via rule 403 (line 2006), variable -> var_ref 
-Reducing via rule 256 (line 1305), var_ref -> primary 
-Reducing via rule 198 (line 1062), primary -> arg 
-Reducing via rule 42 (line 593), arg -> expr 
-Reducing via rule 260 (line 1317), -> @ 9 
-Reducing via rule 261 (line 1317), tLPAREN_ARG expr @ 9 ')' -> primary 
-Reading a token: Next token is 344 (tLBRACE_ARG) 
-                          : 
-                          : 
-</pre> 
-
- 
-Interrupted only by a compilation `-c ` options and from the command line program 
-Give `-e ` with a combination. And ` grep ` token, reading and reporting only the reduction 
-Extract. 
- 
-
- 
-So we started to look at the middle of the list. `')'` is being loaded. Resona 
-Then the last…… how you look at it, we finally embedded Action 
-(` @ 9 `) reduction is going on (running). This is certainly <code >')'` after 
-`'{'` before ` EXPR_ENDARG ` to be set. However, this is always going to happen - 
-? Where once again set to look at. 
- 
-
-<pre class="emlist"> 
-Rule 1 tLPAREN_ARG (lex_state = EXPR_ENDARG;) ')' 
-Rule 2 tLPAREN_ARG call_args2 (lex_state = EXPR_ENDARG;) ')' 
-Rule 3 tLPAREN_ARG expr (lex_state = EXPR_ENDARG;) ')' 
-</pre> 
-
- 
-Action rules are embedded as a substitute check can be. For example 
-Rule 1 as an example and take an entirely without changing the meaning of the following rewrite. 
- 
-
-<pre class="emlist"> 
-target: tLPAREN_ARG tmp ')' 
-tmp: 
-             ( 
-                 lex_state = EXPR_ENDARG; 
-             ) 
-</pre> 
-
- 
-I ` tmp ` and before the end of one-minute mark is the possibility of being prefetched 
-Since the (empty) ` tmp ` to read the following SURINUKE is certainly possible. 
-And, absolutely prefetching know if it will happen, ` lex_state ` is the assignment 
-`')'` after ` EXPR_ENDARG ` to ensure that change. 
-This rule is <code >')'` prefetching is absolutely going to be? 
- 
-
-h4.  prefetching guarantee  
-
- 
-This is, in fact credible. Following three to take the input. 
- 
-
-<pre class="emlist"> 
-m () (nil) # A 
-m (a) (nil) # B 
-m (a, b, c) (nil) # C 
-</pre> 
-
- 
-Incidentally the rules a little easier to read (but without changing the situation) rewritten. 
- 
-
-<pre class="emlist"> 
-rule1: tLPAREN_ARG e1 ')' 
-rule2: tLPAREN_ARG one_arg e2 ')' 
-rule3: tLPAREN_ARG more_args e3 ')' 
-
-e1: / * empty * / 
-e2: / * empty * / 
-e3: / * empty * / 
-</pre> 
-
- 
-First of all, type A's. 
- 
-
-<pre class="emlist"> 
-m (# ... tLPAREN_ARG 
-</pre> 
-
- 
-Until I read it ` e1 ` come before. If ` e1 ` to the reduction of those 
-Another rule is to choose the other for the ` e1 ` to the reduction ` rule1 ` or commit suicide, 
-Or other rules to make choices in order to make sure this happens prefetching. 
-Therefore input ` rule1 ` If you are sure to meet <code >')'` of the prefetched. 
- 
-
- 
-Then the B input. First 
- 
-
-<pre class="emlist"> 
-m (# ... tLPAREN_ARG 
-</pre> 
-
- 
-We will, until I just read-ahead to take the same reason. And 
- 
-
-<pre class="emlist"> 
-m (a # ... tLPAREN_ARG '(' tIDENTIFIER 
-</pre> 
-
- 
-I just also to foresee. Because the next <code >','` or <code >')'`, or ` rule2 ` and 
-` rule3 ` divide. If <code >','` This argument would have only a comma delimited 
-Will not immediately think of more than two arguments, namely ` rule3 ` and determinism. If you are 
-Mere ` a `, but ` if `だっliteral or "93" orだっthe same thing. 
-The input has been completed at ` rule2 ` and ` rule3 ` to differentiate, namely 
-Arguments over whether an argument or two to differentiate prefetching happens. 
- 
-
- 
-In this case, all the rules <code >')'` before the (separate) and embedded in Action 
-It is rather important. Action is the first time, it would no longer run the floor 
-Resona standing returns, the parser is "absolutely certain" until the situation of action 
-I try to delay the execution. That is why one of those read-ahead to create a situation 
-If you are not the parser generation must be eliminated, which means it is "collision". 
- 
-
- 
-How? Input C. 
- 
-
-<pre class="emlist"> 
-m (a, b, c 
-</pre> 
-
- 
-I have come here at ` rule3 ` is not only possible, prefetching is like me 
-Down. 
- 
-
- 
-However, it does not work. The following is <code >'('` If the method call it, <code >','` or <code >')'`, 
-Do we have to refer to variable. So this is embedded in a reduction of Action 
-See the argument for a firm element of prefetching happens. 
- 
-
- 
-And other input, what of it? The third method calls for example, the argument is 
-I would doubt it. 
- 
-
-<pre class="emlist"> 
-m (a, b, c (....) # ... ',' method_call 
-</pre> 
-
- 
-All in all, it is necessary prefetching. Because, you <code >','` or <code >')'` or reducible to shift and 
-Former divide. So, this rule will eventually be embedded in every case Action 
-Run faster than <code >')'` was read. Very confusing. I came up with a sense of well - 
-The motion. 
- 
-
- 
-By the way embedded in the action instead of the usual action ` lex_state ` set 
-You can not? Thus, for example. 
- 
-
-<pre class="emlist"> 
-                 | TLPAREN_ARG ')' (lex_state = EXPR_ENDARG;) 
-</pre> 
-
- 
-This is wrong. Because of the reduction before the action (and) will happen prefetching 
-May be. Prefetching is now out of them backfired. This thing 
-Were seen, LALR parser prefetching to turn to one's own is not quite a trick. 
-Amateurs are not recommended. 
- 
-
-
-
-h3.  ` do ` in ` end ` iterator  
-
- 
-So far, ` (` in `) ` enumeration is still ready to deal with the ` do ` in ` end ` left iterator 
-. Iterators in the same manner as if he could handle, but it is different. 
-` (` in `) ` and ` do ` in ` end ` will have different priorities. For example follows. 
- 
-
-<pre class="emlist"> 
-m a, b {....} # m (a, (b {....})) 
-m a, b do .... end # m (a, b) do .... end 
-</pre> 
-
- 
-So of course deal with different approaches are appropriate. 
- 
-
- 
-But, of course, deal with the same case as it goes. For example, the following cases: 
-Both will be the same. 
- 
-
-<pre class="emlist"> 
-m (a) {....} 
-m (a) do .... end 
-</pre> 
-
- 
-Just take a look at it in kind. 
-` do ` So, ` yylex () ` reservation should I word this time. 
- 
-
- ▼  ` yylex ` - identifier - a reserved word - ` do `  
-<pre class="longlist"> 
-4183 if (kw-> id [0] == kDO) ( 
-4184 if (COND_P ()) return kDO_COND; 
-4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
-4186 return kDO_BLOCK; 
-4187 if (state == EXPR_ENDARG) 
-4188 return kDO_BLOCK; 
-4189 return kDO; 
-4190) 
-
-(parse.y) 
-</pre> 
-
-
- 
-This time looking at ` kDO_BLOCK ` and ` kDO ` to distinguish only a portion. ` kDO_COND ` that has taken 
-ETE is not. Scanner with a state where it is always concerned to see. 
- 
-
- 
-First ` EXPR_ENDARG ` part is determined using ` tLBRACE_ARG ` same situation. 
-This difference in priorities when it is irrelevant <code >'{'` in the same ` kDO_BLOCK ` to 
-It is appropriate. 
- 
-
- 
-The problem is the previous ` CMDARG_P () ` and ` EXPR_CMDARG `. Let's turn to look at. 
- 
-
-h4.  ` CMDARG_P () `  
-
- ▼  ` cmdarg_stack `  
-<pre class="longlist"> 
-   91 static stack_type cmdarg_stack = 0; 
-   92 # define CMDARG_PUSH (n) (cmdarg_stack = (cmdarg_stack <<1) | ((n) & 1)) 
-   93 # define CMDARG_POP () (cmdarg_stack>> = 1) 
-   94 # define CMDARG_LEXPOP () do (\ 
-   95 int last = CMDARG_P (); \ 
-   96 cmdarg_stack>> = 1; \ 
-   97 if (last) cmdarg_stack | = 1; \ 
-   98) while (0) 
-   99 # define CMDARG_P () (cmdarg_stack & 1) 
-
-(parse.y) 
-</pre> 
-
-
- 
-In this way ` cmdarg_stack ` structure and interface (Macro) 
-` cond_stack ` exactly the same. Bitwise stack. Mono is the same 
-It will also investigate how to get the same class. Using it to try to list the location 
-U. First Action in 
- 
-
-<pre class="emlist"> 
-command_args: ( 
-                         $ <num> $ = cmdarg_stack; 
-                         CMDARG_PUSH (1); 
-                     ) 
-                   open_args 
-                     ( 
-                         / * CMDARG_POP () * / 
-                         cmdarg_stack = $ <num> 1; 
-                         $ $ = $ 2; 
-                     ) 
-</pre> 
-
- 
-It was. 
- 
-
- 
-` $ <num> $ ` force is left with the cast 
-The mean value. In this case it is embedded with a value of the action itself 
-To come out, the next action is ` $ <num> 1 ` to be fetched. In other words 
-` cmdarg_stack ` and ` open_args ` in front of <code >$$` diverted to the return to action, and 
-I do not have a structure. 
- 
-
- 
-Why not just push pop and a return to the evacuation. 
-It is described in this paragraph at the end. 
- 
-
- 
-Also ` yylex () ` in ` CMDARG ` relationship and the next thing is to find見付かった. 
- 
-
- 
-<tr> <td> ` '(' '[''{'` <td> <td> ` CMDARG_PUSH (0) ` <td> </tr> 
-<tr> <td> ` ')' ']''}'` <td> <td> ` CMDARG_LEXPOP () ` <td> </tr> 
- 
-
- 
-This means that if there's KUKURA parentheses within parentheses in the meantime the ` CMDARG_P () ` is false, 
-It. 
- 
-
- 
-Both together and think, ` command_args ` method that is called self-omitted parentheses 
-The number in parentheses when not to KUKURA ` CMDARG_P () ` it is true. 
- 
-
-h4.  ` EXPR_CMDARG `  
-
- 
-Then another condition, ` EXPR_CMDARG ` investigate. 
-Find a routine street ` EXPR_CMDARG ` transition to the location to find out. 
- 
-
- ▼  ` yylex ` - identifier - the state transition  
-<pre class="longlist"> 
-4201 if (lex_state == EXPR_BEG | | 
-4202 lex_state == EXPR_MID | | 
-4203 lex_state == EXPR_DOT | | 
-4204 lex_state == EXPR_ARG | | 
-4205 lex_state == EXPR_CMDARG) ( 
-4206 if (cmd_state) 
-4207 lex_state = EXPR_CMDARG; 
-4208 else 
-4209 lex_state = EXPR_ARG; 
-4210) 
-4211 else ( 
-4212 lex_state = EXPR_END; 
-4213) 
-
-(parse.y) 
-</pre> 
-
-
- 
-This is ` yylex () ` in dealing with the identifier code. 
-UJAUJA and ` lex_state ` test is not as well leave, 
-` cmd_state ` is the first category. What is this? 
- 
-
- ▼  ` cmd_state `  
-<pre class="longlist"> 
-3106 static int 
-3107 yylex () 
-(3108 
-3109 static ID last_id = 0; 
-3110 register int c; 
-3111 int space_seen = 0; 
-3112 int cmd_state; 
-3113 
-3114 if (lex_strterm) ( 
-               / *…… Snip…… * / 
-3132) 
-3133 cmd_state = command_start; 
-3134 command_start = Qfalse; 
-
-(parse.y) 
-</pre> 
-
-
- 
-` yylex ` local variables. And ` grep ` looked to the value of the change 
-It is only here. This means that ` command_start ` and ` yylex ` save only once during the 
-It's just a temporary variable. 
- 
-
- 
-, <Code> command_start ` when what is true? 
- 
-
- ▼  ` command_start `  
-<pre class="longlist"> 
-2327 static int command_start = Qtrue; 
-
-2334 static NODE * 
-2335 yycompile (f, line) 
-2336 char * f; 
-2337 int line; 
-(2338 
-                    : 
-2380 command_start = 1; 
-
-       static int 
-       yylex () 
-       ( 
-                    : 
-             case '\ n': 
-               / *…… Snip…… * / 
-3165 command_start = Qtrue; 
-3166 lex_state = EXPR_BEG; 
-3167 return '\ n'; 
-
-3821 case ';': 
-3822 command_start = Qtrue; 
-
-3841 case '(': 
+
+h3.  implementation
+
+
+Now, what do I do? ` ruby `, normal ` if ` and ` kIF `, the post-` if ` to
+` kIF_MOD ` as a symbol level (in other words, the scanner level) to distinguish between the
+Syscall-hooking. After置系other operators are identical,
+` kUNLESS_MOD kUNTIL_MOD kWHILE_MOD ` ` kRESCUE_MOD ` in ` kIF_MOD ` of
+According to five. The decisions we are following him.
+
+
+ ▼  ` yylex ` - reserved words
+<pre class="longlist">
+4173 struct kwtable * kw;
+4174
+4175 / * See if it is a reserved word. * /
+4176 kw = rb_reserved_word (tok (), toklen ());
+4177 if (kw) (
+4178 enum lex_state state = lex_state;
+4179 lex_state = kw-> state;
+4180 if (state == EXPR_FNAME) (
+4181 yylval.id = rb_intern (kw-> name);
+4182)
+4183 if (kw-> id [0] == kDO) (
+4184 if (COND_P ()) return kDO_COND;
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG)
+4186 return kDO_BLOCK;
+4187 if (state == EXPR_ENDARG)
+4188 return kDO_BLOCK;
+4189 return kDO;
+4190)
+4191 if (state == EXPR_BEG) / *** *** here /
+4192 return kw-> id [0];
+4193 else (
+4194 if (kw-> id [0]! = Kw-> id [1])
+4195 lex_state = EXPR_BEG;
+4196 return kw-> id [1];
+4197)
+4198)
+
+(parse.y)
+</pre>
+
+
+
+This is because ` yylex ` at the end of the identifier after a scan. The last (most in
+Side) ` if ` in ` else ` is qualified to handle part of the child. ` EXPR_BEG ` whether to return value
+To see that change. This is qualified to determine whether the child. That is variable ` kw ` is
+Key. And ` kw ` is much…… and we go on, ` struct kwtable ` and
+Understandable.
+
+
+
+` struct kwtable ` is ` keywords ` defined in the structure,
+Hash function ` rb_reserved_word () ` is ` gperf ` would make it the
+In the previous chapter. Invite people to re-structure.
+
+
+ ▼  ` keywords ` - ` struct kwtable `
+<pre class="longlist">
+    1 struct kwtable (char * name; int id [2]; enum lex_state state;);
+
+(keywords)
+</pre>
+
+
+
+` name ` and ` id [0] ` are illustrated. Italian names and symbols of the Book.
+The remaining members talk about.
+
+
+
+First ` id [1] ` qualifier problem now is a symbol of support. For example ` if `,
+` kIF_MOD `.
+Book version of Italian qualifier is not ` id [0] ` and ` id [1] ` is the same thing is going on.
+
+
+
+And ` state ` is ` enum lex_state ` So, after I read the word reservation should be a state of transition.
+Let's keep that combination to the list. The output of my own making
+Tools ` kwstat.rb ` obtained. This is the accompanying CD-ROM.
+Ta \ footnote (` kwstat `: The accompanying CD-ROM ` tools / kwstat.rb `).
+
+
+<pre class="screen">
+% Kwstat.rb ruby / keywords
+---- EXPR_ARG
+defined? super yield
+
+---- EXPR_BEG
+and case else ensure if module or unless when
+begin do elsif for in not then until while
+
+---- EXPR_CLASS
+class
+
+---- EXPR_END
+BEGIN __FILE__ end nil retry true
+END __LINE__ false redo self
+
+---- EXPR_FNAME
+alias def undef
+
+---- EXPR_MID
+break next rescue return
+
+---- Modifiers
+if rescue unless until while
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+h2.  ` do ` clash
+
+h3.  problem
+
+
+
+The format is iterator ` do ` in ` end ` and ` (` in `) ` There are two types. These two
+The difference in priority order, ` (` in `) ` it is much higher. It is a high priority
+Grammar units as "small", it is smaller than the rule
+. For example ` stmt ` well as ` expr ` and ` primary ` have access to. For example
+I used to be ` (` in `) ` iterator is ` primary `, ` do ` in ` end ` iterator is < code> stmt ` was.
+
+
+
+However, during a ceremony following the requests came.
+
+
+<pre class="emlist">
+m do .... end + m do .... end
+</pre>
+
+
+This is to allow ` do ` in ` end ` iterator ` arg ` and ` primary `-money.
+But ` while ` is conditional expression ` expr `, that is ` arg ` and ` primary `, including,
+Here ` do ` conflict. Specifically, when the following.
+
+
+<pre class="emlist">
+while m do
+   ....
+end
+</pre>
+
+
+Look at the kind of ` do ` is ` while `-` do ` rightness of becoming so. Only
+And the common good of ` m do ` in ` end ` a tie is possible. And confuse people
+It is of ` yacc ` If you run into a certainty. In fact, let's do it.
+
+
+<pre class="emlist">
+/ * Do * collision experiments /
+% token kWHILE kDO tIDENTIFIER kEND
+%%
+expr: kWHILE expr kDO expr kEND
+     | TIDENTIFIER
+     | TIDENTIFIER kDO expr kEND
+</pre>
+
+
+` while `, variable reference, a simple enumeration of only problem. This rule is conditional expression
+At the beginning of ` tIDENTIFIER ` is coming shift / reduce conflict cause. ` tIDENTIFIER ` to
+Reference to the variable ` do ` and ` while ` as a mark of the reduction, iterator ` do `, it's
+Shift.
+
+
+
+Worse shift / reduce conflict is a priority shift, so leave and ` do ` is Lee
+The TERETA ` do ` said. Or operator, saying it wants to turn reduction and other priorities and ` do ` of all
+It no longer shifts, ` do ` itself is not working. This means that all the problems pike
+The solution is no shield, ` do ` in ` end ` iterator ` expr ` operator without having to use the
+To write the rules of the scanner can only be resolved level.
+
+
+
+But ` do ` in ` end ` iterator ` expr ` out is a very unrealistic.
+` expr ` for the rule (that is ` arg ` and ` primary ` too) and repeat all
+IKENAKU. Therefore this problem is solved in a proper scanner.
+
+
+
+h3.  level of resolution rules
+
+
+The following rules related to a reduction.
+
+
+ ▼  ` do ` symbol
+<pre class="longlist">
+primary: kWHILE expr_value do compstmt kEND
+
+do: term
+                 | KDO_COND
+
+primary: operation brace_block
+                 | Method_call brace_block
+
+brace_block: '(' opt_block_var compstmt ')'
+                 | KDO opt_block_var compstmt kEND
+</pre>
+
+
+
+Here's looking at, ` while `-` do ` and iterator ` do ` terminated by different symbols.
+` while ` is ` kDO_COND `, will Iterators ` kDO `. After the scanner
+I do distinguish.
+
+
+
+
+h3.  symbolic level of resolution
+
+
+The following is many times seen ` yylex ` the word processing part of the reservation.
+` do ` that the process is here only because the code here
+See note on studying the criteria should be.
+
+
+ ▼  ` yylex ` - identifier - Pre-language
+<pre class="longlist">
+4183 if (kw-> id [0] == kDO) (
+4184 if (COND_P ()) return kDO_COND;
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG)
+4186 return kDO_BLOCK;
+4187 if (state == EXPR_ENDARG)
+4188 return kDO_BLOCK;
+4189 return kDO;
+4190)
+
+(parse.y)
+</pre>
+
+
+
+What is messing about, ` kDO_COND ` related to only look at it. Because,
+` kDO_COND ` and ` kDO ` / ` kDO_BLOCK ` a comparison, ` kDO ` and ` kDO_BLOCK `.
+A comparison is meaningless, but the comparison is meaningless. Conditions are now
+` do ` I can not even distinguish that, together with other conditions that do not follow.
+
+
+
+In other words ` COND_P () ` is key.
+
+
+
+
+h3.  ` COND_P () `
+
+h4.  ` cond_stack `
+
+
+` COND_P () ` is ` parse.y ` defined near the beginning.
+
+
+ ▼  ` cond_stack `
+<pre class="longlist">
+   75 # ifdef HAVE_LONG_LONG
+   76 typedef unsigned LONG_LONG stack_type;
+   77 # else
+   78 typedef unsigned long stack_type;
+   79 # endif
+   80
+   81 static stack_type cond_stack = 0;
+   82 # define COND_PUSH (n) (cond_stack = (cond_stack <<1) | ((n) & 1))
+   83 # define COND_POP () (cond_stack>> = 1)
+   84 # define COND_LEXPOP () do (\
+   85 int last = COND_P (); \
+   86 cond_stack>> = 1; \
+   87 if (last) cond_stack | = 1; \
+   88) while (0)
+   89 # define COND_P () (cond_stack & 1)
+
+(parse.y)
+</pre>
+
+
+
+- <Code> stack_type ` is ` long ` (32 bits) or ` long long ` (64 bits).
+` cond_stack ` in Perth at the start of ` yycompile () ` initialized, and always after the macro
+To be handled through the macros do I know.
+
+
+
+The macro ` COND_PUSH ` / ` POP ` to see that the unit's stack apparently bit integer
+Use it as.
+
+
+<pre class="emlist">
+MSB ← → LSB
+The initial value of 0 ... 0000000000
+... 0000000001 COND_PUSH (1)
+... 0000000010 COND_PUSH (0)
+... 0000000101 COND_PUSH (1)
+... 0000000010 COND_POP ()
+... 0000000100 COND_PUSH (0)
+... 0000000010 COND_POP ()
+</pre>
+
+
+And ` COND_P () ` is not the least significant bit (LSB) is whether
+We have to determine the top of the stack is determining whether or not there will be.
+
+
+
+The remaining ` COND_LEXPOP () ` is a little strange movements. Current ` COND_P () ` to
+Back stack shift to the right and left. That is because under a two-bit
+For a bit of crushing to be trampled on.
+
+
+<pre class="emlist">
+MSB ← → LSB
+The initial value of 0 ... 0000000000
+... 0000000001 COND_PUSH (1)
+... 0000000010 COND_PUSH (0)
+... 0000000101 COND_PUSH (1)
+... 0000000011 COND_LEXPOP ()
+... 0000000100 COND_PUSH (0)
+... 0000000010 COND_LEXPOP ()
+</pre>
+
+
+This is what it is meant to explain later.
+
+
+h4.  purpose of the survey
+
+
+The purpose of this stack to check,
+` COND_PUSH () COND_POP () ` using it to the entire list to try.
+
+
+<pre class="emlist">
+         | KWHILE (COND_PUSH (1);) expr_value do (COND_POP ();)
+--
+         | KUNTIL (COND_PUSH (1);) expr_value do (COND_POP ();)
+--
+         | KFOR block_var kIN (COND_PUSH (1);) expr_value do (COND_POP ();)
+--
+       case '(':
+                 :
+                 :
+         COND_PUSH (0);
+         CMDARG_PUSH (0);
+--
+       case '[':
+                 :
+                 :
+         COND_PUSH (0);
+         CMDARG_PUSH (0);
+--
+       case '(':
+                 :
+                 :
+         COND_PUSH (0);
+         CMDARG_PUSH (0);
+--
+       case ']':
+       case ')':
+       case ')':
+         COND_LEXPOP ();
+         CMDARG_LEXPOP ();
+</pre>
+
+
+This follows from the law to find.
+
+
+
+*  conditional expression in the first ` PUSH (1) `
+*  open parentheses ` PUSH (0) `
+*  conditions at the end of the ceremony ` POP () `
+*  close in parentheses ` LEXPOP () `
+
+
+
+The sort of
+Uses comes out. ` cond_stack ` also named one of the same level as a conditional expression
+Whether the decision must have a macro (Figure 2).
+
+
+
+<img src="images/ch_contextual_condp.jpg" alt="(condp)"> <br>
+Figure 2: ` COND_P () ` transition
+
+
+
+The gimmick of the following may also be able to cope.
+
+
+<pre class="emlist">
+while (m do .... end) # do the iterator do (kDO)
+   ....
+end
+</pre>
+
+
+It is a 32-bit machines ` long long ` If there are no conditions or the expression in parentheses
+32-per-level nested in a strange It's possible. Although the Fair
+Not so much from the nest actual harm is imminent.
+
+
+
+Also ` COND_LEXPOP () ` definition is kind of strange thing is that I was, I guess
+対策らしいprefetching. It is good that the current rules to prevent prefetching
+Because of the ` POP ` and ` LEXPOP ` There is no meaning to separate. In other words
+At this time "` COND_LEXPOP () ` would have no meaning" the interpretation is correct.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+h2.  ` tLPAREN_ARG ` (1)
+
+h3.  problem
+
+
+This issue is very confusing. This was to pass ` ruby ` 1.7 to
+Became, it's fairly recent story. What is that……
+
+
+<pre class="emlist">
+call (expr) + 1
+</pre>
+
+
+To
+
+
+<pre class="emlist">
+(call (expr)) + 1
+call ((expr) + 1)
+</pre>
+
+
+Whether or interpretation of the story. Previously the former All are being treated like
+Hoops. That is always parentheses "method arguments in parentheses." But
+` ruby ` 1.7, as the latter now being processed.
+This means the space is in parentheses "` expr ` brackets".
+
+
+
+Why did you change your interpretation, let me introduce an example. First I wrote the following statement.
+
+
+<pre class="emlist">
+p m () + 1
+</pre>
+
+
+If there is no problem so far. But ` m ` was actually returns to scale, multi-digit number of SU
+GITATOSHIYOU. So when you view it for a whole number.
+
+
+<pre class="emlist">
+p m () + 1. to_i #??
+</pre>
+
+
+Darn, parentheses are needed.
+
+
+<pre class="emlist">
+p (m () + 1). to_i
+</pre>
+
+
+This is not to be interpreted? Up to 1.6, which is
+
+
+<pre class="emlist">
+(p (m () + 1)). to_i
+</pre>
+
+
+Said. This means putting a long-awaited ` to_i ` What is the meaning they no longer exist. This is not it.
+The space between parentheses but only with the special treatment is ` expr ` brackets to the
+Of.
+
+
+
+Self-study for those who want to keep writing,
+This change was implemented ` parse.y ` revision 1.100 (2001-05-31).
+1.99 and that's why we take a look at the differences between the relatively straightforward.
+This difference is to take command.
+
+
+<pre class="screen">
+~ / src / ruby% cvs diff-r1.99-r1.100 parse.y
+</pre>
+
+
+
+h3.  survey
+
+
+First, how the system works in reality if you look at it. Attached
+Tools ` ruby-lexer ` \ footnote (` ruby-lexer `: The accompanying CD-ROM ` tools / ruby-lexer.tar.gz `) a
+Using string corresponding to the program are to be checked.
+
+
+<pre class="screen">
+% Ruby-lexer-e 'm (a)'
+tIDENTIFIER '(' tIDENTIFIER ')' '\ n'
+</pre>
+
+
+`-e ` is ` ruby ` program as well as the option to pass directly from the command line.
+You can use it to try a lot.
+First problem, the first argument is that parenthetical.
+
+
+<pre class="screen">
+% Ruby-lexer-e 'm (a)'
+tIDENTIFIER tLPAREN_ARG tIDENTIFIER ')' '\ n'
+</pre>
+
+
+入れたらopen spaces in parentheses symbol ` tLPAREN_ARG `.
+Fair incidentally, let us also take a look at the expression in parentheses.
+
+
+<pre class="screen">
+% Ruby-lexer-e '(a)'
+tLPAREN tIDENTIFIER ')' '\ n'
+</pre>
+
+
+The ceremony is usually in parentheses ` tLPAREN ` like.
+
+
+
+I put it all together.
+
+
+
+<tr> <td> enter <td> <td> open parenthesis symbol <td> </tr>
+<tr> <td> ` m (a) ` <td> <td> `'('` <td> </tr>
+<tr> <td> ` m (a) ` <td> <td> ` tLPAREN_ARG ` <td> </tr>
+<tr> <td> ` (a) ` <td> <td> ` tLPAREN ` <td> </tr>
+
+
+
+That is how we distinguish between these three are the focus.
+This is particularly ` tLPAREN_ARG ` is important.
+
+
+
+
+If h3.  an argument
+
+
+First meekly ` yylex () `-<code >'('` look at the section.
+
+
+ ▼  ` yylex ` - `'('`
+<pre class="longlist">
+3841 case '(':
 3842 command_start = Qtrue;
-	 	(parse.y) 
-</pre> 
+3843 if (lex_state == EXPR_BEG | | lex_state == EXPR_MID) (
+3844 c = tLPAREN;
+3845)
+3846 else if (space_seen) (
+3847 if (lex_state == EXPR_CMDARG) (
+3848 c = tLPAREN_ARG;
+3849)
+3850 else if (lex_state == EXPR_ARG) (
+3851 c = tLPAREN_ARG;
+3852 yylval.id = last_id;
+3853)
+3854)
+3855 COND_PUSH (0);
+3856 CMDARG_PUSH (0);
+3857 lex_state = EXPR_BEG;
+3858 return c;
 
-
- 
-` command_start ` is ` parse.y ` static variable, 
-"` \ N; (`" one of the scan and true, and understandable. 
- 
-
- 
-Put together so far. First, "` \ n; (`" read a ` command_start ` is true, 
-Next ` yylex () ` between ` cmd_state ` is true. 
- 
-
- 
-And ` yylex () `, ` cmd_state ` I had to use code, 
- 
-
- ▼  ` yylex ` - identifier - the state transition  
-<pre class="longlist"> 
-4201 if (lex_state == EXPR_BEG | | 
-4202 lex_state == EXPR_MID | | 
-4203 lex_state == EXPR_DOT | | 
-4204 lex_state == EXPR_ARG | | 
-4205 lex_state == EXPR_CMDARG) ( 
-4206 if (cmd_state) 
-4207 lex_state = EXPR_CMDARG; 
-4208 else 
-4209 lex_state = EXPR_ARG; 
-4210) 
-4211 else ( 
-4212 lex_state = EXPR_END; 
-4213) 
-
-(parse.y) 
-</pre> 
-
-
- 
-"` \ N; (` after ` EXPR_BEG MID DOT ARG CMDARG ` state when read identifier 
-MUTO ` EXPR_CMDARG ` transition "he said. But ` \ n; (` After the SOMO 
-SOMO ` lex_state ` is ` EXPR_BEG ` only be so, ` EXPR_CMDARG ` if the transition to 
-Has ` lex_state ` is not very meaningful. ` lex_state ` is limited ` EXPR_ARG ` for transition 
-It's just important. 
- 
-
- 
-Now, more than reflect and ` EXPR_CMDARG ` of situation is possible. 
-For example, the following situations. Under the current position of the bar. 
- 
-
-<pre class="emlist"> 
-m _ 
-m (m _ 
-m m _ 
-</pre> 
-
-h4.  together  
-
- 
-Here ` do `'s decision to go back to code. 
- 
-
- ▼  ` yylex ` - identifier - a reserved word - ` kDO ` - ` kDO_BLOCK `  
-<pre class="longlist"> 
-4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
-4186 return kDO_BLOCK; 
-
-(parse.y) 
-</pre> 
-
-
- 
-Back in parentheses call the method of argument, and not when the first argument before. 
-It is ` command_call ` after the second argument. So this kind of footage. 
- 
-
-<pre class="emlist"> 
-m arg, arg do .... end 
-m (arg), arg do .... end 
-</pre> 
-
- 
-Why ` EXPR_CMDARG ` to eliminate if it has to do with…… you'll find examples of writing. 
- 
-
-<pre class="emlist"> 
-m do .... end 
-</pre> 
-
- 
-This pattern is already ` primary ` being defined, ` kDO ` to use ` do ` in ` end ` ITE 
-Lifting regulators. So in this case also included a collision with them. 
- 
+(parse.y)
+</pre>
 
 
 
-h3.  facts and the truth  
-
- 
-I thought at the end? Is not the end yet. 
-Certainly that is a complete logic, but it is correct, I wrote that story. 
-In fact, this section is one of lies. 
- 
-
- 
-Rather than lies not say what exactly? It is 
-` CMDARG_P () ` I wrote about this part. 
- 
-
- 
-Apparently, ` command_args ` parenthesis means that during abbreviatory argument method calls 
-If you are ` CMDARG_P () ` is true. 
- 
-
- 
-"Back in parentheses methods to be used when calling argument……" he said, 
-Argument "" Where is it? Again ` rubylex-analyser ` with 
-I try to ensure strict. 
- 
-
-<pre class="screen"> 
-% Rubylex-analyser-e 'm a, a, a, a;' 
-+ EXPR_BEG 
-EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG S "a" tIDENTIFIER EXPR_ARG 
-                                               1: cmd push - 
-EXPR_ARG "," ',' EXPR_BEG 
-EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "," ',' EXPR_BEG 
-EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "," ',' EXPR_BEG 
-EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
-EXPR_ARG ";" ';' EXPR_BEG 
-                                               0: cmd resume 
-EXPR_BEG C "\ n" 'EXPR_BEG 
-</pre> 
-
- 
-Right field, "` 1: cmd push-`" where there is ` cmd_stack ` to push. Resona 
-Line under a single digit number is 1 when ` CMDARG_P () ` is true. In other words ` CMDARG_P () `, 
-Is a time 
- 
-
- 
-Back in parentheses method calls immediately after the first argument 
-The last argument to mark the end of the next 
- 
-
- 
-And言うべきらしい. 
- 
-
- 
-But it's really true but strictly speaking it is not yet. 
-For example, the following example. 
- 
-
-<pre class="screen"> 
-% Rubylex-analyser-e 'm a (), a, a;' 
-+ EXPR_BEG 
-EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG S "a" tIDENTIFIER EXPR_ARG 
-                                               1: cmd push - 
-EXPR_ARG "(" '(' EXPR_BEG 
-                                               0: cond push 
-                                              10: cmd push 
-EXPR_BEG C ")" ')' EXPR_END 
-                                               0: cond lexpop 
-                                               1: cmd lexpop 
-EXPR_END "," ',' EXPR_BEG 
-EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "," ',' EXPR_BEG 
-EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
-EXPR_ARG ";" ';' EXPR_BEG 
-                                               0: cmd resume 
-EXPR_BEG C "\ n" 'EXPR_BEG 
-</pre> 
-
- 
-The first argument in the first reading at the time of termination symbol ` CMDARG_P () ` is truly 
-It. Therefore 
- 
-
- 
-Back in parentheses method invocation of the first argument 
-Immediately after the first sign of the end of the last argument to mark the end of the next 
- 
-
- 
-Is the complete answer. 
- 
-
- 
-The fact is what you mean? But I want to recall, ` CMDARG_P () ` to 
-Such codes are used. 
- 
-
- ▼  ` yylex ` - identifier - a reserved word - ` kDO ` - ` kDO_BLOCK `  
-<pre class="longlist"> 
-4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
-4186 return kDO_BLOCK; 
-
-(parse.y) 
-</pre> 
+The first ` if ` is ` tLPAREN ` So the usual formula in parentheses. The criterion is ` lex_state ` is
+` BEG ` or ` MID `, that is absolutely the beginning when the ceremony.
 
 
- 
-` EXPR_CMDARG ` is "` command_call ` arguments before the first", in the sense that it excluded 
-. However, ` CMDARG_P () ` is already included in the meaning of that? 
-That is the final conclusion of this section is this. 
- 
 
- 
-EXPR_CMDARG is only a waste. 
- 
-
- 
-Indeed, this is when I found that it is in my crying. "Absolute 
-Meaningful to the pair, something was wrong, "the source would patiently try to analyze theまくっ 
-It do not know. But ultimately ` rubylex-analyser ` various Coe 
-All in all, to try to de-まくっis no effect, so it is pointless to conclude. 
- 
-
- 
-ENEN meaning is not just a separate page and came to the breadwinner, but 
-Instead, it possible to simulate conditions of the plan. The world 
-None of the program is perfect and mistakes are included. At this year's. 
-So it is a subtle addition is prone to mistakes. When the original "infallible 
-"As I read this kind of mistake when he met HAMARU. So after all 
-When you read the last SUKODO believed there was only the facts of what happened. 
- 
-
- 
-In this regard the importance of dynamic analysis is known to have said. And investigate 
-I look for the facts first. Source code is a fact never say anything. 
-There's nothing but a guess they are more human. 
- 
-
- 
-Pendulous all very fine and lessons of this chapter was rough at a long終わ 
-Resona said. 
+The next ` space_seen ` parentheses is the "blank whether there is any" respectively.
+Spaces, and ` lex_state ` is ` ARG ` or ` CMDARG ` That is when the first argument……
+Ago, the symbol <code >'('` well as ` tLPAREN_ARG ` said. This is such an example
+If you can not eliminate.
 
 
-h4.  did not end  
-
- 
-One forgotten. ` CMDARG_P () ` That's why you have to get value 
-This chapter is終われないmust explain. The problem is here. 
- 
-
- ▼  ` command_args `  
-<pre class="longlist"> 
-1209 command_args: ( 
-1210 $ <num> $ = cmdarg_stack; 
-1211 CMDARG_PUSH (1); 
-1212) 
-1213 open_args 
-(1214 
-1215 / * CMDARG_POP () * / 
-1216 cmdarg_stack = $ <num> 1; 
-1217 $ $ = $ 2; 
-1218) 
-
-1221 open_args: call_args 
-
-(parse.y) 
-</pre> 
+<pre class="emlist">
+m (# parentheses before the space is no method parentheses ('(')……
+m arg, (#…… except the first argument of expression in parentheses (tLPAREN)
+</pre>
 
 
- 
-Conclusions from it and once again the influence of prefetching. ` command_args ` is always 
-Following context. 
- 
+` tLPAREN ` or ` tLPAREN_ARG ` But if no input characters ` c ` still
+Used <code >'('` said. It's going to be a method call parentheses.
 
-<pre class="emlist"> 
-tIDENTIFIER _ 
-</pre> 
 
- 
-It is, it is too variable to refer to the method calls too. Also 
-Variable would have to refer ` variable `, the method it calls ` operation ` return to 
-If you do not. So should prefetching to determine the direction forward, so I can not 
-Be. Thus ` command_args ` prefetching is beginning to happen is always the first argument 
-The first sign after reading the termination ` CMDARG_PUSH () ` execution. 
- 
 
- 
-` cmdarg_stack `, ` POP ` and ` LEXPOP ` is also divided into the reasons here. 
-Look at the following example. 
- 
+Such a symbolic level, to distinguish it from the sea on the other hand, the normal rules of writing
+Avoid collision. Simplify writing to the following will be.
 
-<pre class="screen"> 
-% Rubylex-analyser-e 'm m (a), a' 
-- e: 1: warning: parenthesize argument (s) for future version 
-+ EXPR_BEG 
-EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG S "m" tIDENTIFIER EXPR_ARG 
-                                               1: cmd push - 
-EXPR_ARG S "(" tLPAREN_ARG EXPR_BEG 
-                                               0: cond push 
-                                              10: cmd push 
-                                             101: cmd push - 
-EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG 
-EXPR_CMDARG ")" ')' EXPR_END 
-                                               0: cond lexpop 
-                                              11: cmd lexpop 
-+ EXPR_ENDARG 
-EXPR_ENDARG "," ',' EXPR_BEG 
-EXPR_BEG S "a" tIDENTIFIER EXPR_ARG 
-EXPR_ARG "\ n" \ n EXPR_BEG 
-                                              10: cmd resume 
-                                               0: cmd resume 
-</pre> 
 
- 
-` cmd ` relationship only to see the correspondence between him and we…… 
- 
+<pre class="emlist">
+stmt: command_call
 
-<pre class="emlist"> 
-   1: cmd push-parser push (1) 
-  10: cmd push push scanner 
-101: cmd push-parser push (2) 
-  11: cmd lexpop pop scanner 
-  10: cmd resume parser pop (2) 
-   0: cmd resume Hertha pop (1) 
-</pre> 
+method_call: tIDENTIFIER '(' args') '/ * usual method * /
 
- 
-"` Cmd push-`" at the end they would have been negative with the parser 
-` push `. In other words ` push ` and ` pop ` have missed the correspondence between. Should 
-` push-` twice in a row is going on the stack would be 110 but, because of prefetching 
-101 to a thousand. ` CMDARG_LEXPOP () ` is the way it's prepared to respond to this phenomenon 
-For the last resort. Scanner in the first place is always 0 ` push ` now because, after scan 
-Na is ` pop `'s always supposed to be zero. There is zero if you do not, Par 
-The service ` push ` was delayed because one believes in it. So its value to leave. 
- 
+command_call: tIDENTIFIER command_args / * * method omitted parentheses /
 
- 
-In other words, parser ` pop ` came at the stack is already back to normalcy 
-It should be. So I really did not normally ` pop ` that it's okay. I do not 
-The acts, not just good, because I believe that.ポッ 
-I can type <code >$$` is out to save the return movement is the same. Especially if I stay 
-We change the filter to consider how to change the behavior and prefetching do not know. Only 
-This problem may also occur in the future be banned in the grammar that has been decided (that's why 
-There are a warning). No such thing to you through a variety of ideas to deal with the 
-The bone. So the real ` ruby ` is this a good implementation of that, I think. 
- 
+command_args: args
 
- 
-This is really resolved. 
+args: arg
+              : Args', 'arg
+
+arg: primary
+
+primary: tLPAREN compstmt ')' / * * usual formula parentheses /
+              | TLPAREN_ARG expr ')' / * parenthetical first argument * /
+              | Method_call
+</pre>
+
+
+` method_call ` and ` command_call ` attention to the other. If ` tLPAREN_ARG ` without introducing
+`'('` and leave, ` command_args ` and ` args ` out, ` args ` and ` arg ` out,
+` arg ` and ` primary ` out, and ` tLPAREN_ARG ` away from <code >'('` came out
+` method_call ` collided with it (see Figure 3).
+
+
+
+<img src="images/ch_contextual_trees.jpg" alt="(trees)"> <br>
+Figure 3: ` method_call ` and ` command_call `
+
+
+
+
+More than two h3.  argument
+
+
+Now is a good parentheses ` tLPAREN_ARG ` in this BATCHIRI, or so someone thought
+In fact, it is not. For example, the following cases: How would it be.
+
+
+<pre class="emlist">
+m (a, a, a)
+</pre>
+
+
+Such expressions have been treated as the method calls have been so
+Had errors. But ` tLPAREN_ARG ` will be introduced and open parentheses
+` expr ` in parentheses, because two or more argument for the Perth and error.
+Considering the compatibility considerations must be managed.
+
+
+
+But without thinking
+
+
+<pre class="emlist">
+command_args: tLPAREN_ARG args') '
+</pre>
+
+
+, That rule would be simply to add the collision. Look at the whole think
+?
+
+
+<pre class="emlist">
+stmt: command_call
+              | Expr
+
+expr: arg
+
+command_call: tIDENTIFIER command_args
+
+command_args: args
+              | TLPAREN_ARG args') '
+
+args: arg
+              : Args', 'arg
+
+arg: primary
+
+primary: tLPAREN compstmt ')'
+              | TLPAREN_ARG expr ')'
+              | Method_call
+
+method_call: tIDENTIFIER '(' args') '
+</pre>
+
+
+` command_args `'s first look at the rules. ` args ` from ` arg ` is out.
+` arg ` from ` primary ` is out. From there ` tLPAREN_ARG ` rules out.
+And ` expr ` is ` arg `, including the deployment, depending on how
+
+
+<pre class="emlist">
+command_args: tLPAREN_ARG arg ')'
+              | TLPAREN_ARG arg ')'
+</pre>
+
+
+The situation. That is, reduce / reduce conflict and very bad.
+
+
+Then how do it without collision only deal with two or more arguments?
+The possessive but not limited to just write. Reality is as follows resolved.
+
+
+ ▼  ` command_args `
+<pre class="longlist">
+command_args: open_args
+
+open_args: call_args
+                 | TLPAREN_ARG ')'
+                 | TLPAREN_ARG call_args2 ')'
+
+call_args: command
+                 | Args opt_block_arg
+                 | Args', 'tSTAR arg_value opt_block_arg
+                 | Assocs opt_block_arg
+                 | Assocs', 'tSTAR arg_value opt_block_arg
+                 | Args', 'assocs opt_block_arg
+                 | Args', 'assocs',' tSTAR arg opt_block_arg
+                 | TSTAR arg_value opt_block_arg
+                 | Block_arg
+
+call_args2: arg_value ',' args opt_block_arg
+                 | Arg_value ',' block_arg
+                 | Arg_value ',' tSTAR arg_value opt_block_arg
+                 | Arg_value ',' args', 'tSTAR arg_value opt_block_arg
+                 | Assocs opt_block_arg
+                 | Assocs', 'tSTAR arg_value opt_block_arg
+                 | Arg_value ',' assocs opt_block_arg
+                 | Arg_value ',' args', 'assocs opt_block_arg
+                 | Arg_value ',' assocs', 'tSTAR arg_value opt_block_arg
+                 | Arg_value ',' args', 'assocs','
+                                   tSTAR arg_value opt_block_arg
+                 | TSTAR arg_value opt_block_arg
+                 | Block_arg
+
+
+primary: literal
+                 | Strings
+                 | Xstring
+                        :
+                 | TLPAREN_ARG expr ')'
+</pre>
+
+
+
+You can ` command_args ` followed by another one stage, ` open_args ` is thatはさまっ
+But the same rules. This ` open_args ` The second third of the key rules are concerned
+Be. This form is similar to the just-written examples, but subtly different. It is
+` call_args2 ` that have introduced it. This ` call_args2 ` and is characterized by words
+UTO, the argument is always two or more. Most of the evidence rules
+`','` in itself. The exception is ` assocs `, but the rules, ` expr ` from ` assocs ` is out
+No leverage ` assocs ` collision is not the first place.
+
+
+
+NIKUKATTA description is rather straightforward. A little plain speaking,
+
+
+<pre class="emlist">
+command_args: call_args
+</pre>
+
+
+Not only do not go through grammar, with the following rules that add.
+So "do not go through the rules of grammar" is what I think about it.
+The conflict is ` call_args ` the top ` tLPAREN_ARG `-` primary ` will come only when
+Because of the limited to
+"` TIDENTIFIER tLPAREN_ARG ` The order came as the only rule is
+Do not go through grammar "I think about it. Some cite an example.
+
+
+<pre class="emlist">
+m (a, a)
+</pre>
+
+
+This is ` tLPAREN_ARG ` list of two or more elements there.
+
+
+<pre class="emlist">
+m ()
+</pre>
+
+
+Conversely, ` tLPAREN_ARG ` in the list is empty.
+
+
+<pre class="emlist">
+m (* args)
+m (& block)
+m (k => v)
+</pre>
+
+
+` tLPAREN_ARG ` list of the specific method calls (` expr ` is not)
+Have representation.
+
+
+
+Roughly around the cover. Implementation and in light of
+Let's see.
+
+
+ ▼  ` open_args ` (1)
+<pre class="longlist">
+open_args: call_args
+                 | TLPAREN_ARG ')'
+</pre>
+
+
+
+First, the rule is to check a list of corresponding.
+
+
+ ▼  ` open_args ` (2)
+<pre class="longlist">
+                 | TLPAREN_ARG call_args2 ')'
+
+call_args2: arg_value ',' args opt_block_arg
+                 | Arg_value ',' block_arg
+                 | Arg_value ',' tSTAR arg_value opt_block_arg
+                 | Arg_value ',' args', 'tSTAR arg_value opt_block_arg
+                 | Assocs opt_block_arg
+                 | Assocs', 'tSTAR arg_value opt_block_arg
+                 | Arg_value ',' assocs opt_block_arg
+                 | Arg_value ',' args', 'assocs opt_block_arg
+                 | Arg_value ',' assocs', 'tSTAR arg_value opt_block_arg
+                 | Arg_value ',' args', 'assocs','
+                                   tSTAR arg_value opt_block_arg
+                 | TSTAR arg_value opt_block_arg
+                 | Block_arg
+</pre>
+
+
+
+And the ` call_args2 `, and a list of two or more elements, ` assocs ` and
+An array of passing, blocking and special-delivery to include dealing with.
+This is a considerable scope to respond to.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+h2.  ` tLPAREN_ARG ` (2)
+
+h3.  problem
+
+
+Previous calls to the section on specific methods of expression is "almost ready" and said cover
+The reasons for this. This is not iterator is uncovered.
+For example, the following sentence like water.
+
+
+<pre class="emlist">
+m (a) {....}
+m (a) do .... end
+</pre>
+
+
+The point of this section is introduced in efforts to resolve the突っこんsection, let's see.
+
+
+h3.  level of resolution rules
+
+
+First look at the rules.
+It has already appeared before the rules just because ` do_block ` around to watch them.
+
+
+ ▼  ` command_call `
+<pre class="longlist">
+command_call: command
+                 | Block_command
+
+command: operation command_args
+
+command_args: open_args
+
+open_args: call_args
+                 | TLPAREN_ARG ')'
+                 | TLPAREN_ARG call_args2 ')'
+
+block_command: block_call
+
+block_call: command do_block
+
+do_block: kDO_BLOCK opt_block_var compstmt ')'
+                 | TLBRACE_ARG opt_block_var compstmt ')'
+</pre>
+
+
+
+` do `, ` (` is both radically new symbol ` kDO_BLOCK ` and ` tLBRACE_ARG ` in the world.
+Why ` kDO ` and <code >'{'` does not. That's the moment when you try a shot,
+Well, that's all, ` kDO_BLOCK ` and ` kDO ` to, ` tLBRACE_ARG ` and <code >'{'` and ` yacc `,
+Treated him. Then……
+
+
+<pre class="screen">
+% Yacc parse.y
+conflicts: 2 shift / reduce, 6 reduce / reduce
+</pre>
+
+
+Collision with abandon. Investigating the cause of the following statements.
+
+
+<pre class="emlist">
+m (a), b {....}
+</pre>
+
+
+Because this form of sentence has been through already. ` b {....}` is
+` primary ` said. There are blocks ` m ` and consolidated rules to add, however,
+
+
+<pre class="emlist">
+m ((a), b) {....}
+m ((a), (b {....}))
+</pre>
+
+
+The two were able to interpret it, a collision.
+This is 2 shift / reduce conflict.
+
+
+
+The other is ` do ` in ` end `-related. This is
+
+
+<pre class="emlist">
+m ((a)) do .... end # block_call do have to add end
+m ((a)) do .... end # primary do have to add end
+</pre>
+
+
+The two collided. This is 6 reduce / reduce conflict.
+
+
+
+h3.  ` (` in `) ` iterator
+
+
+Now for the production. Just as you saw, ` do ` and <code >'{'` symbol of change in
+Conflict is avoided. ` yylex () `-<code >'{'` look at the section.
+
+
+ ▼  ` yylex ` - `'{'`
+<pre class="longlist">
+3884 case '(':
+3885 if (IS_ARG () | | lex_state == EXPR_END)
+3886 c = '('; / * block (primary) * /
+3887 else if (lex_state == EXPR_ENDARG)
+3888 c = tLBRACE_ARG; / * block (expr) * /
+3889 else
+3890 c = tLBRACE; / * hash * /
+3891 COND_PUSH (0);
+3892 CMDARG_PUSH (0);
+3893 lex_state = EXPR_BEG;
+3894 return c;
+
+(parse.y)
+</pre>
+
+
+
+` IS_ARG () ` is
+
+
+ ▼  ` IS_ARG `
+<pre class="longlist">
+3104 # define IS_ARG () (lex_state == EXPR_ARG | | lex_state == EXPR_CMDARG)
+
+(parse.y)
+</pre>
+
+
+
+From the definition, ` EXPR_ENDARG ` when it is absolutely false.
+In other words ` lex_state ` is ` EXPR_ENDARG ` whenever the ` tLBRACE_ARG ` to it,
+` EXPR_ENDARG ` transition that is all secret.
+
+
+h4.  ` EXPR_ENDARG `
+
+
+, <Code> EXPR_ENDARG ` How do you have been set?
+Assigned to someone ` grep ` him.
+
+
+ ▼  ` EXPR_ENDARG ` to transition
+<pre class="longlist">
+open_args: call_args
+                 | TLPAREN_ARG (lex_state = EXPR_ENDARG;) ')'
+                 | TLPAREN_ARG call_args2 (lex_state = EXPR_ENDARG;) ')'
+
+primary: tLPAREN_ARG expr (lex_state = EXPR_ENDARG;) ')'
+</pre>
+
+
+
+Funny. ` tLPAREN_ARG ` respond to close in parentheses after ` EXPR_ENDARG ` and transition
+If you know it is not really the <code >')'` in front of the assignment
+. Other ` EXPR_ENDARG ` set to the point that I think ` grep ` and
+まくっhim, but no.
+
+
+
+Maybe somewhere in the wrong way? Something completely different way
+` lex_state ` changes that might be. For confirmation,
+` rubylex-analyser `, ` lex_state ` transition to try to visualize.
+
+
+<pre class="screen">
+% Rubylex-analyser-e 'm (a) (nil)'
++ EXPR_BEG
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG S "(" tLPAREN_ARG EXPR_BEG
+                                               0: cond push
+                                               0: cmd push
+                                               1: cmd push -
+EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG ")" ')' EXPR_END
+                                               0: cond lexpop
+                                               1: cmd lexpop
++ EXPR_ENDARG
+EXPR_ENDARG S "(" tLBRACE_ARG EXPR_BEG
+                                               0: cond push
+                                              10: cmd push
+                                               0: cmd resume
+EXPR_BEG S "nil" kNIL EXPR_END
+EXPR_END S ")" ')' EXPR_END
+                                               0: cond lexpop
+                                               0: cmd lexpop
+EXPR_END "\ n" \ n EXPR_BEG
+</pre>
+
+
+It is divided into three major lines of ` yylex () ` state of transition, respectively.
+From the ` yylex () ` status before the middle of the two words in the text and symbols,
+The right is ` yylex () ` after ` lex_state `.
+
+
+
+The problem is a single line ` + EXPR_ENDARG ` as part of the out of the country. This is the parser
+Action is happening in that transition. According to the report, why?
+`')'` after I read it in action ` EXPR_ENDARG ` to the transition
+And a good <code >'{'` is ` tLBRACE_ARG ` to the other. This is a matter of fact
+LALR (1) (1) to town to take advantage of (逆用) of the considerable skills of senior
+.
+
+
+h4.  prefetching逆用
+
+
+` ruby-y ` use ` yacc ` PASAENJIN of movement that can be displayed by the minute.
+This is now using more detail to try to trace the parser.
+
+
+<pre class="screen">
+% Ruby-yce 'm (a) (nil)' 2> & 1 | egrep '^ Reading | Reducing'
+Reducing via rule 1 (line 303), -> @ 1
+Reading a token: Next token is 304 (tIDENTIFIER)
+Reading a token: Next token is 340 (tLPAREN_ARG)
+Reducing via rule 446 (line 2234), tIDENTIFIER -> operation
+Reducing via rule 233 (line 1222), -> @ 6
+Reading a token: Next token is 304 (tIDENTIFIER)
+Reading a token: Next token is 41 (')')
+Reducing via rule 392 (line 1993), tIDENTIFIER -> variable
+Reducing via rule 403 (line 2006), variable -> var_ref
+Reducing via rule 256 (line 1305), var_ref -> primary
+Reducing via rule 198 (line 1062), primary -> arg
+Reducing via rule 42 (line 593), arg -> expr
+Reducing via rule 260 (line 1317), -> @ 9
+Reducing via rule 261 (line 1317), tLPAREN_ARG expr @ 9 ')' -> primary
+Reading a token: Next token is 344 (tLBRACE_ARG)
+                          :
+                          :
+</pre>
+
+
+Interrupted only by a compilation `-c ` options and from the command line program
+Give `-e ` with a combination. And ` grep ` token, reading and reporting only the reduction
+Extract.
+
+
+
+So we started to look at the middle of the list. `')'` is being loaded. Resona
+Then the last…… how you look at it, we finally embedded Action
+(` @ 9 `) reduction is going on (running). This is certainly <code >')'` after
+`'{'` before ` EXPR_ENDARG ` to be set. However, this is always going to happen -
+? Where once again set to look at.
+
+
+<pre class="emlist">
+Rule 1 tLPAREN_ARG (lex_state = EXPR_ENDARG;) ')'
+Rule 2 tLPAREN_ARG call_args2 (lex_state = EXPR_ENDARG;) ')'
+Rule 3 tLPAREN_ARG expr (lex_state = EXPR_ENDARG;) ')'
+</pre>
+
+
+Action rules are embedded as a substitute check can be. For example
+Rule 1 as an example and take an entirely without changing the meaning of the following rewrite.
+
+
+<pre class="emlist">
+target: tLPAREN_ARG tmp ')'
+tmp:
+             (
+                 lex_state = EXPR_ENDARG;
+             )
+</pre>
+
+
+I ` tmp ` and before the end of one-minute mark is the possibility of being prefetched
+Since the (empty) ` tmp ` to read the following SURINUKE is certainly possible.
+And, absolutely prefetching know if it will happen, ` lex_state ` is the assignment
+`')'` after ` EXPR_ENDARG ` to ensure that change.
+This rule is <code >')'` prefetching is absolutely going to be?
+
+
+h4.  prefetching guarantee
+
+
+This is, in fact credible. Following three to take the input.
+
+
+<pre class="emlist">
+m () (nil) # A
+m (a) (nil) # B
+m (a, b, c) (nil) # C
+</pre>
+
+
+Incidentally the rules a little easier to read (but without changing the situation) rewritten.
+
+
+<pre class="emlist">
+rule1: tLPAREN_ARG e1 ')'
+rule2: tLPAREN_ARG one_arg e2 ')'
+rule3: tLPAREN_ARG more_args e3 ')'
+
+e1: / * empty * /
+e2: / * empty * /
+e3: / * empty * /
+</pre>
+
+
+First of all, type A's.
+
+
+<pre class="emlist">
+m (# ... tLPAREN_ARG
+</pre>
+
+
+Until I read it ` e1 ` come before. If ` e1 ` to the reduction of those
+Another rule is to choose the other for the ` e1 ` to the reduction ` rule1 ` or commit suicide,
+Or other rules to make choices in order to make sure this happens prefetching.
+Therefore input ` rule1 ` If you are sure to meet <code >')'` of the prefetched.
+
+
+
+Then the B input. First
+
+
+<pre class="emlist">
+m (# ... tLPAREN_ARG
+</pre>
+
+
+We will, until I just read-ahead to take the same reason. And
+
+
+<pre class="emlist">
+m (a # ... tLPAREN_ARG '(' tIDENTIFIER
+</pre>
+
+
+I just also to foresee. Because the next <code >','` or <code >')'`, or ` rule2 ` and
+` rule3 ` divide. If <code >','` This argument would have only a comma delimited
+Will not immediately think of more than two arguments, namely ` rule3 ` and determinism. If you are
+Mere ` a `, but ` if `だっliteral or "93" orだっthe same thing.
+The input has been completed at ` rule2 ` and ` rule3 ` to differentiate, namely
+Arguments over whether an argument or two to differentiate prefetching happens.
+
+
+
+In this case, all the rules <code >')'` before the (separate) and embedded in Action
+It is rather important. Action is the first time, it would no longer run the floor
+Resona standing returns, the parser is "absolutely certain" until the situation of action
+I try to delay the execution. That is why one of those read-ahead to create a situation
+If you are not the parser generation must be eliminated, which means it is "collision".
+
+
+
+How? Input C.
+
+
+<pre class="emlist">
+m (a, b, c
+</pre>
+
+
+I have come here at ` rule3 ` is not only possible, prefetching is like me
+Down.
+
+
+
+However, it does not work. The following is <code >'('` If the method call it, <code >','` or <code >')'`,
+Do we have to refer to variable. So this is embedded in a reduction of Action
+See the argument for a firm element of prefetching happens.
+
+
+
+And other input, what of it? The third method calls for example, the argument is
+I would doubt it.
+
+
+<pre class="emlist">
+m (a, b, c (....) # ... ',' method_call
+</pre>
+
+
+All in all, it is necessary prefetching. Because, you <code >','` or <code >')'` or reducible to shift and
+Former divide. So, this rule will eventually be embedded in every case Action
+Run faster than <code >')'` was read. Very confusing. I came up with a sense of well -
+The motion.
+
+
+
+By the way embedded in the action instead of the usual action ` lex_state ` set
+You can not? Thus, for example.
+
+
+<pre class="emlist">
+                 | TLPAREN_ARG ')' (lex_state = EXPR_ENDARG;)
+</pre>
+
+
+This is wrong. Because of the reduction before the action (and) will happen prefetching
+May be. Prefetching is now out of them backfired. This thing
+Were seen, LALR parser prefetching to turn to one's own is not quite a trick.
+Amateurs are not recommended.
+
+
+
+
+h3.  ` do ` in ` end ` iterator
+
+
+So far, ` (` in `) ` enumeration is still ready to deal with the ` do ` in ` end ` left iterator
+. Iterators in the same manner as if he could handle, but it is different.
+` (` in `) ` and ` do ` in ` end ` will have different priorities. For example follows.
+
+
+<pre class="emlist">
+m a, b {....} # m (a, (b {....}))
+m a, b do .... end # m (a, b) do .... end
+</pre>
+
+
+So of course deal with different approaches are appropriate.
+
+
+
+But, of course, deal with the same case as it goes. For example, the following cases:
+Both will be the same.
+
+
+<pre class="emlist">
+m (a) {....}
+m (a) do .... end
+</pre>
+
+
+Just take a look at it in kind.
+` do ` So, ` yylex () ` reservation should I word this time.
+
+
+ ▼  ` yylex ` - identifier - a reserved word - ` do `
+<pre class="longlist">
+4183 if (kw-> id [0] == kDO) (
+4184 if (COND_P ()) return kDO_COND;
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG)
+4186 return kDO_BLOCK;
+4187 if (state == EXPR_ENDARG)
+4188 return kDO_BLOCK;
+4189 return kDO;
+4190)
+
+(parse.y)
+</pre>
+
+
+
+This time looking at ` kDO_BLOCK ` and ` kDO ` to distinguish only a portion. ` kDO_COND ` that has taken
+ETE is not. Scanner with a state where it is always concerned to see.
+
+
+
+First ` EXPR_ENDARG ` part is determined using ` tLBRACE_ARG ` same situation.
+This difference in priorities when it is irrelevant <code >'{'` in the same ` kDO_BLOCK ` to
+It is appropriate.
+
+
+
+The problem is the previous ` CMDARG_P () ` and ` EXPR_CMDARG `. Let's turn to look at.
+
+
+h4.  ` CMDARG_P () `
+
+ ▼  ` cmdarg_stack `
+<pre class="longlist">
+   91 static stack_type cmdarg_stack = 0;
+   92 # define CMDARG_PUSH (n) (cmdarg_stack = (cmdarg_stack <<1) | ((n) & 1))
+   93 # define CMDARG_POP () (cmdarg_stack>> = 1)
+   94 # define CMDARG_LEXPOP () do (\
+   95 int last = CMDARG_P (); \
+   96 cmdarg_stack>> = 1; \
+   97 if (last) cmdarg_stack | = 1; \
+   98) while (0)
+   99 # define CMDARG_P () (cmdarg_stack & 1)
+
+(parse.y)
+</pre>
+
+
+
+In this way ` cmdarg_stack ` structure and interface (Macro)
+` cond_stack ` exactly the same. Bitwise stack. Mono is the same
+It will also investigate how to get the same class. Using it to try to list the location
+U. First Action in
+
+
+<pre class="emlist">
+command_args: (
+                         $ <num> $ = cmdarg_stack;
+                         CMDARG_PUSH (1);
+                     )
+                   open_args
+                     (
+                         / * CMDARG_POP () * /
+                         cmdarg_stack = $ <num> 1;
+                         $ $ = $ 2;
+                     )
+</pre>
+
+
+It was.
+
+
+
+` $ <num> $ ` force is left with the cast
+The mean value. In this case it is embedded with a value of the action itself
+To come out, the next action is ` $ <num> 1 ` to be fetched. In other words
+` cmdarg_stack ` and ` open_args ` in front of <code >$$` diverted to the return to action, and
+I do not have a structure.
+
+
+
+Why not just push pop and a return to the evacuation.
+It is described in this paragraph at the end.
+
+
+
+Also ` yylex () ` in ` CMDARG ` relationship and the next thing is to find見付かった.
+
+
+
+<tr> <td> ` '(' '[''{'` <td> <td> ` CMDARG_PUSH (0) ` <td> </tr>
+<tr> <td> ` ')' ']''}'` <td> <td> ` CMDARG_LEXPOP () ` <td> </tr>
+
+
+
+This means that if there's KUKURA parentheses within parentheses in the meantime the ` CMDARG_P () ` is false,
+It.
+
+
+
+Both together and think, ` command_args ` method that is called self-omitted parentheses
+The number in parentheses when not to KUKURA ` CMDARG_P () ` it is true.
+
+
+h4.  ` EXPR_CMDARG `
+
+
+Then another condition, ` EXPR_CMDARG ` investigate.
+Find a routine street ` EXPR_CMDARG ` transition to the location to find out.
+
+
+ ▼  ` yylex ` - identifier - the state transition
+<pre class="longlist">
+4201 if (lex_state == EXPR_BEG | |
+4202 lex_state == EXPR_MID | |
+4203 lex_state == EXPR_DOT | |
+4204 lex_state == EXPR_ARG | |
+4205 lex_state == EXPR_CMDARG) (
+4206 if (cmd_state)
+4207 lex_state = EXPR_CMDARG;
+4208 else
+4209 lex_state = EXPR_ARG;
+4210)
+4211 else (
+4212 lex_state = EXPR_END;
+4213)
+
+(parse.y)
+</pre>
+
+
+
+This is ` yylex () ` in dealing with the identifier code.
+UJAUJA and ` lex_state ` test is not as well leave,
+` cmd_state ` is the first category. What is this?
+
+
+ ▼  ` cmd_state `
+<pre class="longlist">
+3106 static int
+3107 yylex ()
+(3108
+3109 static ID last_id = 0;
+3110 register int c;
+3111 int space_seen = 0;
+3112 int cmd_state;
+3113
+3114 if (lex_strterm) (
+               / *…… Snip…… * /
+3132)
+3133 cmd_state = command_start;
+3134 command_start = Qfalse;
+
+(parse.y)
+</pre>
+
+
+
+` yylex ` local variables. And ` grep ` looked to the value of the change
+It is only here. This means that ` command_start ` and ` yylex ` save only once during the
+It's just a temporary variable.
+
+
+
+, <Code> command_start ` when what is true?
+
+
+ ▼  ` command_start `
+<pre class="longlist">
+2327 static int command_start = Qtrue;
+
+2334 static NODE *
+2335 yycompile (f, line)
+2336 char * f;
+2337 int line;
+(2338
+                    :
+2380 command_start = 1;
+
+       static int
+       yylex ()
+       (
+                    :
+             case '\ n':
+               / *…… Snip…… * /
+3165 command_start = Qtrue;
+3166 lex_state = EXPR_BEG;
+3167 return '\ n';
+
+3821 case ';':
+3822 command_start = Qtrue;
+
+3841 case '(':
+3842 command_start = Qtrue;
+	 	(parse.y)
+</pre>
+
+
+
+` command_start ` is ` parse.y ` static variable,
+"` \ N; (`" one of the scan and true, and understandable.
+
+
+
+Put together so far. First, "` \ n; (`" read a ` command_start ` is true,
+Next ` yylex () ` between ` cmd_state ` is true.
+
+
+
+And ` yylex () `, ` cmd_state ` I had to use code,
+
+
+ ▼  ` yylex ` - identifier - the state transition
+<pre class="longlist">
+4201 if (lex_state == EXPR_BEG | |
+4202 lex_state == EXPR_MID | |
+4203 lex_state == EXPR_DOT | |
+4204 lex_state == EXPR_ARG | |
+4205 lex_state == EXPR_CMDARG) (
+4206 if (cmd_state)
+4207 lex_state = EXPR_CMDARG;
+4208 else
+4209 lex_state = EXPR_ARG;
+4210)
+4211 else (
+4212 lex_state = EXPR_END;
+4213)
+
+(parse.y)
+</pre>
+
+
+
+"` \ N; (` after ` EXPR_BEG MID DOT ARG CMDARG ` state when read identifier
+MUTO ` EXPR_CMDARG ` transition "he said. But ` \ n; (` After the SOMO
+SOMO ` lex_state ` is ` EXPR_BEG ` only be so, ` EXPR_CMDARG ` if the transition to
+Has ` lex_state ` is not very meaningful. ` lex_state ` is limited ` EXPR_ARG ` for transition
+It's just important.
+
+
+
+Now, more than reflect and ` EXPR_CMDARG ` of situation is possible.
+For example, the following situations. Under the current position of the bar.
+
+
+<pre class="emlist">
+m _
+m (m _
+m m _
+</pre>
+
+h4.  together
+
+
+Here ` do `'s decision to go back to code.
+
+
+ ▼  ` yylex ` - identifier - a reserved word - ` kDO ` - ` kDO_BLOCK `
+<pre class="longlist">
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG)
+4186 return kDO_BLOCK;
+
+(parse.y)
+</pre>
+
+
+
+Back in parentheses call the method of argument, and not when the first argument before.
+It is ` command_call ` after the second argument. So this kind of footage.
+
+
+<pre class="emlist">
+m arg, arg do .... end
+m (arg), arg do .... end
+</pre>
+
+
+Why ` EXPR_CMDARG ` to eliminate if it has to do with…… you'll find examples of writing.
+
+
+<pre class="emlist">
+m do .... end
+</pre>
+
+
+This pattern is already ` primary ` being defined, ` kDO ` to use ` do ` in ` end ` ITE
+Lifting regulators. So in this case also included a collision with them.
+
+
+
+
+h3.  facts and the truth
+
+
+I thought at the end? Is not the end yet.
+Certainly that is a complete logic, but it is correct, I wrote that story.
+In fact, this section is one of lies.
+
+
+
+Rather than lies not say what exactly? It is
+` CMDARG_P () ` I wrote about this part.
+
+
+
+Apparently, ` command_args ` parenthesis means that during abbreviatory argument method calls
+If you are ` CMDARG_P () ` is true.
+
+
+
+"Back in parentheses methods to be used when calling argument……" he said,
+Argument "" Where is it? Again ` rubylex-analyser ` with
+I try to ensure strict.
+
+
+<pre class="screen">
+% Rubylex-analyser-e 'm a, a, a, a;'
++ EXPR_BEG
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG S "a" tIDENTIFIER EXPR_ARG
+                                               1: cmd push -
+EXPR_ARG "," ',' EXPR_BEG
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG
+EXPR_ARG "," ',' EXPR_BEG
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG
+EXPR_ARG "," ',' EXPR_BEG
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG
+EXPR_ARG ";" ';' EXPR_BEG
+                                               0: cmd resume
+EXPR_BEG C "\ n" 'EXPR_BEG
+</pre>
+
+
+Right field, "` 1: cmd push-`" where there is ` cmd_stack ` to push. Resona
+Line under a single digit number is 1 when ` CMDARG_P () ` is true. In other words ` CMDARG_P () `,
+Is a time
+
+
+
+Back in parentheses method calls immediately after the first argument
+The last argument to mark the end of the next
+
+
+
+And言うべきらしい.
+
+
+
+But it's really true but strictly speaking it is not yet.
+For example, the following example.
+
+
+<pre class="screen">
+% Rubylex-analyser-e 'm a (), a, a;'
++ EXPR_BEG
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG S "a" tIDENTIFIER EXPR_ARG
+                                               1: cmd push -
+EXPR_ARG "(" '(' EXPR_BEG
+                                               0: cond push
+                                              10: cmd push
+EXPR_BEG C ")" ')' EXPR_END
+                                               0: cond lexpop
+                                               1: cmd lexpop
+EXPR_END "," ',' EXPR_BEG
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG
+EXPR_ARG "," ',' EXPR_BEG
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG
+EXPR_ARG ";" ';' EXPR_BEG
+                                               0: cmd resume
+EXPR_BEG C "\ n" 'EXPR_BEG
+</pre>
+
+
+The first argument in the first reading at the time of termination symbol ` CMDARG_P () ` is truly
+It. Therefore
+
+
+
+Back in parentheses method invocation of the first argument
+Immediately after the first sign of the end of the last argument to mark the end of the next
+
+
+
+Is the complete answer.
+
+
+
+The fact is what you mean? But I want to recall, ` CMDARG_P () ` to
+Such codes are used.
+
+
+ ▼  ` yylex ` - identifier - a reserved word - ` kDO ` - ` kDO_BLOCK `
+<pre class="longlist">
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG)
+4186 return kDO_BLOCK;
+
+(parse.y)
+</pre>
+
+
+
+` EXPR_CMDARG ` is "` command_call ` arguments before the first", in the sense that it excluded
+. However, ` CMDARG_P () ` is already included in the meaning of that?
+That is the final conclusion of this section is this.
+
+
+
+EXPR_CMDARG is only a waste.
+
+
+
+Indeed, this is when I found that it is in my crying. "Absolute
+Meaningful to the pair, something was wrong, "the source would patiently try to analyze theまくっ
+It do not know. But ultimately ` rubylex-analyser ` various Coe
+All in all, to try to de-まくっis no effect, so it is pointless to conclude.
+
+
+
+ENEN meaning is not just a separate page and came to the breadwinner, but
+Instead, it possible to simulate conditions of the plan. The world
+None of the program is perfect and mistakes are included. At this year's.
+So it is a subtle addition is prone to mistakes. When the original "infallible
+"As I read this kind of mistake when he met HAMARU. So after all
+When you read the last SUKODO believed there was only the facts of what happened.
+
+
+
+In this regard the importance of dynamic analysis is known to have said. And investigate
+I look for the facts first. Source code is a fact never say anything.
+There's nothing but a guess they are more human.
+
+
+
+Pendulous all very fine and lessons of this chapter was rough at a long終わ
+Resona said.
+
+
+h4.  did not end
+
+
+One forgotten. ` CMDARG_P () ` That's why you have to get value
+This chapter is終われないmust explain. The problem is here.
+
+
+ ▼  ` command_args `
+<pre class="longlist">
+1209 command_args: (
+1210 $ <num> $ = cmdarg_stack;
+1211 CMDARG_PUSH (1);
+1212)
+1213 open_args
+(1214
+1215 / * CMDARG_POP () * /
+1216 cmdarg_stack = $ <num> 1;
+1217 $ $ = $ 2;
+1218)
+
+1221 open_args: call_args
+
+(parse.y)
+</pre>
+
+
+
+Conclusions from it and once again the influence of prefetching. ` command_args ` is always
+Following context.
+
+
+<pre class="emlist">
+tIDENTIFIER _
+</pre>
+
+
+It is, it is too variable to refer to the method calls too. Also
+Variable would have to refer ` variable `, the method it calls ` operation ` return to
+If you do not. So should prefetching to determine the direction forward, so I can not
+Be. Thus ` command_args ` prefetching is beginning to happen is always the first argument
+The first sign after reading the termination ` CMDARG_PUSH () ` execution.
+
+
+
+` cmdarg_stack `, ` POP ` and ` LEXPOP ` is also divided into the reasons here.
+Look at the following example.
+
+
+<pre class="screen">
+% Rubylex-analyser-e 'm m (a), a'
+- e: 1: warning: parenthesize argument (s) for future version
++ EXPR_BEG
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG S "m" tIDENTIFIER EXPR_ARG
+                                               1: cmd push -
+EXPR_ARG S "(" tLPAREN_ARG EXPR_BEG
+                                               0: cond push
+                                              10: cmd push
+                                             101: cmd push -
+EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG
+EXPR_CMDARG ")" ')' EXPR_END
+                                               0: cond lexpop
+                                              11: cmd lexpop
++ EXPR_ENDARG
+EXPR_ENDARG "," ',' EXPR_BEG
+EXPR_BEG S "a" tIDENTIFIER EXPR_ARG
+EXPR_ARG "\ n" \ n EXPR_BEG
+                                              10: cmd resume
+                                               0: cmd resume
+</pre>
+
+
+` cmd ` relationship only to see the correspondence between him and we……
+
+
+<pre class="emlist">
+   1: cmd push-parser push (1)
+  10: cmd push push scanner
+101: cmd push-parser push (2)
+  11: cmd lexpop pop scanner
+  10: cmd resume parser pop (2)
+   0: cmd resume Hertha pop (1)
+</pre>
+
+
+"` Cmd push-`" at the end they would have been negative with the parser
+` push `. In other words ` push ` and ` pop ` have missed the correspondence between. Should
+` push-` twice in a row is going on the stack would be 110 but, because of prefetching
+101 to a thousand. ` CMDARG_LEXPOP () ` is the way it's prepared to respond to this phenomenon
+For the last resort. Scanner in the first place is always 0 ` push ` now because, after scan
+Na is ` pop `'s always supposed to be zero. There is zero if you do not, Par
+The service ` push ` was delayed because one believes in it. So its value to leave.
+
+
+
+In other words, parser ` pop ` came at the stack is already back to normalcy
+It should be. So I really did not normally ` pop ` that it's okay. I do not
+The acts, not just good, because I believe that.ポッ
+I can type <code >$$` is out to save the return movement is the same. Especially if I stay
+We change the filter to consider how to change the behavior and prefetching do not know. Only
+This problem may also occur in the future be banned in the grammar that has been decided (that's why
+There are a warning). No such thing to you through a variety of ideas to deal with the
+The bone. So the real ` ruby ` is this a good implementation of that, I think.
+
+
+
+This is really resolved.
 
 <hr>
 
