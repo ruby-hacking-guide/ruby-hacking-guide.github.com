@@ -18,7 +18,7 @@ h3. Part 1: Objects
 * "Chapter 2: Objects":object.html
 * "Chapter 3: Names and name tables":name.html
 * "Chapter 4: Classes and modules":class.html
-* Chapter 5: Garbage collection
+* "Chapter 5: Garbage collection":gc.html
 * "Chapter 6: Variables and constants":variable.html
 * "Chapter 7: Security":security.html
 

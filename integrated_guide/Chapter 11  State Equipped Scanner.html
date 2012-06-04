@@ -1,0 +1,2705 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en-US">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Language" content="en-US">
+  <link rel="stylesheet" type="text/css" href="rhg.css">
+  <title>Chapter 11: State Equipped Scanner</title>
+  <!-- Changed by: C.E. Thornton, 10-Sep-2008 -->
+</head>
+<body>
+<h1>Chapter 11: State Equipped Scanner</h1>
+
+
+<h2>Summary</h2>
+<p> 
+In theory, the scanner simply  divides a source line in tokens.&nbsp&nbsp The parser
+then steps through the tokens branching as appropriate to compute the desired action.&nbsp&nbsp 
+It would seem that scanner and the parser could act independently.&nbsp&nbsp But as usual with 
+real world,&nbsp it does not work out that way.
+</p> 
+<p> 
+It turns out that the scanner and parser have to work together.&nbsp&nbsp The result for Ruby is a reasonably complex state machine driven scanner that feeds the parser to produce the correct result.&nbsp&nbsp To be clear,&nbsp  both the scanner and the parser manipulate the state variable of the scanner.&nbsp&nbsp In other words, the scanner and the parser are talking to each other.
+</p> 
+
+
+
+<h3>Concrete example</h3>
+
+<p> 
+In many languages white-space outside string literals does not greatly effect the language.&nbsp&nbsp Source lines are often terminated explicitly.&nbsp&nbsp  In 'C' a source line is terminated with a semi-colon ( ';' )&nbsp  or the closing of a block (i.e. '}' ). 
+</p>
+<p> 
+For Ruby the interpretation of a statement can change completely when additional tokens are processed.&nbsp&nbsp The source fragment "a[i]" can be,&nbsp depending on context,&nbsp either an <i>indexed variable</i>&nbsp or a <i>method call with implicit parenthesis's</i>.
+</p> 
+<pre class="graylist">
+a[i] = 1                # a[i] = (1) - Index substitution 
+a[i]                    # a([i])     - Method with implicit parameter.
+</pre>
+<p> 
+This sort of dramatic change in interpretation occurs in Ruby because the language itself is has a very flexible syntax.&nbsp&nbsp Ask yourself,&nbsp how many languages allow implicit parenthesis's?&nbsp&nbsp 
+</p> 
+<p> 
+Ruby's flexible syntax means that a blank can change how a statement is interpreted by Ruby.&nbsp  Consider the following two statements: 
+</p> 
+<pre class="graylist">
+a + 1              # (a) + (1)
+a +1               #  a (+1)
+</pre>
+<p> 
+The first example is interpreted as:  &lt;variable&gt &lt;op&gt &lt;literal integer&gt.&nbsp&nbsp The second is interpreted as: &lt;method&gt &lt;literal integer parameter&gt.&nbsp&nbsp The same setup in 'C',&nbsp for example,&nbsp  would be interpreted identically.
+</p> 
+<p> 
+The bottom line is that the parsing and scanning is more complex with Ruby.&nbsp&nbsp The following sections will attempt to break the scanner down into small enough pieces to be understood.
+</p> 
+
+<h3><code>Function yylex()</code></h3>
+<p> 
+The heart of the lexical scanner is <b>yylex()</b>.&nbsp&nbsp This function is often generated with the programs such as <b>lex</b>&nbsp or <b>flex</b>.&nbsp&nbsp In the case of Ruby,&nbsp the complexity of this function necessitated a hand written <i>State Equipped Scanner</i>&nbsp  that interacts the a <i>Bison</i> generated parser. 
+</p> 
+<p> 
+The following sections discuss the various scanner states and their functions. 
+</p> 
+<h3><code>Lex_state</code></h3>
+<p>
+The current <i>state</i>&nbsp of the scanner is maintained the variable <b><i>lex_state</i></b>.&nbsp&nbsp It's declaration and the definition of it's enumerated states follows:
+</p> 
+<pre class="greenlist">
+static enum lex_state {
+    EXPR_BEG,        /* ignore newline, +/- is a sign.              */
+    EXPR_END,        /* newline significant, +/- is an operator.    */
+    EXPR_ARG,        /* newline significant, +/- is an operator.    */
+    EXPR_CMDARG,     /* newline significant, +/- is an operator.    */
+    EXPR_ENDARG,     /* newline significant, +/- is an operator.    */
+    EXPR_MID,        /* newline significant, +/- is an operator.    */
+    EXPR_FNAME,      /* ignore newline, no reserved words.          */
+    EXPR_DOT,        /* right after `.' or `::', no reserved words. */
+    EXPR_CLASS,      /* immediate after `class', no here document.  */
+} lex_state;
+
+(parse.y)
+</pre>
+<p> 
+The prefix <b>'EXPR_'</b>&nbsp means <i>expression</i>.&nbsp&nbsp It is used remind us that the scanner is a expression processing engine.
+</p> 
+<p> 
+Specifically, EXPR_BEG indicates the <i>beginning of the expression</i>. EXPR_END indicates the <i>end of the expression</i>, EXPR_ARG <i>before method arguments</i>, and EXPR_FNAME before the name of the method (def, etc).
+</p> 
+<hr>
+<font size=+3 color=BLUE>Rest of Chapter is Machine Translation</font>
+<hr>
+<p> 
+The prefix <code> EXPR_ </code> of expression, "expression". <code> EXPR_BEG </code>, "the head of the expression" 
+However <code> EXPR_DOT </code> "during the ceremony, after the dot." 
+</p> 
+
+<p> 
+Specifically explain. <code> EXPR_BEG </code> is "the beginning of expression," it shows. 
+<code> EXPR_END </code> "at the end of the expression" the war. <code> EXPR_ARG </code> "method of argument" 
+Show. <code> EXPR_FNAME </code> is "(<code> def </code> and others) in the name of the method".飛ばexplanation 
+After the analysis of them in detail. 
+</p> 
+
+<p> 
+By the way, <code> lex_state </code> shows that are "in parentheses after" "head sentence", rather it 
+The addition of that information, so that the scanner rather than the state of the state like parser 
+Feel. But the scanner is usually called the state. Why? 
+</p> 
+
+<p> 
+In fact, in this case, "state" is usually used "state" is a little different meaning. 
+<code> lex_state </code> like "state" and the "state of the scanner would behave" 
+Means. For example <code> EXPR_BEG </code> to precisely "We own head scanner 
+Beginning of a sentence or salted cod to move like a state. " 
+</p> 
+
+<p> 
+In technical terms, use the scanner to see if the state machine and the state, say 
+Be. But what is there to explain the topics are too hard to break away from the SU 
+GIRU. Details of the structure of the data to the proper textbooks to read the見繕っ. 
+KITAI. 
+</p> 
+
+
+
+<h3> state with a scanner reading </h3> 
+
+<p> 
+State with a scanner to read the tips at any one time and not win them all. Par 
+Write for human services, with state does not want to use the scanner. 
+It is only natural that I do not want to be the main topic of the process. So scanner 
+The state management that is "associated with other parts of the trail as a bonus part" of 
+There are many. That is the entire state transition scanner It's a beautiful picture of the whole thing from the beginning 
+Existent. 
+</p> 
+
+<p> 
+What to do, and that the purpose-oriented and thorough It's a good read. "The 
+Solve this part, "" to solve this problem, this code is Oh 
+Of "the way the code to hack purpose. It's also the problem of interconnectedness 
+And never to start thinking about the shot. Say again, that is from the original source of 
+INODA. 
+</p> 
+
+<p> 
+Yet it is a certain amount of goals is necessary. Read with a scanner and the state 
+KINO goal is for each state than any other state to know what it is to put 
+Should be. For example <code> EXPR_BEG </code> What kind of state? It is an expression of the head and parser 
+Of it. And so on. 
+</p> 
+
+<h4> static way </h4> 
+
+<p> 
+That is, how can I know? Three ways. 
+</p> 
+
+<ul> 
+<li> state to see the name </li> 
+</ul> 
+
+<p> 
+ATARIMAE the easiest way. For example <code> EXPR_BEG </code> of course, the beginning of something 
+(Beginning) of what is expected, which they knew. 
+</p> 
+
+<ul> 
+How <li> behavior change in the status or details </li> 
+</ul> 
+
+<p> 
+Cutting the state-token or change in the way of what is. And the ratio of real movement and 
+Shown to all. 
+</p> 
+
+<ul> 
+<li> transition from state to tell me what you see </li> 
+</ul> 
+
+<p> 
+What kind of tokens from any state, or out of the transition. For example <code> '\ n' </code> after the Essential 
+ZU <code> HEAD </code>, the status of the transition, it is sure to represent the beginning of the line 
+Sure. 
+</p> 
+
+<p> 
+<code> EXPR_BEG </code> as an example to think. 
+<code> ruby </code> If the state transition are all <code> lex_state </code> expressed in the assignment because it will 
+ZU <code> EXPR_BEG </code> assignment <code> grep </code> in the wash. That's where it is then exported. For example 
+<code> yylex () </code>-<code >'#'</code> and <code >'*'</code> and <code >'!'</code>…… and the like. And before the transition into consideration the state 
+That's true if you consider what (Figure 1). 
+</p> 
+
+<p class="image"> 
+<img src="images/ch_contextual_transittobeg.jpg" alt="(transittobeg)"> <br> 
+Figure 1: <code> EXPR_BEG </code> to transition 
+</p> 
+
+<p> 
+Oh I see, this is exactly the type of top-laden statement. Known. 
+In particular <code> '\ n' </code> and <code >';'</code>-tempered around it. And also open parentheses or comma 
+From there, this statement is not only an expression would be the beginning. 
+</p> 
+
+<h4> dynamic way </h4> 
+
+<p> 
+With a more convenient way to ascertain the actual behavior. For example debugger 
+<code> yylex () </code> on a hook <code> lex_state </code> easy to see. 
+</p> 
+
+<p> 
+Or source code to modify the output to a state of transition, while making it 
+. <code> lex_state </code> If the assignment and the comparison is only a few patterns, which Tekito 
+Variations in the strike they perceive as a transition to書き換えれI output. This is attached 
+CD-ROM with a <code> rubylex-analyser </code> as a tool to 
+Ta \ footnote (<code> rubylex-analyser </code>: The accompanying CD-ROM <code> tools / rubylex-analyser.tar.gz </code>). 
+This document is needed while using this tool to explain it. 
+</p> 
+
+<p> 
+General steps include, first and debugger tools in the sort of movement 
+Check out. And that information to determine the source code to see into the敷衍 
+Is good. 
+</p> 
+
+
+
+<h3> each state </h3> 
+
+<p> 
+<code> lex_state </code> briefly about the condition of it. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_BEG </code> </li> 
+</ul> 
+
+<p> 
+The tip of expression. <code> \ n (([!?:, </code> operator <code> op = </code> and immediately after. 
+The most common condition. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_MID </code> </li> 
+</ul> 
+
+<p> 
+Book word <code> return break next rescue </code> shortly after. 
+Binomial operator <code> * </code> and <code> & </code> is disabled. 
+The behavior of <code> EXPR_BEG </code> and the like. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_ARG </code> </li> 
+</ul> 
+
+<p> 
+The method calls part of the name of the method, they just might be, 
+Or <code >'['</code> shortly after. 
+However <code> EXPR_CMDARG </code> location of the airport. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_CMDARG </code> </li> 
+</ul> 
+
+<p> 
+Usually the first method calls the format of the arguments before. 
+For details, "<code> do </code> clash" section. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_END </code> </li> 
+</ul> 
+
+<p> 
+Is at the end of a sentence. For example, in parentheses after the literal. However <code> EXPR_ENDARG </code>, 
+Except for one place. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_ENDARG </code> </li> 
+</ul> 
+
+<p> 
+<code> EXPR_END </code> special edition. <code> tLPAREN_ARG </code> respond immediately after a closed parenthesis. 
+"The first argument parenthetical" section. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_FNAME </code> </li> 
+</ul> 
+
+<p> 
+The name of the method. Specifically, <code> def </code> <code> alias </code> <code> undef </code> symbol <code >':'</code> of 
+Immediately after that. "<code>` </Code> "name alone. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_DOT </code> </li> 
+</ul> 
+
+<p> 
+After the dot method calls. <code> EXPR_FNAME </code> and handling are similar. 
+Book all languages are treated as just an identifier. 
+<code>'`'</code> name alone. 
+</p> 
+
+<ul> 
+<li> <code> EXPR_CLASS </code> </li> 
+</ul> 
+
+<p> 
+Spanish Book <code> class </code> behind. The only condition is quite limited. 
+</p> 
+
+<p> 
+In summary, 
+</p> 
+
+<ul> 
+<li> <code> BEG MID </code> </li> 
+<li> <code> END ENDARG </code> </li> 
+<li> <code> ARG CMDARG </code> </li> 
+<li> <code> FNAME DOT </code> </li> 
+</ul> 
+
+<p> 
+Each representing a similar situation. <code> EXPR_CLASS </code>, but only a little special, 
+Some places are very limited in the first place because they do not have to think about. 
+</p> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2> new line of control </h2> 
+
+<h3> problem </h3> 
+
+<p> 
+Ruby's sentence need not necessarily end. C or Java, for example, be sure to end 
+I have not put a semicolon is, Ruby does not need such things. 
+The basic line in one sentence, so the line at liberty to the end of the sentence. 
+</p> 
+
+<p> 
+But on the other hand "is more clear," If the sentence is automatically continue to 
+In the world. "Clearly there is more" state and the 
+</p> 
+
+<ul> 
+<li> comma after </li> 
+<li> INFIKKUSU operator after </li> 
+<li> parentheses not balanced </li> 
+<li> reserved word <code> if </code> immediately after </li> 
+</ul> 
+
+<p> 
+And so on. 
+</p> 
+
+
+<h3> implementation </h3> 
+
+<p> 
+Such a grammar to achieve what? Simply scanner 
+Skip a line break is not alone. Ruby as a reserved word in a sentence ends区切 
+In the C language grammar is not about the collision, tried it lightly, <code> return </code>, 
+<code> next </code>, <code> break </code>, the method calls are cut back and通らなかったomitted parentheses. 
+That's the end of a sentence is to leave the sign will not have some form of termination. 
+That's <code> \ n </code> or <code >';'</code> regardless of whether they simply mark the end of some 
+Needed. 
+</p> 
+
+<p> 
+There are two solutions. That is parser or resolve or settle in the scanner. 
+Parser would be resolved, <code> \ n </code> be allowed at all options <code> \ n </code> to rest 
+Grammar kick like if I can write. If you settle in the scanner, <code> \ n </code> meaningful 
+Where there is only <code> \ n </code> I pass a parser (skip other locations). 
+</p> 
+
+<p> 
+Whether to use is a question of taste, but usually respond to the scanner. The more you 
+I have a small number, and what the rules are messing about good sign 
+PASAJENERETA in the use of those means they are missing. 
+</p> 
+
+<p> 
+That's not to say in conclusion <code> ruby </code> new line is also dealing with the scanner. Successive lines 
+When you want to continue <code> \ n </code> skip to the end you want <code> \ n </code> send as a token. 
+That's <code> yylex () </code> here. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex () </code> - <code> '\ n' </code> </p> 
+<pre class="longlist"> 
+3155 case '\ n': 
+3156 switch (lex_state) ( 
+3157 case EXPR_BEG: 
+3158 case EXPR_FNAME: 
+3159 case EXPR_DOT: 
+3160 case EXPR_CLASS: 
+3161 goto retry; 
+3162 default: 
+3163 break; 
+3164) 
+3165 command_start = Qtrue; 
+3166 lex_state = EXPR_BEG; 
+3167 return '\ n'; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+<code> EXPR_BEG </code> <code> EXPR_FNAME </code> <code> EXPR_DOT </code> <code> EXPR_CLASS </code>, <code> goto retry </code>, 
+That is meaningless because it skipped. Labels <code> retry </code> is <code> yylex () </code> giant <code> switch </code> of 
+Before. 
+</p> 
+
+<p> 
+Others at the new line is meant to pass parser, incidentally 
+<code> lex_state </code> and <code> EXPR_BEG </code> back. There is a new line means namely <code> expr </code> break 
+So. 
+</p> 
+
+<p> 
+Also <code> command_start </code> for the time being and should be ignored. The first said, 
+In many places at once and be sure to follow the confusion. 
+</p> 
+
+<p> 
+Specifically, let's look at some examples. It's accompanying analysis tools 
+<code> rubylex-analyser </code> to use. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e ' 
+m (a, 
+   b, c) unless i 
+' 
++ EXPR_BEG 
+EXPR_BEG C "\ nm" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG "(" '(' EXPR_BEG 
+                                               0: cond push 
+                                               0: cmd push 
+EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG "," ',' EXPR_BEG 
+EXPR_BEG S "\ nb" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "," ',' EXPR_BEG 
+EXPR_BEG S "c" tIDENTIFIER EXPR_ARG 
+EXPR_ARG ")" ')' EXPR_END 
+                                               0: cond lexpop 
+                                               0: cmd lexpop 
+EXPR_END S "unless" kUNLESS_MOD EXPR_BEG 
+EXPR_BEG S "i" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "\ n" \ n EXPR_BEG 
+EXPR_BEG C "\ n" 'EXPR_BEG 
+</pre> 
+
+<p> 
+There are a lot of output, we need only to the left and center field. Left 
+The field is <code> yylex () </code> before entering <code> lex_state </code> shows, and its token middle of the field 
+The symbol. 
+</p> 
+
+<p> 
+The first token <code> m </code> The second argument before and <code> b </code> in front of the new line that <code> \ n </code> to toe 
+Kung before the end of the stick and not come out as a symbol. <code> lex_state </code> is 
+<code> EXPR_BEG </code> So. 
+</p> 
+
+<p> 
+But from the bottom of the second line <code> \ n </code> is at the end has emerged as a symbol. <code> EXPR_ARG </code>. 
+. 
+</p> 
+
+<p> 
+So, if using. The other example I would just take a look at. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e 'class 
+C <Object 
+end ' 
++ EXPR_BEG 
+EXPR_BEG C "class" kCLASS EXPR_CLASS 
+EXPR_CLASS "\ nC" tCONSTANT EXPR_END 
+EXPR_END S "<" '<' EXPR_BEG 
++ EXPR_BEG 
+EXPR_BEG S "Object" tCONSTANT EXPR_ARG 
+EXPR_ARG "\ n" \ n EXPR_BEG 
+EXPR_BEG C "end" kEND EXPR_END 
+EXPR_END "\ n" \ n EXPR_BEG 
+</pre> 
+
+<p> 
+Spanish Book <code> class </code> After the <code> EXPR_CLASS </code> new line, so is ignored. 
+But superclass ceremony <code> Object </code> After the <code> EXPR_ARG </code> so <code> \ n </code> came. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e 'obj. 
+class' 
++ EXPR_BEG 
+EXPR_BEG C "obj" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG "." '.' EXPR_DOT 
+EXPR_DOT "\ nclass" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "\ n" \ n EXPR_BEG 
+</pre> 
+
+<p> 
+<code>'.'</code> after the <code> EXPR_DOT </code> so <code> \ n </code> were ignored. 
+</p> 
+
+<p> 
+By the way, <code> class </code>, but is supposed to be reserved words, why <code> tIDENTIFIER </code> in the future. 
+To continue following paragraph. 
+</p> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2> reserved words the same methods name </h2> 
+
+<h3> problem </h3> 
+
+<p> 
+Ruby is a reserved word in a method to use that name. However name of the method to use 
+And a mouthful to say but there are some context, 
+</p> 
+
+<ul> 
+<li> method definition (<code> def xxxx </code>) </li> 
+<li> call (<code> obj.xxxx </code>) </li> 
+<li> literal symbols (<code>: xxxx </code>) </li> 
+</ul> 
+
+<p> 
+The three could be used. Ruby is all this is possible. Each of the following 
+Let us consider. 
+</p> 
+
+<p> 
+First, define the method has its own reserved words <code> def </code> likely to be preceded by, so we managed. 
+</p> 
+
+<p> 
+Method calls for the receiver to skip a lot of difficulty will be that of 
+Of them, but further specification is not limited to, and those are not allowed. - 
+Book word method means that if the name is never a receiver can not be omitted. Or 
+Is that right Perth designed to be able to say what might be the 
+. 
+</p> 
+
+<p> 
+And if the symbol is the termination symbol <code >':'</code> behind, so I managed to通せ 
+. However, in this case, but with the terms of the reservation <code >':'</code> is <code> a? B: c </code> collision with a colon 
+The problem. Even if you can get this resolved. 
+</p> 
+
+<p> 
+In both cases the two are also possible. That is resolved scanner SU 
+Or resolution of the parser. If the resolution scanner, <code> def </code> and <code>. </Code> and <code>: </code> Next to come 
+Book word <code> tIDENTIFIER </code> (and) I do. Parser resolve, SOUI 
+I write a thousand rules. <code> ruby </code>, three each of both depending on the occasion. 
+</p> 
+
+
+
+<h3> method definition </h3> 
+
+<p> 
+Methods defined portion of the name. This is the side deal with the parser. 
+</p> 
+
+<p class="caption"> ▼ method defined rules </p> 
+<pre class="longlist"> 
+                 | KDEF fname 
+                   f_arglist 
+                   bodystmt 
+                   kEND 
+                 | KDEF singleton dot_or_colon fname 
+                   f_arglist 
+                   bodystmt 
+                   kEND 
+</pre> 
+
+
+<p> 
+There are two methods defined rules represent only their usual media-specific definitions and methods 
+Corresponds to the definition of sod. Both <code> fname </code> name is part of the <code> fname </code> is as follows: 
+Definition. 
+</p> 
+
+<p class="caption"> ▼ <code> fname </code> </p> 
+<pre class="longlist"> 
+fname: tIDENTIFIER 
+                 | TCONSTANT 
+                 | TFID 
+                 | Op 
+                 | Reswords 
+</pre> 
+
+
+<p> 
+<code> reswords </code> in terms of booking <code> op </code> is operator of two terms. Both rules are simply a symbolic end to all the ordinary 
+Only because all omitted. Then <code> tFID </code> is <code> gsub! </Code> and <code> include? </Code> like ending 
+A symbol of an eye. 
+</p> 
+
+
+
+<h3> method calls </h3> 
+
+<p> 
+Booking terms and call on the scanner same name method to deal with. 
+Book scan the code word is the way they were. 
+</p> 
+
+<pre class="emlist"> 
+Scan identifier 
+result = (tIDENTIFIER or tCONSTANT) 
+
+if (lex_state! = EXPR_DOT) ( 
+     struct kwtable * kw; 
+
+     / * See if it is a reserved word. * / 
+     kw = rb_reserved_word (tok (), toklen ()); 
+     Book word processing 
+) 
+</pre> 
+
+<p> 
+<code> EXPR_DOT </code> method is called after the dot, respectively. <code> EXPR_DOT </code> when the unconditional 
+Book word processing off from the dot after the punctuation is reserved word <code> tIDENTIFIER </code>? 
+<code> tCONSTANT </code> said. 
+</p> 
+
+
+
+<h3> symbol </h3> 
+
+<p> 
+Book parser terms and symbols are both addressed in the scanner. 
+First of all rules. 
+</p> 
+
+<p class="caption"> ▼ <code> symbol </code> </p> 
+<pre class="longlist"> 
+symbol: tSYMBEG sym 
+
+sym: fname 
+                 | TIVAR 
+                 | TGVAR 
+                 | TCVAR 
+
+fname: tIDENTIFIER 
+                 | TCONSTANT 
+                 | TFID 
+                 | Op 
+                 | Reswords 
+</pre> 
+
+
+<p> 
+In this way, explicitly reserved word parser (<code> reswords </code>) to pass. This 
+U can be used solely <code> tSYMBEG </code> is the only sign before the end of the symbol 
+Is <code >':'</code>だっor can not do so well. Conditional operator (<code> a? B: c </code>) and the collision 
+Doomed. In other words level scanner <code> tSYMBEG </code> The point is to tell 
+Particularly, remains unchanged. 
+</p> 
+
+<p> 
+How does the distinction between doing? Let's look at the implementation of the scanner. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - <code>':'</code> </p> 
+<pre class="longlist"> 
+3761 case ':': 
+3762 c = nextc (); 
+3763 if (c == ':') ( 
+3764 if (lex_state == EXPR_BEG | | lex_state == EXPR_MID | | 
+3765 (IS_ARG () & & space_seen)) ( 
+3766 lex_state = EXPR_BEG; 
+3767 return tCOLON3; 
+3768) 
+3769 lex_state = EXPR_DOT; 
+3770 return tCOLON2; 
+3771) 
+3772 pushback (c); 
+3773 if (lex_state == EXPR_END | | 
+                   lex_state == EXPR_ENDARG | | 
+                   ISSPACE (c)) ( 
+3774 lex_state = EXPR_BEG; 
+3775 return ':'; 
+3776) 
+3777 lex_state = EXPR_FNAME; 
+3778 return tSYMBEG; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+The first half <code> if </code> is <code >':'</code> followed with two. When this principle is best left longest match 
+Priority <code >'::'</code> to scan. 
+</p> 
+
+<p> 
+The next <code> if </code> is just the operator said conditions <code >':'</code>. <code> EXPR_END </code> and <code> EXPR_ENDARG </code> is 
+Both at the end of the ceremony, the argument is a symbol that is coming is impossible because…… 
+Conditions operator <code >':'</code> said. 
+The following letter was space (<code> ISSPACE (c) </code>) even when it is a symbol 
+Maybe because of the conditional operator. 
+</p> 
+
+<p> 
+And above that are not in either case, every symbol. In this case 
+<code> EXPR_FNAME </code> transition to prepare for any method name. Perth is anything bother 
+But no, this scanner is to forget the value of reserved words for me to pass the 
+Calculating the value in the bend. 
+</p>
+h2> qualifier </h2> 
+
+<h3> problem </h3> 
+
+<p> 
+For example <code> if </code> to the regular and post-qualified the notations. 
+</p> 
+
+<pre class="emlist"> 
+Usually notation # 
+if cond then 
+   expr 
+end 
+
+# Postposing 
+expr if cond 
+</pre> 
+
+<p> 
+This is also the cause of the collision. Why is that, I knew this method also parentheses 
+Back cause. For example, in this case. 
+</p> 
+
+<pre class="emlist"> 
+call if cond then a else b end 
+</pre> 
+
+<p> 
+This equation is <code> if </code> until I read it in the next two to interpretation. 
+</p> 
+
+<pre class="emlist"> 
+call ((if ....)) 
+call () if .... 
+</pre> 
+
+<p> 
+If you are unsure what I have to try it, whether we go conflict. During grammar 
+The <code> kIF_MOD </code> and <code> kIF </code> changing <code> yacc </code> handled it a try. 
+</p> 
+
+<pre class="screen"> 
+% Yacc parse.y 
+parse.y contains 4 shift / reduce conflicts and 13 reduce / reduce conflicts. 
+</pre> 
+
+<p> 
+まくっstreet clashes with the attempt. If you have any interest <code> yacc </code> in <code>-v </code> options 
+As the log, while reading in the world. Details of the crash or how to write. 
+</p> 
+
+
+<h3> implementation </h3> 
+
+<p> 
+Now, what do I do? <code> ruby </code>, normal <code> if </code> and <code> kIF </code>, the post-<code> if </code> to 
+<code> kIF_MOD </code> as a symbol level (in other words, the scanner level) to distinguish between the 
+Syscall-hooking. After置系other operators are identical, 
+<code> kUNLESS_MOD kUNTIL_MOD kWHILE_MOD </code> <code> kRESCUE_MOD </code> in <code> kIF_MOD </code> of 
+According to five. The decisions we are following him. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - reserved words </p> 
+<pre class="longlist"> 
+4173 struct kwtable * kw; 
+4174 
+4175 / * See if it is a reserved word. * / 
+4176 kw = rb_reserved_word (tok (), toklen ()); 
+4177 if (kw) ( 
+4178 enum lex_state state = lex_state; 
+4179 lex_state = kw-> state; 
+4180 if (state == EXPR_FNAME) ( 
+4181 yylval.id = rb_intern (kw-> name); 
+4182) 
+4183 if (kw-> id [0] == kDO) ( 
+4184 if (COND_P ()) return kDO_COND; 
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
+4186 return kDO_BLOCK; 
+4187 if (state == EXPR_ENDARG) 
+4188 return kDO_BLOCK; 
+4189 return kDO; 
+4190) 
+4191 if (state == EXPR_BEG) / *** *** here / 
+4192 return kw-> id [0]; 
+4193 else ( 
+4194 if (kw-> id [0]! = Kw-> id [1]) 
+4195 lex_state = EXPR_BEG; 
+4196 return kw-> id [1]; 
+4197) 
+4198) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+This is because <code> yylex </code> at the end of the identifier after a scan. The last (most in 
+Side) <code> if </code> in <code> else </code> is qualified to handle part of the child. <code> EXPR_BEG </code> whether to return value 
+To see that change. This is qualified to determine whether the child. That is variable <code> kw </code> is 
+Key. And <code> kw </code> is much…… and we go on, <code> struct kwtable </code> and 
+Understandable. 
+</p> 
+
+<p> 
+<code> struct kwtable </code> is <code> keywords </code> defined in the structure, 
+Hash function <code> rb_reserved_word () </code> is <code> gperf </code> would make it the 
+In the previous chapter. Invite people to re-structure. 
+</p> 
+
+<p class="caption"> ▼ <code> keywords </code> - <code> struct kwtable </code> </p> 
+<pre class="longlist"> 
+    1 struct kwtable (char * name; int id [2]; enum lex_state state;); 
+
+(keywords) 
+</pre> 
+
+
+<p> 
+<code> name </code> and <code> id [0] </code> are illustrated. Italian names and symbols of the Book. 
+The remaining members talk about. 
+</p> 
+
+<p> 
+First <code> id [1] </code> qualifier problem now is a symbol of support. For example <code> if </code>, 
+<code> kIF_MOD </code>. 
+Book version of Italian qualifier is not <code> id [0] </code> and <code> id [1] </code> is the same thing is going on. 
+</p> 
+
+<p> 
+And <code> state </code> is <code> enum lex_state </code> So, after I read the word reservation should be a state of transition. 
+Let's keep that combination to the list. The output of my own making 
+Tools <code> kwstat.rb </code> obtained. This is the accompanying CD-ROM. 
+Ta \ footnote (<code> kwstat </code>: The accompanying CD-ROM <code> tools / kwstat.rb </code>). 
+</p> 
+
+<pre class="screen"> 
+% Kwstat.rb ruby / keywords 
+---- EXPR_ARG 
+defined? super yield 
+
+---- EXPR_BEG 
+and case else ensure if module or unless when 
+begin do elsif for in not then until while 
+
+---- EXPR_CLASS 
+class 
+
+---- EXPR_END 
+BEGIN __FILE__ end nil retry true 
+END __LINE__ false redo self 
+
+---- EXPR_FNAME 
+alias def undef 
+
+---- EXPR_MID 
+break next rescue return 
+
+---- Modifiers 
+if rescue unless until while 
+</pre> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2> <code> do </code> clash </h2> 
+
+<h3> problem </h3> 
+
+
+<p> 
+The format is iterator <code> do </code> in <code> end </code> and <code> (</code> in <code>) </code> There are two types. These two 
+The difference in priority order, <code> (</code> in <code>) </code> it is much higher. It is a high priority 
+Grammar units as "small", it is smaller than the rule 
+. For example <code> stmt </code> well as <code> expr </code> and <code> primary </code> have access to. For example 
+I used to be <code> (</code> in <code>) </code> iterator is <code> primary </code>, <code> do </code> in <code> end </code> iterator is < code> stmt </code> was. 
+</p> 
+
+<p> 
+However, during a ceremony following the requests came. 
+</p> 
+
+<pre class="emlist"> 
+m do .... end + m do .... end 
+</pre> 
+
+<p> 
+This is to allow <code> do </code> in <code> end </code> iterator <code> arg </code> and <code> primary </code>-money. 
+But <code> while </code> is conditional expression <code> expr </code>, that is <code> arg </code> and <code> primary </code>, including, 
+Here <code> do </code> conflict. Specifically, when the following. 
+</p> 
+
+<pre class="emlist"> 
+while m do 
+   .... 
+end 
+</pre> 
+
+<p> 
+Look at the kind of <code> do </code> is <code> while </code>-<code> do </code> rightness of becoming so. Only 
+And the common good of <code> m do </code> in <code> end </code> a tie is possible. And confuse people 
+It is of <code> yacc </code> If you run into a certainty. In fact, let's do it. 
+</p> 
+
+<pre class="emlist"> 
+/ * Do * collision experiments / 
+% token kWHILE kDO tIDENTIFIER kEND 
+%% 
+expr: kWHILE expr kDO expr kEND 
+     | TIDENTIFIER 
+     | TIDENTIFIER kDO expr kEND 
+</pre> 
+
+<p> 
+<code> while </code>, variable reference, a simple enumeration of only problem. This rule is conditional expression 
+At the beginning of <code> tIDENTIFIER </code> is coming shift / reduce conflict cause. <code> tIDENTIFIER </code> to 
+Reference to the variable <code> do </code> and <code> while </code> as a mark of the reduction, iterator <code> do </code>, it's 
+Shift. 
+</p> 
+
+<p> 
+Worse shift / reduce conflict is a priority shift, so leave and <code> do </code> is Lee 
+The TERETA <code> do </code> said. Or operator, saying it wants to turn reduction and other priorities and <code> do </code> of all 
+It no longer shifts, <code> do </code> itself is not working. This means that all the problems pike 
+The solution is no shield, <code> do </code> in <code> end </code> iterator <code> expr </code> operator without having to use the 
+To write the rules of the scanner can only be resolved level. 
+</p> 
+
+<p> 
+But <code> do </code> in <code> end </code> iterator <code> expr </code> out is a very unrealistic. 
+<code> expr </code> for the rule (that is <code> arg </code> and <code> primary </code> too) and repeat all 
+IKENAKU. Therefore this problem is solved in a proper scanner. 
+</p> 
+
+
+<h3> level of resolution rules </h3> 
+
+<p> 
+The following rules related to a reduction. 
+</p> 
+
+<p class="caption"> ▼ <code> do </code> symbol </p> 
+<pre class="longlist"> 
+primary: kWHILE expr_value do compstmt kEND 
+
+do: term 
+                 | KDO_COND 
+
+primary: operation brace_block 
+                 | Method_call brace_block 
+
+brace_block: '(' opt_block_var compstmt ')' 
+                 | KDO opt_block_var compstmt kEND 
+</pre> 
+
+
+<p> 
+Here's looking at, <code> while </code>-<code> do </code> and iterator <code> do </code> terminated by different symbols. 
+<code> while </code> is <code> kDO_COND </code>, will Iterators <code> kDO </code>. After the scanner 
+I do distinguish. 
+</p> 
+
+
+
+<h3> symbolic level of resolution </h3> 
+
+<p> 
+The following is many times seen <code> yylex </code> the word processing part of the reservation. 
+<code> do </code> that the process is here only because the code here 
+See note on studying the criteria should be. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - identifier - Pre-language </p> 
+<pre class="longlist"> 
+4183 if (kw-> id [0] == kDO) ( 
+4184 if (COND_P ()) return kDO_COND; 
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
+4186 return kDO_BLOCK; 
+4187 if (state == EXPR_ENDARG) 
+4188 return kDO_BLOCK; 
+4189 return kDO; 
+4190) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+What is messing about, <code> kDO_COND </code> related to only look at it. Because, 
+<code> kDO_COND </code> and <code> kDO </code> / <code> kDO_BLOCK </code> a comparison, <code> kDO </code> and <code> kDO_BLOCK </code>. 
+A comparison is meaningless, but the comparison is meaningless. Conditions are now 
+<code> do </code> I can not even distinguish that, together with other conditions that do not follow. 
+</p> 
+
+<p> 
+In other words <code> COND_P () </code> is key. 
+</p> 
+
+
+
+<h3> <code> COND_P () </code> </h3> 
+
+<h4> <code> cond_stack </code> </h4> 
+
+<p> 
+<code> COND_P () </code> is <code> parse.y </code> defined near the beginning. 
+</p> 
+
+<p class="caption"> ▼ <code> cond_stack </code> </p> 
+<pre class="longlist"> 
+   75 # ifdef HAVE_LONG_LONG 
+   76 typedef unsigned LONG_LONG stack_type; 
+   77 # else 
+   78 typedef unsigned long stack_type; 
+   79 # endif 
+   80 
+   81 static stack_type cond_stack = 0; 
+   82 # define COND_PUSH (n) (cond_stack = (cond_stack <<1) | ((n) & 1)) 
+   83 # define COND_POP () (cond_stack>> = 1) 
+   84 # define COND_LEXPOP () do (\ 
+   85 int last = COND_P (); \ 
+   86 cond_stack>> = 1; \ 
+   87 if (last) cond_stack | = 1; \ 
+   88) while (0) 
+   89 # define COND_P () (cond_stack & 1) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+- <Code> stack_type </code> is <code> long </code> (32 bits) or <code> long long </code> (64 bits). 
+<code> cond_stack </code> in Perth at the start of <code> yycompile () </code> initialized, and always after the macro 
+To be handled through the macros do I know. 
+</p> 
+
+<p> 
+The macro <code> COND_PUSH </code> / <code> POP </code> to see that the unit's stack apparently bit integer 
+Use it as. 
+</p> 
+
+<pre class="emlist"> 
+MSB ← → LSB 
+The initial value of 0 ... 0000000000 
+... 0000000001 COND_PUSH (1) 
+... 0000000010 COND_PUSH (0) 
+... 0000000101 COND_PUSH (1) 
+... 0000000010 COND_POP () 
+... 0000000100 COND_PUSH (0) 
+... 0000000010 COND_POP () 
+</pre> 
+
+<p> 
+And <code> COND_P () </code> is not the least significant bit (LSB) is whether 
+We have to determine the top of the stack is determining whether or not there will be. 
+</p> 
+
+<p> 
+The remaining <code> COND_LEXPOP () </code> is a little strange movements. Current <code> COND_P () </code> to 
+Back stack shift to the right and left. That is because under a two-bit 
+For a bit of crushing to be trampled on. 
+</p> 
+
+<pre class="emlist"> 
+MSB ← → LSB 
+The initial value of 0 ... 0000000000 
+... 0000000001 COND_PUSH (1) 
+... 0000000010 COND_PUSH (0) 
+... 0000000101 COND_PUSH (1) 
+... 0000000011 COND_LEXPOP () 
+... 0000000100 COND_PUSH (0) 
+... 0000000010 COND_LEXPOP () 
+</pre> 
+
+<p> 
+This is what it is meant to explain later. 
+</p> 
+
+<h4> purpose of the survey </h4> 
+
+<p> 
+The purpose of this stack to check, 
+<code> COND_PUSH () COND_POP () </code> using it to the entire list to try. 
+</p> 
+
+<pre class="emlist"> 
+         | KWHILE (COND_PUSH (1);) expr_value do (COND_POP ();) 
+-- 
+         | KUNTIL (COND_PUSH (1);) expr_value do (COND_POP ();) 
+-- 
+         | KFOR block_var kIN (COND_PUSH (1);) expr_value do (COND_POP ();) 
+-- 
+       case '(': 
+                 : 
+                 : 
+         COND_PUSH (0); 
+         CMDARG_PUSH (0); 
+-- 
+       case '[': 
+                 : 
+                 : 
+         COND_PUSH (0); 
+         CMDARG_PUSH (0); 
+-- 
+       case '(': 
+                 : 
+                 : 
+         COND_PUSH (0); 
+         CMDARG_PUSH (0); 
+-- 
+       case ']': 
+       case ')': 
+       case ')': 
+         COND_LEXPOP (); 
+         CMDARG_LEXPOP (); 
+</pre> 
+
+<p> 
+This follows from the law to find. 
+</p> 
+
+<ul> 
+<li> conditional expression in the first <code> PUSH (1) </code> </li> 
+<li> open parentheses <code> PUSH (0) </code> </li> 
+<li> conditions at the end of the ceremony <code> POP () </code> </li> 
+<li> close in parentheses <code> LEXPOP () </code> </li> 
+</ul> 
+
+<p> 
+The sort of 
+Uses comes out. <code> cond_stack </code> also named one of the same level as a conditional expression 
+Whether the decision must have a macro (Figure 2). 
+</p> 
+
+<p class="image"> 
+<img src="images/ch_contextual_condp.jpg" alt="(condp)"> <br> 
+Figure 2: <code> COND_P () </code> transition 
+</p> 
+
+<p> 
+The gimmick of the following may also be able to cope. 
+</p> 
+
+<pre class="emlist"> 
+while (m do .... end) # do the iterator do (kDO) 
+   .... 
+end 
+</pre> 
+
+<p> 
+It is a 32-bit machines <code> long long </code> If there are no conditions or the expression in parentheses 
+32-per-level nested in a strange It's possible. Although the Fair 
+Not so much from the nest actual harm is imminent. 
+</p> 
+
+<p> 
+Also <code> COND_LEXPOP () </code> definition is kind of strange thing is that I was, I guess 
+対策らしいprefetching. It is good that the current rules to prevent prefetching 
+Because of the <code> POP </code> and <code> LEXPOP </code> There is no meaning to separate. In other words 
+At this time "<code> COND_LEXPOP () </code> would have no meaning" the interpretation is correct. 
+</p> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2> <code> tLPAREN_ARG </code> (1) </h2> 
+
+<h3> problem </h3> 
+
+<p> 
+This issue is very confusing. This was to pass <code> ruby </code> 1.7 to 
+Became, it's fairly recent story. What is that…… 
+</p> 
+
+<pre class="emlist"> 
+call (expr) + 1 
+</pre> 
+
+<p> 
+To 
+</p> 
+
+<pre class="emlist"> 
+(call (expr)) + 1 
+call ((expr) + 1) 
+</pre> 
+
+<p> 
+Whether or interpretation of the story. Previously the former All are being treated like 
+Hoops. That is always parentheses "method arguments in parentheses." But 
+<code> ruby </code> 1.7, as the latter now being processed. 
+This means the space is in parentheses "<code> expr </code> brackets". 
+</p> 
+
+<p> 
+Why did you change your interpretation, let me introduce an example. First I wrote the following statement. 
+</p> 
+
+<pre class="emlist"> 
+p m () + 1 
+</pre> 
+
+<p> 
+If there is no problem so far. But <code> m </code> was actually returns to scale, multi-digit number of SU 
+GITATOSHIYOU. So when you view it for a whole number. 
+</p> 
+
+<pre class="emlist"> 
+p m () + 1. to_i #?? 
+</pre> 
+
+<p> 
+Darn, parentheses are needed. 
+</p> 
+
+<pre class="emlist"> 
+p (m () + 1). to_i 
+</pre> 
+
+<p> 
+This is not to be interpreted? Up to 1.6, which is 
+</p> 
+
+<pre class="emlist"> 
+(p (m () + 1)). to_i 
+</pre> 
+
+<p> 
+Said. This means putting a long-awaited <code> to_i </code> What is the meaning they no longer exist. This is not it. 
+The space between parentheses but only with the special treatment is <code> expr </code> brackets to the 
+Of. 
+</p> 
+
+<p> 
+Self-study for those who want to keep writing, 
+This change was implemented <code> parse.y </code> revision 1.100 (2001-05-31). 
+1.99 and that's why we take a look at the differences between the relatively straightforward. 
+This difference is to take command. 
+</p> 
+
+<pre class="screen"> 
+~ / src / ruby% cvs diff-r1.99-r1.100 parse.y 
+</pre> 
+
+
+
+<h3> survey </h3> 
+
+<p> 
+First, how the system works in reality if you look at it. Attached 
+Tools <code> ruby-lexer </code> \ footnote (<code> ruby-lexer </code>: The accompanying CD-ROM <code> tools / ruby-lexer.tar.gz </code>) a 
+Using string corresponding to the program are to be checked. 
+</p> 
+
+<pre class="screen"> 
+% Ruby-lexer-e 'm (a)' 
+tIDENTIFIER '(' tIDENTIFIER ')' '\ n' 
+</pre> 
+
+<p> 
+<code>-e </code> is <code> ruby </code> program as well as the option to pass directly from the command line. 
+You can use it to try a lot. 
+First problem, the first argument is that parenthetical. 
+</p> 
+
+<pre class="screen"> 
+% Ruby-lexer-e 'm (a)' 
+tIDENTIFIER tLPAREN_ARG tIDENTIFIER ')' '\ n' 
+</pre> 
+
+<p> 
+入れたらopen spaces in parentheses symbol <code> tLPAREN_ARG </code>. 
+Fair incidentally, let us also take a look at the expression in parentheses. 
+</p> 
+
+<pre class="screen"> 
+% Ruby-lexer-e '(a)' 
+tLPAREN tIDENTIFIER ')' '\ n' 
+</pre> 
+
+<p> 
+The ceremony is usually in parentheses <code> tLPAREN </code> like. 
+</p> 
+
+<p> 
+I put it all together. 
+</p> 
+
+<table> 
+<tr> <td> enter <td> <td> open parenthesis symbol <td> </tr> 
+<tr> <td> <code> m (a) </code> <td> <td> <code>'('</code> <td> </tr> 
+<tr> <td> <code> m (a) </code> <td> <td> <code> tLPAREN_ARG </code> <td> </tr> 
+<tr> <td> <code> (a) </code> <td> <td> <code> tLPAREN </code> <td> </tr> 
+</table> 
+
+<p> 
+That is how we distinguish between these three are the focus. 
+This is particularly <code> tLPAREN_ARG </code> is important. 
+</p> 
+
+
+
+If <h3> an argument </h3> 
+
+<p> 
+First meekly <code> yylex () </code>-<code >'('</code> look at the section. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - <code>'('</code> </p> 
+<pre class="longlist"> 
+3841 case '(': 
+3842 command_start = Qtrue; 
+3843 if (lex_state == EXPR_BEG | | lex_state == EXPR_MID) ( 
+3844 c = tLPAREN; 
+3845) 
+3846 else if (space_seen) ( 
+3847 if (lex_state == EXPR_CMDARG) ( 
+3848 c = tLPAREN_ARG; 
+3849) 
+3850 else if (lex_state == EXPR_ARG) ( 
+3851 c = tLPAREN_ARG; 
+3852 yylval.id = last_id; 
+3853) 
+3854) 
+3855 COND_PUSH (0); 
+3856 CMDARG_PUSH (0); 
+3857 lex_state = EXPR_BEG; 
+3858 return c; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+The first <code> if </code> is <code> tLPAREN </code> So the usual formula in parentheses. The criterion is <code> lex_state </code> is 
+<code> BEG </code> or <code> MID </code>, that is absolutely the beginning when the ceremony. 
+</p> 
+
+<p> 
+The next <code> space_seen </code> parentheses is the "blank whether there is any" respectively. 
+Spaces, and <code> lex_state </code> is <code> ARG </code> or <code> CMDARG </code> That is when the first argument…… 
+Ago, the symbol <code >'('</code> well as <code> tLPAREN_ARG </code> said. This is such an example 
+If you can not eliminate. 
+</p> 
+
+<pre class="emlist"> 
+m (# parentheses before the space is no method parentheses ('(')…… 
+m arg, (#…… except the first argument of expression in parentheses (tLPAREN) 
+</pre> 
+
+<p> 
+<code> tLPAREN </code> or <code> tLPAREN_ARG </code> But if no input characters <code> c </code> still 
+Used <code >'('</code> said. It's going to be a method call parentheses. 
+</p> 
+
+<p> 
+Such a symbolic level, to distinguish it from the sea on the other hand, the normal rules of writing 
+Avoid collision. Simplify writing to the following will be. 
+</p> 
+
+<pre class="emlist"> 
+stmt: command_call 
+
+method_call: tIDENTIFIER '(' args') '/ * usual method * / 
+
+command_call: tIDENTIFIER command_args / * * method omitted parentheses / 
+
+command_args: args 
+
+args: arg 
+              : Args', 'arg 
+
+arg: primary 
+
+primary: tLPAREN compstmt ')' / * * usual formula parentheses / 
+              | TLPAREN_ARG expr ')' / * parenthetical first argument * / 
+              | Method_call 
+</pre> 
+
+<p> 
+<code> method_call </code> and <code> command_call </code> attention to the other. If <code> tLPAREN_ARG </code> without introducing 
+<code>'('</code> and leave, <code> command_args </code> and <code> args </code> out, <code> args </code> and <code> arg </code> out, 
+<code> arg </code> and <code> primary </code> out, and <code> tLPAREN_ARG </code> away from <code >'('</code> came out 
+<code> method_call </code> collided with it (see Figure 3). 
+</p> 
+
+<p class="image"> 
+<img src="images/ch_contextual_trees.jpg" alt="(trees)"> <br> 
+Figure 3: <code> method_call </code> and <code> command_call </code> 
+</p> 
+
+
+
+More than two <h3> argument </h3> 
+
+<p> 
+Now is a good parentheses <code> tLPAREN_ARG </code> in this BATCHIRI, or so someone thought 
+In fact, it is not. For example, the following cases: How would it be. 
+</p> 
+
+<pre class="emlist"> 
+m (a, a, a) 
+</pre> 
+
+<p> 
+Such expressions have been treated as the method calls have been so 
+Had errors. But <code> tLPAREN_ARG </code> will be introduced and open parentheses 
+<code> expr </code> in parentheses, because two or more argument for the Perth and error. 
+Considering the compatibility considerations must be managed. 
+</p> 
+
+<p> 
+But without thinking 
+</p> 
+
+<pre class="emlist"> 
+command_args: tLPAREN_ARG args') ' 
+</pre> 
+
+<p> 
+, That rule would be simply to add the collision. Look at the whole think 
+? 
+</p> 
+
+<pre class="emlist"> 
+stmt: command_call 
+              | Expr 
+
+expr: arg 
+
+command_call: tIDENTIFIER command_args 
+
+command_args: args 
+              | TLPAREN_ARG args') ' 
+
+args: arg 
+              : Args', 'arg 
+
+arg: primary 
+
+primary: tLPAREN compstmt ')' 
+              | TLPAREN_ARG expr ')' 
+              | Method_call 
+
+method_call: tIDENTIFIER '(' args') ' 
+</pre> 
+
+<p> 
+<code> command_args </code>'s first look at the rules. <code> args </code> from <code> arg </code> is out. 
+<code> arg </code> from <code> primary </code> is out. From there <code> tLPAREN_ARG </code> rules out. 
+And <code> expr </code> is <code> arg </code>, including the deployment, depending on how 
+</p> 
+
+<pre class="emlist"> 
+command_args: tLPAREN_ARG arg ')' 
+              | TLPAREN_ARG arg ')' 
+</pre> 
+
+<p> 
+The situation. That is, reduce / reduce conflict and very bad. 
+</p>
+<p> 
+Then how do it without collision only deal with two or more arguments? 
+The possessive but not limited to just write. Reality is as follows resolved. 
+</p> 
+
+<p class="caption"> ▼ <code> command_args </code> </p> 
+<pre class="longlist"> 
+command_args: open_args 
+
+open_args: call_args 
+                 | TLPAREN_ARG ')' 
+                 | TLPAREN_ARG call_args2 ')' 
+
+call_args: command 
+                 | Args opt_block_arg 
+                 | Args', 'tSTAR arg_value opt_block_arg 
+                 | Assocs opt_block_arg 
+                 | Assocs', 'tSTAR arg_value opt_block_arg 
+                 | Args', 'assocs opt_block_arg 
+                 | Args', 'assocs',' tSTAR arg opt_block_arg 
+                 | TSTAR arg_value opt_block_arg 
+                 | Block_arg 
+
+call_args2: arg_value ',' args opt_block_arg 
+                 | Arg_value ',' block_arg 
+                 | Arg_value ',' tSTAR arg_value opt_block_arg 
+                 | Arg_value ',' args', 'tSTAR arg_value opt_block_arg 
+                 | Assocs opt_block_arg 
+                 | Assocs', 'tSTAR arg_value opt_block_arg 
+                 | Arg_value ',' assocs opt_block_arg 
+                 | Arg_value ',' args', 'assocs opt_block_arg 
+                 | Arg_value ',' assocs', 'tSTAR arg_value opt_block_arg 
+                 | Arg_value ',' args', 'assocs',' 
+                                   tSTAR arg_value opt_block_arg 
+                 | TSTAR arg_value opt_block_arg 
+                 | Block_arg 
+
+
+primary: literal 
+                 | Strings 
+                 | Xstring 
+                        : 
+                 | TLPAREN_ARG expr ')' 
+</pre> 
+
+
+<p> 
+You can <code> command_args </code> followed by another one stage, <code> open_args </code> is thatはさまっ 
+But the same rules. This <code> open_args </code> The second third of the key rules are concerned 
+Be. This form is similar to the just-written examples, but subtly different. It is 
+<code> call_args2 </code> that have introduced it. This <code> call_args2 </code> and is characterized by words 
+UTO, the argument is always two or more. Most of the evidence rules 
+<code>','</code> in itself. The exception is <code> assocs </code>, but the rules, <code> expr </code> from <code> assocs </code> is out 
+No leverage <code> assocs </code> collision is not the first place. 
+</p> 
+
+<p> 
+NIKUKATTA description is rather straightforward. A little plain speaking, 
+</p> 
+
+<pre class="emlist"> 
+command_args: call_args 
+</pre> 
+
+<p> 
+Not only do not go through grammar, with the following rules that add. 
+So "do not go through the rules of grammar" is what I think about it. 
+The conflict is <code> call_args </code> the top <code> tLPAREN_ARG </code>-<code> primary </code> will come only when 
+Because of the limited to 
+"<code> TIDENTIFIER tLPAREN_ARG </code> The order came as the only rule is 
+Do not go through grammar "I think about it. Some cite an example. 
+</p> 
+
+<pre class="emlist"> 
+m (a, a) 
+</pre> 
+
+<p> 
+This is <code> tLPAREN_ARG </code> list of two or more elements there. 
+</p> 
+
+<pre class="emlist"> 
+m () 
+</pre> 
+
+<p> 
+Conversely, <code> tLPAREN_ARG </code> in the list is empty. 
+</p> 
+
+<pre class="emlist"> 
+m (* args) 
+m (& block) 
+m (k => v) 
+</pre> 
+
+<p> 
+<code> tLPAREN_ARG </code> list of the specific method calls (<code> expr </code> is not) 
+Have representation. 
+</p> 
+
+<p> 
+Roughly around the cover. Implementation and in light of 
+Let's see. 
+</p> 
+
+<p class="caption"> ▼ <code> open_args </code> (1) </p> 
+<pre class="longlist"> 
+open_args: call_args 
+                 | TLPAREN_ARG ')' 
+</pre> 
+
+
+<p> 
+First, the rule is to check a list of corresponding. 
+</p> 
+
+<p class="caption"> ▼ <code> open_args </code> (2) </p> 
+<pre class="longlist"> 
+                 | TLPAREN_ARG call_args2 ')' 
+
+call_args2: arg_value ',' args opt_block_arg 
+                 | Arg_value ',' block_arg 
+                 | Arg_value ',' tSTAR arg_value opt_block_arg 
+                 | Arg_value ',' args', 'tSTAR arg_value opt_block_arg 
+                 | Assocs opt_block_arg 
+                 | Assocs', 'tSTAR arg_value opt_block_arg 
+                 | Arg_value ',' assocs opt_block_arg 
+                 | Arg_value ',' args', 'assocs opt_block_arg 
+                 | Arg_value ',' assocs', 'tSTAR arg_value opt_block_arg 
+                 | Arg_value ',' args', 'assocs',' 
+                                   tSTAR arg_value opt_block_arg 
+                 | TSTAR arg_value opt_block_arg 
+                 | Block_arg 
+</pre> 
+
+
+<p> 
+And the <code> call_args2 </code>, and a list of two or more elements, <code> assocs </code> and 
+An array of passing, blocking and special-delivery to include dealing with. 
+This is a considerable scope to respond to. 
+</p> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2> <code> tLPAREN_ARG </code> (2) </h2> 
+
+<h3> problem </h3> 
+
+<p> 
+Previous calls to the section on specific methods of expression is "almost ready" and said cover 
+The reasons for this. This is not iterator is uncovered. 
+For example, the following sentence like water. 
+</p> 
+
+<pre class="emlist"> 
+m (a) {....} 
+m (a) do .... end 
+</pre> 
+
+<p> 
+The point of this section is introduced in efforts to resolve the突っこんsection, let's see. 
+</p> 
+
+<h3> level of resolution rules </h3> 
+
+<p> 
+First look at the rules. 
+It has already appeared before the rules just because <code> do_block </code> around to watch them. 
+</p> 
+
+<p class="caption"> ▼ <code> command_call </code> </p> 
+<pre class="longlist"> 
+command_call: command 
+                 | Block_command 
+
+command: operation command_args 
+
+command_args: open_args 
+
+open_args: call_args 
+                 | TLPAREN_ARG ')' 
+                 | TLPAREN_ARG call_args2 ')' 
+
+block_command: block_call 
+
+block_call: command do_block 
+
+do_block: kDO_BLOCK opt_block_var compstmt ')' 
+                 | TLBRACE_ARG opt_block_var compstmt ')' 
+</pre> 
+
+
+<p> 
+<code> do </code>, <code> (</code> is both radically new symbol <code> kDO_BLOCK </code> and <code> tLBRACE_ARG </code> in the world. 
+Why <code> kDO </code> and <code >'{'</code> does not. That's the moment when you try a shot, 
+Well, that's all, <code> kDO_BLOCK </code> and <code> kDO </code> to, <code> tLBRACE_ARG </code> and <code >'{'</code> and <code> yacc </code>, 
+Treated him. Then…… 
+</p> 
+
+<pre class="screen"> 
+% Yacc parse.y 
+conflicts: 2 shift / reduce, 6 reduce / reduce 
+</pre> 
+
+<p> 
+Collision with abandon. Investigating the cause of the following statements. 
+</p> 
+
+<pre class="emlist"> 
+m (a), b {....} 
+</pre> 
+
+<p> 
+Because this form of sentence has been through already. <code> b {....}</code> is 
+<code> primary </code> said. There are blocks <code> m </code> and consolidated rules to add, however, 
+</p> 
+
+<pre class="emlist"> 
+m ((a), b) {....} 
+m ((a), (b {....})) 
+</pre> 
+
+<p> 
+The two were able to interpret it, a collision. 
+This is 2 shift / reduce conflict. 
+</p> 
+
+<p> 
+The other is <code> do </code> in <code> end </code>-related. This is 
+</p> 
+
+<pre class="emlist"> 
+m ((a)) do .... end # block_call do have to add end 
+m ((a)) do .... end # primary do have to add end 
+</pre> 
+
+<p> 
+The two collided. This is 6 reduce / reduce conflict. 
+</p> 
+
+
+<h3> <code> (</code> in <code>) </code> iterator </h3> 
+
+<p> 
+Now for the production. Just as you saw, <code> do </code> and <code >'{'</code> symbol of change in 
+Conflict is avoided. <code> yylex () </code>-<code >'{'</code> look at the section. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - <code>'{'</code> </p> 
+<pre class="longlist"> 
+3884 case '(': 
+3885 if (IS_ARG () | | lex_state == EXPR_END) 
+3886 c = '('; / * block (primary) * / 
+3887 else if (lex_state == EXPR_ENDARG) 
+3888 c = tLBRACE_ARG; / * block (expr) * / 
+3889 else 
+3890 c = tLBRACE; / * hash * / 
+3891 COND_PUSH (0); 
+3892 CMDARG_PUSH (0); 
+3893 lex_state = EXPR_BEG; 
+3894 return c; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+<code> IS_ARG () </code> is 
+</p> 
+
+<p class="caption"> ▼ <code> IS_ARG </code> </p> 
+<pre class="longlist"> 
+3104 # define IS_ARG () (lex_state == EXPR_ARG | | lex_state == EXPR_CMDARG) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+From the definition, <code> EXPR_ENDARG </code> when it is absolutely false. 
+In other words <code> lex_state </code> is <code> EXPR_ENDARG </code> whenever the <code> tLBRACE_ARG </code> to it, 
+<code> EXPR_ENDARG </code> transition that is all secret. 
+</p> 
+
+<h4> <code> EXPR_ENDARG </code> </h4> 
+
+<p> 
+, <Code> EXPR_ENDARG </code> How do you have been set? 
+Assigned to someone <code> grep </code> him. 
+</p> 
+
+<p class="caption"> ▼ <code> EXPR_ENDARG </code> to transition </p> 
+<pre class="longlist"> 
+open_args: call_args 
+                 | TLPAREN_ARG (lex_state = EXPR_ENDARG;) ')' 
+                 | TLPAREN_ARG call_args2 (lex_state = EXPR_ENDARG;) ')' 
+
+primary: tLPAREN_ARG expr (lex_state = EXPR_ENDARG;) ')' 
+</pre> 
+
+
+<p> 
+Funny. <code> tLPAREN_ARG </code> respond to close in parentheses after <code> EXPR_ENDARG </code> and transition 
+If you know it is not really the <code >')'</code> in front of the assignment 
+. Other <code> EXPR_ENDARG </code> set to the point that I think <code> grep </code> and 
+まくっhim, but no. 
+</p> 
+
+<p> 
+Maybe somewhere in the wrong way? Something completely different way 
+<code> lex_state </code> changes that might be. For confirmation, 
+<code> rubylex-analyser </code>, <code> lex_state </code> transition to try to visualize. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e 'm (a) (nil)' 
++ EXPR_BEG 
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG S "(" tLPAREN_ARG EXPR_BEG 
+                                               0: cond push 
+                                               0: cmd push 
+                                               1: cmd push - 
+EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG ")" ')' EXPR_END 
+                                               0: cond lexpop 
+                                               1: cmd lexpop 
++ EXPR_ENDARG 
+EXPR_ENDARG S "(" tLBRACE_ARG EXPR_BEG 
+                                               0: cond push 
+                                              10: cmd push 
+                                               0: cmd resume 
+EXPR_BEG S "nil" kNIL EXPR_END 
+EXPR_END S ")" ')' EXPR_END 
+                                               0: cond lexpop 
+                                               0: cmd lexpop 
+EXPR_END "\ n" \ n EXPR_BEG 
+</pre> 
+
+<p> 
+It is divided into three major lines of <code> yylex () </code> state of transition, respectively. 
+From the <code> yylex () </code> status before the middle of the two words in the text and symbols, 
+The right is <code> yylex () </code> after <code> lex_state </code>. 
+</p> 
+
+<p> 
+The problem is a single line <code> + EXPR_ENDARG </code> as part of the out of the country. This is the parser 
+Action is happening in that transition. According to the report, why? 
+<code>')'</code> after I read it in action <code> EXPR_ENDARG </code> to the transition 
+And a good <code >'{'</code> is <code> tLBRACE_ARG </code> to the other. This is a matter of fact 
+LALR (1) (1) to town to take advantage of (逆用) of the considerable skills of senior 
+. 
+</p> 
+
+<h4> prefetching逆用</h4> 
+
+<p> 
+<code> ruby-y </code> use <code> yacc </code> PASAENJIN of movement that can be displayed by the minute. 
+This is now using more detail to try to trace the parser. 
+</p> 
+
+<pre class="screen"> 
+% Ruby-yce 'm (a) (nil)' 2> & 1 | egrep '^ Reading | Reducing' 
+Reducing via rule 1 (line 303), -> @ 1 
+Reading a token: Next token is 304 (tIDENTIFIER) 
+Reading a token: Next token is 340 (tLPAREN_ARG) 
+Reducing via rule 446 (line 2234), tIDENTIFIER -> operation 
+Reducing via rule 233 (line 1222), -> @ 6 
+Reading a token: Next token is 304 (tIDENTIFIER) 
+Reading a token: Next token is 41 (')') 
+Reducing via rule 392 (line 1993), tIDENTIFIER -> variable 
+Reducing via rule 403 (line 2006), variable -> var_ref 
+Reducing via rule 256 (line 1305), var_ref -> primary 
+Reducing via rule 198 (line 1062), primary -> arg 
+Reducing via rule 42 (line 593), arg -> expr 
+Reducing via rule 260 (line 1317), -> @ 9 
+Reducing via rule 261 (line 1317), tLPAREN_ARG expr @ 9 ')' -> primary 
+Reading a token: Next token is 344 (tLBRACE_ARG) 
+                          : 
+                          : 
+</pre> 
+
+<p> 
+Interrupted only by a compilation <code>-c </code> options and from the command line program 
+Give <code>-e </code> with a combination. And <code> grep </code> token, reading and reporting only the reduction 
+Extract. 
+</p> 
+
+<p> 
+So we started to look at the middle of the list. <code>')'</code> is being loaded. Resona 
+Then the last…… how you look at it, we finally embedded Action 
+(<code> @ 9 </code>) reduction is going on (running). This is certainly <code >')'</code> after 
+<code>'{'</code> before <code> EXPR_ENDARG </code> to be set. However, this is always going to happen - 
+? Where once again set to look at. 
+</p> 
+
+<pre class="emlist"> 
+Rule 1 tLPAREN_ARG (lex_state = EXPR_ENDARG;) ')' 
+Rule 2 tLPAREN_ARG call_args2 (lex_state = EXPR_ENDARG;) ')' 
+Rule 3 tLPAREN_ARG expr (lex_state = EXPR_ENDARG;) ')' 
+</pre> 
+
+<p> 
+Action rules are embedded as a substitute check can be. For example 
+Rule 1 as an example and take an entirely without changing the meaning of the following rewrite. 
+</p> 
+
+<pre class="emlist"> 
+target: tLPAREN_ARG tmp ')' 
+tmp: 
+             ( 
+                 lex_state = EXPR_ENDARG; 
+             ) 
+</pre> 
+
+<p> 
+I <code> tmp </code> and before the end of one-minute mark is the possibility of being prefetched 
+Since the (empty) <code> tmp </code> to read the following SURINUKE is certainly possible. 
+And, absolutely prefetching know if it will happen, <code> lex_state </code> is the assignment 
+<code>')'</code> after <code> EXPR_ENDARG </code> to ensure that change. 
+This rule is <code >')'</code> prefetching is absolutely going to be? 
+</p> 
+
+<h4> prefetching guarantee </h4> 
+
+<p> 
+This is, in fact credible. Following three to take the input. 
+</p> 
+
+<pre class="emlist"> 
+m () (nil) # A 
+m (a) (nil) # B 
+m (a, b, c) (nil) # C 
+</pre> 
+
+<p> 
+Incidentally the rules a little easier to read (but without changing the situation) rewritten. 
+</p> 
+
+<pre class="emlist"> 
+rule1: tLPAREN_ARG e1 ')' 
+rule2: tLPAREN_ARG one_arg e2 ')' 
+rule3: tLPAREN_ARG more_args e3 ')' 
+
+e1: / * empty * / 
+e2: / * empty * / 
+e3: / * empty * / 
+</pre> 
+
+<p> 
+First of all, type A's. 
+</p> 
+
+<pre class="emlist"> 
+m (# ... tLPAREN_ARG 
+</pre> 
+
+<p> 
+Until I read it <code> e1 </code> come before. If <code> e1 </code> to the reduction of those 
+Another rule is to choose the other for the <code> e1 </code> to the reduction <code> rule1 </code> or commit suicide, 
+Or other rules to make choices in order to make sure this happens prefetching. 
+Therefore input <code> rule1 </code> If you are sure to meet <code >')'</code> of the prefetched. 
+</p> 
+
+<p> 
+Then the B input. First 
+</p> 
+
+<pre class="emlist"> 
+m (# ... tLPAREN_ARG 
+</pre> 
+
+<p> 
+We will, until I just read-ahead to take the same reason. And 
+</p> 
+
+<pre class="emlist"> 
+m (a # ... tLPAREN_ARG '(' tIDENTIFIER 
+</pre> 
+
+<p> 
+I just also to foresee. Because the next <code >','</code> or <code >')'</code>, or <code> rule2 </code> and 
+<code> rule3 </code> divide. If <code >','</code> This argument would have only a comma delimited 
+Will not immediately think of more than two arguments, namely <code> rule3 </code> and determinism. If you are 
+Mere <code> a </code>, but <code> if </code>だっliteral or "93" orだっthe same thing. 
+The input has been completed at <code> rule2 </code> and <code> rule3 </code> to differentiate, namely 
+Arguments over whether an argument or two to differentiate prefetching happens. 
+</p> 
+
+<p> 
+In this case, all the rules <code >')'</code> before the (separate) and embedded in Action 
+It is rather important. Action is the first time, it would no longer run the floor 
+Resona standing returns, the parser is "absolutely certain" until the situation of action 
+I try to delay the execution. That is why one of those read-ahead to create a situation 
+If you are not the parser generation must be eliminated, which means it is "collision". 
+</p> 
+
+<p> 
+How? Input C. 
+</p> 
+
+<pre class="emlist"> 
+m (a, b, c 
+</pre> 
+
+<p> 
+I have come here at <code> rule3 </code> is not only possible, prefetching is like me 
+Down. 
+</p> 
+
+<p> 
+However, it does not work. The following is <code >'('</code> If the method call it, <code >','</code> or <code >')'</code>, 
+Do we have to refer to variable. So this is embedded in a reduction of Action 
+See the argument for a firm element of prefetching happens. 
+</p> 
+
+<p> 
+And other input, what of it? The third method calls for example, the argument is 
+I would doubt it. 
+</p> 
+
+<pre class="emlist"> 
+m (a, b, c (....) # ... ',' method_call 
+</pre> 
+
+<p> 
+All in all, it is necessary prefetching. Because, you <code >','</code> or <code >')'</code> or reducible to shift and 
+Former divide. So, this rule will eventually be embedded in every case Action 
+Run faster than <code >')'</code> was read. Very confusing. I came up with a sense of well - 
+The motion. 
+</p> 
+
+<p> 
+By the way embedded in the action instead of the usual action <code> lex_state </code> set 
+You can not? Thus, for example. 
+</p> 
+
+<pre class="emlist"> 
+                 | TLPAREN_ARG ')' (lex_state = EXPR_ENDARG;) 
+</pre> 
+
+<p> 
+This is wrong. Because of the reduction before the action (and) will happen prefetching 
+May be. Prefetching is now out of them backfired. This thing 
+Were seen, LALR parser prefetching to turn to one's own is not quite a trick. 
+Amateurs are not recommended. 
+</p> 
+
+
+
+<h3> <code> do </code> in <code> end </code> iterator </h3> 
+
+<p> 
+So far, <code> (</code> in <code>) </code> enumeration is still ready to deal with the <code> do </code> in <code> end </code> left iterator 
+. Iterators in the same manner as if he could handle, but it is different. 
+<code> (</code> in <code>) </code> and <code> do </code> in <code> end </code> will have different priorities. For example follows. 
+</p> 
+
+<pre class="emlist"> 
+m a, b {....} # m (a, (b {....})) 
+m a, b do .... end # m (a, b) do .... end 
+</pre> 
+
+<p> 
+So of course deal with different approaches are appropriate. 
+</p> 
+
+<p> 
+But, of course, deal with the same case as it goes. For example, the following cases: 
+Both will be the same. 
+</p> 
+
+<pre class="emlist"> 
+m (a) {....} 
+m (a) do .... end 
+</pre> 
+
+<p> 
+Just take a look at it in kind. 
+<code> do </code> So, <code> yylex () </code> reservation should I word this time. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - identifier - a reserved word - <code> do </code> </p> 
+<pre class="longlist"> 
+4183 if (kw-> id [0] == kDO) ( 
+4184 if (COND_P ()) return kDO_COND; 
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
+4186 return kDO_BLOCK; 
+4187 if (state == EXPR_ENDARG) 
+4188 return kDO_BLOCK; 
+4189 return kDO; 
+4190) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+This time looking at <code> kDO_BLOCK </code> and <code> kDO </code> to distinguish only a portion. <code> kDO_COND </code> that has taken 
+ETE is not. Scanner with a state where it is always concerned to see. 
+</p> 
+
+<p> 
+First <code> EXPR_ENDARG </code> part is determined using <code> tLBRACE_ARG </code> same situation. 
+This difference in priorities when it is irrelevant <code >'{'</code> in the same <code> kDO_BLOCK </code> to 
+It is appropriate. 
+</p> 
+
+<p> 
+The problem is the previous <code> CMDARG_P () </code> and <code> EXPR_CMDARG </code>. Let's turn to look at. 
+</p> 
+
+<h4> <code> CMDARG_P () </code> </h4> 
+
+<p class="caption"> ▼ <code> cmdarg_stack </code> </p> 
+<pre class="longlist"> 
+   91 static stack_type cmdarg_stack = 0; 
+   92 # define CMDARG_PUSH (n) (cmdarg_stack = (cmdarg_stack <<1) | ((n) & 1)) 
+   93 # define CMDARG_POP () (cmdarg_stack>> = 1) 
+   94 # define CMDARG_LEXPOP () do (\ 
+   95 int last = CMDARG_P (); \ 
+   96 cmdarg_stack>> = 1; \ 
+   97 if (last) cmdarg_stack | = 1; \ 
+   98) while (0) 
+   99 # define CMDARG_P () (cmdarg_stack & 1) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+In this way <code> cmdarg_stack </code> structure and interface (Macro) 
+<code> cond_stack </code> exactly the same. Bitwise stack. Mono is the same 
+It will also investigate how to get the same class. Using it to try to list the location 
+U. First Action in 
+</p> 
+
+<pre class="emlist"> 
+command_args: ( 
+                         $ <num> $ = cmdarg_stack; 
+                         CMDARG_PUSH (1); 
+                     ) 
+                   open_args 
+                     ( 
+                         / * CMDARG_POP () * / 
+                         cmdarg_stack = $ <num> 1; 
+                         $ $ = $ 2; 
+                     ) 
+</pre> 
+
+<p> 
+It was. 
+</p> 
+
+<p> 
+<code> $ <num> $ </code> force is left with the cast 
+The mean value. In this case it is embedded with a value of the action itself 
+To come out, the next action is <code> $ <num> 1 </code> to be fetched. In other words 
+<code> cmdarg_stack </code> and <code> open_args </code> in front of <code >$$</code> diverted to the return to action, and 
+I do not have a structure. 
+</p> 
+
+<p> 
+Why not just push pop and a return to the evacuation. 
+It is described in this paragraph at the end. 
+</p> 
+
+<p> 
+Also <code> yylex () </code> in <code> CMDARG </code> relationship and the next thing is to find見付かった. 
+</p> 
+
+<table> 
+<tr> <td> <code> '(' '[''{'</code> <td> <td> <code> CMDARG_PUSH (0) </code> <td> </tr> 
+<tr> <td> <code> ')' ']''}'</code> <td> <td> <code> CMDARG_LEXPOP () </code> <td> </tr> 
+</table> 
+
+<p> 
+This means that if there's KUKURA parentheses within parentheses in the meantime the <code> CMDARG_P () </code> is false, 
+It. 
+</p> 
+
+<p> 
+Both together and think, <code> command_args </code> method that is called self-omitted parentheses 
+The number in parentheses when not to KUKURA <code> CMDARG_P () </code> it is true. 
+</p> 
+
+<h4> <code> EXPR_CMDARG </code> </h4> 
+
+<p> 
+Then another condition, <code> EXPR_CMDARG </code> investigate. 
+Find a routine street <code> EXPR_CMDARG </code> transition to the location to find out. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - identifier - the state transition </p> 
+<pre class="longlist"> 
+4201 if (lex_state == EXPR_BEG | | 
+4202 lex_state == EXPR_MID | | 
+4203 lex_state == EXPR_DOT | | 
+4204 lex_state == EXPR_ARG | | 
+4205 lex_state == EXPR_CMDARG) ( 
+4206 if (cmd_state) 
+4207 lex_state = EXPR_CMDARG; 
+4208 else 
+4209 lex_state = EXPR_ARG; 
+4210) 
+4211 else ( 
+4212 lex_state = EXPR_END; 
+4213) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+This is <code> yylex () </code> in dealing with the identifier code. 
+UJAUJA and <code> lex_state </code> test is not as well leave, 
+<code> cmd_state </code> is the first category. What is this? 
+</p> 
+
+<p class="caption"> ▼ <code> cmd_state </code> </p> 
+<pre class="longlist"> 
+3106 static int 
+3107 yylex () 
+(3108 
+3109 static ID last_id = 0; 
+3110 register int c; 
+3111 int space_seen = 0; 
+3112 int cmd_state; 
+3113 
+3114 if (lex_strterm) ( 
+               / *…… Snip…… * / 
+3132) 
+3133 cmd_state = command_start; 
+3134 command_start = Qfalse; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+<code> yylex </code> local variables. And <code> grep </code> looked to the value of the change 
+It is only here. This means that <code> command_start </code> and <code> yylex </code> save only once during the 
+It's just a temporary variable. 
+</p> 
+
+<p> 
+, <Code> command_start </code> when what is true? 
+</p> 
+
+<p class="caption"> ▼ <code> command_start </code> </p> 
+<pre class="longlist"> 
+2327 static int command_start = Qtrue; 
+
+2334 static NODE * 
+2335 yycompile (f, line) 
+2336 char * f; 
+2337 int line; 
+(2338 
+                    : 
+2380 command_start = 1; 
+
+       static int 
+       yylex () 
+       ( 
+                    : 
+             case '\ n': 
+               / *…… Snip…… * / 
+3165 command_start = Qtrue; 
+3166 lex_state = EXPR_BEG; 
+3167 return '\ n'; 
+
+3821 case ';': 
+3822 command_start = Qtrue; 
+
+3841 case '(': 
+3842 command_start = Qtrue;
+	 	(parse.y) 
+</pre> 
+
+
+<p> 
+<code> command_start </code> is <code> parse.y </code> static variable, 
+"<code> \ N; (</code>" one of the scan and true, and understandable. 
+</p> 
+
+<p> 
+Put together so far. First, "<code> \ n; (</code>" read a <code> command_start </code> is true, 
+Next <code> yylex () </code> between <code> cmd_state </code> is true. 
+</p> 
+
+<p> 
+And <code> yylex () </code>, <code> cmd_state </code> I had to use code, 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - identifier - the state transition </p> 
+<pre class="longlist"> 
+4201 if (lex_state == EXPR_BEG | | 
+4202 lex_state == EXPR_MID | | 
+4203 lex_state == EXPR_DOT | | 
+4204 lex_state == EXPR_ARG | | 
+4205 lex_state == EXPR_CMDARG) ( 
+4206 if (cmd_state) 
+4207 lex_state = EXPR_CMDARG; 
+4208 else 
+4209 lex_state = EXPR_ARG; 
+4210) 
+4211 else ( 
+4212 lex_state = EXPR_END; 
+4213) 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+"<code> \ N; (</code> after <code> EXPR_BEG MID DOT ARG CMDARG </code> state when read identifier 
+MUTO <code> EXPR_CMDARG </code> transition "he said. But <code> \ n; (</code> After the SOMO 
+SOMO <code> lex_state </code> is <code> EXPR_BEG </code> only be so, <code> EXPR_CMDARG </code> if the transition to 
+Has <code> lex_state </code> is not very meaningful. <code> lex_state </code> is limited <code> EXPR_ARG </code> for transition 
+It's just important. 
+</p> 
+
+<p> 
+Now, more than reflect and <code> EXPR_CMDARG </code> of situation is possible. 
+For example, the following situations. Under the current position of the bar. 
+</p> 
+
+<pre class="emlist"> 
+m _ 
+m (m _ 
+m m _ 
+</pre> 
+
+<h4> together </h4> 
+
+<p> 
+Here <code> do </code>'s decision to go back to code. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - identifier - a reserved word - <code> kDO </code> - <code> kDO_BLOCK </code> </p> 
+<pre class="longlist"> 
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
+4186 return kDO_BLOCK; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+Back in parentheses call the method of argument, and not when the first argument before. 
+It is <code> command_call </code> after the second argument. So this kind of footage. 
+</p> 
+
+<pre class="emlist"> 
+m arg, arg do .... end 
+m (arg), arg do .... end 
+</pre> 
+
+<p> 
+Why <code> EXPR_CMDARG </code> to eliminate if it has to do with…… you'll find examples of writing. 
+</p> 
+
+<pre class="emlist"> 
+m do .... end 
+</pre> 
+
+<p> 
+This pattern is already <code> primary </code> being defined, <code> kDO </code> to use <code> do </code> in <code> end </code> ITE 
+Lifting regulators. So in this case also included a collision with them. 
+</p> 
+
+
+
+<h3> facts and the truth </h3> 
+
+<p> 
+I thought at the end? Is not the end yet. 
+Certainly that is a complete logic, but it is correct, I wrote that story. 
+In fact, this section is one of lies. 
+</p> 
+
+<p> 
+Rather than lies not say what exactly? It is 
+<code> CMDARG_P () </code> I wrote about this part. 
+</p> 
+
+<p class="center"> 
+Apparently, <code> command_args </code> parenthesis means that during abbreviatory argument method calls 
+If you are <code> CMDARG_P () </code> is true. 
+</p> 
+
+<p> 
+"Back in parentheses methods to be used when calling argument……" he said, 
+Argument "" Where is it? Again <code> rubylex-analyser </code> with 
+I try to ensure strict. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e 'm a, a, a, a;' 
++ EXPR_BEG 
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG S "a" tIDENTIFIER EXPR_ARG 
+                                               1: cmd push - 
+EXPR_ARG "," ',' EXPR_BEG 
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "," ',' EXPR_BEG 
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "," ',' EXPR_BEG 
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
+EXPR_ARG ";" ';' EXPR_BEG 
+                                               0: cmd resume 
+EXPR_BEG C "\ n" 'EXPR_BEG 
+</pre> 
+
+<p> 
+Right field, "<code> 1: cmd push-</code>" where there is <code> cmd_stack </code> to push. Resona 
+Line under a single digit number is 1 when <code> CMDARG_P () </code> is true. In other words <code> CMDARG_P () </code>, 
+Is a time 
+</p> 
+
+<p class="center"> 
+Back in parentheses method calls immediately after the first argument 
+The last argument to mark the end of the next 
+</p> 
+
+<p> 
+And言うべきらしい. 
+</p> 
+
+<p> 
+But it's really true but strictly speaking it is not yet. 
+For example, the following example. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e 'm a (), a, a;' 
++ EXPR_BEG 
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG S "a" tIDENTIFIER EXPR_ARG 
+                                               1: cmd push - 
+EXPR_ARG "(" '(' EXPR_BEG 
+                                               0: cond push 
+                                              10: cmd push 
+EXPR_BEG C ")" ')' EXPR_END 
+                                               0: cond lexpop 
+                                               1: cmd lexpop 
+EXPR_END "," ',' EXPR_BEG 
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "," ',' EXPR_BEG 
+EXPR_BEG "a" tIDENTIFIER EXPR_ARG 
+EXPR_ARG ";" ';' EXPR_BEG 
+                                               0: cmd resume 
+EXPR_BEG C "\ n" 'EXPR_BEG 
+</pre> 
+
+<p> 
+The first argument in the first reading at the time of termination symbol <code> CMDARG_P () </code> is truly 
+It. Therefore 
+</p> 
+
+<p class="center"> 
+Back in parentheses method invocation of the first argument 
+Immediately after the first sign of the end of the last argument to mark the end of the next 
+</p> 
+
+<p> 
+Is the complete answer. 
+</p> 
+
+<p> 
+The fact is what you mean? But I want to recall, <code> CMDARG_P () </code> to 
+Such codes are used. 
+</p> 
+
+<p class="caption"> ▼ <code> yylex </code> - identifier - a reserved word - <code> kDO </code> - <code> kDO_BLOCK </code> </p> 
+<pre class="longlist"> 
+4185 if (CMDARG_P () & & state! = EXPR_CMDARG) 
+4186 return kDO_BLOCK; 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+<code> EXPR_CMDARG </code> is "<code> command_call </code> arguments before the first", in the sense that it excluded 
+. However, <code> CMDARG_P () </code> is already included in the meaning of that? 
+That is the final conclusion of this section is this. 
+</p> 
+
+<p class="center"> 
+EXPR_CMDARG is only a waste. 
+</p> 
+
+<p> 
+Indeed, this is when I found that it is in my crying. "Absolute 
+Meaningful to the pair, something was wrong, "the source would patiently try to analyze theまくっ 
+It do not know. But ultimately <code> rubylex-analyser </code> various Coe 
+All in all, to try to de-まくっis no effect, so it is pointless to conclude. 
+</p> 
+
+<p> 
+ENEN meaning is not just a separate page and came to the breadwinner, but 
+Instead, it possible to simulate conditions of the plan. The world 
+None of the program is perfect and mistakes are included. At this year's. 
+So it is a subtle addition is prone to mistakes. When the original "infallible 
+"As I read this kind of mistake when he met HAMARU. So after all 
+When you read the last SUKODO believed there was only the facts of what happened. 
+</p> 
+
+<p> 
+In this regard the importance of dynamic analysis is known to have said. And investigate 
+I look for the facts first. Source code is a fact never say anything. 
+There's nothing but a guess they are more human. 
+</p> 
+
+<p> 
+Pendulous all very fine and lessons of this chapter was rough at a long終わ 
+Resona said. 
+
+
+<h4> did not end </h4> 
+
+<p> 
+One forgotten. <code> CMDARG_P () </code> That's why you have to get value 
+This chapter is終われないmust explain. The problem is here. 
+</p> 
+
+<p class="caption"> ▼ <code> command_args </code> </p> 
+<pre class="longlist"> 
+1209 command_args: ( 
+1210 $ <num> $ = cmdarg_stack; 
+1211 CMDARG_PUSH (1); 
+1212) 
+1213 open_args 
+(1214 
+1215 / * CMDARG_POP () * / 
+1216 cmdarg_stack = $ <num> 1; 
+1217 $ $ = $ 2; 
+1218) 
+
+1221 open_args: call_args 
+
+(parse.y) 
+</pre> 
+
+
+<p> 
+Conclusions from it and once again the influence of prefetching. <code> command_args </code> is always 
+Following context. 
+</p> 
+
+<pre class="emlist"> 
+tIDENTIFIER _ 
+</pre> 
+
+<p> 
+It is, it is too variable to refer to the method calls too. Also 
+Variable would have to refer <code> variable </code>, the method it calls <code> operation </code> return to 
+If you do not. So should prefetching to determine the direction forward, so I can not 
+Be. Thus <code> command_args </code> prefetching is beginning to happen is always the first argument 
+The first sign after reading the termination <code> CMDARG_PUSH () </code> execution. 
+</p> 
+
+<p> 
+<code> cmdarg_stack </code>, <code> POP </code> and <code> LEXPOP </code> is also divided into the reasons here. 
+Look at the following example. 
+</p> 
+
+<pre class="screen"> 
+% Rubylex-analyser-e 'm m (a), a' 
+- e: 1: warning: parenthesize argument (s) for future version 
++ EXPR_BEG 
+EXPR_BEG C "m" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG S "m" tIDENTIFIER EXPR_ARG 
+                                               1: cmd push - 
+EXPR_ARG S "(" tLPAREN_ARG EXPR_BEG 
+                                               0: cond push 
+                                              10: cmd push 
+                                             101: cmd push - 
+EXPR_BEG C "a" tIDENTIFIER EXPR_CMDARG 
+EXPR_CMDARG ")" ')' EXPR_END 
+                                               0: cond lexpop 
+                                              11: cmd lexpop 
++ EXPR_ENDARG 
+EXPR_ENDARG "," ',' EXPR_BEG 
+EXPR_BEG S "a" tIDENTIFIER EXPR_ARG 
+EXPR_ARG "\ n" \ n EXPR_BEG 
+                                              10: cmd resume 
+                                               0: cmd resume 
+</pre> 
+
+<p> 
+<code> cmd </code> relationship only to see the correspondence between him and we…… 
+</p> 
+
+<pre class="emlist"> 
+   1: cmd push-parser push (1) 
+  10: cmd push push scanner 
+101: cmd push-parser push (2) 
+  11: cmd lexpop pop scanner 
+  10: cmd resume parser pop (2) 
+   0: cmd resume Hertha pop (1) 
+</pre> 
+
+<p> 
+"<code> Cmd push-</code>" at the end they would have been negative with the parser 
+<code> push </code>. In other words <code> push </code> and <code> pop </code> have missed the correspondence between. Should 
+<code> push-</code> twice in a row is going on the stack would be 110 but, because of prefetching 
+101 to a thousand. <code> CMDARG_LEXPOP () </code> is the way it's prepared to respond to this phenomenon 
+For the last resort. Scanner in the first place is always 0 <code> push </code> now because, after scan 
+Na is <code> pop </code>'s always supposed to be zero. There is zero if you do not, Par 
+The service <code> push </code> was delayed because one believes in it. So its value to leave. 
+</p> 
+
+<p> 
+In other words, parser <code> pop </code> came at the stack is already back to normalcy 
+It should be. So I really did not normally <code> pop </code> that it's okay. I do not 
+The acts, not just good, because I believe that.ポッ 
+I can type <code >$$</code> is out to save the return movement is the same. Especially if I stay 
+We change the filter to consider how to change the behavior and prefetching do not know. Only 
+This problem may also occur in the future be banned in the grammar that has been decided (that's why 
+There are a warning). No such thing to you through a variety of ideas to deal with the 
+The bone. So the real <code> ruby </code> is this a good implementation of that, I think. 
+</p> 
+
+<p> 
+This is really resolved. 
+
+<hr>
+<p>
+The original work is Copyright &copy; 2002 - 2004 Minero AOKI.<br>
+Translations,&nbsp additions,&nbsp and graphics by C.E. Thornton<br>
+<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/2.5/"><img alt="Creative Commons License" border="0" src="images/somerights20.jpg"/></a><br/>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/2.5/">Creative Commons Attribution-NonCommercial-ShareAlike2.5 License</a>.
+</p>
+</body>
+</html>
