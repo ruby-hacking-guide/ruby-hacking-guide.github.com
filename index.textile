@@ -79,7 +79,7 @@ to post suggestions on the mailing list.
 
 h3. Part 1: Objects
 
-* "Chapter 1: A Minimal Introduction to Ruby":chapter01.html
+* "Chapter 1: A Minimal Introduction to Ruby":minimum.html
 * "Chapter 2: Objects":object.html
 * "Chapter 3: Names and name tables":name.html
 * "Chapter 4: Classes and modules":class.html
@@ -89,7 +89,7 @@ h3. Part 1: Objects
 
 h3. Part 2: Syntax analysis
 
-* "Chapter 8: Ruby Language Details":chapter08.html
+* "Chapter 8: Ruby Language Details":spec.html
 * Chapter 9: yacc crash course
 * "Chapter 10: Parser":parser.html
 * Chapter 11: Context-dependent scanner
