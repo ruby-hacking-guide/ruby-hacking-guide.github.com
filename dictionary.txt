@@ -1,0 +1,23 @@
+定義:definition
+定数:constant
+変数:variable
+関数:function
+オブジェクト:object
+クラス:class
+文字列:string
+正規表現:regular expression
+リテラル:literal
+メソッド呼び出し:method call
+制御構造:control structure
+継承:inheritance
+参照:(variable) reference
+代入:(variable) assignment
+名前空間:namespace
+返り値:return value
+予約語:reserved word
+特異メソッド:singleton method
+型:type (in C)
+構造体:structure (in C)
+記号:symbol (in a parser input)
+文:statement
+式:expression
