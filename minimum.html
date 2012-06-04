@@ -2,20 +2,21 @@
 layout: default
 title: Objects - Structure of Ruby objects
 ---
+
 Translated by Sebastian Krause
 
 h1. Chapter 2: A Minimal Introduction to Ruby
 
 Here the Ruby prerequisites are explained, which one needs to know
 in order to understand the first section.
-I won't point out programming techniques or points one should be 
+I won't point out programming techniques or points one should be
 careful about. So don't think you'll be able to write Ruby programs just because
 you read this chapter. Readers who have prior experience with Ruby
 can skip this chapter.
 
 We will talk about grammar extensively in the second section, hence
 I won't delve into the finer points of grammar here. From hash literals
-and such I'll show only the most widely used notations. On principle 
+and such I'll show only the most widely used notations. On principle
 I won't omit things even if I can. This way the syntax becomes more simple.
 I won't always say "We can omit this".
 
@@ -26,13 +27,13 @@ h3. Strings
 Everything that can be manipulated in a Ruby program is an object.
 There are no primitives as Java's `int` and `long`. For instance
 if we write as below it denotes a string object with content `content`.
- 
+
 <pre class="emlist">
 "content"
 </pre>
 
 I casually called it a  string object but to be precise this is an expression which generates
-a string object. Therefore if we write it several times each time 
+a string object. Therefore if we write it several times each time
 another string object is generated.
 
 <pre class="emlist">
@@ -110,7 +111,7 @@ arbitrary objects. The above line creates a table which stores the following tab
 </pre>
 
 If we ask the hash table above "What's corresponding to `key`?", it'll
-answer "That's `value`." How can we ask? We use methods. 
+answer "That's `value`." How can we ask? We use methods.
 
 h3. Method Calls
 
@@ -123,7 +124,7 @@ the notation.
 </pre>
 
 Here the `upcase` method is called on a string object ( with content `content`).
-As `upcase` is a method which 
+As `upcase` is a method which
 returns a new string with the small letters replaced by capital letters
 we get the following result.
 
@@ -137,7 +138,7 @@ Method calls can be chained.
 "content".upcase().downcase()
 </pre>
 
-Here the method `downcase` is called on the return value of `"content".upcase()`. 
+Here the method `downcase` is called on the return value of `"content".upcase()`.
 
 There are no public fields (member variables) as in Java or C++ (Note: need to check this). The object interface consists of methods only.
 
@@ -168,7 +169,7 @@ With the `-e` option of the `ruby` program we don't even need to create a file.
 </pre>
 
 By the way, the place where `p` is written is the lowest level of the program,
-or the highest level from the program's standpoint. Hence it's called the 
+or the highest level from the program's standpoint. Hence it's called the
 <em>toplevel</em>.
 The existence of a toplevel is a characteristic trait of a scripting language.
 
@@ -206,7 +207,7 @@ str = "content"
 arr = [1,2,3]
 </pre>
 
-An initial assignment serves as declaration, an explicit declaration is 
+An initial assignment serves as declaration, an explicit declaration is
 not necessary. Because variables don't have a type we can assign any type without
 distinction. The program below is completely legal.
 
@@ -217,7 +218,7 @@ lvar = 1
 </pre>
 
 But just because we can we shouldn't necessarily do it. If different
-objects are put in one variable it tends to become difficult to read. In a 
+objects are put in one variable it tends to become difficult to read. In a
 real world Ruby program one  doesn't do this kind of things without a good reason.
 The above was just an example for the sake of it.
 
@@ -270,7 +271,7 @@ C = 1
 C = 2   # There is a warning but ideally there should be an error.
 </pre>
 
-A lot of people are fooled by the word constant.  
+A lot of people are fooled by the word constant.
 A constant only does not switch objects once it is assigned.
 But the object itself might as well change. The term "read only"
 might capture the concept better than "constant".
@@ -312,10 +313,10 @@ h3. Classes
 
 In object orientation methods belong to objects, in a perfect
 world, though. But in a normal program there are a lot of objects which have the
-same set of methods. Usually a mechanism like classes or 
+same set of methods. Usually a mechanism like classes or
 multimethods is used to get rid of the duplication of definitions.
 
-In Ruby the traditional concept of classes is used to bind objects and 
+In Ruby the traditional concept of classes is used to bind objects and
 methods together. Namely every object belongs to a class, the methods
 which can be called are determined by the class. Hence a method is
 called an instance of a class.
@@ -388,9 +389,9 @@ In Ruby all things which a program can manipulate are objects. So
 of course classes are also expressed as objects. Let's call these
 <em>class objects</em>. Every class is an instance of the class `Class`.
 
-In other words a `class` statement creates a new class object and 
-it assigns a constant named 
-with the classname to the class. On the other hand 
+In other words a `class` statement creates a new class object and
+it assigns a constant named
+with the classname to the class. On the other hand
 the generation of an instance references this constant and calls a method
 on this object ( usually new). If we look at the example below, it's
 pretty obvious that the creation of an instance doesn't differ
@@ -402,7 +403,7 @@ class C
 end
 
 S.upcase()  # Get the object the constant S points to and call upcase
-C.new()     # Get the object the constant C points to and call new 
+C.new()     # Get the object the constant C points to and call new
 </pre>
 
 So `new` is not a keyword in Ruby.
@@ -471,7 +472,7 @@ p(C.new().myupcase("content"))   # Also shows "CONTENT"
 h3. `self`
 
 During the execution of a method the information about itself (the instance
-which called the method) is saved and can be picked up in `self`. 
+which called the method) is saved and can be picked up in `self`.
 Like the `this` in C++ or Java. Let's check this out.
 
 <pre class="emlist">
@@ -507,7 +508,7 @@ C.new().my_p(1)   # Output 1
 </pre>
 
 But always adding the `self` when calling an own method is tedious.
-Hence, whenever one calls `self` one can omit the called object ( the receiver) by convention. 
+Hence, whenever one calls `self` one can omit the called object ( the receiver) by convention.
 
 <pre class="emlist">
 class C
@@ -551,7 +552,7 @@ p(c.get_i())   # Shows "ok"
 </pre>
 
 Instance variables differ a bit from the variables seen before:
-We can reference them without assigning or defining them. 
+We can reference them without assigning or defining them.
 To see what happens we add the following lines to the code above.
 
 <pre class="emlist">
@@ -571,8 +572,8 @@ p(nil)   # Shows nil
 
 h3. `initialize`
 
-As we saw before, when we call 'new' on a freshly defined class, 
-we can create an instance. That's surely a good thing, but 
+As we saw before, when we call 'new' on a freshly defined class,
+we can create an instance. That's surely a good thing, but
 sometimes we might want to have a peculiar instantiation.
 In this case we don't change method `new`, we change the method `initialize`.
 When we do this it  get's called within `new`.
@@ -617,11 +618,11 @@ class C < SuperClassName
 end
 </pre>
 
-When we leave out the superclass like in the cases before the 
+When we leave out the superclass like in the cases before the
 class `Object` becomes tacitly the superclass.
 
 Now, why should we want to inherit? Of course to hand over methods.
-Handing over means that the methods which were defined in the 
+Handing over means that the methods which were defined in the
 superclass also work in the subclass as if they were defined in there once more.
 Let's check it out.
 
@@ -683,13 +684,13 @@ extremely straigtforward.
 In C++ it's possible to create a class which inherits nothing.
 While in Ruby one has to inherit from the `Object` class either
 directly or indirectly. In other words when we draw the inheritance
-relations it becomes a single tree with `Object` at the top. 
+relations it becomes a single tree with `Object` at the top.
 
 !images/ch_minimum_classtree.jpg(Ruby's class tree)!
-(Note: changed in 1.9: `Socket` isn't builtin anymore, might want to add 
+(Note: changed in 1.9: `Socket` isn't builtin anymore, might want to add
 `Fiber`, `String`, `Symbol`)
 
-When the superclass is appointed ( in the definition statement ) it's 
+When the superclass is appointed ( in the definition statement ) it's
 not possible to change it anymore. In other words, one can add to the class tree
 but cannot change a position or delete a class.
 
@@ -722,10 +723,10 @@ B.new().print_i()   # Shows "ok"
 </pre>
 
 If you can't agree with this behavior let's think more about classses
-and inheritance. When there's an instance `obj` of the 
+and inheritance. When there's an instance `obj` of the
 the class `C` then all the methods of the superclass of `C` are as if
 defined in `C`. Of course we keep the overwrite rule in mind.
-Then the methods of `C` get attached to the instance `obj` (Fig.6). 
+Then the methods of `C` get attached to the instance `obj` (Fig.6).
 This strong palpability is a specialty of Ruby's object orientation.
 
 !images/ch_minimum_objimage.jpg(A conception of a Ruby object)!
@@ -748,7 +749,7 @@ module M
 end
 </pre>
 
-Here the module `M` was defined. Methods are defined exactly the 
+Here the module `M` was defined. Methods are defined exactly the
 same way as for classes.
 
 <pre class="emlist">
@@ -759,7 +760,7 @@ module M
 end
 </pre>
 
-But because instances cannot be directly created we cannot call 
+But because instances cannot be directly created we cannot call
 these directly. What can we do about it? We can use these methods
 by including the module into other classes. When doing so it's as if
 the module inherits to the class.
@@ -778,12 +779,12 @@ end
 p(C.new().myupcase("content"))  # "CONTENT" is shown
 </pre>
 
-Even though no method was defined in the class `C` we can call 
+Even though no method was defined in the class `C` we can call
 the method `myupcase`. It was inherited from the module `M`.
-Inclusion is functionally completely the same as inheritance. 
+Inclusion is functionally completely the same as inheritance.
 There's no limit on the access of methods and instance variables.
 
-A superclass cannot be assigned to a module, but 
+A superclass cannot be assigned to a module, but
 other modules can be included.
 
 <pre class="emlist">
@@ -796,7 +797,7 @@ end
 </pre>
 
 In other words it's functionally the same as appointing a superclass.
-But a class cannot come above a module. Only modules are allowed 
+But a class cannot come above a module. Only modules are allowed
 above modules.
 
 The example below also contains the inheritance of methods.
@@ -828,8 +829,8 @@ As with classes when we sketch inheritance it looks like Fig.7
 
 !images/ch_minimum_modinherit.jpg(multilevel inheritance )!
 
-Besides, the class `C` also has a superclass. What might be its 
-relationship with the included modules. For instance we could write 
+Besides, the class `C` also has a superclass. What might be its
+relationship with the included modules. For instance we could write
 as follows.
 
 <pre class="emlist">
@@ -854,8 +855,8 @@ end
 p(B.new().test())   # "class"? "module"?
 </pre>
 
-`C` inherits from `Cls` and includes `Mod`. What will be shown? 
-`"class"` or `"module"`? In other words which one is closer? 
+`C` inherits from `Cls` and includes `Mod`. What will be shown?
+`"class"` or `"module"`? In other words which one is closer?
 The superclass or the module?
 We can ask Ruby about Ruby:
 
@@ -912,10 +913,10 @@ at rootlevel. Being at `/` one can write `vmunix` to access the file. One
 can also write `/vmunix`. It's the same with `Const` and `::Const`.
 At top level it's okay to write only `Const` or to write the full path `::Const`
 
-And what corresponds to a filesystem's directories in Ruby? 
-That should be class and module definition statements. 
+And what corresponds to a filesystem's directories in Ruby?
+That should be class and module definition statements.
 However mentioning both is cumbersome, so I'll just subsume them under
-class definition. When one enters a class definition the level 
+class definition. When one enters a class definition the level
 for constants rises ( as if entering a directory).
 
 <pre class="emlist">
@@ -928,7 +929,7 @@ p(  SomeClass::Const)   # The same. Shows 3
 </pre>
 
 `SomeClass` is defined at toplevel. Hence one can reference it by writing
-either `SomeClass` or `::SomeClass`. And in class is the constant 
+either `SomeClass` or `::SomeClass`. And in class is the constant
 `Const`. It becomes `::SomeClass::Const`.
 
 A class inside a class is like a directory in a directory.
@@ -956,10 +957,10 @@ end
 
 "What?" you might think. Why's the code inside a class definition executed?
 People who are used to only static languages will find this quite exceptional.
-I was also flabbergasted the first time I saw it. 
+I was also flabbergasted the first time I saw it.
 
 Let's add that we can of course also view a constant inside a method.
-The reference rules are the same 
+The reference rules are the same
 as within the class definition (outside the method).
 
 <pre class="emlist">
@@ -977,7 +978,7 @@ h3. Everything is executed
 
 Looking at the big picture I want to write one more thing.
 In Ruby almost the whole program is executed.
-Constant definitions, class definitions and method definitions 
+Constant definitions, class definitions and method definitions
 and the rest is executed in the apparent order.
 
 Look for instance at the following code.
@@ -1045,21 +1046,21 @@ That's true but only half true. It's really so that during execution
 self is always set up. So also  at toplevel and also in a class definition.
 
 For instance the `self` at the toplevel is `main`. It's an instance
-of the `Object` class, as might be expected. `main` is provided 
+of the `Object` class, as might be expected. `main` is provided
 to set up `self` for the time being. There's no deeper meaning attached
 to it.
 
 Hence the toplevel's `self` i.e. `main` is an instance of `Object`,
 such that one can call the methods of `Object` there. And in `Object`
 the module `Kernel` is included. In there the function type methods
-like `p` and `puts` are defined (Fig.10). That's why one can 
+like `p` and `puts` are defined (Fig.10). That's why one can
 call `puts` and `p` also at the toplevel.
 
 !images/ch_minimum_Kernel.jpg(`main`, `Object` and `Kernel`)!
 
 (トップレベル:toplevel)
 
-Thus `p` isn't a function, it's a method. It's just 
+Thus `p` isn't a function, it's a method. It's just
 defined in `Kernel` and thus can be called from everywhere. Or no matter what `self` is,
  `p` is a method of `self` and can be called.
 That's why there aren't really functions in Ruby. There are only methods.
@@ -1090,10 +1091,10 @@ class C
 end
 </pre>
 This `include` is a method call to the class object `C`.
-I haven't mentioned it yet but the parentheses around arguments 
+I haven't mentioned it yet but the parentheses around arguments
 can be omitted for method calls. And I omitted the parantheses
 around `include` such that it doesn't look like a method call, which might
-have been confusing without knowing the whole story. 
+have been confusing without knowing the whole story.
 
 h3. Loading Libraries
 
@@ -1107,14 +1108,14 @@ require("library_name")
 The impression isn't false, `require` is a method. It's not even
 a reserved word. When one writes that line the loaded library will be
 executed where the line is written. As there is no concept like Java packages in Ruby,
-one has to use files and directories to separate the namespace.  
+one has to use files and directories to separate the namespace.
 
 <pre class="emlist">
 require("somelib/file1")
 require("somelib/file2")
 </pre>
 
-And in the library file there are usually  class and module statements. The toplevel constant scope 
+And in the library file there are usually  class and module statements. The toplevel constant scope
 is independent of the file, so one can see at once classes which where defined in another file.
 To partition the namespace of class names one has to explicitly nest modules as shown below.
 
@@ -1137,7 +1138,7 @@ h2. More about Classes
 
 h3. Constants revisited
 
-Up to now we used the filesystem metaphor for 
+Up to now we used the filesystem metaphor for
 the scope of constants, but I want you to completely forget that.
 
 There is more about constants. Firstly one can also see constants outside
@@ -1150,7 +1151,7 @@ class C
 end
 </pre>
 
-This becomes useful, when modules are used as namespaces. 
+This becomes useful, when modules are used as namespaces.
 Let's explain this by looking at the net library from before.
 
 <pre class="emlist">
@@ -1167,9 +1168,9 @@ In this case it's convenient to just refer to `SMTPHelper`
 from within `SMTP`. That's the reason why it's convenient to
 be able to see outside a class.
 
-The outer class can be referenced over several levels. 
-When the same name is defined on different levels, the one which will 
-first be found from within will be referred to. 
+The outer class can be referenced over several levels.
+When the same name is defined on different levels, the one which will
+first be found from within will be referred to.
 
 <pre class="emlist">
 Const = "far"
@@ -1184,7 +1185,7 @@ end
 </pre>
 
 There's another way of searching constants. If the toplevel is reached
-when going further and further outside then the own superclass is 
+when going further and further outside then the own superclass is
 searched for the constant.
 
 <pre class="emlist">
@@ -1225,7 +1226,7 @@ end
 </pre>
 
 When the constant `Const` in `C3` is referenced, it's looked
-up in the order depicted in 
+up in the order depicted in
 Fig.11.
 
 !images/ch_minimum_constref.jpg(Search order for constants)!
@@ -1238,14 +1239,14 @@ become to big and the behavior would become unpredictable.
 
 h3. Metaclasses
 
-We said, that one can call methods on objects. 
-We also said that the methods which we can call 
+We said, that one can call methods on objects.
+We also said that the methods which we can call
 are determined by the object's class. Then shouldn't there be
 a class for class objects? (Fig.12)
 
 !images/ch_minimum_classclass.jpg(A class of classes?)!
 
-For this we can check Ruby. 
+For this we can check Ruby.
 The method which returns the class of oneself is `Object#class`
 
 <pre class="emlist">
@@ -1266,7 +1267,7 @@ There the loop will stall. (Fig.13)
 
 !images/ch_minimum_ccc.jpg(The class of the class of the class...)!
 
-`Class` is the class of classes. And whenever there is a 
+`Class` is the class of classes. And whenever there is a
 recursive structure from the form X of Xs we call it a meta-X.
 Hence `Class` is a metaclass.
 
@@ -1306,7 +1307,7 @@ A diagram of the important Ruby classes is in Fig.14.
 
 !images/ch_minimum_metaobjects.jpg(The class relationship between the important Ruby classes)!
 
-Up to now we used `new` and `include` without an explanation of 
+Up to now we used `new` and `include` without an explanation of
 their true form. `new` is really a method defined for the class `Class`.
 That's why `new` can be used in any class because it's an instance
 of `Class`. But `new` isn't defined in `Module`. Hence it's not
@@ -1315,7 +1316,7 @@ in the `Module` class. It can be called on modules and classes.
 
 These three classes `Object`, `Module` and `class` are the centerpiece
 of Ruby's object world, they describe it. They are objects
-describing objects. So `Object`, `Module` and `Class` are Ruby's 
+describing objects. So `Object`, `Module` and `Class` are Ruby's
 metaobjects.
 
 h3. Singleton Methods
@@ -1339,13 +1340,13 @@ obj.my_first()   # Shows My first singleton method
 As you already know `Object` is the root for every class.
 One sholdn't add a weird method like `my_first` to such an important
 class. And `obj` is an instance of `Object`. However the method `my_first`
-can be called from `obj`. Hence we have created without doubt 
+can be called from `obj`. Hence we have created without doubt
 a method which has nothing to do with the class the object belongs to.
 These methods which are defined for each object individually are
 called singleton methods.
 
 When are singleton methods used? They are used in place  of Java or C++ static
-methods. In other words methods which can be used 
+methods. In other words methods which can be used
 without creating an instance. These methods are expressed in Ruby
 as singleton methods of a class object.
 
@@ -1358,7 +1359,7 @@ Let's try it out.
 File.unlink("core")  # deletes the coredump
 </pre>
 
-It's cumbersome to say "the singleton method `unlink` 
+It's cumbersome to say "the singleton method `unlink`
 of the object `File`". We simply write `File.unlink`. Don't mix
 it up and write `File#unlink`, or vice versa don't write `File.write`
 for the method `write` defined in `File`.
@@ -1389,7 +1390,7 @@ C.new().print_cvar()  # "ok" is shown
 </pre>
 
 As the first assignment serves as the definition, a reference
-before an assignment leads to an error. This is shown below. 
+before an assignment leads to an error. This is shown below.
 There is an ´@´ in front but the behavior differs completely
 from instance variables.
 
@@ -1402,12 +1403,12 @@ end
 -e:3: uninitialized class variable @@cvar in C (NameError)
 </pre>
 
-Here I was a bit lazy and used the -e option. The program 
+Here I was a bit lazy and used the -e option. The program
 is the three lines between the single quotes.
 
-Class variables are inherited. Or saying it differently, 
-a variable in a superior class can be assigned and referenced in the 
-inferior class. 
+Class variables are inherited. Or saying it differently,
+a variable in a superior class can be assigned and referenced in the
+inferior class.
 
 <pre class="emlist">
 class A
@@ -1426,7 +1427,7 @@ B.new().print_cvar()   # Shows "ok"
 
 h2. Global Variables
 
-At last there are also global variables. They can be referenced from 
+At last there are also global variables. They can be referenced from
 everywhere and assigned everywhere. The first letter of the name is a `$`.
 
 <pre class="emlist">
@@ -1436,8 +1437,8 @@ p($gvar)   # Shows "global variable"
 
 As with instance variables all kinds of names are considered defined
 for global variables.
-In other words a reference before an assignment gives a `nil` and 
-doesn't raise an error. 
+In other words a reference before an assignment gives a `nil` and
+doesn't raise an error.
 
 <hr>
 
