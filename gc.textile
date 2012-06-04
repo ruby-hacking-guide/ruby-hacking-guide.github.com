@@ -22,7 +22,7 @@ A general a 'C'   program has the following basic memory structure.
 2. Constants, Static variables, and global variables
 3. Machine stack
 4. Heap, ;also refered to a <i>Free Store</i>.
-</pre
+</pre>
 
 Items 1 and 2 are generally contained in the load image.   Items 3 an 4 are setup by program initialization.
 
