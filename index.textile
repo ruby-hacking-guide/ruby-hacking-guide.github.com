@@ -2,6 +2,50 @@
 layout: default
 ---
 
+h2. Table of contents
+
+Some chapters are previews. It means they have not been fully reviewed,
+some diagrams may be missing and some sentences may be a little
+rough. But it also means they are in open review, so do not hesitate
+to post suggestions on the mailing list.
+
+* Preface
+* Introduction
+
+h3. Part 1: Objects
+
+* "Chapter 1: A Minimal Introduction to Ruby":minimum.html
+* "Chapter 2: Objects":object.html
+* "Chapter 3: Names and name tables":name.html
+* "Chapter 4: Classes and modules":class.html
+* Chapter 5: Garbage collection
+* "Chapter 6: Variables and constants":variable.html
+* "Chapter 7: Security":security.html
+
+h3. Part 2: Syntax analysis
+
+* "Chapter 8: Ruby Language Details":spec.html
+* "Chapter 9: yacc crash course":yacc.html
+* "Chapter 10: Parser":parser.html
+* Chapter 11: Context-dependent scanner
+* Chapter 12: Syntax tree construction
+
+h3. Part 3: Evaluation
+
+* Chapter 13: Structure of the evaluator
+* Chapter 14: Context
+* Chapter 15: Methods
+* Chapter 16: Blocks
+* Chapter 17: Dynamic evaluation
+
+h3. Part 4: Around the evaluator
+
+* "Chapter 18: Loading":load.html
+* Chapter 19: Threads
+
+* Final chapter: Ruby's future
+
+h1. About this Guide
 This is a new effort to gather efforts to help translate into English the "Ruby
 Hacking Guide":http://i.loveruby.net/ja/rhg/book/. The RHG is a book
 that explains how the ruby interpreter (the official
@@ -67,46 +111,4 @@ As for now the contributors to that repo were:
 * Jean-Denis Vauguet
 
 
-h2. Table of contents
-
-Some chapters are previews. It means they have not been fully reviewed,
-some diagrams may be missing and some sentences may be a little
-rough. But it also means they are in open review, so do not hesitate
-to post suggestions on the mailing list.
-
-* Preface
-* Introduction
-
-h3. Part 1: Objects
-
-* "Chapter 1: A Minimal Introduction to Ruby":minimum.html
-* "Chapter 2: Objects":object.html
-* "Chapter 3: Names and name tables":name.html
-* "Chapter 4: Classes and modules":class.html
-* Chapter 5: Garbage collection
-* "Chapter 6: Variables and constants":variable.html
-* "Chapter 7: Security":security.html
-
-h3. Part 2: Syntax analysis
-
-* "Chapter 8: Ruby Language Details":spec.html
-* "Chapter 9: yacc crash course":yacc.html
-* "Chapter 10: Parser":parser.html
-* Chapter 11: Context-dependent scanner
-* Chapter 12: Syntax tree construction
-
-h3. Part 3: Evaluation
-
-* Chapter 13: Structure of the evaluator
-* Chapter 14: Context
-* Chapter 15: Methods
-* Chapter 16: Blocks
-* Chapter 17: Dynamic evaluation
-
-h3. Part 4: Around the evaluator
-
-* "Chapter 18: Loading":load.html
-* Chapter 19: Threads
-
-* Final chapter: Ruby's future
 
