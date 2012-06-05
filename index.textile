@@ -70,6 +70,9 @@ Many thanks to "RubyForge":http://rubyforge.org for hosting us and to
 Minero AOKI for letting us translate his work.
 
 h2. Help us!
+The original is available "here":http://i.loveruby.net/ja/rhg/book/
+or hosted within this repo "here":http://ruby-hacking-guide.github.com/original_repo/ja_html/
+(currently with broken formatting)
 
 This translation is done during our free time, do not expect too
 much. The book is quite big (more than 500 pages) so we need help to
