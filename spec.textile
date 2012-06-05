@@ -8,7 +8,7 @@ I'll talk about the details of Ruby's syntax and evaluation,
 which haven't been covered yet. I didn't intend a complete exposition,
 so I left out everything which doesn't come up in this book.
 That's why you won't be able to write Ruby programs just by
-reading this. A complete exposition can be found in the 
+reading this. A complete exposition can be found in the
 "reference manual":http://http://www.ruby-doc.org/.
 
 Readers who know Ruby can skip over this chapter.
@@ -16,8 +16,8 @@ Readers who know Ruby can skip over this chapter.
 h2. Literals
 
 The expressiveness of Ruby's literals is extremely high.
-What distinguishes Ruby as a scripting language 
-is firstly the existence of 
+What distinguishes Ruby as a scripting language
+is firstly the existence of
 the toplevel, secondly it's the expressiveness of its literals in my
 opinion. Thirdly it might be the richness of its standard library.
 
@@ -26,7 +26,7 @@ when combined. Especially that one can create complex literals from
 hash and array literals is a great advantage of Ruby. One can simply
 write down a hash of arrays of regular expressions for instance.
 
-Let's look at the valid expressions one by one. 
+Let's look at the valid expressions one by one.
 
 h3. Strings
 
@@ -49,7 +49,7 @@ in front of another character the backslash remains as for example
 in the fourth example.
 
 And Ruby's strings aren't divided by newline characters.
-If we write a string over several lines the newlines are contained 
+If we write a string over several lines the newlines are contained
 in the string.
 
 <pre class="emlist">
@@ -77,13 +77,13 @@ h4. Double Quoted Strings
 </pre>
 
 With double quotes we can use command expansion and backslash notation.
-The backslash notation is classical, it was already supported in C, 
+The backslash notation is classical, it was already supported in C,
 `\n` is a newline, `\b` is a backspace, this kind of notation.
 In Ruby also `Ctrl-C` and ESC can be expressed, that's convenient.
 It's probably of no use to list the whole notation here.
- 
+
 On the other hand, expression expansion is even more phantastic.
-We can write an arbitrary Ruby expression inside `#{ }` and it 
+We can write an arbitrary Ruby expression inside `#{ }` and it
 will be evaluated at runtime and imbedded into the string. There
 are no limitations like only one variable or only one method.
 This is not a mere literal anymore but a whole expression representing
@@ -106,7 +106,7 @@ h4. Strings with `%`
 </pre>
 
 If a lot of separator characters appear in a string, escaping all of them
-becomes a burden. In that case the separator characters can be 
+becomes a burden. In that case the separator characters can be
 changed. The string which contains the one character `"` can be
 written with a `%` string as follows:
 
@@ -138,17 +138,17 @@ at the line after a `<<EOS` and end at the line before the ending `EOS`.
 
 <<EOS
 All lines between the starting and
-the ending line are in this 
+the ending line are in this
 here document
 EOS
 </pre>
 Here we used `EOS` as identifier but any word is fine.
 Precisely speaking all the character matching `[a-zA-Z_0-9]` can be used.
 
-The characteristic of a here document is that every line between 
+The characteristic of a here document is that every line between
 the start symbol and the ending symbol will form a string. The line
 which contains the start symbol delimits the string.
-That's why the position of the start symbol is not important. 
+That's why the position of the start symbol is not important.
 It can even be in the middle of an expression:
 
 <pre class="emlist">
@@ -166,13 +166,13 @@ printf("count=%d\n", count_n(str))
 
 The start symbol can be somewhere in the line, but there are strict
 rules for the ending symbol: It must be at the beginning of the line
-and there must not be another letter in that line. However 
+and there must not be another letter in that line. However
 if we write the start symbol with a minus like this `<<-EOS` we
 can indent the line with the end symbol.
 
 <pre class="emlist">
      <<-EOS
-It would be convenient if one could indent the content 
+It would be convenient if one could indent the content
 of a here document. But that's not possible.
 If you want that, the best way is to write
 a method which delete the indent. But beware
@@ -182,7 +182,7 @@ of tabs.
 
 Furthermore, the start symbol can be enclosed in single or double quotes.
 Then the properties of the whole here document change.
-When we change `<<EOS` to `<<"EOS"` we can use command expression 
+When we change `<<EOS` to `<<"EOS"` we can use command expression
 imbedding and backslash notation.
 
 <pre class="emlist">
@@ -193,7 +193,7 @@ EOS
 </pre>
 
 But `<<'EOS'` is not the same as a single quoted string. It starts
-the complete literal mode. Everything even backslashes go 
+the complete literal mode. Everything even backslashes go
 into the string as they are typed. This is useful for a string which
 contains many backslashes.
 
@@ -207,7 +207,7 @@ here document.)
 h3. Characters
 
 Ruby strings are byte strings, there are no character objects.
-Instead there are the following expressions which return the 
+Instead there are the following expressions which return the
 integers which correspond a certain character in ASCII code.
 
 <pre class="emlist">
@@ -248,7 +248,7 @@ One can designate more special patterns.
 /^From:/
 </pre>
 
-This matches a string where there's a `From` followed by a `:` at 
+This matches a string where there's a `From` followed by a `:` at
 the beginning. There are several more expressions of this kind,
 such that one can create quite complex patterns.
 
@@ -260,13 +260,13 @@ A more concrete use case would be extracting the `From:` header
 from a mail. Then changing the `\n` to an `\r` and
 checking if the rest looks like a mail address.
 
-The regular expressions form an independent language, it has 
+The regular expressions form an independent language, it has
 it's own parser and evaluator within ruby. It can be found in `regex.c`
-in the Ruby source. In effect from a grammar view point they are 
+in the Ruby source. In effect from a grammar view point they are
 treated the same as strings. Escapes, backslash notation and command
 embedding can be used almost the same as in strings.
 
-Of course regular expressions and strings are treated the same 
+Of course regular expressions and strings are treated the same
 in the Ruby syntax only. Regular expressions themselves are a language
 of their own with own rules which have to be obeyed. This is a subject
 of a whole other book. We won't go deeper into that here.
@@ -300,12 +300,12 @@ lvar = $gvar = @ivar = @@cvar = nil
 [Object.new(), Object.new(), Object.new()]
 </pre>
 
-Ruby's arrays  are a list of arbitrary objects. From a syntactical 
-standpoint it's characteristic is, that 
+Ruby's arrays  are a list of arbitrary objects. From a syntactical
+standpoint it's characteristic is, that
 the elements can be arbitrary expressions. As mentioned earlier,
 an array of hashes of regular expressions can easily be made.
 Not just literals but also variables or method calls can also be
-put together. 
+put together.
 
 And as with the other literals note that this is really an "expression
 which generates an array object"
@@ -358,8 +358,8 @@ arbitrary objects. The following expressions generate a table.
   2 => 6 }
 </pre>
 
-We explained hashes in detail in the third chapter "Names and 
-Nametables". They are fast lookup tables which allocate memory slots depending 
+We explained hashes in detail in the third chapter "Names and
+Nametables". They are fast lookup tables which allocate memory slots depending
 on the hash value(?). In Ruby grammar the key value can be an arbitrary expression.
 
 Furthermore inside a method call the braces can be omitted.
@@ -392,8 +392,8 @@ Here are some expressions which generate Range objects.
 </pre>
 
 If there are two dots the last element is included. If there
-are three dots it is not included. Not only integers but also floats 
-and strings can be made into ranges, even arbitrary objects can 
+are three dots it is not included. Not only integers but also floats
+and strings can be made into ranges, even arbitrary objects can
 be used in ranges. Syntactically arbitrary expressions can be
 used as delimiters of a range object. If the returned object cannot
 be made into a range there will be a runtime error.
@@ -410,7 +410,7 @@ but I do not like this.
 
 h3. Symbols
 
-In the first part we talked about symbols at length. 
+In the first part we talked about symbols at length.
 They are something which corresponds one-to-one to strings.
 In Ruby symbols are expressed with a `:` in front.
 
@@ -511,7 +511,7 @@ Hence every method has a return value.
 h3. Optional Arguments
 
 Optional arguments can also be defined. If the number of arguments
-doesn't suffice the parameters are automatically assigned to a 
+doesn't suffice the parameters are automatically assigned to a
 default value.
 
 <pre class="emlist">
@@ -523,9 +523,9 @@ some_method(0)    # 0 is shown.
 some_method()     # The default value 9 is shown.
 </pre>
 
-There can also be several optional arguments. 
-But in that case they must all come at the end. It is not 
-possible to make an argument in the middle optional. 
+There can also be several optional arguments.
+But in that case they must all come at the end. It is not
+possible to make an argument in the middle optional.
 It would be unclear how this should be made sense of.
 
 <pre class="emlist">
@@ -607,7 +607,7 @@ m(*mcall())
 The @*@ argument can be used together with ordinary arguments,
 but the @*@ argument must come last.
 
-In the definition on the other hand we can handle the arguments in 
+In the definition on the other hand we can handle the arguments in
 bulk when we put a `*` in front of the parameter variable.
 
 <pre class="emlist">
@@ -651,7 +651,7 @@ delegate(10, 20, 30)   # same as other_method(10, 20, 30)
 h3. Various Method Call Expressions
 
 There is only one mechanism for 'method call', but there still
-can be several representations of the same mechanism. This is 
+can be several representations of the same mechanism. This is
 colloquially called syntactic sugar.
 
 In Ruby there is a ton of it, the parser fetch becomes unbearable (?).
@@ -747,7 +747,7 @@ To distinguish the unary `+` from the binary `+` the method names
 for the unary operators are `+@` and `-@` respectively.
 Of course they can be called by just writing `+n` or `-n`.
 
-h4. Attribute Assignment 
+h4. Attribute Assignment
 
 <pre class="emlist">
 obj.attr = val   # attr=(val)
@@ -771,7 +771,7 @@ p c.i    # prints 99
 However both are method calls.
 They are similar to get/set property in Delphi or slot accessors in CLOS.
 
-Besides, we cannot define a attribute assignment which takes an argument like 
+Besides, we cannot define a attribute assignment which takes an argument like
 `obj.attr(arg)=`.
 
 h4. Index Notation
@@ -793,7 +793,7 @@ h3. `super`
 
 Often we don't want to replace a method, but we want to add a little
 bit to the behaviour of an already existing method. Here it becomes
-necessary to not just overwrite the method in the superclass but 
+necessary to not just overwrite the method in the superclass but
 to also call the method in the superclass.
 That's what Ruby's `super` is for.
 
@@ -850,15 +850,15 @@ In Ruby there are three kinds of methods.
 
 `public` methods can be called from anywhere in any form.
 `private` methods can syntactically only be called without a receiver.
-In effect they can only be called by instances of the class 
+In effect they can only be called by instances of the class
 in which they were defined and in instances of its subclass.
 `protected` methods can only be called by instances of the defining class
-and its subclasses. 
+and its subclasses.
 It differs from `private` that methods can still be called from other
 instances of the same class.
 
 The terms are the same as in C++ but the meaning is slightly different.
-Be careful. 
+Be careful.
 
 Usually we control visibility as shown below.
 
@@ -907,15 +907,15 @@ sin(5)            # If used more often this is more practical
 </pre>
 
 It's important that both functions have the same content.
-With a different `self` but with the same code the behavior should 
+With a different `self` but with the same code the behavior should
 still be the same. Instance variables become extremely difficult to use.
 Hence these methods are probably only used
 for procedures like `sin`. That's why they are called module functions.
 
 h2. Iterators
 
-Ruby's iterators differ a bit from Java's or C++'s iterator classes 
-or 'Iterator' design patterns. Precisely speaking those iterators 
+Ruby's iterators differ a bit from Java's or C++'s iterator classes
+or 'Iterator' design patterns. Precisely speaking those iterators
 are exterior iterators. Ruby's iterators are called interior iterators.
 It's difficult to understand from the definition so
 let's explain it with a concrete example.
@@ -924,7 +924,7 @@ let's explain it with a concrete example.
 arr = [0,2,4,6.8]
 </pre>
 
-This array is given and we want to access the elements in 
+This array is given and we want to access the elements in
 order. In C style we would write the following.
 
 <pre class="emlist">
@@ -950,8 +950,8 @@ The part between the vertical bars are the block parameters.
 They are the arguments passed from the iterator method to the block where
 they become variables.
 
-Saying it quite abstractly, an iterator is something like 
-a piece of code which has been cut out and passed. In our example the 
+Saying it quite abstractly, an iterator is something like
+a piece of code which has been cut out and passed. In our example the
 piece `print item` has been cut out and is passed to the `each` method.
 Then `each` takes all the elements of the array in order and passes them
 to the cut out piece of code.
@@ -1018,7 +1018,7 @@ end
 
 For the time being we apply each to an array of length 1. ( We can
 leave out the block parameter.) The variable @i@ is first assigned
-and declared inside the block. So @i@ becomes a block local variable. 
+and declared inside the block. So @i@ becomes a block local variable.
 
 Block local means that it cannot be accessed from the outside.
 Let's test it.
@@ -1059,7 +1059,7 @@ end
 
 There's one point which you have to keep in mind. Differing from
 nowadays' major languages Ruby's block local variables don't do shadowing.
-Shadowing means for instance in C that in the code below the two declared 
+Shadowing means for instance in C that in the code below the two declared
 variables `i` are different.
 
 <pre class="emlist">
@@ -1109,7 +1109,7 @@ arr.each do |i|
   puts i
 end
 
-arr.each {|i|    # The author likes a four space indentation for 
+arr.each {|i|    # The author likes a four space indentation for
     puts i       # an iterator with braces.
 }
 </pre>
@@ -1122,7 +1122,7 @@ m m do .... end    # m(m) do....end
 m m { .... }       # m(m() {....})
 </pre>
 
-And iterators are of course just methods so they also take 
+And iterators are of course just methods so they also take
 arguments.
 
 <pre class="emlist">
@@ -1163,7 +1163,7 @@ end
 
 @yield@ calls the block. At this point control is passed to the block,
 when the execution of the block finishes it returns back to the same
-location. Think about it like calling a special function. When the 
+location. Think about it like calling a special function. When the
 present method does not have a block a runtime error will occur.
 
 <pre class="screen">
@@ -1174,7 +1174,7 @@ present method does not have a block a runtime error will occur.
 
 h3. `Proc`
 
-I said, that iterators are like cut out code which is passed as an 
+I said, that iterators are like cut out code which is passed as an
 argument. But we can even more directly make code to an object
 and carry it around.
 
@@ -1183,13 +1183,13 @@ twice = Proc.new {|n| n * 2 }
 p twice.call(9)   # 18 will be printed
 </pre>
 
-In short, it is like a function. It can be created with @new@ and 
+In short, it is like a function. It can be created with @new@ and
 as might be expected, the return value of @Proc.new@ is an instance
 of the @Proc@ class.
 
 @Proc.new@ looks surely like an iterator and it is indeed so.
 It is an ordinary iterator. There's only some mechanism inside @Proc.new@
-which turns an iterator block into an object. 
+which turns an iterator block into an object.
 
 Besides there is a function style method @lambda@ provided which
 has the same effect as @Proc.new@. Choose whatever suits you.
@@ -1250,12 +1250,12 @@ end
 
 h2. Expressions
 
-Expressions in Ruby are things which can be combined to build new 
-expressions and statements. For instance a method call can be
-used as an argument of another method call. It is an expression.
-Also all literals. But literals and method calls are not combinations
-of other elements, we will now get to know expressions which are
-necessarily combinations.
+Expressions in Ruby can be combined to build new expressions or statements.
+For instance a method call can be another method call's argument,
+and so it would become an expression.
+The same goes for literals. But literals and method calls are not combinations
+of other elements. From here on the expressions introduced will always be used
+in combination with other expressions.
 
 h3. `if`
 
@@ -1294,8 +1294,8 @@ if cond then; .... end                   ....
 
 Furthermore, as every expression has a return value, there
 is also a return value here. It is the return value of the
-body expression which holds. For instance if the condition 
-at the beginning is true it is the return value of the 
+body expression which holds. For instance if the condition
+at the beginning is true it is the return value of the
 following expression.
 
 <pre class="emlist">
@@ -1314,7 +1314,7 @@ p(if true  then   end)    #=> nil
 h3. `unless`
 
 An @if@ with a negated condition is the same as an @unless@.
-The following two examples have the same meaning. 
+The following two examples have the same meaning.
 
 <pre class="emlist">
 unless cond then          if not (cond) then
@@ -1340,7 +1340,7 @@ if cond1 and cond2
 end
 </pre>
 
-But as in Perl, the Shell or Lisp it can also be used as a conditional 
+But as in Perl, the Shell or Lisp it can also be used as a conditional
 branch expression.
 The two following expressions have the same meaning.
 
@@ -1368,7 +1368,7 @@ side is false, the right hand side will also be evaluated.
 valid?(key) or return nil
 </pre>
 
-@or@ and @||@ have the same relationship as @&&@ and @and@. Only the precedence is 
+@or@ and @||@ have the same relationship as @&&@ and @and@. Only the precedence is
 different.
 
 h3. The Conditional Operator
@@ -1410,7 +1410,7 @@ end
 
 @until@ comes to the exact opposite conclusion as the @while@.
 As long as the body expression is false it is executed.
-The @do@ can be omitted. 
+The @do@ can be omitted.
 
 There is also a jump construct which exits the loop.
 As in C/C++/Java it is called @break@. Instead of @continue@ there
@@ -1469,9 +1469,9 @@ The threefold equals @===@ is like the @==@ really a method call.
 The receiver is the object on the left hand side. Concretely,
 in @Array@ a @===@ checks which values the elements contain.
 For a @Hash@ it tests whether the keys have a value. For regular
-expression it tests if the @value@ matches. (??? can't find good documentation 
+expression it tests if the @value@ matches. (??? can't find good documentation
 to @===@) There are many grammatical
-elements to @case@. To list them all would be tedious, we will not 
+elements to @case@. To list them all would be tedious, we will not
 cover them in this book.
 
 h3. Exceptions
@@ -1489,9 +1489,9 @@ raise ArgumentError, "wrong number of argument"
 </pre>
 
 In Ruby exception are instances of the @Exception@ class and it's
-subclasses. This form takes an exception class as its first argument 
-and an error message as its second argument. In the above case 
-an instance of @ArgumentError@ is created and "thrown". Exception 
+subclasses. This form takes an exception class as its first argument
+and an error message as its second argument. In the above case
+an instance of @ArgumentError@ is created and "thrown". Exception
 object ditch the part after the @raise@ and return upwards the
 method call stack.
 
@@ -1514,7 +1514,7 @@ raise.rb:2:in `raise_exception': wrong number of argument (ArgumentError)
         from raise.rb:7
 </pre>
 
-However, for this an @exit@ would be sufficient, for an exception ther 
+However, for this an @exit@ would be sufficient, for an exception ther
 should be ways to handle it. In Ruby there is the @begin@, @rescue@, @end@ for this.
 It resembles the @try@ and @catch@ in C++ and Java.
 
@@ -1531,8 +1531,8 @@ rescue ArgumentError => err then
 end
 </pre>
 
-@rescue@ is a control structure which captures an exception, it catches 
-the exceptions of the declared class and its subclasses. If in the 
+@rescue@ is a control structure which captures an exception, it catches
+the exceptions of the declared class and its subclasses. If in the
 above example an instance of @ArgumentError@ comes flying this @rescue@
 matches it. By @=>err@ the exception object will be assigned to the local variable
 @err@, after that the @rescue@ part is executed.
@@ -1588,7 +1588,7 @@ else
 end
 </pre>
 
-Moreover an @ensure@ clause will be executed in every case: 
+Moreover an @ensure@ clause will be executed in every case:
 when there is no exception, when there is an exception, rescued or not.
 
 <pre class="emlist">
@@ -1600,14 +1600,20 @@ ensure   # this part will be executed anyway
 end
 </pre>
 
-Besides, this @begin@ expression also has a value. The value of the 
+Besides, this @begin@ expression also has a value. The value of the
 whole @begin@~@end@ expression is the value of the part which was executed
 last. The @ensure@ part does not count as it is normally used for cleanup only.
 
 h3. Variables and Constants
 
+<<<<<<< Updated upstream
 Referring a variable or a constant. The value is the object the variable points to.
 We already talked in too much detail about the various behaviors.
+=======
+Referring
+変数および定数の参照。値は変数の指すオブジェクト。
+それぞれの挙動は既に詳しすぎるほど説明したので省略する。
+>>>>>>> Stashed changes
 
 <pre class="emlist">
 lvar
@@ -1618,23 +1624,23 @@ $gvar
 </pre>
 
 I want to add one more thing. The variables starting with @$@ are
-of a special kind. Some have strange names, but they are not 
+of a special kind. Some have strange names, but they are not
 necessarily global.
 
-First the Perlish variables @$_@ and @$~@. @$_@ saves the return 
+First the Perlish variables @$_@ and @$~@. @$_@ saves the return
 value of @gets@ and other methods, @$~@ contains the last match
 of a regular expression. They are called local and thread local.
-Incredible variables. 
+Incredible variables.
 
 And the variable @$!@ which saves the exceptional object when
-an exception has occurred as well as the variable @$?@ which 
+an exception has occurred as well as the variable @$?@ which
 saves the status of a child process and @$SAFE@ which represents
 the security level are all thread local.
 
 h3. Assignment
 
-Variable assignment are all performed by `=`. All variables are 
-typeless. What is saved is a reference to an object. It is 
+Variable assignment are all performed by `=`. All variables are
+typeless. What is saved is a reference to an object. It is
 implemented with `VALUE` (pointer).
 
 <pre class="emlist">
@@ -1682,14 +1688,14 @@ p obj.i       # 3
 
 If there is `+=` there might also be `++` but this is not the case.
 Why is that so? In Ruby assignment is dealt with on the language level.
-But on the other hand methods are in the library. Keeping these two, 
-the world of variables and the world of objects, strictly apart is an 
+But on the other hand methods are in the library. Keeping these two,
+the world of variables and the world of objects, strictly apart is an
 important peculiarity of Ruby. If @++@ were introduced the separation
 might easily be broken. That's why there's no @++@
 
 Some people don't want to go without the brevity of @++@. It has been
 proposed again and again in the mailing list but was always turned down.
-I also am in favor of @++@ but I can do without, there has never been 
+I also am in favor of @++@ but I can do without, there has never been
 a @++@ in Ruby so let's forget about it.
 
 h3. `defined?`
@@ -1706,13 +1712,13 @@ In other words it tells whether the received argument (is it okay to call
 it so?) returns a value after evaluation. But it won't tell you if there's
 a parse error or an exception is raised.
 
-I would have loved to tell you more about @defined?@ 
+I would have loved to tell you more about @defined?@
 but it will not appear again in this book. What a pity.
 
 h2. Statements
 
 A statement is a syntactic construct which basically
-cannot be combined with something else and is written 
+cannot be combined with something else and is written
 in a separate line.
 
 But it still can be evaluated. For instance there are return values
@@ -1752,7 +1758,7 @@ p 1 + \
   2
 </pre>
 
-h3. The Modifiers `if` and `unless` 
+h3. The Modifiers `if` and `unless`
 
 The `if` modifier is an irregular version of the normal `if`
 The programs on the left and right mean exactly the same.
@@ -1764,7 +1770,7 @@ on_true() if cond                if cond
 </pre>
 
 The `unless` is the negative version.
-Guard statements ( statements which exclude exceptions) can 
+Guard statements ( statements which exclude exceptions) can
 be conveniently written with it.
 
 h3. The Modifiers `while` and `until`
@@ -1797,7 +1803,7 @@ Defines the class `C` which inherits from `SuperClass`
 We talked quite extensively about classes in the first part.
 This statement will be executed, within the definition the class will
 become @self@, arbitrary expressions can be written within. Class
-definitions can be nested. They form the foundation of Ruby execution 
+definitions can be nested. They form the foundation of Ruby execution
 image (???).
 
 h3. Method Definition
@@ -1864,7 +1870,7 @@ c = 3
 </pre>
 
 It's not just for brevity's sake. When we bind variables to an elements
-of an array it becomes delightful. 
+of an array it becomes delightful.
 
 <pre class="emlist">
 a, b, c = [1, 2, 3]
@@ -1966,9 +1972,9 @@ end
 
 Defining another method `new` with the same body as the already
 defined method `orig`. `alias` are similar to hardlinks in a unix
-file system. They are a means of assigning multiple names to one method body. I other words, 
-because the names themselves are independent of each other, 
-if one method name is overwritten by a subclass method, the 
+file system. They are a means of assigning multiple names to one method body. I other words,
+because the names themselves are independent of each other,
+if one method name is overwritten by a subclass method, the
 other one still returns the method as before.
 
 h3. `undef`
@@ -1979,20 +1985,20 @@ class C
 end
 </pre>
 
-Prohibits the calling of `C#method_name`. It's not just a simple 
+Prohibits the calling of `C#method_name`. It's not just a simple
 revoking of the definition. If there even were a method in the
-superclass it would also be forbidden. In other words the method is 
+superclass it would also be forbidden. In other words the method is
 exchanged for a sign which says "This method must not be called".
 
-`undef` is extremely powerful, once it is set it cannot be 
+`undef` is extremely powerful, once it is set it cannot be
 deleted on the Ruby level, because it is used to cover up contradictions
 in the internal structure. One must define a method in the lower class.
 Even then when one calls `super` an
 error occurs.
 
 By the way the method which corresponds to `unlink` in a file system
-is `Module#remove_method`. While defining a class, `self` refers 
-to that class, we can call it as follows ( Remember that `Class` is a 
+is `Module#remove_method`. While defining a class, `self` refers
+to that class, we can call it as follows ( Remember that `Class` is a
 subclass of `Module`.
 
 <pre class="emlist">
@@ -2027,10 +2033,10 @@ Plain and simple.
 =end
 </pre>
 
-An embedded document stretches from 
+An embedded document stretches from
 an `=begin` outside a string at the beginning of a line
 to a `=end`. The interior can be arbitrary.
-The program reads and ignores it like a simple comment. 
+The program reads and ignores it like a simple comment.
 
 h3. Multi-byte strings
 
@@ -2040,8 +2046,8 @@ respectively. (?)
 
 And if the option @-Ke@, @-Ks@ or @-Ku@ is given to the @ruby@
 command multibyte strings can be used within the Ruby code.
-String literals, regular expressions and even operator names 
-can contain multibyte characters. Hence it is possible to do 
+String literals, regular expressions and even operator names
+can contain multibyte characters. Hence it is possible to do
 something like this:
 
 <pre class="emlist">
