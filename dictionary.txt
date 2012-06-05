@@ -21,3 +21,6 @@
 記号:symbol (in a parser input)
 文:statement
 式:expression
+引数:argument
+条件分岐:conditional branch
+構文:syntax
