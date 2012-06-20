@@ -253,10 +253,10 @@ However, it is not because of the reference count, but because it occasionally u
 
 h2. Object Management
 
-`ruby`のGCはRubyオブジェクトのみが対象だ。しかも`ruby`が生成し
-管理しているオブジェクトでないといけない。逆に言うとユーザが
-勝手に割りあてたメモリまでは面倒を見てくれないということだ。
-例えば以下の関数は例え`ruby`が稼働中だろうとメモリリークを起こす。
+Ruby's garbage collection is only concerned with ruby objects.
+Objects must be created and managed by ruby. In other words
+if the user allocates memory by himself ruby want take care of it.
+For instance the following function will create a memory leak in ruby.
 
 <pre class="emlist">
 void not_ok()
@@ -265,7 +265,7 @@ void not_ok()
 }
 </pre>
 
-However, the following functions do not cause the memory leak. 
+However, the following function does not cause the memory leak. 
 
 <pre class="emlist">
 void this_is_ok()
@@ -294,7 +294,7 @@ The declaration of this union type is as follows.
  211  typedef struct RVALUE {
  212      union {
  213          struct {
- 214              unsigned long flags;   /* 使われていないときはゼロ */
+ 214              unsigned long flags;   /* 0 if not used */
  215              struct RVALUE *next;
  216          } free;
  217          struct RBasic  basic;
@@ -319,7 +319,7 @@ The declaration of this union type is as follows.
 (gc.c)
 </pre>
 
-The elements of @struct RVALUE@ is only one @struct@. 
+The element of @struct RVALUE@ is only one @struct@. 
 `struct RVALUE`は要素が一つだけの構造体だ。`union`を直接使わないのはデバッ
 グや将来の拡張のときに簡単にメンバを増やせるようにするためだそうである。
 
@@ -355,7 +355,7 @@ The memory for all the object structures has been brought together in global var
 
 @heaps@ is an array of arrays of @struct RVALUE@. The contained arrays
 are each a @heap@. The elements of @heap@ are each a @slot@.
-(図9)。
+(Fig.9)。
 
 !images/ch_gc_heapitems.jpg(Heap slots)!
 

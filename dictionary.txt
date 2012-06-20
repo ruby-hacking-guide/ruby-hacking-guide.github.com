@@ -17,7 +17,8 @@
 予約語:reserved word
 特異メソッド:singleton method
 型:type (in C)
-構造体:structure (in C)
+構造体:struct (in C)
+共用体:union (in C)
 記号:symbol (in a parser input)
 文:statement
 式:expression
