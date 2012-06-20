@@ -83,6 +83,9 @@ function has already finished. If so set the allocated memory free with
 @free()@. 
 
 !images/ch_gc_calloca.jpg(Cで実装した`alloca()`の動き)!
+D->alloca(8)の対応を記録 record the relation D-> alloca(8)
+B->alloca(32)の対応を記録 record the relation B-> alloca(32)
+Dで割り当てたメモりを解放 release the memory allocated in D
 
  The @missing/alloca.c@ in @ruby@ is an example of an emulated @alloca()@.
 
@@ -153,6 +156,9 @@ The objects which can be reached from them are colored black. These are the
 necessary objects. The rest of the objects can be released.
 
 !images/ch_gc_gcimage.jpg(Necessary and unnecessary objects)!
+ルートオブジェクト　root object
+不要なオブジェクト unused object
+ルートオブジェクトから参照されているオブジェクト an object referenced by the root object
 
 To put it into jargon , the surely necessary objects 
 are the garbage collection root. It becomes the root 
@@ -163,15 +169,12 @@ h3. Mark and Sweep
 GC was first implemented in Lisp. The GC in Lisp, the world's first
 GC was of the type mark&amp;sweep. Ruby's GC is of the same type.
 
+Garbage collection with Mark&amp;sweep is pretty close to our definition of 
+"necessary object". First a mark is put on the root objects. From this starting
+point all elements which are reached will also be marked. This is the mark phase.
 
-マーク&amp;スイープGCのイメージは「必要なオブジェクト」の定義にかなり近い。
-まずルートオブジェクトに「マーク」を付ける。そしてこれを出発点として、
-そこから辿れるオブジェクトに片端から「マーク」をつけていく。この全体が
-「マーク」フェイズだ。
-
-そしてこれ以上辿れるオブジェクトがない、とわかったところでオブジェクト溜まりを
-全部チェックし、マークのついていないオブジェクトを全部解放する(スイー
-プ)。スイープはマインスイーパのsweep(掃除する)だ。
+At some point no new elements can be reached. The yielded elements are all checked
+and the objects which do not have a marked are all released. This is the sweep.
 
 There are two advantages.
 
@@ -196,10 +199,10 @@ Always when creating an object we mark it as @active@.
 
 !images/ch_gc_stop2.jpg(Stop and Copy (1))!
 
-いざGCが発動したら、マーク&amp;スイープと同じようにルートから辿る。しかし
-マークの代わりにオブジェクト自体をもう一つの領域に移動してしまう
-(図6)。リンクを全て辿り終えたらAに残ったオブジェクトは捨て、
-今度はBをactiveにすればいい。
+The garbage collection starts as with mark&amp;sweep at the root elemnts.
+But instead of marking elements it moves them to another region (Fig.6).
+When all the links have been followed the elements which remain in @A@ 
+are all discarded. Next we make @B@ active.
 
 !images/ch_gc_stop3.jpg(Stop and Copy (2))!
 
@@ -217,14 +220,14 @@ There does not seem to be an allaround positive thing.
 
 h3. Reference counting
 
-Reference count differs a bit from the aforementioned,
-リファレンスカウントはこれまでのものとは少し違い、到達チェックを
-コードのあちこちに分散させるようになっている。
+Reference count differs a bit from the aforementioned, the check(??)
+ code is distributed in several places.
 
-まずオブジェクト一つ一つに整数のカウンタを付ける。変数や配列経由で参照
-するときは参照するオブジェクトのカウンタを増やす。参照するのをやめたら
-同時にカウンタを減らす。それでカウンタが0になったら解放する。それが
-リファレンスカウントという方式である(図7)。
+First each elements get an integer counter. When it is referenced via 
+variables or arrays the counter of the referenced object is increased.
+When the reference ends the counter is decreased. When the counter 
+becomes zero the object is released. This is the reference counter method.
+(Fig.7)
 
 !images/ch_gc_refcnt.jpg(Reference counting)!
 
@@ -245,7 +248,8 @@ and the objects will not be released.
 
 !images/ch_gc_cycle.jpg(Cycle)!
 
-By the way, latest Python(2.2) uses reference count GC and the cycle can be freed. However, it is not because of the reference count, but because it occasionally uses mark and sweep to check for them. 
+By the way, latest Python(2.2) uses reference count GC and cycles can be freed. 
+However, it is not because of the reference count, but because it occasionally uses mark and sweep to check for them. 
 
 h2. Object Management
 
