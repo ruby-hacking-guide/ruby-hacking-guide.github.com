@@ -150,3 +150,5 @@ pre.emlist {
     background: white;
     padding-left: 2em;
 }
+
+p { width: 35em }
