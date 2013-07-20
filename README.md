@@ -29,6 +29,14 @@ jekyll --server #start a server and browse on localhost:4000
 
 ```
 
+
+For Bundler users
+```sh
+$ bundle install
+$ jekyll serve # this compiles files and starts a server on localhost:4000.
+```
+
+
 [Jekyll usage](https://github.com/mojombo/jekyll/wiki/usage)
 
 Version of ruby used is very old 1.7.3
