@@ -28,12 +28,12 @@ h3. Part 2: Syntax analysis
 * "Chapter 9: yacc crash course":yacc.html
 * "Chapter 10: Parser":parser.html
 * "Chapter 11: Context-dependent scanner":contextual.html
-* Chapter 12: Syntax tree construction
+* "Chapter 12: Syntax tree construction":syntree.html
 
 h3. Part 3: Evaluation
 
-* Chapter 13: Structure of the evaluator
-* Chapter 14: Context
+* "Chapter 13: Structure of the evaluator":evaluator.html
+* "Chapter 14: Context":module.html
 * Chapter 15: Methods
 * Chapter 16: Blocks
 * Chapter 17: Dynamic evaluation
