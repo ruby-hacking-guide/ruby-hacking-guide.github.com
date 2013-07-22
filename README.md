@@ -54,3 +54,10 @@ https://github.com/ruby-hacking-guide/ruby-1.7.3
 
 or from the original site zipped up
 http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
+
+
+License
+=======
+
+This work is licensed under a
+[Creative Commons Attribution-NonCommercial-ShareAlike2.5 License](http://creativecommons.org/licenses/by-nc-sa/2.5/)
