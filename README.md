@@ -15,23 +15,17 @@ Contributors
 Running the site locally
 ==========
 
-First fork the repo on github (create an account if you don't have one)
-
 ```sh
-git clone git@github.com:your_user_name/ruby-hacking-guide.github.com.git
-
-gem install jekyll
-
-jekyll # this compiles the site
-
-jekyll --server #start a server and browse on localhost:4000
-
-
+$ git clone https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com
+$ gem install jekyll
+$ gem install RedCloth
+$ jekyll serve # this compiles files and starts a server on localhost:4000.
 ```
 
 
 For Bundler users
 ```sh
+$ git clone https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com
 $ bundle install
 $ jekyll serve # this compiles files and starts a server on localhost:4000.
 ```
