@@ -2,8 +2,8 @@ Ruby Hacking Guide Translation
 ==============================
 Creating a github repo to hopefully inspire efforts to get this translated
 
-The current activity is discussed here.
-https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com/pull/2
+The current activity is discussed
+[here](https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com/pull/2)
 
 
 Contributors
