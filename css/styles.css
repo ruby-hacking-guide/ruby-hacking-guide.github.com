@@ -161,3 +161,13 @@ p { width: 35em }
 }
 
 .image p { margin: 0 }
+
+/* for chapter 16 */
+div.longlist {
+  padding: 8px;
+  background: #eee;
+  font-size: .8em;
+  font-family: Menlo, Monaco, "Andale Mono", "Lucida console", "courier New", monospace;
+}
+
+div.longlist p { margin: 0 }
