@@ -36,7 +36,7 @@ h3. Part 3: Evaluation
 * "Chapter 14: Context":module.html
 * "Chapter 15: Methods":method.html
 * "Chapter 16: Blocks":iterator.html
-* Chapter 17: Dynamic evaluation
+* "Chapter 17: Dynamic evaluation":anyeval.html
 
 h3. Part 4: Around the evaluator
 
