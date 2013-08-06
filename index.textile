@@ -41,7 +41,7 @@ h3. Part 3: Evaluation
 h3. Part 4: Around the evaluator
 
 * "Chapter 18: Loading":load.html
-* Chapter 19: Threads
+* "Chapter 19: Threads":thread.html
 
 * Final chapter: Ruby's future
 
