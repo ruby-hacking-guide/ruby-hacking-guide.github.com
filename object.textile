@@ -37,6 +37,7 @@ but the pointer type will always be `VALUE` (figure 1).
 Here is the definition of `VALUE`:
 
 ▼ `VALUE`
+
 <pre class="longlist">
   71  typedef unsigned long VALUE;
 
@@ -73,6 +74,7 @@ something like the following.
 Let's look at the definition of a few object structures.
 
 ▼ Examples of object structure
+
 <pre class="longlist">
       /* structure for ordinary objects */
  295  struct RObject {
@@ -110,10 +112,11 @@ general.
 
 First, as `VALUE` is defined as `unsigned long`, it must be cast before
 being used. That's why `Rxxxx()` macros have been made for each object
-structure. For example, for `struct RString` there is `RSTRING()`, for `struct
-RArray` there is `RARRAY()`, etc... These macros are used like this:
+structure. For example, for `struct RString` there is `RSTRING()`, for
+`struct RArray` there is `RARRAY()`, etc... These macros are used like this:
 
 <pre class="emlist">
+
 VALUE str = ....;
 VALUE arr = ....;
 RSTRING(str)->len;   /* ((struct RString*)str)->len */
@@ -132,6 +135,7 @@ information shared by all object structures. The definition of `struct RBasic`
 is the following:
 
 ▼ `struct RBasic`
+
 <pre class="longlist">
  290  struct RBasic {
  291      unsigned long flags;
@@ -169,13 +173,13 @@ reserved word.
 
 h4. About structure types
 
-I said that the type of structure is stored in the `flags` member of `struct
-Basic`. But why do we have to store the type of structure? It's to be able to
-handle all different types of structure via `VALUE`. If you cast a pointer to
-a structure to `VALUE`, as the type information does not remain, the compiler
-won't be able to help. Therefore we have to manage the type ourselves. That's
-the consequence of being able to handle all the structure types in a unified
-way.
+I said that the type of structure is stored in the `flags` member of
+`struct Basic`. But why do we have to store the type of structure? It's to be
+able to handle all different types of structure via `VALUE`. If you cast a
+pointer to a structure to `VALUE`, as the type information does not remain,
+the compiler won't be able to help. Therefore we have to manage the type
+ourselves. That's the consequence of being able to handle all the structure
+types in a unified way.
 
 OK, but the used structure is defined by the class so why are the structure
 type and class are stored separately? Being able to find the structure type
@@ -243,6 +247,7 @@ Then, let's see in practice the `INT2FIX()` macro that converts from a C `int`
 to a `Fixnum`, and confirm that `Fixnum` are directly embedded in `VALUE`.
 
 ▼ `INT2FIX`
+
 <pre class="longlist">
  123  #define INT2FIX(i) ((VALUE)(((long)(i))<<1 | FIXNUM_FLAG))
  122  #define FIXNUM_FLAG 0x01
@@ -277,6 +282,7 @@ why symbols were necessary. First, let's start with the `ID` type used inside
 `ruby`. It's like this:
 
 ▼ `ID`
+
 <pre class="longlist">
   72  typedef unsigned long ID;
 
@@ -310,6 +316,7 @@ why `Symbol`, like `Fixnum`, was made stored in `VALUE`. Let's look at the
 `ID2SYM()` macro converting `ID` to `Symbol` object.
 
 ▼ `ID2SYM`
+
 <pre class="longlist">
  158  #define SYMBOL_FLAG 0x0e
  160  #define ID2SYM(x) ((VALUE)(((long)(x))<<8|SYMBOL_FLAG))
@@ -326,6 +333,7 @@ any other `VALUE`. Quite a clever trick.
 Finally, let's see the reverse conversion of `ID2SYM()`, `SYM2ID()`.
 
 ▼ `SYM2ID()`
+
 <pre class="longlist">
  161  #define SYM2ID(x) RSHIFT((long)x,8)
 
@@ -342,6 +350,7 @@ values. `nil` is an object used to denote that there is no object. Their
 values at the C level are defined like this:
 
 ▼ `true false nil`
+
 <pre class="longlist">
  164  #define Qfalse 0        /* Ruby's false */
  165  #define Qtrue  2        /* Ruby's true */
@@ -362,6 +371,7 @@ For `Qnil`, there is a macro dedicated to check if a `VALUE` is `Qnil` or not,
 `NIL_P()`.
 
 ▼ `NIL_P()`
+
 <pre>
  170  #define NIL_P(v) ((VALUE)(v) == Qnil)
 
@@ -378,6 +388,7 @@ However, in C, `nil` (`Qnil`) is true. That's why in C a Ruby-style macro,
 `RTEST()`, has been created.
 
 ▼ `RTEST()`
+
 <pre class="longlist">
  169  #define RTEST(v) (((VALUE)(v) & ~Qnil) != 0)
 
@@ -398,6 +409,7 @@ not have the fun answer I was expecting...
 h4. `Qundef`
 
 ▼ `Qundef`
+
 <pre class="longlist">
  167  #define Qundef 6                /* undefined value for placeholder */
 
@@ -425,6 +437,7 @@ content. That's why modules also use the `struct RClass` structure, and are
 differentiated by the `T_MODULE` structure flag.
 
 ▼ `struct RClass`
+
 <pre class="longlist">
  300  struct RClass {
  301      struct RBasic basic;
@@ -443,21 +456,21 @@ names to objects. In the case of `m_tbl`, it keeps the
 correspondence between the name (`ID`) of the methods possessed by this class
 and the methods entity itself.
 
-The fourth member `super` keeps, like its name suggests, the superclass. As it's a
-`VALUE`, it's (a pointer to) the class object of the superclass. In Ruby there
-is only one class that has no superclass (the root class): `Object`.
+The fourth member `super` keeps, like its name suggests, the superclass. As
+it's a `VALUE`, it's (a pointer to) the class object of the superclass. In Ruby
+there is only one class that has no superclass (the root class): `Object`.
 
 However I already said that all `Object` methods are defined in the `Kernel`
 module, `Object` just includes it. As modules are functionally similar to
-multiple inheritance, it may seem having just `super` is problematic, but but
+multiple inheritance, it may seem having just `super` is problematic, but
 in `ruby` some clever changes are made to make it look like single
 inheritance. The details of this process will be explained in the fourth
 chapter "Classes and modules".
 
-Because of this, `super` of the structure of `Object` points to `struct
-RClass` of the `Kernel` object. Only the `super` of Kernel is NULL. So
-contrary to what I said, if `super` is NULL, this `RClass` is the `Kernel`
-object (figure 6).
+Because of this, `super` of the structure of `Object` points to `struct RClass`
+of the `Kernel` object. Only the `super` of Kernel is NULL. So contrary to
+what I said, if `super` is NULL, this `RClass` is the `Kernel` object (figure
+6).
 
 !images/ch_object_classtree.png(Class tree at the C level)!
 
@@ -472,6 +485,7 @@ must not be defined.
 The sequential search process in `m_tbl` is done by `search_method()`.
 
 ▼ `search_method()`
+
 <pre class="longlist">
  256  static NODE*
  257  search_method(klass, id, origin)
@@ -523,6 +537,7 @@ all right but how is it in practice? Let's look at the function
 `rb_ivar_set()` that puts an object in an instance variable.
 
 ▼ `rb_ivar_set()`
+
 <pre class="longlist">
       /* write val in the id instance of obj */
  984  VALUE
@@ -579,6 +594,7 @@ Well, let's go back to `rb_ivar_set()`. It seems only the treatments of
 the basis that their second member is `iv_tbl`. Let's confirm it in practice.
 
 ▼ Structures whose second member is `iv_tbl`
+
 <pre class="longlist">
       /* TYPE(val) == T_OBJECT */
  295  struct RObject {
@@ -636,6 +652,7 @@ For objects for which the structure used is not `T_OBJECT`, `T_MODULE`, or
 `T_CLASS`, what happens when modifying an instance variable?
 
 ▼ `rb_ivar_set()` in the case there is no `iv_tbl`
+
 <pre class="longlist">
 1000  default:
 1001    generic_ivar_set(obj, id, val);
@@ -658,6 +675,7 @@ global `st_table`, `generic_iv_table` (figure 7) for these associations.
 Let's see this in practice.
 
 ▼ `generic_ivar_set()`
+
 <pre class="longlist">
  801  static st_table *generic_iv_tbl;
 
@@ -730,8 +748,8 @@ of course a bit check is way faster than searching a `struct st_table`.
 h3. Gaps in structures
 
 Now you should understand how the instance variables are stored, but why are
-there structures without `iv_tbl`? Why is there no `iv_tbl` in `struct
-RString` or `struct RArray`? Couldn't `iv_tbl` be part of `RBasic`?
+there structures without `iv_tbl`? Why is there no `iv_tbl` in 
+`struct RString` or `struct RArray`? Couldn't `iv_tbl` be part of `RBasic`?
 
 Well, this could have been done, but there are good reasons why it was not. As
 a matter of fact, this problem is deeply linked to the way `ruby` manages
@@ -750,12 +768,12 @@ possible to regroup structures of similar size is desirable. The details about
 
 Generally the most used structure is `struct RString`. After that, in programs
 there are `struct RArray` (array), `RHash` (hash), `RObject` (user defined
-object), etc. However, this `struct RObject` only uses the space of `struct
-RBasic` + 1 pointer. On the other hand, `struct RString`, `RArray` and `RHash`
-take the space of `struct RBasic` + 3 pointers. In other words, when putting a
-`struct RObject` in the shared entity, the space for 2 pointers is useless.
-And beyond that, if `RString` had 4 pointers, `RObject` would use less that
-half the size of the shared entity. As you would expect, it's wasteful.
+object), etc. However, this `struct RObject` only uses the space of
+`struct RBasic` + 1 pointer. On the other hand, `struct RString`, `RArray` and
+`RHash` take the space of `struct RBasic` + 3 pointers. In other words, when
+putting a `struct RObject` in the shared entity, the space for 2 pointers is
+useless. And beyond that, if `RString` had 4 pointers, `RObject` would use less
+that half the size of the shared entity. As you would expect, it's wasteful.
 
 So the received merit for `iv_tbl` is more or less saving memory and speeding
 up. Furthermore we do not know if it is used often or not. In the facts,
@@ -773,6 +791,7 @@ We saw the `rb_ivar_set()` function that sets variables, so let's see quickly
 how to get them.
 
 ▼ `rb_ivar_get()`
+
 <pre class="longlist">
  960  VALUE
  961  rb_ivar_get(obj, id)
@@ -812,7 +831,7 @@ The structure is strictly the same.
 `st_lookup()` finds the relation, it returns true, so the whole `if` can be
 read as "If the instance variable has been set, return its value".
 
-(C) If no correspondence could be found, in other words if we read an
+&#40;C) If no correspondence could be found, in other words if we read an
 instance variable that has not been set, we first leave the `if` then the
 `switch`. `rb_warning()` will then issue a warning and `nil` will be returned.
 That's because you can read instance variables that have not been set in Ruby.
@@ -841,6 +860,7 @@ h3. `struct RString`
 its subclasses.
 
 ▼ `struct RString`
+
 <pre class="longlist">
  314  struct RString {
  315      struct RBasic basic;
@@ -953,6 +973,7 @@ h3. `struct RArray`
 `Array`.
 
 ▼ `struct RArray`
+
 <pre class="longlist">
  324  struct RArray {
  325      struct RBasic basic;
@@ -967,11 +988,11 @@ h3. `struct RArray`
 (ruby.h)
 </pre>
 
-Except for the type of `ptr`, this structure is almost the same as `struct
-RString`. `ptr` points to the content of the array, and `len` is its length.
-`aux` is exactly the same as in `struct RString`. `aux.capa` is the "real"
-length of the memory pointed by `ptr`, and if `ptr` is shared, `aux.shared`
-stores the shared original array object.
+Except for the type of `ptr`, this structure is almost the same as
+`struct RString`. `ptr` points to the content of the array, and `len` is its
+length. `aux` is exactly the same as in `struct RString`. `aux.capa` is the
+"real" length of the memory pointed by `ptr`, and if `ptr` is shared,
+`aux.shared` stores the shared original array object.
 
 From this structure, it's clear that Ruby's `Array` is an array and not a
 list. So when the number of elements changes in a big way, a `realloc()` must
@@ -1003,6 +1024,7 @@ h3. `struct RRegexp`
 It's the structure for the instances of the regular expression class `Regexp`.
 
 ▼ `struct RRegexp`
+
 <pre class="longlist">
  334  struct RRegexp {
  335      struct RBasic basic;
@@ -1027,6 +1049,7 @@ h3. `struct RHash`
 `struct RHash` is the structure for Ruby's `Hash` objects.
 
 ▼ `struct RHash`
+
 <pre class="longlist">
  341  struct RHash {
  342      struct RBasic basic;
@@ -1050,6 +1073,7 @@ h3. `struct RFile`
 its subclasses.
 
 ▼ `struct RFile`
+
 <pre class="longlist">
  348  struct RFile {
  349      struct RBasic basic;
@@ -1060,6 +1084,7 @@ its subclasses.
 </pre>
 
 ▼ `OpenFile`
+
 <pre class="longlist">
   19  typedef struct OpenFile {
   20      FILE *f;                    /* stdio ptr for read/write */
@@ -1090,6 +1115,7 @@ for managing a pointer to a user defined structure" has been created on
 `ruby`'s side to manage this. This structure is `struct RData`.
 
 ▼ `struct RData`
+
 <pre class="longlist">
  353  struct RData {
  354      struct RBasic basic;
