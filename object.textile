@@ -10,16 +10,15 @@ h2. Structure of Ruby objects
 
 h3. Guideline
 
-Starting from this chapter we will explore the `ruby` source code, starting by
-studying the declaration of objects structures.
+In this chapter we will begin exploring the `ruby` source code, starting by
+studying the declaration of object structures.
 
-What are the required conditions to make sure objects can exist? Many
-explanations can be given but in reality there are three conditions that must
-be obeyed:
+What do objects need to exist? There are many answers to this question, but for
+our purposes an object only needs three things:
 
-# Being able to differentiate itself from the rest (having an identity)
-# Being able to reply to requests (methods)
-# Keeping an internal state (instance variables)
+# The ability to differentiate itself from other objects (an identity)
+# The ability to respond to messages (methods)
+# The ability to store internal state (instance variables)
 
 In this chapter, we are going to confirm these three features one by one.
 
@@ -28,9 +27,9 @@ briefly look at other files such as `object.c`, `class.c` or `variable.c`.
 
 h3. Structure of `VALUE` and objects
 
-In `ruby`, the contents of an object is expressed by a `C` structure, always
-handled via a pointer. A different kind of structure is used for each class,
-but the pointer type will always be `VALUE` (figure 1).
+In `ruby`, the contents of an object are expressed by a `C` structure, always
+handled via a pointer. A different kind of structure is used for each class, but
+the pointer type will always be `VALUE` (figure 1).
 
 !images/ch_object_value.png(`VALUE` and structure)!
 
@@ -124,15 +123,15 @@ RARRAY(arr)->len;    /* ((struct RArray*)arr)->len */
 </pre>
 
 Another important point to mention is that all object structures start with a
-member `basic` of type `struct RBasic`. As a result, whatever the type of
-structure pointed by `VALUE`, if you cast this `VALUE` to `struct RBasic*`,
-you will be able to access the content of `basic`.
+member `basic` of type `struct RBasic`. As a result, if you cast this `VALUE` to
+`struct RBasic*`, you will be able to access the content of `basic`, regardless
+of the type of structure pointed to by `VALUE`.
 
 !images/ch_object_rbasic.png(`struct RBasic`)!
 
-You guessed that `struct RBasic` has been designed to contain some important
-information shared by all object structures. The definition of `struct RBasic`
-is the following:
+You probably guessed that `struct RBasic` has been designed to contain some
+important information shared by all object structures. Here is the definition
+for `struct RBasic`:
 
 ▼ `struct RBasic`
 
@@ -167,9 +166,8 @@ pointer to) a Ruby object. In short, it is a class object.
 The relation between an object and its class will be detailed in the "Methods"
 section of this chapter.
 
-By the way, the name of this member is not `class` to make sure it does not
-raise any conflict when the file is processed by a C++ compiler, as it is a
-reserved word.
+By the way, this member is named `klass` so as not to conflict with the reserved
+word `class` when the file is processed by a C++ compiler.
 
 h4. About structure types
 
