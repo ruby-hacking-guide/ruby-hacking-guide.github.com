@@ -13,8 +13,7 @@ module Jekyll::Converters
       # try to enable the <code> syntax of the original RubyForge project,
       # but not fully.
       lines = content.lines
-      lines.map! { |line| line.gsub(RHG_CODE_RE) { "<code>#{$1}</code>" } }
-      content = lines.join
+      content = lines.map { |line| line.gsub(RHG_CODE_RE) { "<code>#{$1}</code>" } }.join
 
       # try to apply the style for images of the original book
       figc = 0
