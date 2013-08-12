@@ -282,9 +282,6 @@ another means is used: `freeze`.
 
 !images/ch_minimum_const.jpg(constant means read only)!
 
-(定数:constant, オブジェクト: object, 変わらない:doesn't change,
-変わることもある:might change)
-
 And we cannot talk about the scope yet. We talk about it later in
 the context of classes.
 
