@@ -674,9 +674,6 @@ extremely straigtforward.
 
 !images/ch_minimum_multiinherit.jpg(Inheitance over multiple steps)!
 
-(数のクラス:class of numbers,整数のクラス:class of integers,
-小さい整数のクラス:class of small integers)
-
 In C++ it's possible to create a class which inherits nothing.
 While in Ruby one has to inherit from the `Object` class either
 directly or indirectly. In other words when we draw the inheritance
