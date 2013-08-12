@@ -851,11 +851,6 @@ all of these variables that become the interfaces are of type `YYSTYPE`.
 <div class="image">
 <img src="images/ch_yacc_yaccvars.jpg" alt="(yaccvars)"><br>
 Figure 2: Relationships among `yacc` related variables & functions
-* セマンティックスタック semantic stack
-* シフト shift
-* 記号 symbol 
-* 還元 reduce
-* アクション action
 </div>
 
 
