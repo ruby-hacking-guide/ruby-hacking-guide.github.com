@@ -600,8 +600,6 @@ by a vertical arrow as in Fig.3.
 
 !images/ch_minimum_supersub.jpg(Inheritance)!
 
-(スーパークラス:superclass,サブクラス:subclass)
-
 In the illustration the inherited class (`Object`) is called
 superclass or superior class. The inheriting class (`String`) is called
 subclass or inferior class. This point differs from C++ jargon, be careful.
