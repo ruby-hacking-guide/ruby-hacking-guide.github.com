@@ -255,7 +255,7 @@ to a `Fixnum`, and confirm that `Fixnum` are directly embedded in `VALUE`.
 (ruby.h)
 </pre>
 
-In brief, shift 1 bit to the right, and bitwise or it with 1.
+In brief, shift 1 bit to the left, and bitwise or it with 1.
 
 | `0110100001000` | before conversion |
 | `1101000010001` | after conversion |
