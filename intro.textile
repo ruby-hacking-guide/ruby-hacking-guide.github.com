@@ -1,153 +1,102 @@
-序章 導入
 
-h1. 序章 導入
-h2. Rubyの特徴
-
-読者の中には既にRubyに慣れ親しんでいる人もいるだろうが、そうでない人も
-たくさんいるだろう（そうであってほしい）。まずはそのような人達のために
-Rubyの特徴をおおざっぱにまとめる。
+  
 
 
-以下、言語仕様としてのRuby言語を大文字で「Ruby」、その実装としての
-@ruby@コマンドを小文字で「@ruby@」と書き分けて示す。
+h1. Preface: Introduction
+h2. Characteristics of Ruby
 
-h4. 開発形態
-
-Rubyは、まつもとゆきひろ氏個人の手によって作成されている言語である。
-CやJavaやSchemeのように標準があるわけではない。その仕様は@ruby@という
-実装によって示されるだけであり、しかも常に変化している。良くも悪くも
-自由なのだ。
+Some of the readers may have already been familiar with Ruby, some may be not. (I wish the latter for this chapter to be most useful) First let's go though a rough summary of the characteristics of Ruby for such people. 
 
 
-また@ruby@がフリーソフトウェアである......つまりソースコードが公開されていること、
-しかも無料で配布されていること、の二点は書いておかないといけないだろう。
-そのような条件だからこそ本書のような試みも成立するわけだ。
+Hereafter capital "Ruby" refers to Ruby as a language scheme, and lowercase "@ruby@" refers to the implementation of @ruby@ command. 
+
+h4. Development pattern
+
+Ruby is a personally created language by Yukihiro Matsumoto. 
+That means Ruby doesn't have a standard scheme that C or Java have. The specification is merely shown as an implementation as @ruby@, and its varying continuously. Whichever you mention good or bad, it's unbind. 
 
 
-正確なライセンスは本体に含まれる@README@と@LEGAL@を読んでもらうとして、
-とりあえずは以下のようなことはできるということを覚えておいて
-もらえばよい。
+Furthermore @ruby@ itself is a free software  -  source code being open and being in public free of charge  -  this is what I must add in the introduction. 
+That's why it allows the approach of this book into publication. 
 
 
-@ruby@のソースコードを再配布できる。
-@ruby@のソースコードを改変できる。
-改変したソースコードを配布できる。
+Giving the @README@ and @LEGAL@ included in the distribution package the complete reading of the license, let's list up what you can do for the time being: 
 
 
-いずれの場合も特別な許諾や料金は必要ない。
+You can redistribute source code of @ruby@
+You can modify source code of @ruby@
+You can redistribute a copy of source code with your modification
 
 
-なお本書はオリジナルの@ruby@を読むのが目的なので特に断らない限り変更なし
-のソースである。ただし空白・改行・コメントの追加削除だけは断りなしに行っ
-た。
-
-h4. 保守的である
-
-Rubyはとても保守的な言語である。いろいろな言語で検証され使い古されたも
-のばかりを選んで搭載しており、新奇な機能や実験的な仕様はあまり付いてい
-ない。だからRubyはどちらかというと実用重視のプログラマに受ける傾向があ
-り、SchemeやHaskellラヴな根っからのハッカーには、少なくともちょっと見
-には、受けが良くないようだ。
+There is no need for special permission and payment in all these cases. 
 
 
-ライブラリもそうだ。新しい機能には省略無しのわかりやすい名前が付いてい
-るのだが、CやPerlのライブラリにある名前はそのまま使われている。例えば
-@printf@や@getpwent@、@sub@、@tr@など。
+By the way, the original @ruby@ is the version referred to in this book unless otherwise stated, because our main purpose is to read it. However, I modified the code without notice at a certain extent such as to remove or add white spaces, new lines, and comments. 
+
+h4. It's conservative
+
+Ruby is a very conservative language. It is equipped with only carefully chosen features that have been tested and washed out in a variety of languages​. 
+Therefore it doesn't have plenty of fresh and experimental features very much. So it has a tendency to appeal to programmers who put importance on practical  functionalities. The dyed-in-the-wool hackers like Scheme and Haskell lovers don't seem to find appeal in ruby in a short glance. 
 
 
-また実装においても保守的だ。速度のためにアセンブラを使ったりすることは
-なく、スピードと移植性が相反するときは常に移植性の高い方法が使われる。
-
-h4. オブジェクト指向言語である
-
-Rubyはオブジェクト指向言語である。これはRubyの特徴として絶対に外すこと
-はできない。
+The library is conservative in the same way. Clear and unabbreviated names are given for new functions, while names that appears in C and Perl libraries have been took over from them. For example, 
+@printf@, @getpwent@, @sub@, and @tr@. 
 
 
-オブジェクト指向とは何なのか、という話は本書にとっては筋違いなので省略
-する。「Rubyのオブジェクト指向」について言えば、これから解説するコード
-が表現しようとしているものがソレである。
+It is also conservative in implementation. Assembler is not its option for seeking speed. Portability is always considered a higher priority when it conflicts with speed. 
 
-h4. スクリプト言語である
+h4. It is an object-oriented language
 
-Rubyはスクリプト言語である。これもRubyの特徴として絶対に外すことはでき
-ないらしい。Rubyを紹介するときには「オブジェクト指向スクリプト言語」
-という枕詞を付けないとみんなに満足してもらえない。
+Ruby is an object-oriented language. It is not possible to forget about it absolutely, when you talk about the features of Ruby. 
 
 
-しかし、スクリプト言語とはどういう言語のことだろうか。どうもこれがはっき
-りしない。例えばTcl/Tkの作者のJohn K.Ousterhoutは「UNIXで@#!@を使って
-実行できる言語」という定義を与えているし、他にも人によって定義はいろい
-ろある。一行で役に立つプログラムが書けること、コマンドラインからプログ
-ラムのファイルを渡して実行できること、などなど。
+I will not give a page to this book about what an object-oriented language is. To tell about an object-oriented feature about Ruby, the expression of the code that just going to be explained below is the exact sample. 
+
+h4. It is a script language
+
+Ruby is a script language. It is also not possible to forget about it absolutely, when you talk about the features of Ruby. To gain agreement of everyone, an introduction of Ruby must include "object-oriented" and "script language". 
 
 
-しかし筆者はあえて別の定義を使うことにする。なぜかというと、スクリプト
-言語が「何」か、なんてことには興味がないからである。ある言語をスクリプ
-ト言語と呼ぶときの筆者の基準はただ一つ、その言語をスクリプト言語と呼ん
-でも文句を言われないかどうかだ。これを満たすために、筆者は以下のように
-「スクリプト言語」の意味を定義する。
+However, what is a "script language" for example? I couldn't figure out the definition successfully. For example, John K. Ousterhout, the author of Tcl/Tk, gives a definition as "executable language using @#!@ on UNIX". There are other definitions depending on the view points, such as one that can express a useful program with only one line, or that can execute the code by passing a program file from the command line, etc. 
+
+
+However, I dare to use another definition, because I don't find much interest in "what" a script language. To call it a script language, it at least has to avoid gaining disagreement of calling it so. That's the definition I suggest. To fulfill this definition, I would define the meaning of "script language" as follows. 
 
 p(=center). 
-その言語の作者がスクリプト言語と呼ぶもの。
+Whether the author of the language calls it "script language" or not. 
 
 
-この定義なら絶対に間違いようはない。そしてRubyはこの点を確かに満たす。
-だから筆者もRubyをスクリプト言語と呼ぶことにする。
+I'm sure this definition will have no failure. And Ruby fulfills this point. 
+Therefore I call Ruby a "script language". 
 
-h4. インタプリタである
+h4. It's an interpreter
 
-@ruby@はインタプリタである。それは事実だ。ではなぜインタプリタなのだろう。
-例えばコンパイラではだめなのだろうか。それはきっとコンパイラよりもイン
-タプリタのほうが良い......少なくともRubyにとっては良い、ことがあるからに
-違いない。ではインタプリタのどういうところが良かったのだろうか。
+@ruby@ is an interpreter. That's the fact. But why it's an interpreter? 
+For example, couldn't it be made as a compiler? The answer should be "no", because I guess Ruby has at least something better than being an interpreter than a compiler. Well, what is good about being an interpreter? 
 
 
-それを考える前段階として、まずインタプリタとコンパイラの違うところを考
-えてみよう。プログラムが実行される過程を理論的に比べてみるだけなら、イ
-ンタプリタ言語だろうとコンパイル言語だろうと違いはない。機械語にコンパ
-イルしたところでCPUにインタープリットしてもらって動くのだから、インタ
-プリタで動いていると言えないこともない。ではどこで違いが出るかと言えば、
-それはもっと現実的なところ、つまり開発の過程である。
+As a preparation step to investigating into it, let's start by thinking about the difference between an interpreter and a compiler. If the matter is to attempt a comparison with the process how a program is executed theoretically, there's no difference between an interpreter language and a compile language. It may be possible to say that a compiler language involves an interpreter, because of the fact that CPU "interprets" a code into a machine language using a compiler. What's the difference actually? 
+I suppose it's in a practical things  -  in the process of development. 
 
 
-そういうことを言うとすぐに「インタプリタはコンパイルしなくていいので手
-間が減って開発が楽」という決まり文句を出す人がいる。だがそれは正確では
-ないと筆者は考える。コンパイル言語だろうとなんだろうとコンパイルの過程
-を開発者に見せないような工夫は可能である。実際にDelphiなんかはF5一発で
-実行できるし、コンパイルに時間がかかると言ってもそれはコンパイルする
-プログラムが大きかったり、最適化していたりするのが原因だ。コンパイルし
-ていることそれ自体が悪いわけではない。
+I know somebody, as soon as hearing "in the process of development", would claim using a stereotypical phrase, that an interpreter reduces effort of compilation that makes the development procedure easier. But I don't think it's accurate. A language could possibly be planned so that it won't show the process of compilation. Actually, Delphi can compile a project by hitting just F5. A claim about a long time for compilation is derived from the size of the project or optimization of the codes. Compilation itself doesn't owe a negative side. 
 
 
-ではなぜインタプリタとコンパイラのイメージがこれほどまでに違うのだろう
-か。それはこれまでの言語開発者が自分の言語の特徴によって両者の実装を使
-いわけてきたからだと思う。即ち、比較的小規模な、日常のツールとしての
-言語を構築する場合はインタプリタ。多人数で開発を行う、巨大で確実性が要
-求されるプログラムのための言語を構築する場合はコンパイラ。そうなったの
-は速度のせいもあるだろうし、言語の作りやすさの違いもあるだろう。
+Well, why people perceive an interpreter and compiler so much different like this? I think that it is because the developers have long distinguished the use of the implementations of these languages according to the characteristics. In short, a comparatively small, a daily routine fits well with developing an interpreter language. On the other hand, a compiler language is a goal for a large project where a number of people are involved in the development and accuracy is required. That may be because of the speed, as well as the readiness of creating a language. 
 
 
-だから、「インタプリタだから」手軽だというのは大いなる神話だと筆者は思
-う。言語がインタプリタだと使いやすいのではなく、使いやすい言語を作ろう
-と思うと自然とインタプリタに足が向くのである。
+Therefore, "it's handy because it's an interpreter" is merely an outsized myth. Being an interpreter doesn't necessarily contribute the readiness in usage; seeking readiness in usage naturally makes your path toward building an interprer language. 
 
 
-それはともあれ、@ruby@がインタプリタであるというのは本書の行方を左右する
-重要な事実であるのでここで一度強調しておく。それだから使いやすいのかど
-うかなんて知らないが、とにかく@ruby@はインタプリタとして実現されているのだ。
+Anyway, @ruby@ is an interpreter; it has an important fact about where this book is facing, so I emphasize it here again. It doesn't matter whether it's easy being an interpreter; anyway @ruby@ is implemented as an interpreter. 
 
-h4. 移植性が高い
+h4. High portability
 
-根本的にインターフェイスがUNIX中心であるという問題はあるものの、それを
-差し引いても@ruby@は移植性が高いと言えるだろう。あまりに特殊なライブラリ
-を要求することもないし、アセンブラでゴリゴリ書いているところもほとんど
-ない。だから新しいプラットフォームにもわりと素直に持っていける。具体的
-には以下のようなプラットフォームで動いている。
+Even with a fundamental problem that the interface is built targeting Unix, I would insist @ruby@ possesses a high portability. It doesn't often require an unfamiliar library. It doesn't have a part written in assembler gorigorily. Therefore it's easy to port to a new platform, comparatively. Namely, it works on the following platforms currently. 
 
 
 Linux
-Win32（Windows 95、98、Me、NT、2000、XP）
+Win32 (Windows 95, 98, Me, NT, 2000, XP)
 Cygwin
 djgpp
 FreeBSD
@@ -166,84 +115,61 @@ OS/2 (emx)
 Psion
 
 
-作者のまつもとさんのメインマシンはLinuxだそうで、Linuxならばどんなタイ
-ミングでコンパイルしてもまず大丈夫だ。
+The main machine of the author Matsumoto is Linux, reportedly. You can assume that a Linux will not fail to build any version of ruby. 
 
 
-また基本的に（普通の）UNIX系ならば安定動作を期待できる。パッケージの追
-従の早さも考えると、現時点では@ruby@をいじるなら各種PC UNIXが最も有利な
-環境だろう。
+Furthermore, a typical Unix environment basically can expect a stable functionality. Considering the release cycle of packages, the primary option for the environment to hit around @ruby@ should fall on a branch of PC UNIX, currently. 
 
 
-一方、問題が起こりやすいのはなんと言ってもWin32環境である。対象とする
-OSのモデルがまるきり違うため、マシンスタックやリンカの周辺で問題が起き
-やすい。もっとも最近はWindowsハッカー達の手によって随分対応が改善され
-てきた。筆者もWindows 2000とMeでネイティブ版を使っているが、一度動いて
-しまえば特に落ちやすいとかいうことはない。Windowsにおいて問題となるの
-はむしろ仕様面のギャップなのだと思う。
+On the other hand, the Win32 environment tends to cause problems definitely. The large gaps in the targeting OS model tend to cause problems around the machine stack and the linker. Yet, recently Windows hackers have contributed to make better support. I use a native ruby on Windows 2000 and Me. Once it gets successfully run, it doesn't seem to show special concerns like frequent crashing. The main problems on Windows may be the gaps in the specifications. 
 
 
-この他で興味がある人が多そうなOSと言えばMac OS（v9以前）と、Palmなどの
-ハンドヘルド系だろう。
+Another type of OS that many people may be interested in should probably be Mac OS (prior to v9) and handheld OS like Palm. 
 
 
-@ruby 1.2@のころまではMac OSにも対応していたのだが最近は開発が止まってし
-まっておりコンパイルすら通らない。最大の原因はMac OSのコンパイル環境と
-開発者が減ってしまったことである。ただしMac OS Xは中身がUNIXなの
-でほとんど問題はない。
+Around @ruby 1.2@ and before, it supported legacy Mac OS, but the development seems to be in suspension. Even a compiling can't get through. The biggest cause is that the compiler environment of legacy Mac OS and the decrease of developers. Talking about Mac OS X, there's no worries because the body is UNIX. 
 
 
-またPalmで動かないかという話は何度か出ているのだが、移植できたという話
-は聞いていない。この場合はどう実装するかよりも@stdio@をどうするかなど仕
-様上の問題を解決するほうが難しいのではないだろうか。Psionには移植したと
-いう話題が出ていた（[ruby-list:36028]）。
+There seem to be discussions the portability to Palm several branches, but I have never heard of a successful project. I guess the difficulty lies in the necessity of settling down the specification-level standards such as @stdio@ on the Palm platform, rather than the processes of actual implementation. Well I saw a porting to Psion has been done. ([ruby-list:36028]). 
 
 
-それから最近とみに騒がしいJavaや.NETのVMはどうだろう。これについては
-実装とからめて話したいので終章で改めて話すことにする。
+How about hot stories about VM seen in Java and .NET? I need to mention these together with implementation in the final chapter. 
 
-h4. 自動メモリ管理
+h4. Automatic memory control
 
-機能的にはガーベージコレクション、GCと言う。C言語で言えば@malloc()@しても
-@free()@しなくていいという機能である。使っていないメモリはシステムが勝手に
-検出して解放してくれるのだ。これはあまりに便利な機能で、GCに慣れてしま
-うともはや手動のメモリ管理なぞやる気にもならない。
+Functionally it's called GC, or Garbage Collection. Saying it in C-language, this feature allows you to skip @free()@ after @malloc()@.  Unused memory is detected by the system automatically, and will be released. It's so convenient that once you get used to GC you will likely be unwilling to do it manual memory control again. 
 
 
-最近の言語ではGCはたいてい標準装備になっているのでかなり普遍的な話題だ
-し、アルゴリズムにも工夫の余地がたくさんあって楽しい。
+The topics about GC have been common because of its popularity in recent languages with GC as a standard set, and the GS is fun to talk about because it has a lot to devise better algorithms. 
 
-h4. 変数は型無し
+h4. Typeless variables
 
-Rubyの変数には型がない。理由は、オブジェクト指向最強の武器の一つ、
-ポリモーフィズム（多態性）が使いやすくなるからだろう。
-もちろん型有りの言語でポリモーフィズムが使えないわけではない。
-あくまで「使いやすくなる」だけだ。
+The variables in Ruby don't have types. The reason is probably typeless variables conforms more with polymorphism, which is one of the strongest features of an object-oriented language. 
+Of course a language with variable type has a way to deal with polymorphism. 
+What I mean here is a typeless variables have better conformance. 
 
 
-またこの場合の使いやすさとは「お手軽」とほぼ同義語で、それは非常に重要
-な場合もあるしどうでもいいこともある。しかし「お手軽簡単ラクチン」を目
-指すならこれは間違いなく長所であり、Rubyはそれを目指している。
+The level of "better conformance" in this case refers to synonyms like "handy". It's sometimes corresponds to crucial importance, sometimes it doesn't matter practically. Yet, this is certainly an appealing point if a language seeks for "handy and easy", and Ruby does. 
 
-h4. ほとんどの文法要素が式
+h4. Most of syntactic elements are formulae
 
-この項はすぐにはわからないと思うので少し説明する。
-例えばC言語では次のようなプログラムは文法エラーになる。
+This topic is probably difficult to understand it instantly without needs supplemental explanation. 
+For example, the following C-language program contains a syntactic error. 
 
 p(=emlist). 
 result = if (cond) { process(val); } else { 0; }
 </pre>
 
-なぜならCの文法上では@if@は文だからだ。しかし次のようには書ける。
+Because the C-language syntax defines @if@ as a statement. See following rewrite. 
 
 p(=emlist). 
 result = cond ? process(val) : 0;
 </pre>
 
-こう書けるのは条件演算子（@a?b:c@）が文法上、式に入るからだ。
+This rewrite is possible because the conditional operator (@a?b:c@) is defined as a formula. 
 
 
-一方Rubyでは@if@が式なので次のように書いてもよい。
+On the other hand, Ruby acceps a following expression because @if@ is a formula. 
 
 p(=emlist). 
 result = if cond then process(val) else nil end
@@ -905,7 +831,7 @@ p(=longlist).
 p(=caption). ▼@HAVE_@マクロの典型的な使いかた
 p(=longlist). 
   24  #ifdef HAVE_STDLIB_H
-  25  # include <stdlib.h>
+  25  # include 
   26  #endif
 (ruby.h)
 </pre>
@@ -1335,13 +1261,12 @@ h4. 評価器
 
 
 御意見・御感想・誤殖の指摘などは
-"青木峰郎 <aamine@loveruby.net>":mailto:aamine@loveruby.net
+"青木峰郎 ":mailto:aamine@loveruby.net
 までお願いします。
 
 
 "『Rubyソースコード完全解説』
-はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
+":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721"はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
 
 Copyright (c) 2002-2004 Minero Aoki, All rights reserved.
-
 
