@@ -229,19 +229,20 @@ I'll explain them one by one.
 
 h4. Small integers
 
-As in Ruby all data are objects, integers are also objects. However, as there
-are lots of different instances of integers, expressing them as structures
-would risk slowing down execution. For example, when incrementing from 0
-to 50000, just for this creating 50000 objects would make us hesitate.
+Just like in Ruby itself, all data are objects. Likewise, integers are objects.
+However during normal program execution, lots of instances of integers are
+created. Using structures to express them would risk slowing down execution. For
+example, if we created 50000 objects when incrementing from 0 to 50000 we'd
+definitely have to consider the performance issues.
 
 That's why in `ruby`, to some extent, small integers are treated specially and
-embedded directly into `VALUE`. "small" means signed integers that can be held
+embedded directly into `VALUE`. "Small" means signed integers that can be held
 in `sizeof(VALUE)*8-1` bits. In other words, on 32 bits machines, the integers
 have 1 bit for the sign, and 30 bits for the integer part. Integers in this
 range will belong to the `Fixnum` class and the other integers will belong to
 the `Bignum` class.
 
-Then, let's see in practice the `INT2FIX()` macro that converts from a C `int`
+Let's see in practice the `INT2FIX()` macro that converts from a C `int`
 to a `Fixnum`, and confirm that `Fixnum` are directly embedded in `VALUE`.
 
 ▼ `INT2FIX`
@@ -269,7 +270,7 @@ containing `NUM` can manage both `Fixnum` and `Bignum`. For example if
 `INT2NUM()` can't convert an integer into a `Fixnum`, it will automatically
 convert it to `Bignum`. `NUM2INT()` will convert both `Fixnum` and `Bignum` to
 `int`. If the number can't fit in an `int`, an exception will be raised, so
-there is not need to check the value range.
+there is no need to check the value range.
 
 h4. Symbols
 
@@ -299,11 +300,11 @@ troublesome to handle all of them as strings (`char*`), because of memory
 management and memory management and memory management... Also, lots of
 comparisons would certainly be necessary, but comparing strings character by
 character will slow down the execution. That's why strings are not handled
-directly, something will be associated and used instead. And generally
+directly, something will be associated and used instead. And generally that
 "something" will be integers, as they are the simplest to handle.
 
 These `ID` are found as symbols in the Ruby world. Up to `ruby 1.4`, the
-values of `ID` where converted to `Fixnum`, but used as symbols. Even today
+values of `ID` were converted to `Fixnum`, but used as symbols. Even today
 these values can be obtained using `Symbol#to_i`. However, as real use results
 came piling up, it was understood that making `Fixnum` and `Symbol` the same
 was not a good idea, so since 1.6 an independent class `Symbol` has been
@@ -378,10 +379,11 @@ For `Qnil`, there is a macro dedicated to check if a `VALUE` is `Qnil` or not,
 
 The name ending with `p` is a notation coming from Lisp denoting that it is a
 function returning a boolean value. In other words, `NIL_P` means "is the
-argument `nil`?". It seems the "`p`" character comes from "predicate". This
+argument `nil`?". It seems the "`p`" character comes from "predicate." This
 naming rule is used at many different places in `ruby`.
 
-Also, in Ruby, `false` and `nil` are false and all the other objects are true.
+Also, in Ruby, `false` and `nil` are falsy (that is, they count as false in
+conditional statements) and all the other objects are truthy.
 However, in C, `nil` (`Qnil`) is true. That's why in C a Ruby-style macro,
 `RTEST()`, has been created.
 
@@ -401,7 +403,7 @@ requirements of the glib library that only wants 0 or 1
 ("[ruby-dev:11049]":http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-dev/11049).
 
 By the way, what is the '`Q`' of `Qnil`? 'R' I would have understood but why
-'`Q`'? When I asked, the answer was "Because it's like that in Emacs". I did
+'`Q`'? When I asked, the answer was "Because it's like that in Emacs." I did
 not have the fun answer I was expecting...
 
 h4. `Qundef`
@@ -419,10 +421,10 @@ be found at all at the Ruby level.
 
 h2. Methods
 
-I already brought up the three important points of a Ruby object, that is
-having an identity, being able to call a method, and keeping data for each
-instance. In this section, I'll explain in a simple way the structure linking
-objects and methods.
+I already brought up the three important points of a Ruby object: having an
+identity, being able to call a method, and keeping data for each instance. In
+this section, I'll explain in a simple way the structure linking objects and
+methods.
 
 h3. `struct RClass`
 
