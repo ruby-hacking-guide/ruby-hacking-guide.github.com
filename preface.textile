@@ -1,160 +1,113 @@
-はじめに
-
-h2. はじめに
-
-本書のテーマはいくつかある。
+h2. Preface
 
 
-@ruby@の構造を知ること
-言語処理系一般についての知識を身に付けること
-ソースコードを読む技術を身に付けること
+This book explores several themes with the following goals in mind:
 
 
-Rubyとはまつもとゆきひろ氏の手によって開発されたオブジェクト指向言語で
-ある。@ruby@はそのRuby言語の公式実装であり、コミュニティベースで活発に
-開発が進められている。その@ruby@の内部構造を明らかにするのが第一の目標だ。
-この本を通して@ruby@の全貌を明らかにしよう。
+To have knowledge of the structure of @ruby@
+To gain knowledge about language processing systems in general
+To acquire skills in reading source code
 
 
-またRubyの処理系について知ることは言語処理系一般の知識にもつながる。ハッ
-シュテーブル、スキャナとパーサ、評価の手法などなど、言語を実装するのに
-必要なものは全て盛り込んだ。本書は教科書ではないのであらゆる分野・概念
-を漏れなく尽くすというわけにはいかなかったが、しかし、言語処理系の骨格
-にあたる部分は十分に解説してある。またRuby言語自体についても簡単なまと
-めを挿入し、Rubyを知らない読者にも読めるよう配慮した。
+Ruby is an object-oriented language developed by Yukihiro Matsumoto. The official implementation of the Ruby language is called @ruby@. It is actively developed and maintained by the open source community. Our first goal is to understand the inner-workings of the @ruby@ implementation.
+This book is going to investigate @ruby@ as a whole.
 
 
-さて、目的の第一点、第二点は確かにその通りであるし、本書のメインテーマ
-である。だが実は筆者が最も強調しておきたいのは三点目、「ソースコードを
-読む技術を身に付けること」なのだ。言ってみると裏テーマである。どうして
-これが必要だと思ったのか、説明しよう。
+Secondly, by knowing about the implementation of Ruby, we will be able to know about other language processing systems. I tried to cover all topics necessary for implementing a language, such as hash table, scanner and parser, evaluation procedure, and many others. Although this book is not intended as a text book and I don't go through entire topics and schemes for a language processing system, I tried to include adequate explanations about these concepts. For those who are not familiar with the Ruby language yet, a brief summary is included to help understand the topics.
 
 
-「プログラミングに習熟するためには他人のソースコードを読め」ということ
-はよく言われる。確かにその通りなのだ。しかし「では実際にどうしたらいい
-のか」という問いに答えてくれる本は見たことがない。OSのカーネルや言語処
-理系の内部を解説した本は何冊もあるが、そこにはいきなり構造が、つまり答
-えが、書いてあるだけで、その答えをどうやって探すべきか書いていないのだ。
-これは明らかに片手落ちである。
+The main themes of this book are the first and the second point above. Though, what I want to emphasize the most is the third one: To acquire skill in reading source code. I dare to say it's a "hidden" theme. I will explain why we need this. 
 
 
-それともプログラムを読むということは、プログラムを書ける人間なら当然で
-きることなのだろうか。実はコードを読むのはとても簡単で、世の中の人達は
-誰もが余裕で人のコードを読めてしまっているのだろうか。そうは思えない。
-プログラムを読むのは確かに、プログラムを書くのと同じくらい難しいことな
-のだ。
+It is often said "To be a skilled programmer, you should read source code written by others." This is certainly true. But I haven't found a book that explains how you can actually do it. There are many books that explain OS kernels and the interior of language processing systems by showing the concrete structure or "the answer," but they don't explain the way to reach that answer. 
+It's clearly one-sided.
 
 
-そこで本書では@ruby@を解説するにしてもただ既知のものとして解説するので
-はなく、解析する過程をできるだけ生々しく紹介することにした。筆
-者はRuby言語自体についてはそれなりに腕に覚えがあるものの、執筆開始時点
-では@ruby@の内部構造について完全に理解しているわけではなかった。つまり
-@ruby@の中身に関してはできるだけ読者と近い立場から出発したのだ。そこ
-から始めた解析の過程とその結果をまとめたのが本書である。
+Can you, perhaps, naturally read code just because you know how to write a program? Is it so easy to read code that all programmers are already able to read any code by another programmer? I don't think so. 
+To be skilled in reading code is certainly as difficult as writing code.
 
 
-なお、@ruby@の作者のまつもとゆきひろ氏自身に監修をしていただいたのだが、
-本人にチェックしてもらいながら解析していたのでは本書の「生々しさ」が失
-われてしまう。そのため監修査読は執筆の最終段階からと限定した。これによっ
-て、ソースコードを読んでいく臨場感を失うことなく内容の確かさも同時に確
-保できたと思う。
-
-正直に言って、この本は易しくはない。少なくとも、対象の持つ本質的な難し
-さ以上には易しくはなっていない。しかし、だからこそ本書は面白い（かもし
-れない）のだ。自分の能力より劣るものばかり相手にして面白いわけがない。
-見た瞬間に答えがわかるパズルを解く奴はいない。半分で犯人がわかる推理小
-説はつまらない。能力をギリギリまで使い切り問題を解いてこそ本当に知識を
-自分のものにできる。本書はそんな理想論をバカみたいに実践した本である。
-「難しいから面白い。」本書を通じ、そう思ってくれる人が一人でも増えてく
-れたら嬉しい。
-
-h2. 対象とする読者
-
-まずRuby言語の知識は前提としない。だが構造の解説のためにはどうしても
-Ruby言語の知識が必要になるため、解説の章をいくつか狭んで補ってある。
+In light of such questions, this book doesn't simply provide a general explanation of the @ruby@ language, but demonstrates procedures for analyzing source code. When I started writing this book, I had some experience with the Ruby language, but I did not fully understand the inner structure of the @ruby@ implementation. In other words, this book begins exploring @ruby@ from the same starting place as the reader. This book is the summary of the process and results of my code analysis from that point. 
 
 
-C言語についてはそれなりの知識が必要である。構造体を実行時に@malloc()@
-で割り当ててリストやスタックを作ることができ、関数ポインタを何度かくら
-いは使ったことがある、という程度を前提とした。
+I asked Yukihiro Matsumoto, the author of @ruby@, for supervision. But I thought the spirit of this book would be lost if each analysis was monitored by the author of the language himself. Therefore I limited his review to the final stage of writing. In this way, I tried to assure the correctness of the contents, keeping the goal of reading code alive at the same time. 
+
+To be honest, this book is not easy. In the very least, it is limited in its simplicity by the inherent complexity of its aim. However, this complexity may be what makes the book interesting to you. Do you find it interesting to be chattering around a piece of cake?
+Do you take to your desk to solve a puzzle that you know the answer to in a heartbeat? How about a suspense novel whose criminal you can guess halfway through? If you really want to come to new knowledge, you need to solve a problem engaging all your capacities. This is the book that lets you practice such idealism exhaustively. 
+"I think, therefore it's fun!" Everybody who finds it fun gives pleasure to the author. 
+
+h2. Target audience
+
+Firstly, knowledge about the Ruby language isn't required. However, since the knowledge of the Ruby language is absolutely necessary to understand certain explanations of its structure, supplementary explanations of the language are inserted here and there. 
 
 
-またオブジェクト指向の基礎についてもあまり真面目には説明しないので、な
-んらかのオブジェクト指向言語は使ったことがないと苦しいだろう。本文中で
-はJava/C++での例えを多く使うよう心掛けた。
-
-h2. 本書の構成
-
-本書の主要部分は四部構成になっている。
+Knowledge about the C language is required, to some extent. I assume you have experience calling @malloc()@ to assign a list or stack, and have used function pointer at least a few times. 
 
 
-第1部『オブジェクト』
-第2部『構文解析』
-第3部『評価』
-第4部『評価器の周辺』
+This book doesn't provide a proper introduction to an object-oriented language. You will have a difficult time if you don't know the basics of at least one object-oriented language. Furthermore, some examples are given in Java and C++. 
+
+h2. Structure of this book
+
+This book has four main parts:
 
 
-である。各部の頭では適宜基礎知識を補うための章を挿入し、
-言語処理系の仕組みやRubyに馴染みがない方でも読めるよう配慮した。
+Part 1: Objects
+Part 2: Syntactic analysis
+Part 3: Evaluation
+Part 4: Peripheral around the evaluator
 
 
-ではその主要四部の構成を以下に示す。説明のあとに括弧付きで入って
-いる記号は難易度を表している。C B Aと難しくなりSが最高難度である。
-
-h4. 第1部 オブジェクト
-
-第1章第1部を読むのに必要になるRubyの基礎部分だけを話す。（C）
-第2章Rubyオブジェクトの具体的な内部構造を解説する。（C）
-第3章ハッシュテーブルについて話す。（C）
-第4章Rubyのクラスシステムについて述べる。この章は抽象的な話が多いので最初は軽く読み流してもらってもよい。（A）
-第5章オブジェクトの生成と解放を司るガーベージコレクタを見る。低水準シリーズ第一話。（B）
-第6章グローバル変数・クラス変数・定数の実装を解説する。（C）
-第7章Rubyのセキュリティ機能の大枠について。（C）
-
-h4. 第2部 構文解析
-
-第8章第2部・第3部に備えRuby言語のほぼ完全な仕様について話す。（C）
-第9章文法ファイルを読むのに必要な最低限の@yacc@の知識を説明する。（B）
-第10章パーサの物理構造と規則を読む。（A）
-第11章パーサの難所@lex_state@の周辺を探索する。本書最難関。（S）
-第12章第2部の総仕上げと第3部への連結。（C）
-
-h4. 第3部 評価
-
-第13章評価器の基本的な仕組みついて述べる。（C）
-第14章Rubyのメインコンテキストを作りだす評価器スタックを読む。（A）
-第15章メソッドの探索と起動について話す。（B）
-第16章Ruby最大の特徴、イテレータの実装に挑む。（A）
-第17章eval系メソッドの実装を解説する。（B）
-
-h4. 第4部 評価器の周辺
-
-第18章RubyとCのライブラリの実行時ロードについて。（B）
-第19章コア最終章はスレッドの実装について述べる。（A）
-
-h2. 環境
-
-本書で解説するのは@ruby@ 1.7.3 2002-09-12版である。この版は
-アーカイブを添付CD-ROMに収録した。トップディレクトリにある
-@ruby-rhg.tar.gz@、@ruby-rhg.lzh@、@ruby-rhg.zip@のうちいずれか
-都合のよいものを選んでいただきたい。内容はどれも同じである。
-他に本書のサポートサイト
-footnote{本書のサポートサイト @http://i.loveruby.net/ja/rhg/@}からも
-入手可能になっている。
+Supplementary chapters are included at the beginning of each part when necessary. These provide a basic introduction for those who are not familiar with Ruby and the general mechanism of a language processing system. 
 
 
-また本書の出版に先立ち、以下のようなビルド環境でコンパイルと基本的な動
-作の確認を行った。このビルドテストの詳細は添付CD-ROMの
-@doc/buildtest.html@に記載してある。
-ただしこの表に載っていても「同じ環境なら確実に動く」というわけでは
-ないし、@ruby@が動作することに関して筆者はいかなる類の保証もしない。
+Now, we are going through the overview of the four main parts. The symbol in parentheses after the explanation indicates the difficulty gauge. They are (C), (B), (A) in order of easy to hard, (S) being the highest.
+
+h4. Part 1: Object
+
+Chapter 1: Focuses the basics of Ruby to get ready to accomplish Part 1. (C)
+Chapter 2: Gives concrete inner structure of Ruby objects. (C)
+Chapter 3: States about hash table. (C)
+Chapter 4: Writes about Ruby class system. You may read through this chapter quickly at first, because it tells plenty of abstract stories. (A)
+Chapter 5: Shows the garbage collector which is responsible for generating and releasing objects. The first story in low-level series. (B)
+Chapter 6: Describes the implementation of global variables, class variables, and constants. (C)
+Chapter 7: Outline of the security features of Ruby. (C)
+
+h4. Part 2: Syntactic analysis
+
+Chapter 8: Talks about almost complete specification of the Ruby language, in order to prepare for Part 2 and Part 3. (C)
+Chapter 9: Introduction to @yacc@ required to read the syntax file at least. (B)
+Chapter 10: Look through the rules and physical structure of the parser. (A)
+Chapter 11: Explore around the peripherals of @lex_state@, which is the most difficult part of the parser. The most difficult part of this book. (S)
+Chapter 12: Finalization of Part 2 and connection to Part 3. (C)
+
+h4. Part 3: Evaluator
+
+Chapter 13: Describe the basic mechanism of the evaluator. (C)
+Chapter 14: Reads the evaluation stack that creates the main context of Ruby. (A)
+Chapter 15: Talks about search and initialization of methods. (B)
+Chapter 16: Defies the implementation of the iterator, the most characteristic feature of Ruby. (A)
+Chapter 17: Describe the implementation of the eval methods. (B)
+
+h4. Part 4: Peripheral around the evaluator
+
+Chapter 18: Run-time loading of libraries in C and Ruby. (B)
+Chapter 19: Describes the implementation of thread at the end of the core part. (A)
+
+h2. Environment
+
+This book describes on @ruby@ 1.7.3 2002-09-12 version. It's attached on the CD-ROM. Choose any one of @ruby-rhg.tar.gz@, @ruby-rhg.lzh@, or @ruby-rhg.zip@ according to your convenience. Content is the same for all.
+Alternatively you can obtain from the support site (footnote{@http://i.loveruby.net/ja/rhg/@}) of this book.
+
+
+For the publication of this book, the following build environment was prepared for confirmation of compiling and testing the basic operation. The details of this build test are given in @ doc/buildtest.html@ in the attached CD-ROM. 
+However, it doesn't necessarily assume the probability of the execution even under the same environment listed in the table. The author doesn't guarantee in any form  the execution of @ruby@. 
 
 
 BeOS 5 Personal Edition/i386
 Debian GNU/Linux potato/i386
 Debian GNU/Linux woody/i386
 Debian GNU/Linux sid/i386
-FreeBSD 4.4-RELEASE/Alpha（本書のローカルパッチが必要）
+FreeBSD 4.4-RELEASE/Alpha (Requires the local patch for this book)
 FreeBSD 4.5-RELEASE/i386
 FreeBSD 4.5-RELEASE/PC98
 FreeBSD 5-CURRENT/i386
@@ -180,104 +133,83 @@ Windows 2000 (Borland C++ Compiler 5.5, Visual C++ 6, Visual C++.NET)
 Windows XP (Visual C++.NET, MinGW+Cygwin)
 
 
-これだけの数のテストはとても筆者一人でこなせるものではない。
-このビルドテストにあたっては以下の方々に多大な御協力を頂いた。
-ここに名前を記し感謝を捧げたい。
+These numerous tests aren't of a lone effort by the author. 
+Those test build couldn't be achieved without magnificent cooperations by the people listed below. 
+I'd like to extend warmest thanks from my heart. 
 
 
-Tietewさん
-kjanaさん
-nyasuさん
-sakazukiさん
-さとうまさひろさん
-たむらけんいちさん
-もりきゅうさん
-加藤勇也さん
-久保健洋さん
-後藤謙太郎さん
-下村智之さん
-助田雅紀さん
-新井康司さん
-西山和広さん
-川路信也さん
-渡辺哲也さん
-藤本尚邦さん
+Tietew
+kjana
+nyasu
+sakazuki
+Masahiro Sato
+Kenichi Tamura
+Morikyu
+Yuya Kato
+Yasuhiro Kubo
+Kentaro Goto
+Tomoyuki Shimomura
+Masaki Sukeda
+Koji Arai
+Kazuhiro Nishiyama
+Shinya Kawaji
+Tetsuya Watanabe
+Naokuni Fujimoto
 
 
-ただし、このテストに関する全責任は筆者にある。以上の方々に
-コンタクトをとるようなことは絶対にしないでいただきたい。
-もし何か不具合があれば筆者まで直接メールを送ってくださるよう
-footnote{筆者のメールアドレス @aamine@loveruby.net@}お願いする。
+However, the author owes the responsibility for this test. Please refrain from attempting to contact these people directly. 
+If there's any flaw in execution, please be advised to contact the author by e-mail: @aamine@loveruby.net@.
 
-h2. ウェブサイト
+h2. Web site
 
-本書のウェブサイトは@http://i.loveruby.net/ja/rhg/@である。
-関連プログラムに関する情報や追加文書、
-それに誤殖などがあれば逐一ここに載せていく。また出版と
-同時に本書始めの数章を公開する予定である。その後も順次時期を
-見て公開し、最終的には全文公開することを考えている。
+The web site for this book is @http://i.loveruby.net/ja/rhg/@. 
+I will add information about related programs and additional documentation, as well as errata. In addition, I'm going to publisize the first few chapters of this book at the same time of the release. I will look for a certain circumstance to publicize more chapters, and the whole contents of the book will beat this website. at the end.
 
-h2. 謝辞
+h2. Acknowledgment
 
-誰よりもまず、まつもとゆきひろさんに感謝します。Rubyを作ってくださった
-こと、それをオープンソースソフトウェアとして公開してくださったこと、
-@ruby@を解析する本を出すのを快く了解してくださったばかりか
-監修まで引き受けていただいたこと、ついでに言うと
-フロリダで同時通訳をしてもらったこと、などなど、お礼を言いたいことは山
-ほどあるのですが、あまりに多すぎて言い切れません。その代わりにこの本を
-贈ります。
+First of all, I would like to thank Mr. Yukihiro Matsumoto. He is the author of Ruby, and he made it in public as an open source software. 
+Not only he willingly approved me to publish a book about analyzing @ruby@, but also he agreed to supervise the content of it. In addition, he helped my stay in Florida with simultaneous translation. There are plenty of things beyond enumeration I have to say thanks to him. Instead of writing all the things, I give this book to him. 
 
 
-次に、この本の出版を最初に提案してくれたartonさんに感謝します。artonさ
-んの言葉にはいつでも影響されっぱなしです。おかげで.NETなマシンが欲し
-くなってしかたないじゃないですか。
+Next, I would like to thank arton, who proposed me to publish this book. The words of arton always moves me. One of the things I'm currently struggled due to his words is that I have no reason I don't get a .NET machine. 
 
 
-Ruby界のドキュメント隊長・新井康司さんには、いつの間に
-この本の編集担当に就職したのだろうと思うほど綿密な査読を
-していただきました。ありがとうございました。
+Koji Arai, the 'captain' of documentation in the Ruby society, conducted a scrutiny review as if he became the official editor of this book while I was not told so. I thank all his review. 
 
 
-また執筆中には本当に多くの方々からコメントや間違いの指摘、
-構成の提案を頂きました。
-Tietewさん、
-Yuyaさん、
-かわじさん、
-ごとけんさん、
-たむらさん、
-ふなばさん、
-もりきゅうさん、
-石塚さん、
-下村さん、
-久保さん、
-助田さん、
-西山さん、
-藤本さん、
-柳川さん、
-もし抜けがあったらごめんなさい。
-全ての方々の御協力に感謝します。
+Also I'd like to mention those who gave me comments, pointed out mistakes and submitted proposals about the construction of the book throughout all my work. 
+Tietew, 
+Yuya, 
+Kawaji, 
+Gotoken, 
+Tamura, 
+Funaba, 
+Morikyu, 
+Ishizuka, 
+Shimomura, 
+Kubo, 
+Sukeda, 
+Nishiyama, 
+Fujimoto, 
+Yanagawa, 
+(I'm sorry if there's any people missing), 
+I thank all those people contributed. 
 
 
-最後になりましたが、大塚さん、春田さん、金光さん、四度に渡る締切破りと
-200ページの原稿超過にもめげず最後まで付き合ってくださって
-ありがとうございました。
+As a final note, I thank Otsuka , Haruta, and Kanemitsu who you for arranging everything despite my broke deadline as much as four times, and that the manuscript exceeded 200 pages than originally planned. 
 
 
-この本に関った人すべての名前をここで挙げることはできませんが、
-みなさんの力がなければこの本は出版できませんでした。この場を
-お借りして全ての方に感謝します。本当にありがとうございました。
+I cannot expand the full list here to mention the name of all people contributed to this book, but I say that I couldn't successfully publish this book without such assistance. Let me take this place to express my appreciation. Thank you very much. 
 
 p(=right). 
 
 
-御意見・御感想・誤殖の指摘などは
-"青木峰郎 <aamine@loveruby.net>":mailto:aamine@loveruby.net
-までお願いします。
+If you want to send remarks, suggestions and reports of typographcal errors, 
+please address to " <aamine@loveruby.net>":mailto:aamine@loveruby.net. 
 
 
-"『Rubyソースコード完全解説』
-はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
+""Rubyソースコード完全解説" can be reserved/ordered at ImpressDirect. ":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721"(Jump to the introduction page)":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
 
-Copyright (c) 2002-2004 Minero Aoki, All rights reserved.
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved. 
 
 
