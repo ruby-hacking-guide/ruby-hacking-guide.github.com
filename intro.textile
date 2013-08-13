@@ -5,22 +5,30 @@
 h1. Preface: Introduction
 h2. Characteristics of Ruby
 
-Some of the readers may have already been familiar with Ruby, some may be not. (I wish the latter for this chapter to be most useful) First let's go though a rough summary of the characteristics of Ruby for such people. 
+Some of the readers may have already been familiar with Ruby, some may be not.
+(I wish the latter for this chapter to be most useful) First let's go though a
+rough summary of the characteristics of Ruby for such people. 
 
 
-Hereafter capital "Ruby" refers to Ruby as a language scheme, and lowercase "@ruby@" refers to the implementation of @ruby@ command. 
+Hereafter capital "Ruby" refers to Ruby as a language scheme, and lowercase
+"@ruby@" refers to the implementation of @ruby@ command. 
 
 h4. Development pattern
 
-Ruby is a personally created language by Yukihiro Matsumoto. 
-That means Ruby doesn't have a standard scheme that C or Java have. The specification is merely shown as an implementation as @ruby@, and its varying continuously. Whichever you mention good or bad, it's unbind. 
+Ruby is a personally created language by Yukihiro Matsumoto.  That means Ruby
+doesn't have a standard scheme that C or Java have. The specification is merely
+shown as an implementation as @ruby@, and its varying continuously. Whichever
+you mention good or bad, it's unbind. 
 
 
-Furthermore @ruby@ itself is a free software  -  source code being open and being in public free of charge  -  this is what I must add in the introduction. 
+Furthermore @ruby@ itself is a free software  -  source code being open and
+being in public free of charge  -  this is what I must add in the introduction.
 That's why it allows the approach of this book into publication. 
 
 
-Giving the @README@ and @LEGAL@ included in the distribution package the complete reading of the license, let's list up what you can do for the time being: 
+Giving the @README@ and @LEGAL@ included in the distribution package the
+complete reading of the license, let's list up what you can do for the time
+being: 
 
 
 You can redistribute source code of @ruby@
@@ -31,36 +39,61 @@ You can redistribute a copy of source code with your modification
 There is no need for special permission and payment in all these cases. 
 
 
-By the way, the original @ruby@ is the version referred to in this book unless otherwise stated, because our main purpose is to read it. However, I modified the code without notice at a certain extent such as to remove or add white spaces, new lines, and comments. 
+By the way, the original @ruby@ is the version referred to in this book unless
+otherwise stated, because our main purpose is to read it. However, I modified
+the code without notice at a certain extent such as to remove or add white
+spaces, new lines, and comments. 
 
 h4. It's conservative
 
-Ruby is a very conservative language. It is equipped with only carefully chosen features that have been tested and washed out in a variety of languages​. 
-Therefore it doesn't have plenty of fresh and experimental features very much. So it has a tendency to appeal to programmers who put importance on practical  functionalities. The dyed-in-the-wool hackers like Scheme and Haskell lovers don't seem to find appeal in ruby in a short glance. 
+Ruby is a very conservative language. It is equipped with only carefully chosen
+features that have been tested and washed out in a variety of languages​.
+Therefore it doesn't have plenty of fresh and experimental features very much.
+So it has a tendency to appeal to programmers who put importance on practical
+functionalities. The dyed-in-the-wool hackers like Scheme and Haskell lovers
+don't seem to find appeal in ruby in a short glance. 
 
 
-The library is conservative in the same way. Clear and unabbreviated names are given for new functions, while names that appears in C and Perl libraries have been took over from them. For example, 
-@printf@, @getpwent@, @sub@, and @tr@. 
+The library is conservative in the same way. Clear and unabbreviated names are
+given for new functions, while names that appears in C and Perl libraries have
+been took over from them. For example, @printf@, @getpwent@, @sub@, and @tr@. 
 
 
-It is also conservative in implementation. Assembler is not its option for seeking speed. Portability is always considered a higher priority when it conflicts with speed. 
+It is also conservative in implementation. Assembler is not its option for
+seeking speed. Portability is always considered a higher priority when it
+conflicts with speed. 
 
 h4. It is an object-oriented language
 
-Ruby is an object-oriented language. It is not possible to forget about it absolutely, when you talk about the features of Ruby. 
+Ruby is an object-oriented language. It is not possible to forget about it
+absolutely, when you talk about the features of Ruby. 
 
 
-I will not give a page to this book about what an object-oriented language is. To tell about an object-oriented feature about Ruby, the expression of the code that just going to be explained below is the exact sample. 
+I will not give a page to this book about what an object-oriented language is.
+To tell about an object-oriented feature about Ruby, the expression of the code
+that just going to be explained below is the exact sample. 
 
 h4. It is a script language
 
-Ruby is a script language. It is also not possible to forget about it absolutely, when you talk about the features of Ruby. To gain agreement of everyone, an introduction of Ruby must include "object-oriented" and "script language". 
+Ruby is a script language. It is also not possible to forget about it
+absolutely, when you talk about the features of Ruby. To gain agreement of
+everyone, an introduction of Ruby must include "object-oriented" and "script
+language". 
 
 
-However, what is a "script language" for example? I couldn't figure out the definition successfully. For example, John K. Ousterhout, the author of Tcl/Tk, gives a definition as "executable language using @#!@ on UNIX". There are other definitions depending on the view points, such as one that can express a useful program with only one line, or that can execute the code by passing a program file from the command line, etc. 
+However, what is a "script language" for example? I couldn't figure out the
+definition successfully. For example, John K. Ousterhout, the author of Tcl/Tk,
+gives a definition as "executable language using @#!@ on UNIX". There are other
+definitions depending on the view points, such as one that can express a useful
+program with only one line, or that can execute the code by passing a program
+file from the command line, etc. 
 
 
-However, I dare to use another definition, because I don't find much interest in "what" a script language. To call it a script language, it at least has to avoid gaining disagreement of calling it so. That's the definition I suggest. To fulfill this definition, I would define the meaning of "script language" as follows. 
+However, I dare to use another definition, because I don't find much interest
+in "what" a script language. To call it a script language, it at least has to
+avoid gaining disagreement of calling it so. That's the definition I suggest.
+To fulfill this definition, I would define the meaning of "script language" as
+follows. 
 
 p(=center). 
 Whether the author of the language calls it "script language" or not. 
@@ -71,28 +104,59 @@ Therefore I call Ruby a "script language".
 
 h4. It's an interpreter
 
-@ruby@ is an interpreter. That's the fact. But why it's an interpreter? 
-For example, couldn't it be made as a compiler? The answer should be "no", because I guess Ruby has at least something better than being an interpreter than a compiler. Well, what is good about being an interpreter? 
+@ruby@ is an interpreter. That's the fact. But why it's an interpreter?  For
+example, couldn't it be made as a compiler? The answer should be "no", because
+I guess Ruby has at least something better than being an interpreter than a
+compiler. Well, what is good about being an interpreter? 
 
 
-As a preparation step to investigating into it, let's start by thinking about the difference between an interpreter and a compiler. If the matter is to attempt a comparison with the process how a program is executed theoretically, there's no difference between an interpreter language and a compile language. It may be possible to say that a compiler language involves an interpreter, because of the fact that CPU "interprets" a code into a machine language using a compiler. What's the difference actually? 
-I suppose it's in a practical things  -  in the process of development. 
+As a preparation step to investigating into it, let's start by thinking about
+the difference between an interpreter and a compiler. If the matter is to
+attempt a comparison with the process how a program is executed theoretically,
+there's no difference between an interpreter language and a compile language.
+It may be possible to say that a compiler language involves an interpreter,
+because of the fact that CPU "interprets" a code into a machine language using
+a compiler. What's the difference actually?  I suppose it's in a practical
+things  -  in the process of development. 
 
 
-I know somebody, as soon as hearing "in the process of development", would claim using a stereotypical phrase, that an interpreter reduces effort of compilation that makes the development procedure easier. But I don't think it's accurate. A language could possibly be planned so that it won't show the process of compilation. Actually, Delphi can compile a project by hitting just F5. A claim about a long time for compilation is derived from the size of the project or optimization of the codes. Compilation itself doesn't owe a negative side. 
+I know somebody, as soon as hearing "in the process of development", would
+claim using a stereotypical phrase, that an interpreter reduces effort of
+compilation that makes the development procedure easier. But I don't think it's
+accurate. A language could possibly be planned so that it won't show the
+process of compilation. Actually, Delphi can compile a project by hitting just
+F5. A claim about a long time for compilation is derived from the size of the
+project or optimization of the codes. Compilation itself doesn't owe a negative
+side. 
 
 
-Well, why people perceive an interpreter and compiler so much different like this? I think that it is because the developers have long distinguished the use of the implementations of these languages according to the characteristics. In short, a comparatively small, a daily routine fits well with developing an interpreter language. On the other hand, a compiler language is a goal for a large project where a number of people are involved in the development and accuracy is required. That may be because of the speed, as well as the readiness of creating a language. 
+Well, why people perceive an interpreter and compiler so much different like
+this? I think that it is because the developers have long distinguished the use
+of the implementations of these languages according to the characteristics. In
+short, a comparatively small, a daily routine fits well with developing an
+interpreter language. On the other hand, a compiler language is a goal for a
+large project where a number of people are involved in the development and
+accuracy is required. That may be because of the speed, as well as the
+readiness of creating a language. 
 
 
-Therefore, "it's handy because it's an interpreter" is merely an outsized myth. Being an interpreter doesn't necessarily contribute the readiness in usage; seeking readiness in usage naturally makes your path toward building an interprer language. 
+Therefore, "it's handy because it's an interpreter" is merely an outsized myth.
+Being an interpreter doesn't necessarily contribute the readiness in usage;
+seeking readiness in usage naturally makes your path toward building an
+interprer language. 
 
 
-Anyway, @ruby@ is an interpreter; it has an important fact about where this book is facing, so I emphasize it here again. It doesn't matter whether it's easy being an interpreter; anyway @ruby@ is implemented as an interpreter. 
+Anyway, @ruby@ is an interpreter; it has an important fact about where this
+book is facing, so I emphasize it here again. It doesn't matter whether it's
+easy being an interpreter; anyway @ruby@ is implemented as an interpreter. 
 
 h4. High portability
 
-Even with a fundamental problem that the interface is built targeting Unix, I would insist @ruby@ possesses a high portability. It doesn't often require an unfamiliar library. It doesn't have a part written in assembler gorigorily. Therefore it's easy to port to a new platform, comparatively. Namely, it works on the following platforms currently. 
+Even with a fundamental problem that the interface is built targeting Unix, I
+would insist @ruby@ possesses a high portability. It doesn't often require an
+unfamiliar library. It doesn't have a part written in assembler gorigorily.
+Therefore it's easy to port to a new platform, comparatively. Namely, it works
+on the following platforms currently. 
 
 
 Linux
@@ -115,46 +179,77 @@ OS/2 (emx)
 Psion
 
 
-The main machine of the author Matsumoto is Linux, reportedly. You can assume that a Linux will not fail to build any version of ruby. 
+The main machine of the author Matsumoto is Linux, reportedly. You can assume
+that a Linux will not fail to build any version of ruby. 
 
 
-Furthermore, a typical Unix environment basically can expect a stable functionality. Considering the release cycle of packages, the primary option for the environment to hit around @ruby@ should fall on a branch of PC UNIX, currently. 
+Furthermore, a typical Unix environment basically can expect a stable
+functionality. Considering the release cycle of packages, the primary option
+for the environment to hit around @ruby@ should fall on a branch of PC UNIX,
+  currently. 
 
 
-On the other hand, the Win32 environment tends to cause problems definitely. The large gaps in the targeting OS model tend to cause problems around the machine stack and the linker. Yet, recently Windows hackers have contributed to make better support. I use a native ruby on Windows 2000 and Me. Once it gets successfully run, it doesn't seem to show special concerns like frequent crashing. The main problems on Windows may be the gaps in the specifications. 
+On the other hand, the Win32 environment tends to cause problems definitely.
+The large gaps in the targeting OS model tend to cause problems around the
+machine stack and the linker. Yet, recently Windows hackers have contributed to
+make better support. I use a native ruby on Windows 2000 and Me. Once it gets
+successfully run, it doesn't seem to show special concerns like frequent
+crashing. The main problems on Windows may be the gaps in the specifications. 
 
 
-Another type of OS that many people may be interested in should probably be Mac OS (prior to v9) and handheld OS like Palm. 
+Another type of OS that many people may be interested in should probably be Mac
+OS (prior to v9) and handheld OS like Palm. 
 
 
-Around @ruby 1.2@ and before, it supported legacy Mac OS, but the development seems to be in suspension. Even a compiling can't get through. The biggest cause is that the compiler environment of legacy Mac OS and the decrease of developers. Talking about Mac OS X, there's no worries because the body is UNIX. 
+Around @ruby 1.2@ and before, it supported legacy Mac OS, but the development
+seems to be in suspension. Even a compiling can't get through. The biggest
+cause is that the compiler environment of legacy Mac OS and the decrease of
+developers. Talking about Mac OS X, there's no worries because the body is
+UNIX. 
 
 
-There seem to be discussions the portability to Palm several branches, but I have never heard of a successful project. I guess the difficulty lies in the necessity of settling down the specification-level standards such as @stdio@ on the Palm platform, rather than the processes of actual implementation. Well I saw a porting to Psion has been done. ([ruby-list:36028]). 
+There seem to be discussions the portability to Palm several branches, but I
+have never heard of a successful project. I guess the difficulty lies in the
+necessity of settling down the specification-level standards such as @stdio@ on
+the Palm platform, rather than the processes of actual implementation. Well I
+saw a porting to Psion has been done. ([ruby-list:36028]). 
 
 
-How about hot stories about VM seen in Java and .NET? I need to mention these together with implementation in the final chapter. 
+How about hot stories about VM seen in Java and .NET? I need to mention these
+together with implementation in the final chapter. 
 
 h4. Automatic memory control
 
-Functionally it's called GC, or Garbage Collection. Saying it in C-language, this feature allows you to skip @free()@ after @malloc()@.  Unused memory is detected by the system automatically, and will be released. It's so convenient that once you get used to GC you will likely be unwilling to do it manual memory control again. 
+Functionally it's called GC, or Garbage Collection. Saying it in C-language,
+this feature allows you to skip @free()@ after @malloc()@.  Unused memory is
+detected by the system automatically, and will be released. It's so convenient
+that once you get used to GC you will likely be unwilling to do it manual
+memory control again. 
 
 
-The topics about GC have been common because of its popularity in recent languages with GC as a standard set, and the GS is fun to talk about because it has a lot to devise better algorithms. 
+The topics about GC have been common because of its popularity in recent
+languages with GC as a standard set, and the GS is fun to talk about because it
+has a lot to devise better algorithms. 
 
 h4. Typeless variables
 
-The variables in Ruby don't have types. The reason is probably typeless variables conforms more with polymorphism, which is one of the strongest features of an object-oriented language. 
-Of course a language with variable type has a way to deal with polymorphism. 
-What I mean here is a typeless variables have better conformance. 
+The variables in Ruby don't have types. The reason is probably typeless
+variables conforms more with polymorphism, which is one of the strongest
+features of an object-oriented language.  Of course a language with variable
+type has a way to deal with polymorphism.  What I mean here is a typeless
+variables have better conformance. 
 
 
-The level of "better conformance" in this case refers to synonyms like "handy". It's sometimes corresponds to crucial importance, sometimes it doesn't matter practically. Yet, this is certainly an appealing point if a language seeks for "handy and easy", and Ruby does. 
+The level of "better conformance" in this case refers to synonyms like "handy".
+It's sometimes corresponds to crucial importance, sometimes it doesn't matter
+practically. Yet, this is certainly an appealing point if a language seeks for
+"handy and easy", and Ruby does. 
 
 h4. Most of syntactic elements are formulae
 
-This topic is probably difficult to understand it instantly without needs supplemental explanation. 
-For example, the following C-language program contains a syntactic error. 
+This topic is probably difficult to understand it instantly without needs
+supplemental explanation.  For example, the following C-language program
+contains a syntactic error. 
 
 p(=emlist). 
 result = if (cond) { process(val); } else { 0; }
@@ -166,7 +261,8 @@ p(=emlist).
 result = cond ? process(val) : 0;
 </pre>
 
-This rewrite is possible because the conditional operator (@a?b:c@) is defined as a formula. 
+This rewrite is possible because the conditional operator (@a?b:c@) is defined
+as a formula. 
 
 
 On the other hand, Ruby acceps a following expression because @if@ is a formula. 
