@@ -257,7 +257,7 @@ to a `Fixnum`, and confirm that `Fixnum` are directly embedded in `VALUE`.
 
 In brief, shift 1 bit to the right, and bitwise or it with 1.
 
-| `0110100001000` | before conversion |
+| ` 110100001000` | before conversion |
 | `1101000010001` | after conversion |
 
 That means that `Fixnum` as `VALUE` will always be an odd number. On the other
