@@ -748,7 +748,7 @@ of course a bit check is way faster than searching a `struct st_table`.
 h3. Gaps in structures
 
 Now you should understand how the instance variables are stored, but why are
-there structures without `iv_tbl`? Why is there no `iv_tbl` in 
+there structures without `iv_tbl`? Why is there no `iv_tbl` in
 `struct RString` or `struct RArray`? Couldn't `iv_tbl` be part of `RBasic`?
 
 Well, this could have been done, but there are good reasons why it was not. As
