@@ -19,7 +19,6 @@ h3. Part 1: Objects
 * "Chapter 3: Names and name tables":name.html
 * "Chapter 4: Classes and modules":class.html
 * "Chapter 5: Garbage collection":gc.html
-* "Chapter 5: Garbage collection - unfinished alternative translation":chapter05.html
 * "Chapter 6: Variables and constants":variable.html
 * "Chapter 7: Security":security.html
 
