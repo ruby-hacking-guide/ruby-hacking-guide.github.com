@@ -9,18 +9,17 @@ h1. Chapter 3: Names and Name Table
 
 h2. `st_table`
 
-`st_table` has already been mentioned as a method table and instance table.
-In this chapter let us look at the detailed mechanism of the `st_table`.
+We've already examined `st_table` as a method table and an instance table. In
+this chapter let's look at the inner workings of `st_table`.
 
 h3. Summary
 
 I previously mentioned that the `st_table` is a hash table. What is a hash
-table? It is a data structure that records one-to-one relations, for
-example, a variable name and its value, a function name and its body, etc.
+table? It is a data structure that records one-to-one relations, for example, a
+variable name and its value, or a function name and its body, etc.
 
 However, data structures other than hash tables can, of course, record
-one-to-one relations. For example, a list of following data structure will
-suffice for this purpose.
+one-to-one relations. For example, a linked list will suffice for this purpose.
 
 <pre class="emlist">
 struct entry {
@@ -31,14 +30,13 @@ struct entry {
 </pre>
 
 However, this method is slow. If the list contains a thousand items, in the
-worst case, it is necessary to traverse links a thousand times. In other
-words, in proportion to the number of elements, the search time increases.
-This is bad. Since ancient times, various speed improvement methods have
-been conceived. The hash table is one of those improved methods. In other
-words, the point is not that the hash table is necessary but that it can be
-made faster.
+worst case, it is necessary to traverse a thousand links. In other words, the
+search time increases in proportion to the number of elements.  This is bad.
+Since ancient times, various speed improvement methods have been conceived. The
+hash table is one of those improved methods. In other words, the point is not
+that the hash table is necessary but that it can be made faster.
 
-Now then, let us examine the `st_table`. But first, this library is not
+Now then, let us examine the `st_table`. As it turns out, this library is not
 created by Matsumoto, rather:
 
 ▼ `st.c` credits
@@ -63,29 +61,27 @@ A hash table can be thought as the following: Let us think of an array with
 
 !images/ch_name_array.png(Array)!
 
-Then let us specify a function f that takes a key and produces an integer `i`
-from 0 to `n`-1 (0-63). We call this `f` a hash function. `f` when given the same
-key always produces the `i`. For example, if we make the assumption that the
-key is limited to positive integers, then if the key is divided by 64 then
-the remainder will always fall between 0 and 63. This method of calculation
-can become function `f`.
+Then let us specify a function `f` that takes a key and produces an integer `i`
+from 0 to `n`-1 (0-63). We call this `f` a hash function. `f` when given the
+same key always produces the same `i`. For example, if we assume that the key
+is limited to positive integers, we can make the function `f` by dividing the
+key by 64. The remainder will always fall between 0 and 63.
 
 When recording relationships, given a key, function `f` generates `i`, and
-place the value into index `i` of the array we have prepared. In other words,
-the index access into an array is very fast. Therefore the fundamental idea
-is to change the key into an integer.
+places the value into index `i` of the array we have prepared. Index access
+into an array is very fast. The key concern is changing a key into an integer.
 
 !images/ch_name_aset.png(Array assignment)!
 
-However, in the real world it isn't that easy. There is a critical problem
-with this idea. Because `n` is only 64, if there are more than 64
-relationships to be recorded, it is certain that i will be the same for two different keys.
-It is also possible that with fewer than 64, the same thing can occur.
-For example, given the previous hash function "key % 64", keys 65 and 129
-will have a hash value of 1. This is called a hash value collision. There
-are many ways to resolve a collision.
+However, in the real world it isn't that easy. There is a critical problem with
+this idea. Because `n` is only 64, if there are more than 64 relationships to
+be recorded, it is certain that there will be the same index for two different
+keys.  It is also possible that with fewer than 64, the same thing can occur.
+For example, given the previous hash function "key % 64", keys 65 and 129 will
+both have a hash value of 1. This is called a hash value collision. There are
+many ways to resolve such a collision.
 
-For example, if a collision occurs, then insert into the next element.
+One solution is to insert into the next element when a collision occurs.
 This is called open addressing. (Figure 3).
 
 !images/ch_name_nexti.png(Open addressing)!
