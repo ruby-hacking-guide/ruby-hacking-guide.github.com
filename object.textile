@@ -755,7 +755,7 @@ Well, this could have been done, but there are good reasons why it was not. As
 a matter of fact, this problem is deeply linked to the way `ruby` manages
 objects.
 
-In `ruby`, memory used by for example string data (`char[]`) is directly
+For example, in `ruby`, memory used by string data (`char[]`) is directly
 allocated using `malloc()`. However, the object structures are handled in a
 particular way. `ruby` allocates them by clusters, and then distribute them
 from these clusters. As at allocation time the diversity of types (and sizes)
