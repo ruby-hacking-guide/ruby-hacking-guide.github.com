@@ -9,8 +9,8 @@ some diagrams may be missing and some sentences may be a little
 rough. But it also means they are in open review, so do not hesitate
 to address issues on the mailing list.
 
-* "Preface (translation in progress)":preface.html
-* "Introduction (translation in progress)":intro.html
+* "Preface":preface.html
+* "Introduction - translation in progress":intro.html
 
 h3. Part 1: Objects
 
@@ -19,7 +19,7 @@ h3. Part 1: Objects
 * "Chapter 3: Names and name tables":name.html
 * "Chapter 4: Classes and modules":class.html
 * "Chapter 5: Garbage collection":gc.html
-* "Chapter 5: Garbage collection - (unfinished alternative translation)":chapter05.html
+* "Chapter 5: Garbage collection - unfinished alternative translation":chapter05.html
 * "Chapter 6: Variables and constants":variable.html
 * "Chapter 7: Security":security.html
 
@@ -44,7 +44,7 @@ h3. Part 4: Around the evaluator
 * "Chapter 18: Loading":load.html
 * "Chapter 19: Threads":thread.html
 
-* "Final chapter: Ruby's future (translation unstarted)":fin.html
+* "Final chapter: Ruby's future - translation unstarted":fin.html
 
 h1. About this Guide
 
