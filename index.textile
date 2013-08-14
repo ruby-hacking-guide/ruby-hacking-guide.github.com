@@ -46,6 +46,7 @@ h3. Part 4: Around the evaluator
 * Final chapter: Ruby's future
 
 h1. About this Guide
+
 This is a new effort to gather efforts to help translate into English the "Ruby
 Hacking Guide":http://i.loveruby.net/ja/rhg/book/. The RHG is a book
 that explains how the ruby interpreter (the official
@@ -53,11 +54,7 @@ C implementation of the "Ruby language":http://www.ruby-lang.org/) works
 internally.
 
 
-To fully understand it, you need a good knowledge of C and Ruby. The
-original book includes a Ruby tutorial (chapter 1), but it has not
-been translated yet, and we think there are more important chapters to
-translate first. So if you have not done it yet, you should read a
-book like the "Pickaxe":http://www.rubycentral.com/book/ first.
+To fully understand it, you need a good knowledge of C and Ruby. 
 
 Please note that this book was based on the source code of ruby 1.7.3
 so there are a few small differences to the current version of
@@ -70,6 +67,7 @@ Many thanks to "RubyForge":http://rubyforge.org for hosting us and to
 Minero AOKI for letting us translate his work.
 
 h2. Help us!
+
 The original is available "here":http://i.loveruby.net/ja/rhg/book/
 or hosted within this repo "here":http://ruby-hacking-guide.github.com/original_repo/ja_html/
 (currently with broken formatting)
