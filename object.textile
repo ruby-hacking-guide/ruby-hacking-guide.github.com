@@ -778,9 +778,9 @@ that half the size of the shared entity. As you would expect, it's wasteful.
 So the received merit for `iv_tbl` is more or less saving memory and speeding
 up. Furthermore we do not know if it is used often or not. In fact,
 `generic_iv_tbl` was not introduced before `ruby` 1.2, so it was not possible
-to use instance variables in `String` or `Array` at that time. Nevertheless it
-was not so much of a problem. Making large amounts of memory useless just for
-such a functionality looks stupid.
+to use instance variables in `String` or `Array` at that time. Nevertheless, it
+was not much of a problem. Making large amounts of memory useless just for
+such functionality looks stupid.
 
 If you take all this into consideration, you can conclude that increasing the
 size of object structures does not do any good.
