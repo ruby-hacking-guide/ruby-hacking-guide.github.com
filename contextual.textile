@@ -1411,7 +1411,7 @@ First meekly ` yylex () `-<code >'('` look at the section.
 
 
 
-The first ` if ` is ` tLPAREN ` So the usual formula in parentheses. The criterion is ` lex_state ` is
+The first ` if ` is ` tLPAREN ` So the usual expression in parentheses. The criterion is ` lex_state ` is
 ` BEG ` or ` MID `, that is absolutely the beginning when the ceremony.
 
 
@@ -1451,7 +1451,7 @@ args: arg
 
 arg: primary
 
-primary: tLPAREN compstmt ')' / * * usual formula parentheses /
+primary: tLPAREN compstmt ')' / * * usual expression parentheses /
               | TLPAREN_ARG expr ')' / * parenthetical first argument * /
               | Method_call
 </pre>
