@@ -398,7 +398,7 @@ However, in C, `nil` (`Qnil`) is true. That's why in C a Ruby-style macro,
 As in `Qnil` only the third lower bit is 1, in `~Qnil` only the third lower
 bit is 0. Then only `Qfalse` and `Qnil` become 0 with a bitwise and.
 
-`!=0` has be added to be certain to only have 0 or 1, to satisfy the
+`!=0` has been added to be certain to only have 0 or 1, to satisfy the
 requirements of the glib library that only wants 0 or 1
 ("[ruby-dev:11049]":http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-dev/11049).
 
@@ -748,7 +748,7 @@ of course a bit check is way faster than searching a `struct st_table`.
 h3. Gaps in structures
 
 Now you should understand how the instance variables are stored, but why are
-there structures without `iv_tbl`? Why is there no `iv_tbl` in 
+there structures without `iv_tbl`? Why is there no `iv_tbl` in
 `struct RString` or `struct RArray`? Couldn't `iv_tbl` be part of `RBasic`?
 
 Well, this could have been done, but there are good reasons why it was not. As
