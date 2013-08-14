@@ -174,7 +174,7 @@ or the highest level from the program's standpoint. Hence it's called the
 <em>toplevel</em>.
 The existence of a toplevel is a characteristic trait of a scripting language.
 
-In Ruby one line is usually one statement. A semicolon at the end isn't necessary.
+In Ruby, one line is usually one statement. A semicolon at the end isn't necessary.
 Therefore the program below is interpreted as three statements.
 
 <pre class="emlist">
