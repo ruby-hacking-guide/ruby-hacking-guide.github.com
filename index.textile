@@ -9,8 +9,8 @@ some diagrams may be missing and some sentences may be a little
 rough. But it also means they are in open review, so do not hesitate
 to address issues on the mailing list.
 
-* "Preface":preface.html
-* "Introduction":intro.html
+* "Preface (translation in progress)":preface.html
+* "Introduction (translation in progress)":intro.html
 
 h3. Part 1: Objects
 
@@ -44,7 +44,7 @@ h3. Part 4: Around the evaluator
 * "Chapter 18: Loading":load.html
 * "Chapter 19: Threads":thread.html
 
-* Final chapter: Ruby's future
+* "Final chapter: Ruby's future (translation unstarted)":fin.html
 
 h1. About this Guide
 
