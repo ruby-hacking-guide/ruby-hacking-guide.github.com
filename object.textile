@@ -755,7 +755,7 @@ Well, this could have been done, but there are good reasons why it was not. As
 a matter of fact, this problem is deeply linked to the way `ruby` manages
 objects.
 
-In `ruby`, memory used by for example string data (`char[]`) is directly
+For example, in `ruby`, memory used by string data (`char[]`) is directly
 allocated using `malloc()`. However, the object structures are handled in a
 particular way. `ruby` allocates them by clusters, and then distribute them
 from these clusters. As at allocation time the diversity of types (and sizes)
@@ -776,11 +776,11 @@ useless. And beyond that, if `RString` had 4 pointers, `RObject` would use less
 that half the size of the shared entity. As you would expect, it's wasteful.
 
 So the received merit for `iv_tbl` is more or less saving memory and speeding
-up. Furthermore we do not know if it is used often or not. In the facts,
+up. Furthermore we do not know if it is used often or not. In fact,
 `generic_iv_tbl` was not introduced before `ruby` 1.2, so it was not possible
-to use instance variables in `String` or `Array` at this time. Nevertheless it
-was not so much of a problem. Making large amounts of memory useless just for
-such a functionality looks stupid.
+to use instance variables in `String` or `Array` at that time. Nevertheless, it
+was not much of a problem. Making large amounts of memory useless just for
+such functionality looks stupid.
 
 If you take all this into consideration, you can conclude that increasing the
 size of object structures does not do any good.
