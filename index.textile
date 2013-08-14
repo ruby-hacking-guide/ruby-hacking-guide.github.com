@@ -9,8 +9,8 @@ some diagrams may be missing and some sentences may be a little
 rough. But it also means they are in open review, so do not hesitate
 to address issues on the mailing list.
 
-* Preface
-* Introduction
+* "Preface":preface.html
+* "Introduction":intro.html
 
 h3. Part 1: Objects
 
