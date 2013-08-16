@@ -895,7 +895,7 @@ Let's first start our reading with its caller, `rb_define_class_id()`.
 
 `rb_class_new()` was a function that creates a class with `super` as
 its superclass. `rb_name_class()`'s name means it names a class, but
-for the moment we do note care about names so we'll skip it. After
+for the moment we do not care about names so we'll skip it. After
 that there's the `rb_make_metaclass()` in question. I'm concerned by
 the fact that when called from `rb_singleton_class()`, the parameters
 were different. Last time was like this:
