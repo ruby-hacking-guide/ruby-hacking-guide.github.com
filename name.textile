@@ -9,8 +9,8 @@ h1. Chapter 3: Names and Name Table
 
 h2. `st_table`
 
-We've already examined `st_table` as a method table and an instance table. In
-this chapter let's look at the inner workings of `st_table`.
+`st_table` has already appeared several times as a method table and an instance
+table. In this chapter let's look at the structure of the `st_table` in detail.
 
 h3. Summary
 
@@ -19,7 +19,8 @@ table? It is a data structure that records one-to-one relations, for example, a
 variable name and its value, or a function name and its body, etc.
 
 However, data structures other than hash tables can, of course, record
-one-to-one relations. For example, a linked list will suffice for this purpose.
+one-to-one relations. For example, a list of the following structs will suffice
+for this purpose.
 
 <pre class="emlist">
 struct entry {
@@ -63,9 +64,10 @@ A hash table can be thought as the following: Let us think of an array with
 
 Then let us specify a function `f` that takes a key and produces an integer `i`
 from 0 to `n`-1 (0-63). We call this `f` a hash function. `f` when given the
-same key always produces the same `i`. For example, if we assume that the key
-is limited to positive integers, we can make the function `f` by dividing the
-key by 64. The remainder will always fall between 0 and 63.
+same key always produces the same `i`. For example, if we can assume that the
+key is limited to positive integers, when the key is divided by 64, the
+remainder should always fall between 0 and 63. Therefore, this calculating
+expression has a possibility of being the function `f`.
 
 When recording relationships, given a key, function `f` generates `i`, and
 places the value into index `i` of the array we have prepared. Index access
