@@ -105,34 +105,34 @@ Part 4: Peripheral around the evaluator
 
 Supplementary chapters are included at the beginning of each part when
 necessary. These provide a basic introduction for those who are not familiar
-with Ruby and the general mechanism of a language processing system. 
+with Ruby and the general mechanism of a language processing system.
 
 
 Now, we are going through the overview of the four main parts. The symbol in
-parentheses after the explanation indicates the difficulty gauge. They are (C),
+parentheses after the explanation indicates the difficulty gauge. They are ==(C)==,
 (B), (A) in order of easy to hard, (S) being the highest.
 
 h4. Part 1: Object
 
-Chapter 1: Focuses the basics of Ruby to get ready to accomplish Part 1. (C)
-Chapter 2: Gives concrete inner structure of Ruby objects. (C)
-Chapter 3: States about hash table. (C)
+Chapter 1: Focuses the basics of Ruby to get ready to accomplish Part 1. ==(C)==
+Chapter 2: Gives concrete inner structure of Ruby objects. ==(C)==
+Chapter 3: States about hash table. ==(C)==
 Chapter 4: Writes about Ruby class system. You may read through this chapter quickly at first, because it tells plenty of abstract stories. (A)
 Chapter 5: Shows the garbage collector which is responsible for generating and releasing objects. The first story in low-level series. (B)
-Chapter 6: Describes the implementation of global variables, class variables, and constants. (C)
-Chapter 7: Outline of the security features of Ruby. (C)
+Chapter 6: Describes the implementation of global variables, class variables, and constants. ==(C)==
+Chapter 7: Outline of the security features of Ruby. ==(C)==
 
 h4. Part 2: Syntactic analysis
 
-Chapter 8: Talks about almost complete specification of the Ruby language, in order to prepare for Part 2 and Part 3. (C)
+Chapter 8: Talks about almost complete specification of the Ruby language, in order to prepare for Part 2 and Part 3. ==(C)==
 Chapter 9: Introduction to @yacc@ required to read the syntax file at least. (B)
 Chapter 10: Look through the rules and physical structure of the parser. (A)
 Chapter 11: Explore around the peripherals of @lex_state@, which is the most difficult part of the parser. The most difficult part of this book. (S)
-Chapter 12: Finalization of Part 2 and connection to Part 3. (C)
+Chapter 12: Finalization of Part 2 and connection to Part 3. ==(C)==
 
 h4. Part 3: Evaluator
 
-Chapter 13: Describe the basic mechanism of the evaluator. (C)
+Chapter 13: Describe the basic mechanism of the evaluator. ==(C)==
 Chapter 14: Reads the evaluation stack that creates the main context of Ruby. (A)
 Chapter 15: Talks about search and initialization of methods. (B)
 Chapter 16: Defies the implementation of the iterator, the most characteristic feature of Ruby. (A)

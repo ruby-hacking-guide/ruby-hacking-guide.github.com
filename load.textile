@@ -591,7 +591,7 @@ load_file(fname, /* script=0 */)
         fclose(fp);
     }
     f = rb_file_open(fname, "r");       (B)
-    rb_compile_file(fname, f, 1);       (C)
+    rb_compile_file(fname, f, 1);       ==(C)==
     rb_io_close(f);
 }
 </pre>
@@ -609,7 +609,7 @@ loading error, but getting the errors related to `open`, for example
 `Errno::ENOENT`, `Errno::EACCESS`..., would be problematic. We are in
 `ruby.c` so we cannot stop a tag jump.
 
-(C) Using the parser interface `rb_compile_file()`, the program is
+==(C)== Using the parser interface `rb_compile_file()`, the program is
 read from an `IO` object, and compiled in a syntax tree. The syntax
 tree is added to `ruby_eval_tree` so there is no need to get the
 result.
@@ -942,7 +942,7 @@ First, let's start with the API code for the `dlopen` series.
 1324              dlclose(handle);
 1325              goto failed;
 1326          }
-1327          /* (C)Init_xxxx()を呼ぶ */
+1327          /* ==(C)==Init_xxxx()を呼ぶ */
 1328          (*init_fct)();
 1329
 1330          return handle;

@@ -1144,7 +1144,7 @@ the class can be found from the constant.
  193          rb_autoload_load(id);
  194      }
  195      if (rb_const_defined(rb_cObject, id)) {    /* (B) rb_const_defined */
- 196          klass = rb_const_get(rb_cObject, id);  /* (C) rb_const_get */
+ 196          klass = rb_const_get(rb_cObject, id);  /* ==(C)== rb_const_get */
  197          if (TYPE(klass) != T_CLASS) {
  198              rb_raise(rb_eTypeError, "%s is not a class", name);
  199          }                                      /* (D) rb_class_real */
@@ -1177,7 +1177,7 @@ libraries when some constants are accessed. This is done in the
 (B) We determine whether the `name` constant has been defined or not
 in `Object`.
 
-(C) Get the value of the `name` constant. This will be explained in
+==(C)== Get the value of the `name` constant. This will be explained in
 detail in chapter 6.
 
 (D) We've seen `rb_class_real()` some time ago. If the class `c` is a
@@ -1523,7 +1523,7 @@ h3. `include_class_new()`
  331      }
  332      klass->iv_tbl = RCLASS(module)->iv_tbl;     /* (B) */
  333      klass->m_tbl = RCLASS(module)->m_tbl;
- 334      klass->super = super;                       /* (C) */
+ 334      klass->super = super;                       /* ==(C)== */
  335      if (TYPE(module) == T_ICLASS) {             /* (D) */
  336          RBASIC(klass)->klass = RBASIC(module)->klass;   /* (D-1) */
  337      }
@@ -1546,7 +1546,7 @@ We're lucky there's nothing we do not know.
 (B) Transplant `module`'s instance variable and method tables into
 this class.
 
-(C) Make the including class's superclass (`super`) the super class of
+==(C)== Make the including class's superclass (`super`) the super class of
 this new class.
 
 In other words, this function creates an include class for the

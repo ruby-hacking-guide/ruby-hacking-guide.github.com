@@ -815,7 +815,7 @@ how to get them.
  976              return generic_ivar_get(obj, id);
  977          break;
  978      }
-      /* (C) */
+      /* ==(C)== */
  979      rb_warning("instance variable %s not initialized", rb_id2name(id));
  980
  981      return Qnil;

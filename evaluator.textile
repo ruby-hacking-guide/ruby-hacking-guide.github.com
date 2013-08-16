@@ -623,7 +623,7 @@ if (RTEST(rb_eval(self, node->nd_cond))) {     (A)
     RETURN(rb_eval(self, node->nd_body));      (B)
 }
 else {
-    RETURN(rb_eval(self, node->nd_else));      (C)
+    RETURN(rb_eval(self, node->nd_else));      ==(C)==
 }
 </pre>
 
@@ -633,7 +633,7 @@ testing its value with @RTEST()@ .
 I've mentioned that @RTEST()@ is a macro to test whether or not
 a @VALUE@ is true of Ruby.
 If that was true, evaluating the @then@ side clause at (B).
-If false, evaluating the @else@ side clause at (C).
+If false, evaluating the @else@ side clause at ==(C)==.
 
 
 In addition, I've mentioned that @if@ statement of Ruby also has its own value,

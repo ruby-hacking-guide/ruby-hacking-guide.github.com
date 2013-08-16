@@ -1493,7 +1493,7 @@ This hook is called "finalizer".
  890                  }
  891                  n++;
  892              }
- 893  (C)         else if (RBASIC(p)->flags == FL_MARK) {
+ 893  ==(C)==         else if (RBASIC(p)->flags == FL_MARK) {
  894                  /* the objects that need to finalize */
  895                  /* are left untouched */
  896              }
@@ -1565,7 +1565,7 @@ It means that while executing the finalizers, one cannot use the hooked objects.
 The `for` in the last half is the main finalizing procedure.
 The `if` in the first half is the case when the execution could not be moved to
 the Ruby program for various reasons.
-The objects whose finalization is deferred will be appear in the route (C) of
+The objects whose finalization is deferred will be appear in the route ==(C)== of
 the previous list.
 
 

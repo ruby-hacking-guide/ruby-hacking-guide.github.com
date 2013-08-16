@@ -1834,7 +1834,7 @@ h4. ヒアドキュメント
 2982      lex_strterm = rb_node_newnode(NODE_HEREDOC,
 2983                          rb_str_new(tok(), toklen()),  /* nd_lit */
 2984                          len,                          /* nd_nth */
-2985          /*(C)*/       lex_lastline);                /* nd_orig */
+2985          /*==(C)==*/       lex_lastline);                /* nd_orig */
 2986
 2987      return term == '`' ? tXSTRING_BEG : tSTRING_BEG;
 2988  }
@@ -1853,7 +1853,7 @@ h4. ヒアドキュメント
 (B)そしていきなり`lex_p`を行の末尾まで飛ばす。
 ということは、読み込み中の行のうち開始記号の後が読み捨てられて
 しまっている。この残りの部分はいつパースするのだろう。
-その謎の答えは(C)で`lex_lastline`(読み込み中の行)と
+その謎の答えは==(C)==で`lex_lastline`(読み込み中の行)と
 `len`(既に読んだ長さ)を保存しているところにヒントがある。
 
 では`heredoc_identifier()`前後の動的コールグラフを以下に簡単に示す。
@@ -1885,7 +1885,7 @@ here_document(NODE *here)
             line = lex_lastline;     /*(A)*/
             rb_str_cat(str, RSTRING(line)->ptr, RSTRING(line)->len);
             lex_p = lex_pend;        /*(B)*/
-            if (nextc() == -1) {     /*(C)*/
+            if (nextc() == -1) {     /*==(C)==*/
                 goto error;
             }
         } while (読み込み中の行が終了記号と等しくない);
@@ -1903,11 +1903,11 @@ here_document(NODE *here)
 `rb_str_cat()`はRubyの文字列の末尾に`char*`を連結する関数だ。
 つまり(A)では現在読み込み中の行`lex_lastline`を`str`に連結している。
 連結したらもう今の行は用済みだ。(B)で`lex_p`をいきなり行末に
-飛ばす。そして(C)が問題で、ここでは終了チェックをしているように
+飛ばす。そして==(C)==が問題で、ここでは終了チェックをしているように
 見せかけつつ実は次の「行」を読み込んでいるのだ。思い出してほしいの
 だが、`nextc()`は行が読み終わっていると勝手に次の行を読み込むという
 仕様だった。だから(B)で強制的に行を終わらせているので
-(C)で`lex_p`は次の行に移ることになる。
+==(C)==で`lex_p`は次の行に移ることになる。
 
 そして最後に`do`〜`while`ループを抜けて`heredoc_restore()`だ。
 
