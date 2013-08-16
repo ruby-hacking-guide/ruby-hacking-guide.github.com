@@ -636,7 +636,7 @@ pre(longlist). 4173                  struct kwtable *kw;
 4188                              return kDO_BLOCK;
 4189                          return kDO;
 4190                      }
-4191                      if (state == EXPR_BEG)  /*** ここ ***/
+4191                      if (state == EXPR_BEG)  /*** Here ***/
 4192                          return kw->id[0];
 4193                      else {
 4194                          if (kw->id[0] != kw->id[1])
@@ -1466,7 +1466,7 @@ This indicates a transition occurring during parser action. According to this,
 for some reason an action is executed after reading the `')'` a transition to
 `EXPR_ENDARG` occurs and `'{'` is nicely changed into `tLBRACE_ARG` This is
 actually a pretty high-level technique – indiscriminately (ab)using
-_[活用\逆用 :)]_ the LALR(1) up to the (1).
+the LALR(1) up to the (1).
 
 h4. Abusing the lookahead
 
