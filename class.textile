@@ -1000,7 +1000,7 @@ h3. Class of a class of a class
 You've understood the working of class methods inheritance, but by
 doing that, in the opposite some questions have appeared. What is the
 class of a class's singleton class? To do this we can try
-debugging. I've made the figure 7 from the results of this
+debugging. I've made figure 7 from the results of this
 investigation.
 
 !images/ch_class_mmm.png(Class of a class's singleton class)!
