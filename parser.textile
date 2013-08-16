@@ -345,7 +345,7 @@ Syntax OK
 
 Strange, it worked! What actually happens is this: consecutive newlines are simply discarded by the scanner, which returns only the first newline in a series.
 
-By the way, although we said that `program` is the same as `compstmt`, if that was really true, you would question why `compstmt` exists at all. Actually, the distinction is there only for execution of semantic actions. `program` exists to execute any semantic actions which should be done once in the processing of an entire program. If it was only a question of parsing, `program` could be omitted with no problems at all. 
+By the way, although we said that `program` is the same as `compstmt`, if that was really true, you would question why `compstmt` exists at all. Actually, the distinction is there only for execution of semantic actions. `program` exists to execute any semantic actions which should be done once in the processing of an entire program. If it was only a question of parsing, `program` could be omitted with no problems at all.
 
 To generalize this point, the grammar rules can be divided into 2 groups: those which are needed for parsing the program structure, and those which are needed for execution of semantic actions. The `none` rule which was mentioned earlier when talking about `stmts` is another one which exists for executing actions -- it's used to return a `NULL` pointer for an empty list of type `NODE*`.
 

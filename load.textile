@@ -638,7 +638,7 @@ can be open, but in fact during the loading process other functions
 like for example `rb_find_file_ext()` also do checks using `open`. How
 many times is `open()` called in the whole process?
 
-If you're wondering that, it's just a matter of having the right program available to count and see. You can easily find out using a system call tracer. On Linux, the tool to use would be `strace`; on Solaris, `truss`; or on BSD, `ktrace` or `truss`. 
+If you're wondering that, it's just a matter of having the right program available to count and see. You can easily find out using a system call tracer. On Linux, the tool to use would be `strace`; on Solaris, `truss`; or on BSD, `ktrace` or `truss`.
 
 というように
 OSによって名前がてんでバラバラなのだが、Googleで検索すればすぐ見付かる
@@ -796,9 +796,9 @@ By the way, what is `gcc` actually doing here? Usually we just say is "compiles"
 
 h3. 真にダイナミックなリンク
 
-And finally we get into our main topic. The "dynamic" in "dynamic linking" naturally means it "occurs at execution time", but what people usually refer to as "dynamic linking" is pretty much decided already at compile time. For example, the names of the needed functions, and which library they can be found in, are already known. For instance, if you need `cos()`, you know it's in `libm`, so you use `gcc -lm`. If you didn't specify the correct library at compile time, you'd get a link error. 
+And finally we get into our main topic. The "dynamic" in "dynamic linking" naturally means it "occurs at execution time", but what people usually refer to as "dynamic linking" is pretty much decided already at compile time. For example, the names of the needed functions, and which library they can be found in, are already known. For instance, if you need `cos()`, you know it's in `libm`, so you use `gcc -lm`. If you didn't specify the correct library at compile time, you'd get a link error.
 
-But extension libraries are different. Neither the names of the needed functions, or the name of the library which defines them are known at compile time. 
+But extension libraries are different. Neither the names of the needed functions, or the name of the library which defines them are known at compile time.
 文字列をプログラムの実
 行中に組み立ててロード・リンクしなければいけないのである。つまり先程の
 言葉で言う「論理結合」すらも全て実行時に行わなければならない。そのため

@@ -33,7 +33,7 @@ included to help understand the topics.
 The main themes of this book are the first and the second point above. Though,
 what I want to emphasize the most is the third one: To acquire skill in reading
 source code. I dare to say it's a "hidden" theme. I will explain why we need
-this. 
+this.
 
 
 It is often said "To be a skilled programmer, you should read source code
@@ -56,14 +56,14 @@ source code. When I started writing this book, I had some experience with the
 Ruby language, but I did not fully understand the inner structure of the @ruby@
 implementation. In other words, this book begins exploring @ruby@ from the same
 starting place as the reader. This book is the summary of the process and
-results of my code analysis from that point. 
+results of my code analysis from that point.
 
 
 I asked Yukihiro Matsumoto, the author of @ruby@, for supervision. But I
 thought the spirit of this book would be lost if each analysis was monitored by
 the author of the language himself. Therefore I limited his review to the final
 stage of writing. In this way, I tried to assure the correctness of the
-contents, keeping the goal of reading code alive at the same time. 
+contents, keeping the goal of reading code alive at the same time.
 
 To be honest, this book is not easy. In the very least, it is limited in its
 simplicity by the inherent complexity of its aim. However, this complexity may
@@ -73,24 +73,24 @@ that you know the answer to in a heartbeat? How about a suspense novel whose
 criminal you can guess halfway through? If you really want to come to new
 knowledge, you need to solve a problem engaging all your capacities. This is
 the book that lets you practice such idealism exhaustively.  "I think,
-therefore it's fun!" Everybody who finds it fun gives pleasure to the author. 
+therefore it's fun!" Everybody who finds it fun gives pleasure to the author.
 
 h2. Target audience
 
 Firstly, knowledge about the Ruby language isn't required. However, since the
 knowledge of the Ruby language is absolutely necessary to understand certain
 explanations of its structure, supplementary explanations of the language are
-inserted here and there. 
+inserted here and there.
 
 
 Knowledge about the C language is required, to some extent. I assume you have
 experience calling @malloc()@ to assign a list or stack, and have used function
-pointer at least a few times. 
+pointer at least a few times.
 
 
 This book doesn't provide a proper introduction to an object-oriented language.
 You will have a difficult time if you don't know the basics of at least one
-object-oriented language. Furthermore, some examples are given in Java and C++. 
+object-oriented language. Furthermore, some examples are given in Java and C++.
 
 h2. Structure of this book
 
@@ -157,7 +157,7 @@ for confirmation of compiling and testing the basic operation. The details of
 this build test are given in @ doc/buildtest.html@ in the attached CD-ROM.
 However, it doesn't necessarily assume the probability of the execution even
 under the same environment listed in the table. The author doesn't guarantee
-in any form  the execution of @ruby@. 
+in any form  the execution of @ruby@.
 
 
 BeOS 5 Personal Edition/i386
@@ -192,9 +192,9 @@ Windows XP (Visual C++.NET, MinGW+Cygwin)
 
 These numerous tests aren't of a lone effort by the author.  Those test build
 couldn't be achieved without magnificent cooperations by the people listed
-below. 
+below.
 
-I'd like to extend warmest thanks from my heart. 
+I'd like to extend warmest thanks from my heart.
 
 
 Tietew
@@ -222,7 +222,7 @@ please be advised to contact the author by e-mail: @aamine@loveruby.net@.
 
 h2. Web site
 
-The web site for this book is @http://i.loveruby.net/ja/rhg/@. 
+The web site for this book is @http://i.loveruby.net/ja/rhg/@.
 I will add information about related programs and additional documentation, as
 well as errata. In addition, I'm going to publisize the first few chapters of
 this book at the same time of the release. I will look for a certain
@@ -237,57 +237,57 @@ willingly approved me to publish a book about analyzing @ruby@, but also he
 agreed to supervise the content of it. In addition, he helped my stay in
 Florida with simultaneous translation. There are plenty of things beyond
 enumeration I have to say thanks to him. Instead of writing all the things, I
-give this book to him. 
+give this book to him.
 
 
 Next, I would like to thank arton, who proposed me to publish this book. The
 words of arton always moves me. One of the things I'm currently struggled due
-to his words is that I have no reason I don't get a .NET machine. 
+to his words is that I have no reason I don't get a .NET machine.
 
 
 Koji Arai, the 'captain' of documentation in the Ruby society, conducted a
 scrutiny review as if he became the official editor of this book while I was
-not told so. I thank all his review. 
+not told so. I thank all his review.
 
 
 Also I'd like to mention those who gave me comments, pointed out mistakes and
 submitted proposals about the construction of the book throughout all my work.
 
-Tietew, 
-Yuya, 
-Kawaji, 
-Gotoken, 
-Tamura, 
-Funaba, 
-Morikyu, 
-Ishizuka, 
-Shimomura, 
-Kubo, 
-Sukeda, 
-Nishiyama, 
-Fujimoto, 
-Yanagawa, 
-(I'm sorry if there's any people missing), 
-I thank all those people contributed. 
+Tietew,
+Yuya,
+Kawaji,
+Gotoken,
+Tamura,
+Funaba,
+Morikyu,
+Ishizuka,
+Shimomura,
+Kubo,
+Sukeda,
+Nishiyama,
+Fujimoto,
+Yanagawa,
+(I'm sorry if there's any people missing),
+I thank all those people contributed.
 
 
 As a final note, I thank Otsuka , Haruta, and Kanemitsu who you for arranging
 everything despite my broke deadline as much as four times, and that the
-manuscript exceeded 200 pages than originally planned. 
+manuscript exceeded 200 pages than originally planned.
 
 
 I cannot expand the full list here to mention the name of all people
 contributed to this book, but I say that I couldn't successfully publish this
 book without such assistance. Let me take this place to express my
-appreciation. Thank you very much. 
+appreciation. Thank you very much.
 
-p(=right). 
+p(=right).
 
 
 If you want to send remarks, suggestions and reports of typographcal errors,
-please address to " <aamine@loveruby.net>":mailto:aamine@loveruby.net. 
+please address to " <aamine@loveruby.net>":mailto:aamine@loveruby.net.
 
 
 ""Rubyソースコード完全解説" can be reserved/ordered at ImpressDirect. ":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721"(Jump to the introduction page)":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
 
-Copyright (c) 2002-2004 Minero Aoki, All rights reserved. 
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

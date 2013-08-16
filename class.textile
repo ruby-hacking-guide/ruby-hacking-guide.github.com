@@ -171,7 +171,7 @@ end
 
 h3. Singleton methods definition
 
-We can define methods that are specific to a single object instance. 
+We can define methods that are specific to a single object instance.
 They are called singleton methods. As I used `File.unlink` as
 an example in chapter 1 "Ruby language minimum", I first wanted to
 show it here, but for a particular reason we'll look at `File.link`
