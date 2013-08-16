@@ -13,7 +13,16 @@ module Jekyll::Converters
       # try to enable the <code> syntax of the original RubyForge project,
       # but not fully.
       lines = content.lines
-      content = lines.map { |line| line.gsub(RHG_CODE_RE) { "<code>#{$1}</code>" } }.join
+      skips = []
+      skips << "cvs diff parse.y" # chapter 11
+      skips << "69      EXPR_DOT,      /*" # chapter 11
+      content = lines.map do |line|
+        if skips.any? {|s| line.include? s }
+          line
+        else
+          line.gsub(RHG_CODE_RE) { "<code>#{$1}</code>" }
+        end
+      end.join
 
       # try to apply the style for images of the original book
       figc = 0
