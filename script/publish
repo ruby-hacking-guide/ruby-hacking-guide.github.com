@@ -101,6 +101,6 @@ epub = EeePub.make do
   nav navigation
 end
 
-sha = `git rev-parse HEAD`
+sha = `git rev-parse HEAD`[0..5]
 epub.save("#{GUIDE_DIR}/ebooks/rgh-#{today}_#{sha}.epub")
 FileUtils.rm_rf("#{TEMP_DIR}")
