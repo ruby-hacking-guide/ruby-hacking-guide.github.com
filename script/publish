@@ -7,18 +7,19 @@
 # Usage is simple:
 #
 #   gem install eeepub
-#   ruby ./epub.rb
+#   ./script/publish
 
 require 'eeepub'
 require 'date'
 require 'fileutils'
 
 today = Date.today
-system("../jekyll build")
+system("jekyll build")
 
 GUIDE_DIR = File.expand_path("../..", __FILE__)
 ORIGINAL_DIR = "#{GUIDE_DIR}/_site"
 TEMP_DIR = "epub_tmp"
+EBOOK_DIR = File.join GUIDE_DIR, "ebooks"
 
 FileUtils.mkdir_p("#{TEMP_DIR}/images")
 FileUtils.cp(Dir["#{ORIGINAL_DIR}/images/*"], "#{TEMP_DIR}/images")
@@ -101,6 +102,8 @@ epub = EeePub.make do
   nav navigation
 end
 
+
+FileUtils.mkdir_p EBOOK_DIR
 sha = `git rev-parse HEAD`[0..5]
-epub.save("#{GUIDE_DIR}/ebooks/rgh-#{today}_#{sha}.epub")
+epub.save("#{EBOOK_DIR}/rgh-#{today}_#{sha}.epub")
 FileUtils.rm_rf("#{TEMP_DIR}")
