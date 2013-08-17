@@ -1,2 +1,3 @@
 redcloth:
   hard_breaks: false
+exclude: ["ebooks", "script", "original_repo"]
