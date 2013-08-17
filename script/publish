@@ -14,23 +14,31 @@ require 'date'
 require 'fileutils'
 
 today = Date.today
-system("jekyll build")
-FileUtils.mkdir_p("epub_tmp/images")
-FileUtils.cp(Dir["_site/images/*"], "epub_tmp/images")
-FileUtils.mkdir_p("epub_tmp/css")
-FileUtils.cp("_site/css/styles.css", "epub_tmp/css")
-f = File.open("epub_tmp/css/styles.css", "a+")
-f.puts(<<EOS)
-/* epub patch */
-body {width:100%;}
-p {width:100%;}
-EOS
-f.close
-Dir["_site/*.html"].each do |f|
+system("../jekyll build")
+
+GUIDE_DIR = File.expand_path("../..", __FILE__)
+ORIGINAL_DIR = "#{GUIDE_DIR}/_site"
+TEMP_DIR = "epub_tmp"
+
+FileUtils.mkdir_p("#{TEMP_DIR}/images")
+FileUtils.cp(Dir["#{ORIGINAL_DIR}/images/*"], "#{TEMP_DIR}/images")
+FileUtils.mkdir_p("#{TEMP_DIR}/css")
+FileUtils.cp("#{ORIGINAL_DIR}/css/styles.css", "#{TEMP_DIR}/css")
+
+File.open("#{TEMP_DIR}/css/styles.css", "a+") do |f|
+  f.puts <<-EOS.gsub(/^\s*/, "")
+  /* epub patch */
+  body {width:100%;}
+  p {width:100%;}
+  EOS
+end
+
+Dir["#{ORIGINAL_DIR}/*.html"].each do |f|
   old = File.read(f)
   new = old.gsub(%r("/css/styles.css"), %q("css/styles.css"))
-  File.write("epub_tmp/#{File.basename(f)}", new)
+  File.write("#{TEMP_DIR}/#{File.basename(f)}", new)
 end
+
 navigation = [
   {:label => "Preface", :content => "preface.html"},
   {:label => "Introduction - translation in progress", :content => "intro.html"},
@@ -40,7 +48,6 @@ navigation = [
     {:label => "Chapter 3: Names and name tables", :content => "name.html"},
     {:label => "Chapter 4: Classes and modules", :content => "class.html"},
     {:label => "Chapter 5: Garbage collection", :content => "gc.html"},
-    {:label => "Chapter 5: Garbage collection - unfinished alternative translation", :content => "chapter05.html"},
     {:label => "Chapter 6: Variables and constants", :content => "variable.html"},
     {:label => "Chapter 7: Security", :content => "security.html"}
   ]},
@@ -64,19 +71,23 @@ navigation = [
   ]},
   {:label => "Final chapter: Ruby's future - translation unstarted", :content => "fin.html"}
 ]
-file_list = Dir["epub_tmp/images/*"].map{|f| {f => "images"}}
-file_list.push("epub_tmp/css/styles.css" => "css")
+
+file_list = Dir["#{TEMP_DIR}/images/*"].map{|f| {f => "images"}}
+file_list.push("#{TEMP_DIR}/css/styles.css" => "css")
+
 def scan_navigation(nav, acc)
   nav.each do |n|
     if n[:content]
-      acc.push("epub_tmp/#{n[:content]}")
+      acc.push("#{TEMP_DIR}/#{n[:content]}")
     end
     if n[:nav]
       scan_navigation(n[:nav], acc)
     end
   end
 end
+
 scan_navigation(navigation, file_list)
+
 epub = EeePub.make do
   title       'Ruby Hacking Guide'
   creator     'Minero AOKI, Vincent ISAMBART, Clifford Escobar CAOILE'
@@ -89,5 +100,7 @@ epub = EeePub.make do
   files file_list
   nav navigation
 end
-epub.save("rgh-#{today}.epub")
-FileUtils.rm_rf("epub_tmp")
+
+sha = `git rev-parse HEAD`
+epub.save("#{GUIDE_DIR}/ebooks/rgh-#{today}_#{sha}.epub")
+FileUtils.rm_rf("#{TEMP_DIR}")
