@@ -25,7 +25,7 @@ Running the site locally
 $ git clone https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com
 $ gem install jekyll
 $ gem install RedCloth
-$ jekyll serve --config _config.local.yml # this compiles files and starts a server on localhost:4000.
+$ jekyll serve # this compiles files and starts a server on localhost:4000.
 ```
 
 
@@ -33,7 +33,7 @@ For Bundler users
 ```sh
 $ git clone https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com
 $ bundle install
-$ jekyll serve --config _config.local.yml # this compiles files and starts a server on localhost:4000.
+$ jekyll serve # this compiles files and starts a server on localhost:4000.
 ```
 
 

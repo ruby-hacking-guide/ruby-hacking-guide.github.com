@@ -14,7 +14,7 @@ require 'date'
 require 'fileutils'
 
 today = Date.today
-system("jekyll build --config _config.local.yml")
+system("jekyll build")
 
 GUIDE_DIR = File.expand_path("../..", __FILE__)
 ORIGINAL_DIR = "#{GUIDE_DIR}/_site"
