@@ -1,7 +1,3 @@
----
-layout: default
----
-
 h2. Preface
 
 

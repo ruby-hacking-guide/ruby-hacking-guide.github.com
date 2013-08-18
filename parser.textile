@@ -1,7 +1,3 @@
----
-layout: default
-title: Parser
----
 Translated by Robert GRAVINA & ocha-
 
 h1. Chapter 10: Parser

@@ -1,8 +1,3 @@
----
-layout: default
----
-  
-  
 第20章 Rubyの未来
 
 h1. 第20章 Rubyの未来

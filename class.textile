@@ -1,8 +1,3 @@
----
-layout: default
-title: Classes and modules
----
-
 Translated by Vincent ISAMBART
 
 h1. Chapter 4: Classes and modules

@@ -1,7 +1,3 @@
----
-layout: default
-title: Security
----
 Translated by Clifford Escobar CAOILE & ocha-
 
 h1. Chapter 7: Security

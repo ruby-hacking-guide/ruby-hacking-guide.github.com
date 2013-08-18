@@ -1,8 +1,3 @@
----
-layout: default
-title: "Chapter 15: Methods"
----
-
 h1. Chapter 15: Methods
 
 In this chapter, I'll talk about method searching and invoking.

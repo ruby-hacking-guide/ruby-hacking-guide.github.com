@@ -1,0 +1,5 @@
+redcloth:
+  hard_breaks: false
+exclude: ["ebooks", "script", "original_repo", "htmls", "Gemfile", "Gemfile.lock", "dictionary.txt", "README.md"]
+source: tmp_src
+destination: tmp_dest
