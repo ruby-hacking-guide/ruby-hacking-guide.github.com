@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>  Objects - Structure of Ruby objects |  Ruby Hacking Guide </title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <div id="main">
+
+    <header>
+      <h1><a href="/">Ruby Hacking Guide</a></h1>
+    <header>
+
+    <nav role="navigation">
+      <ul>
+      </ul>
+    </nav>
+
+    <p>Translated by Vincent <span class="caps">ISAMBART</span></p>
+<h1>Chapter 2: Objects</h1>
+<h2>Structure of Ruby objects</h2>
+<h3>Guideline</h3>
+<p>In this chapter we will begin exploring the <code>ruby</code> source code, starting by
+studying the declaration of object structures.</p>
+<p>What do objects need to exist? There are many answers to this question, but for
+our purposes an object only needs three things:</p>
+<ol>
+	<li>The ability to differentiate itself from other objects (an identity)</li>
+	<li>The ability to respond to messages (methods)</li>
+	<li>The ability to store internal state (instance variables)</li>
+</ol>
+<p>In this chapter, we are going to confirm these three features one by one.</p>
+<p>The most interesting file in this quest will be <code>ruby.h</code>, but we will also
+briefly look at other files such as <code>object.c</code>, <code>class.c</code> or <code>variable.c</code>.</p>
+<h3>Structure of <code>VALUE</code> and objects</h3>
+<p>In <code>ruby</code>, the contents of an object are expressed by a <code>C</code> structure, always
+handled via a pointer. A different kind of structure is used for each class, but
+the pointer type will always be <code>VALUE</code> (figure 1).</p>
+<p class="image">
+<p><img src="images/ch_object_value.png" alt="(value)"><br>
+Figure 1: <code>VALUE</code> and structure</p>
+</p>
+<p>Here is the definition of <code>VALUE</code>:</p>
+<p>▼ <code>VALUE</code></p>
+<pre class="longlist">
+  71  typedef unsigned long VALUE;
+
+(ruby.h)
+</pre>
+<p>In practice, a <code>VALUE</code> must be cast to different types of structure pointer.
+Therefore if an <code>unsigned long</code> and a pointer have a different size, <code>ruby</code>
+will not work well. Strictly speaking, it will not work for pointer types
+bigger than <code>sizeof(unsigned long)</code>. Fortunately, no recent machine feature
+this capability, even if some time ago there were quite a few of them.</p>
+<p>Several structures are available according to object classes:</p>
+<table>
+	<tr>
+		<td> <code>struct RObject</code>		</td>
+		<td> all things for which none of the following
+						  applies </td>
+	</tr>
+	<tr>
+		<td> <code>struct RClass</code>		</td>
+		<td> class object </td>
+	</tr>
+	<tr>
+		<td> <code>struct RFloat</code>		</td>
+		<td> small numbers </td>
+	</tr>
+	<tr>
+		<td> <code>struct RString</code>		</td>
+		<td> string </td>
+	</tr>
+	<tr>
+		<td> <code>struct RArray</code>		</td>
+		<td> array </td>
+	</tr>
+	<tr>
+		<td> <code>struct RRegexp</code>		</td>
+		<td> regular expression </td>
+	</tr>
+	<tr>
+		<td> <code>struct RHash</code>		</td>
+		<td> hash table </td>
+	</tr>
+	<tr>
+		<td> <code>struct RFile</code>		</td>
+		<td> <code>IO</code>, <code>File</code>, <code>Socket</code>, etc&#8230; </td>
+	</tr>
+	<tr>
+		<td> <code>struct RData</code>		</td>
+		<td> all the classes defined at C level, except the
+						  ones mentioned above </td>
+	</tr>
+	<tr>
+		<td> <code>struct RStruct</code>		</td>
+		<td> Ruby&#8217;s <code>Struct</code> class </td>
+	</tr>
+	<tr>
+		<td> <code>struct RBignum</code>		</td>
+		<td> big integers </td>
+	</tr>
+</table>
+<p>For example, for an string object, <code>struct RString</code> is used, so we will have
+something like the following.</p>
+<p class="image">
+<p><img src="images/ch_object_string.png" alt="(string)"><br>
+Figure 2: String object</p>
+</p>
+<p>Let&#8217;s look at the definition of a few object structures.</p>
+<p>▼ Examples of object structure</p>
+<pre class="longlist">
+      /* structure for ordinary objects */
+ 295  struct RObject {
+ 296      struct RBasic basic;
+ 297      struct st_table *iv_tbl;
+ 298  };
+
+      /* structure for strings (instance of String) */
+ 314  struct RString {
+ 315      struct RBasic basic;
+ 316      long len;
+ 317      char *ptr;
+ 318      union {
+ 319          long capa;
+ 320          VALUE shared;
+ 321      } aux;
+ 322  };
+
+      /* structure for arrays (instance of Array) */
+ 324  struct RArray {
+ 325      struct RBasic basic;
+ 326      long len;
+ 327      union {
+ 328          long capa;
+ 329          VALUE shared;
+ 330      } aux;
+ 331      VALUE *ptr;
+ 332  };
+
+(ruby.h)
+</pre>
+<p>Before looking at every one of them in detail, let&#8217;s begin with something more
+general.</p>
+<p>First, as <code>VALUE</code> is defined as <code>unsigned long</code>, it must be cast before
+being used. That&#8217;s why <code>Rxxxx()</code> macros have been made for each object
+structure. For example, for <code>struct RString</code> there is <code>RSTRING()</code>, for
+<code>struct RArray</code> there is <code>RARRAY()</code>, etc&#8230; These macros are used like this:</p>
+<pre class="emlist">
+
+VALUE str = ....;
+VALUE arr = ....;
+RSTRING(str)-&gt;len;   /* ((struct RString*)str)-&gt;len */
+RARRAY(arr)-&gt;len;    /* ((struct RArray*)arr)-&gt;len */
+</pre>
+<p>Another important point to mention is that all object structures start with a
+member <code>basic</code> of type <code>struct RBasic</code>. As a result, if you cast this <code>VALUE</code> to
+<code>struct RBasic*</code>, you will be able to access the content of <code>basic</code>, regardless
+of the type of structure pointed to by <code>VALUE</code>.</p>
+<p class="image">
+<p><img src="images/ch_object_rbasic.png" alt="(rbasic)"><br>
+Figure 3: <code>struct RBasic</code></p>
+</p>
+<p>You probably guessed that <code>struct RBasic</code> has been designed to contain some
+important information shared by all object structures. Here is the definition
+for <code>struct RBasic</code>:</p>
+<p>▼ <code>struct RBasic</code></p>
+<pre class="longlist">
+ 290  struct RBasic {
+ 291      unsigned long flags;
+ 292      VALUE klass;
+ 293  };
+
+(ruby.h)
+</pre>
+<p><code>flags</code> are multipurpose flags, mostly used to register the structure type
+(for instance <code>struct RObject</code>). The type flags are named <code>T_xxxx</code>, and can be
+obtained from a <code>VALUE</code> using the macro <code>TYPE()</code>. Here is an example:</p>
+<pre class="emlist">
+VALUE str;
+str = rb_str_new();    /* creates a Ruby string (its structure is RString) */
+TYPE(str);             /* the return value is T_STRING */
+</pre>
+<p>The names of these <code>T_xxxx</code> flags are directly linked to the corresponding type
+name, like <code>T_STRING</code> for <code>struct RString</code> and <code>T_ARRAY</code> for <code>struct RArray</code>.</p>
+<p>The other member of <code>struct RBasic</code>, <code>klass</code>, contains the class this object
+belongs to. As the <code>klass</code> member is of type <code>VALUE</code>, what is stored is (a
+pointer to) a Ruby object. In short, it is a class object.</p>
+<p class="image">
+<p><img src="images/ch_object_class.png" alt="(class)"><br>
+Figure 4: object and class</p>
+</p>
+<p>The relation between an object and its class will be detailed in the &#8220;Methods&#8221;
+section of this chapter.</p>
+<p>By the way, this member is named <code>klass</code> so as not to conflict with the reserved
+word <code>class</code> when the file is processed by a C++ compiler.</p>
+<h4>About structure types</h4>
+<p>I said that the type of structure is stored in the <code>flags</code> member of
+<code>struct Basic</code>. But why do we have to store the type of structure? It&#8217;s to be
+able to handle all different types of structure via <code>VALUE</code>. If you cast a
+pointer to a structure to <code>VALUE</code>, as the type information does not remain,
+the compiler won&#8217;t be able to help. Therefore we have to manage the type
+ourselves. That&#8217;s the consequence of being able to handle all the structure
+types in a unified way.</p>
+<p>OK, but the used structure is defined by the class so why are the structure
+type and class are stored separately? Being able to find the structure type
+from the class should be enough. There are two reasons for not doing this.</p>
+<p>The first one is (I&#8217;m sorry for contradicting what I said before), in fact
+there are structures that do not have a <code>struct RBasic</code> (i.e. they have no
+<code>klass</code> member). For example <code>struct RNode</code> that will appear in the second
+part of the book. However, <code>flags</code> is guaranteed to be in the beginning
+members even in special structures like this. So if you put the type of
+structure in <code>flags</code>, all the object structures can be differentiated in one
+unified way.</p>
+<p>The second reason is that there is no one-to-one correspondence between class
+and structure. For example, all the instances of classes defined at the Ruby
+level use <code>struct RObject</code>, so finding a structure from a class would require
+to keep the correspondence between each class and structure. That&#8217;s why it&#8217;s
+easier and faster to put the information about the type in the structure.</p>
+<h4>The use of <code>basic.flags</code></h4>
+<p>As limiting myself to saying that <code>basic.flags</code> is used for different things
+including the type of structure makes me feel bad, here&#8217;s a general
+illustration for it (figure 5). There is no need to understand everything
+right away, I just wanted to show its uses while it was bothering me.</p>
+<p class="image">
+<p><img src="images/ch_object_flags.png" alt="(flags)"><br>
+Figure 5: Use of <code>flags</code></p>
+</p>
+<p>When looking at the diagram, it looks like that 21 bits are not used on 32 bit
+machines. On these additional bits, the flags <code>FL_USER0</code> to <code>FL_USER8</code> are
+defined, and are used for a different purpose for each structure. In the
+diagram I also put <code>FL_USER0</code> (<code>FL_SINGLETON</code>) as an example.</p>
+<h3>Objects embedded in <code>VALUE</code></h3>
+<p>As I said, <code>VALUE</code> is an <code>unsigned long</code>. As <code>VALUE</code> is a pointer, it may look
+like <code>void*</code> would also be all right, but there is a reason for not doing
+this. In fact, <code>VALUE</code> can also not be a pointer. The 6 cases for which
+<code>VALUE</code> is not a pointer are the following:</p>
+<ol>
+	<li>small integers</li>
+	<li>symbols</li>
+	<li><code>true</code></li>
+	<li><code>false</code></li>
+	<li><code>nil</code></li>
+	<li><code>Qundef</code></li>
+</ol>
+<p>I&#8217;ll explain them one by one.</p>
+<h4>Small integers</h4>
+<p>Just like in Ruby itself, all data are objects. Likewise, integers are objects.
+However during normal program execution, lots of instances of integers are
+created. Using structures to express them would risk slowing down execution. For
+example, if we created 50000 objects when incrementing from 0 to 50000 we&#8217;d
+definitely have to consider the performance issues.</p>
+<p>That&#8217;s why in <code>ruby</code>, to some extent, small integers are treated specially and
+embedded directly into <code>VALUE</code>. &#8220;Small&#8221; means signed integers that can be held
+in <code>sizeof(VALUE)*8-1</code> bits. In other words, on 32 bits machines, the integers
+have 1 bit for the sign, and 30 bits for the integer part. Integers in this
+range will belong to the <code>Fixnum</code> class and the other integers will belong to
+the <code>Bignum</code> class.</p>
+<p>Let&#8217;s see in practice the <code>INT2FIX()</code> macro that converts from a C <code>int</code>
+to a <code>Fixnum</code>, and confirm that <code>Fixnum</code> are directly embedded in <code>VALUE</code>.</p>
+<p>▼ <code>INT2FIX</code></p>
+<pre class="longlist">
+ 123  #define INT2FIX(i) ((VALUE)(((long)(i))&lt;&lt;1 | FIXNUM_FLAG))
+ 122  #define FIXNUM_FLAG 0x01
+
+(ruby.h)
+</pre>
+<p>In brief, shift 1 bit to the left, and bitwise or it with 1.</p>
+<table>
+	<tr>
+		<td> <code> 110100001000</code> </td>
+		<td> before conversion </td>
+	</tr>
+	<tr>
+		<td> <code>1101000010001</code> </td>
+		<td> after conversion </td>
+	</tr>
+</table>
+<p>That means that <code>Fixnum</code> as <code>VALUE</code> will always be an odd number. On the other
+hand, as Ruby object structures are allocated with <code>malloc()</code>, they are
+generally arranged on addresses multiple of 4. So they do not overlap with the
+values of <code>Fixnum</code> as <code>VALUE</code>.</p>
+<p>Also, to convert <code>int</code> or <code>long</code> to <code>VALUE</code>, we can use macros like
+<code>INT2NUM()</code> or <code>LONG2NUM()</code>. Any conversion macro <code>XXXX2XXXX</code> with a name
+containing <code>NUM</code> can manage both <code>Fixnum</code> and <code>Bignum</code>. For example if
+<code>INT2NUM()</code> can&#8217;t convert an integer into a <code>Fixnum</code>, it will automatically
+convert it to <code>Bignum</code>. <code>NUM2INT()</code> will convert both <code>Fixnum</code> and <code>Bignum</code> to
+<code>int</code>. If the number can&#8217;t fit in an <code>int</code>, an exception will be raised, so
+there is no need to check the value range.</p>
+<h4>Symbols</h4>
+<p>What are symbols?</p>
+<p>As this question is quite troublesome to answer, let&#8217;s start with the reasons
+why symbols were necessary. First, let&#8217;s start with the <code>ID</code> type used inside
+<code>ruby</code>. It&#8217;s like this:</p>
+<p>▼ <code>ID</code></p>
+<pre class="longlist">
+  72  typedef unsigned long ID;
+
+(ruby.h)
+</pre>
+<p>This <code>ID</code> is a number having a one-to-one association with a string. However,
+in this world it&#8217;s not possible to have an association between all strings and
+a numerical value. That&#8217;s why they are limited to the one to one relationships
+inside one <code>ruby</code> process. I&#8217;ll speak of the method to find an <code>ID</code> in the
+next chapter &#8220;Names and name tables&#8221;.</p>
+<p>In language implementations, there are a lot of names to handle. Method names
+or variable names, constant names, file names in class names&#8230; It&#8217;s
+troublesome to handle all of them as strings (<code>char*</code>), because of memory
+management and memory management and memory management&#8230; Also, lots of
+comparisons would certainly be necessary, but comparing strings character by
+character will slow down the execution. That&#8217;s why strings are not handled
+directly, something will be associated and used instead. And generally that
+&#8220;something&#8221; will be integers, as they are the simplest to handle.</p>
+<p>These <code>ID</code> are found as symbols in the Ruby world. Up to <code>ruby 1.4</code>, the
+values of <code>ID</code> were converted to <code>Fixnum</code>, but used as symbols. Even today
+these values can be obtained using <code>Symbol#to_i</code>. However, as real use results
+came piling up, it was understood that making <code>Fixnum</code> and <code>Symbol</code> the same
+was not a good idea, so since 1.6 an independent class <code>Symbol</code> has been
+created.</p>
+<p><code>Symbol</code> objects are used a lot, especially as keys for hash tables. That&#8217;s
+why <code>Symbol</code>, like <code>Fixnum</code>, was made stored in <code>VALUE</code>. Let&#8217;s look at the
+<code>ID2SYM()</code> macro converting <code>ID</code> to <code>Symbol</code> object.</p>
+<p>▼ <code>ID2SYM</code></p>
+<pre class="longlist">
+ 158  #define SYMBOL_FLAG 0x0e
+ 160  #define ID2SYM(x) ((VALUE)(((long)(x))&lt;&lt;8|SYMBOL_FLAG))
+
+(ruby.h)
+</pre>
+<p>When shifting 8 bits left, <code>x</code> becomes a multiple of 256, that means a
+multiple of 4. Then after with a bitwise or (in this case it&#8217;s the same as
+adding) with <code>0x0e</code> (14 in decimal), the <code>VALUE</code> expressing the symbol is not
+a multiple of 4. Or even an odd number. So it does not overlap the range of
+any other <code>VALUE</code>. Quite a clever trick.</p>
+<p>Finally, let&#8217;s see the reverse conversion of <code>ID2SYM()</code>, <code>SYM2ID()</code>.</p>
+<p>▼ <code>SYM2ID()</code></p>
+<pre class="longlist">
+ 161  #define SYM2ID(x) RSHIFT((long)x,8)
+
+(ruby.h)
+</pre>
+<p><code>RSHIFT</code> is a bit shift to the right. As right shift may keep or not the sign
+depending of the platform, it became a macro.</p>
+<h4><code>true false nil</code></h4>
+<p>These three are Ruby special objects. <code>true</code> and <code>false</code> represent the boolean
+values. <code>nil</code> is an object used to denote that there is no object. Their
+values at the C level are defined like this:</p>
+<p>▼ <code>true false nil</code></p>
+<pre class="longlist">
+ 164  #define Qfalse 0        /* Ruby's false */
+ 165  #define Qtrue  2        /* Ruby's true */
+ 166  #define Qnil   4        /* Ruby's nil */
+
+(ruby.h)
+</pre>
+<p>This time it&#8217;s even numbers, but as 0 or 2 can&#8217;t be used by pointers, they
+can&#8217;t overlap with other <code>VALUE</code>. It&#8217;s because usually the first bloc of
+virtual memory is not allocated, to make the programs dereferencing a <code>NULL</code>
+pointer crash.</p>
+<p>And as <code>Qfalse</code> is 0, it can also be used as false at C level. In practice, in
+<code>ruby</code>, when a function returns a boolean value, it&#8217;s often made to return an
+<code>int</code> or <code>VALUE</code>, and returns <code>Qtrue</code>/<code>Qfalse</code>.</p>
+<p>For <code>Qnil</code>, there is a macro dedicated to check if a <code>VALUE</code> is <code>Qnil</code> or not,
+<code>NIL_P()</code>.</p>
+<p>▼ <code>NIL_P()</code></p>
+<pre>
+ 170  #define NIL_P(v) ((VALUE)(v) == Qnil)
+
+(ruby.h)
+</pre>
+<p>The name ending with <code>p</code> is a notation coming from Lisp denoting that it is a
+function returning a boolean value. In other words, <code>NIL_P</code> means &#8220;is the
+argument <code>nil</code>?&#8221;. It seems the &#8220;<code>p</code>&#8221; character comes from &#8220;predicate.&#8221; This
+naming rule is used at many different places in <code>ruby</code>.</p>
+<p>Also, in Ruby, <code>false</code> and <code>nil</code> are falsy (that is, they count as false in
+conditional statements) and all the other objects are truthy.
+However, in C, <code>nil</code> (<code>Qnil</code>) is true. That&#8217;s why in C a Ruby-style macro,
+<code>RTEST()</code>, has been created.</p>
+<p>▼ <code>RTEST()</code></p>
+<pre class="longlist">
+ 169  #define RTEST(v) (((VALUE)(v) &amp; ~Qnil) != 0)
+
+(ruby.h)
+</pre>
+<p>As in <code>Qnil</code> only the third lower bit is 1, in <code>~Qnil</code> only the third lower
+bit is 0. Then only <code>Qfalse</code> and <code>Qnil</code> become 0 with a bitwise and.</p>
+<p><code>!=0</code> has been added to be certain to only have 0 or 1, to satisfy the
+requirements of the glib library that only wants 0 or 1
+(<a href="http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-dev/11049">[ruby-dev:11049]</a>).</p>
+<p>By the way, what is the &#8216;<code>Q</code>&#8217; of <code>Qnil</code>? &#8216;R&#8217; I would have understood but why
+&#8216;<code>Q</code>&#8217;? When I asked, the answer was &#8220;Because it&#8217;s like that in Emacs.&#8221; I did
+not have the fun answer I was expecting&#8230;</p>
+<h4><code>Qundef</code></h4>
+<p>▼ <code>Qundef</code></p>
+<pre class="longlist">
+ 167  #define Qundef 6                /* undefined value for placeholder */
+
+(ruby.h)
+</pre>
+<p>This value is used to express an undefined value in the interpreter. It can&#8217;t
+be found at all at the Ruby level.</p>
+<h2>Methods</h2>
+<p>I already brought up the three important points of a Ruby object: having an
+identity, being able to call a method, and keeping data for each instance. In
+this section, I&#8217;ll explain in a simple way the structure linking objects and
+methods.</p>
+<h3><code>struct RClass</code></h3>
+<p>In Ruby, classes exist as objects during the execution. Of course. So there
+must be a structure for class objects. That structure is <code>struct RClass</code>. Its
+structure type flag is <code>T_CLASS</code>.</p>
+<p>As class and modules are very similar, there is no need to differentiate their
+content. That&#8217;s why modules also use the <code>struct RClass</code> structure, and are
+differentiated by the <code>T_MODULE</code> structure flag.</p>
+<p>▼ <code>struct RClass</code></p>
+<pre class="longlist">
+ 300  struct RClass {
+ 301      struct RBasic basic;
+ 302      struct st_table *iv_tbl;
+ 303      struct st_table *m_tbl;
+ 304      VALUE super;
+ 305  };
+
+(ruby.h)
+</pre>
+<p>First, let&#8217;s focus on the <code>m_tbl</code> (Method TaBLe) member. <code>struct st_table</code> is
+an hashtable used everywhere in <code>ruby</code>. Its details will be explained in the
+next chapter &#8220;Names and name tables&#8221;, but basically, it is a table mapping
+names to objects. In the case of <code>m_tbl</code>, it keeps the
+correspondence between the name (<code>ID</code>) of the methods possessed by this class
+and the methods entity itself.</p>
+<p>The fourth member <code>super</code> keeps, like its name suggests, the superclass. As
+it&#8217;s a <code>VALUE</code>, it&#8217;s (a pointer to) the class object of the superclass. In Ruby
+there is only one class that has no superclass (the root class): <code>Object</code>.</p>
+<p>However I already said that all <code>Object</code> methods are defined in the <code>Kernel</code>
+module, <code>Object</code> just includes it. As modules are functionally similar to
+multiple inheritance, it may seem having just <code>super</code> is problematic, but
+in <code>ruby</code> some clever changes are made to make it look like single
+inheritance. The details of this process will be explained in the fourth
+chapter &#8220;Classes and modules&#8221;.</p>
+<p>Because of this, <code>super</code> of the structure of <code>Object</code> points to <code>struct RClass</code>
+of the <code>Kernel</code> object. Only the <code>super</code> of Kernel is <span class="caps">NULL</span>. So contrary to
+what I said, if <code>super</code> is <span class="caps">NULL</span>, this <code>RClass</code> is the <code>Kernel</code> object (figure
+6).</p>
+<p class="image">
+<p><img src="images/ch_object_classtree.png" alt="(classtree)"><br>
+Figure 6: Class tree at the C level</p>
+</p>
+<h3>Methods search</h3>
+<p>With classes structured like this, you can easily imagine the method call
+process. The <code>m_tbl</code> of the object&#8217;s class is searched, and if the method was
+not found, the <code>m_tbl</code> of <code>super</code> is searched, and so on. If there is no more
+<code>super</code>, that is to say the method was not found even in <code>Object</code>, then it
+must not be defined.</p>
+<p>The sequential search process in <code>m_tbl</code> is done by <code>search_method()</code>.</p>
+<p>▼ <code>search_method()</code></p>
+<pre class="longlist">
+ 256  static NODE*
+ 257  search_method(klass, id, origin)
+ 258      VALUE klass, *origin;
+ 259      ID id;
+ 260  {
+ 261      NODE *body;
+ 262
+ 263      if (!klass) return 0;
+ 264      while (!st_lookup(RCLASS(klass)-&gt;m_tbl, id, &amp;body)) {
+ 265          klass = RCLASS(klass)-&gt;super;
+ 266          if (!klass) return 0;
+ 267      }
+ 268
+ 269      if (origin) *origin = klass;
+ 270      return body;
+ 271  }
+
+(eval.c)
+</pre>
+<p>This function searches the method named <code>id</code> in the class object <code>klass</code>.</p>
+<p><code>RCLASS(value)</code> is the macro doing:</p>
+<pre class="emlist">
+((struct RClass*)(value))
+</pre>
+<p><code>st_lookup()</code> is a function that searches in <code>st_table</code> the value
+corresponding to a key. If the value is found, the function returns true and
+puts the found value at the address given in third parameter (<code>&amp;body</code>).</p>
+<p>Nevertheless, doing this search each time whatever the circumstances would be
+too slow. That&#8217;s why in reality, once called, a method is cached. So starting
+from the second time it will be found without following <code>super</code> one by one.
+This cache and its search will be seen in the 15th chapter &#8220;Methods&#8221;.</p>
+<h2>Instance variables</h2>
+<p>In this section, I will explain the implementation of the third essential
+condition, instance variables.</p>
+<h3><code>rb_ivar_set()</code></h3>
+<p>Instance variables are what allows each object to store characteristic data.
+Having it stored in the object itself (i.e. in the object structure) may seem
+all right but how is it in practice? Let&#8217;s look at the function
+<code>rb_ivar_set()</code> that puts an object in an instance variable.</p>
+<p>▼ <code>rb_ivar_set()</code></p>
+<pre class="longlist">
+      /* write val in the id instance of obj */
+ 984  VALUE
+ 985  rb_ivar_set(obj, id, val)
+ 986      VALUE obj;
+ 987      ID id;
+ 988      VALUE val;
+ 989  {
+ 990      if (!OBJ_TAINTED(obj) &amp;&amp; rb_safe_level() &gt;= 4)
+ 991          rb_raise(rb_eSecurityError,
+                       "Insecure: can't modify instance variable");
+ 992      if (OBJ_FROZEN(obj)) rb_error_frozen("object");
+ 993      switch (TYPE(obj)) {
+ 994        case T_OBJECT:
+ 995        case T_CLASS:
+ 996        case T_MODULE:
+ 997          if (!ROBJECT(obj)-&gt;iv_tbl)
+                  ROBJECT(obj)-&gt;iv_tbl = st_init_numtable();
+ 998          st_insert(ROBJECT(obj)-&gt;iv_tbl, id, val);
+ 999          break;
+1000        default:
+1001          generic_ivar_set(obj, id, val);
+1002          break;
+1003      }
+1004      return val;
+1005  }
+
+(variable.c)
+</pre>
+<p><code>rb_raise()</code> and <code>rb_error_frozen()</code> are both error checks. Error checks are
+necessary, but it&#8217;s not the main part of the treatment, so you should ignore
+them at first read.</p>
+<p>After removing error treatment, only the <code>switch</code> remains, but this</p>
+<pre class="emlist">
+switch (TYPE(obj)) {
+  case T_aaaa:
+  case T_bbbb:
+     ...
+}
+</pre>
+<p>form is characteristic of <code>ruby</code>. <code>TYPE()</code> is the macro returning the type
+flag of the object structure (<code>T_OBJECT</code>, <code>T_STRING</code>, etc.). In other words as
+the type flag is an integer constant, we can branch depending on it with a
+<code>switch</code>. <code>Fixnum</code> or <code>Symbol</code> do not have structures, but inside <code>TYPE()</code> a
+special treatment is done to properly return <code>T_FIXNUM</code> and <code>T_SYMBOL</code>, so
+there&#8217;s no need to worry.</p>
+<p>Well, let&#8217;s go back to <code>rb_ivar_set()</code>. It seems only the treatments of
+<code>T_OBJECT</code>, <code>T_CLASS</code> and <code>T_MODULE</code> are different. These 3 have been chosen on
+the basis that their second member is <code>iv_tbl</code>. Let&#8217;s confirm it in practice.</p>
+<p>▼ Structures whose second member is <code>iv_tbl</code></p>
+<pre class="longlist">
+      /* TYPE(val) == T_OBJECT */
+ 295  struct RObject {
+ 296      struct RBasic basic;
+ 297      struct st_table *iv_tbl;
+ 298  };
+
+      /* TYPE(val) == T_CLASS or T_MODULE */
+ 300  struct RClass {
+ 301      struct RBasic basic;
+ 302      struct st_table *iv_tbl;
+ 303      struct st_table *m_tbl;
+ 304      VALUE super;
+ 305  };
+
+(ruby.h)
+</pre>
+<p><code>iv_tbl</code> is the Instance Variable TaBLe. It stores instance variable names and
+their corresponding value.</p>
+<p>In <code>rb_ivar_set()</code>, let&#8217;s look again the code for the structures having
+<code>iv_tbl</code>.</p>
+<pre class="emlist">
+if (!ROBJECT(obj)-&gt;iv_tbl)
+    ROBJECT(obj)-&gt;iv_tbl = st_init_numtable();
+st_insert(ROBJECT(obj)-&gt;iv_tbl, id, val);
+break;
+</pre>
+<p><code>ROBJECT()</code> is a macro that casts a <code>VALUE</code> into a `struct
+RObject*<code>. It's possible that </code>obj` points to a struct RClass, but as
+we&#8217;re only going to access the second member no problem will occur.</p>
+<p><code>st_init_numtable()</code> is a function creating a new <code>st_table</code>. <code>st_insert()</code> is
+a function doing associations in a <code>st_table</code>.</p>
+<p>In conclusion, this code does the following: if <code>iv_tbl</code> does not exist, it
+creates it, then stores the [variable name → object] association.</p>
+<p>Warning: as <code>struct RClass</code> is a class object, this instance variable table is
+for the use of the class object itself. In Ruby programs, it corresponds to
+something like the following:</p>
+<pre class="emlist">
+class C
+  @ivar = "content"
+end
+</pre>
+<h3><code>generic_ivar_set()</code></h3>
+<p>For objects for which the structure used is not <code>T_OBJECT</code>, <code>T_MODULE</code>, or
+<code>T_CLASS</code>, what happens when modifying an instance variable?</p>
+<p>▼ <code>rb_ivar_set()</code> in the case there is no <code>iv_tbl</code></p>
+<pre class="longlist">
+1000  default:
+1001    generic_ivar_set(obj, id, val);
+1002    break;
+
+(variable.c)
+</pre>
+<p>The control is transferred to <code>generic_ivar_set()</code>. Before looking at this
+function, let&#8217;s first explain its general idea.</p>
+<p>Structures that are not <code>T_OBJECT</code>, <code>T_MODULE</code> or <code>T_CLASS</code> do not have an
+<code>iv_tbl</code> member (the reason why they do not have it will be explained later).
+However, a method linking an instance to a <code>struct st_table</code> would allow
+instances to have instance variables. In <code>ruby</code>, this was solved by using a
+global <code>st_table</code>, <code>generic_iv_table</code> (figure 7) for these associations.</p>
+<p class="image">
+<p><img src="images/ch_object_givtable.png" alt="(givtable)"><br>
+Figure 7: <code>generic_iv_table</code></p>
+</p>
+<p>Let&#8217;s see this in practice.</p>
+<p>▼ <code>generic_ivar_set()</code></p>
+<pre class="longlist">
+ 801  static st_table *generic_iv_tbl;
+
+ 830  static void
+ 831  generic_ivar_set(obj, id, val)
+ 832      VALUE obj;
+ 833      ID id;
+ 834      VALUE val;
+ 835  {
+ 836      st_table *tbl;
+ 837
+          /* for the time being you should ignore this */
+ 838      if (rb_special_const_p(obj)) {
+ 839          special_generic_ivar = 1;
+ 840      }
+          /* initialize generic_iv_tbl if it does not exist */
+ 841      if (!generic_iv_tbl) {
+ 842          generic_iv_tbl = st_init_numtable();
+ 843      }
+ 844
+          /* the treatment itself */
+ 845      if (!st_lookup(generic_iv_tbl, obj, &amp;tbl)) {
+ 846          FL_SET(obj, FL_EXIVAR);
+ 847          tbl = st_init_numtable();
+ 848          st_add_direct(generic_iv_tbl, obj, tbl);
+ 849          st_add_direct(tbl, id, val);
+ 850          return;
+ 851      }
+ 852      st_insert(tbl, id, val);
+ 853  }
+
+(variable.c)
+</pre>
+<p><code>rb_special_const_p()</code> is true when its parameter is not a pointer. However,
+as this <code>if</code> part requires knowledge of the garbage collector, we&#8217;ll skip it
+for now. I&#8217;d like you to check it again after reading the chapter 5 &#8220;Garbage
+collection&#8221;.</p>
+<p><code>st_init_numtable()</code> already appeared some time ago. It creates a new hash
+table.</p>
+<p><code>st_lookup()</code> searches a value corresponding to a key. In this case it
+searches for what&#8217;s attached to <code>obj</code>. If an attached value can be found, the
+whole function returns true and stores the value at the address (<code>&amp;tbl</code>) given
+as third parameter. In short, <code>!st_lookup(...)</code> can be read &#8220;if a value can&#8217;t
+be found&#8221;.</p>
+<p><code>st_insert()</code> was also already explained. It stores a new association in a
+table.</p>
+<p><code>st_add_direct()</code> is similar to <code>st_insert()</code>, but the part before adding the
+association that checks if the key was already stored or not is different. In
+other words, in the case of <code>st_add_direct()</code>, if a key already registered is
+being used, two associations linked to this same key will be stored.
+<code>st_add_direct()</code> can be used when the check for existence has already been
+done, as is the case here, or when a new table has just been created.</p>
+<p><code>FL_SET(obj, FL_EXIVAR)</code> is the macro that sets the <code>FL_EXIVAR</code> flag in the
+<code>basic.flags</code> of <code>obj</code>. The <code>basic.flags</code> flags are all named <code>FL_xxxx</code> and
+can be set using <code>FL_SET()</code>. These flags can be unset with <code>FL_UNSET()</code>. The
+<code>EXIVAR</code> from <code>FL_EXIVAR</code> seems to be the abbreviation of EXternal Instance
+VARiable.</p>
+<p>The setting of these flags is done to speed up the reading of instance
+variables. If <code>FL_EXIVAR</code> is not set, even without searching in
+<code>generic_iv_tbl</code>, we directly know if the object has instance variables. And
+of course a bit check is way faster than searching a <code>struct st_table</code>.</p>
+<h3>Gaps in structures</h3>
+<p>Now you should understand how the instance variables are stored, but why are
+there structures without <code>iv_tbl</code>? Why is there no <code>iv_tbl</code> in
+<code>struct RString</code> or <code>struct RArray</code>? Couldn&#8217;t <code>iv_tbl</code> be part of <code>RBasic</code>?</p>
+<p>Well, this could have been done, but there are good reasons why it was not. As
+a matter of fact, this problem is deeply linked to the way <code>ruby</code> manages
+objects.</p>
+<p>For example, in <code>ruby</code>, memory used by string data (<code>char[]</code>) is directly
+allocated using <code>malloc()</code>. However, the object structures are handled in a
+particular way. <code>ruby</code> allocates them by clusters, and then distribute them
+from these clusters. As at allocation time the diversity of types (and sizes)
+of structures is difficult to handle, a type (<code>union</code>) that combines all
+structures <code>RVALUE</code> was declared and an array of this type is managed. As this
+type&#8217;s size is the same as the biggest one of its members, if there is only
+one big structure, there is a lot of unused space. That&#8217;s why doing as much as
+possible to regroup structures of similar size is desirable. The details about
+<code>RVALUE</code> will be explained in chapter 5 &#8220;Garbage collection&#8221;.</p>
+<p>Generally the most used structure is <code>struct RString</code>. After that, in programs
+there are <code>struct RArray</code> (array), <code>RHash</code> (hash), <code>RObject</code> (user defined
+object), etc. However, this <code>struct RObject</code> only uses the space of
+<code>struct RBasic</code> + 1 pointer. On the other hand, <code>struct RString</code>, <code>RArray</code> and
+<code>RHash</code> take the space of <code>struct RBasic</code> + 3 pointers. In other words, when
+putting a <code>struct RObject</code> in the shared entity, the space for 2 pointers is
+useless. And beyond that, if <code>RString</code> had 4 pointers, <code>RObject</code> would use less
+that half the size of the shared entity. As you would expect, it&#8217;s wasteful.</p>
+<p>So the received merit for <code>iv_tbl</code> is more or less saving memory and speeding
+up. Furthermore we do not know if it is used often or not. In fact,
+<code>generic_iv_tbl</code> was not introduced before <code>ruby</code> 1.2, so it was not possible
+to use instance variables in <code>String</code> or <code>Array</code> at that time. Nevertheless, it
+was not much of a problem. Making large amounts of memory useless just for
+such functionality looks stupid.</p>
+<p>If you take all this into consideration, you can conclude that increasing the
+size of object structures does not do any good.</p>
+<h3><code>rb_ivar_get()</code></h3>
+<p>We saw the <code>rb_ivar_set()</code> function that sets variables, so let&#8217;s see quickly
+how to get them.</p>
+<p>▼ <code>rb_ivar_get()</code></p>
+<pre class="longlist">
+ 960  VALUE
+ 961  rb_ivar_get(obj, id)
+ 962      VALUE obj;
+ 963      ID id;
+ 964  {
+ 965      VALUE val;
+ 966
+ 967      switch (TYPE(obj)) {
+      /* (A) */
+ 968        case T_OBJECT:
+ 969        case T_CLASS:
+ 970        case T_MODULE:
+ 971          if (ROBJECT(obj)-&gt;iv_tbl &amp;&amp;
+                  st_lookup(ROBJECT(obj)-&gt;iv_tbl, id, &amp;val))
+ 972              return val;
+ 973          break;
+      /* (B) */
+ 974        default:
+ 975          if (FL_TEST(obj, FL_EXIVAR) || rb_special_const_p(obj))
+ 976              return generic_ivar_get(obj, id);
+ 977          break;
+ 978      }
+      /* (C) */
+ 979      rb_warning("instance variable %s not initialized", rb_id2name(id));
+ 980
+ 981      return Qnil;
+ 982  }
+
+(variable.c)
+</pre>
+<p>The structure is strictly the same.</p>
+<p>(A) For <code>struct RObject</code> or <code>RClass</code>, we search the variable in <code>iv_tbl</code>. As
+<code>iv_tbl</code> can also be <code>NULL</code>, we must check it before using it. Then if
+<code>st_lookup()</code> finds the relation, it returns true, so the whole <code>if</code> can be
+read as &#8220;If the instance variable has been set, return its value&#8221;.</p>
+<p>&#40;C) If no correspondence could be found, in other words if we read an
+instance variable that has not been set, we first leave the <code>if</code> then the
+<code>switch</code>. <code>rb_warning()</code> will then issue a warning and <code>nil</code> will be returned.
+That&#8217;s because you can read instance variables that have not been set in Ruby.</p>
+<p>(B) On the other hand, if the structure is neither <code>struct RObject</code> nor
+<code>RClass</code>, the instance variable table is searched in <code>generic_iv_tbl</code>. What
+<code>generic_ivar_get()</code> does can be easily guessed, so I won&#8217;t explain it. I&#8217;d
+rather want you to focus on the <code>if</code>.</p>
+<p>I already told you that <code>generic_ivar_set()</code> sets the <code>FL_EXIVAR</code> flag to make
+the check faster.</p>
+<p>And what is <code>rb_special_const_p()</code>? This function returns true when its
+parameter <code>obj</code> does not point to a structure. As no structure means no
+<code>basic.flags</code>, no flag can be set, and <code>FL_xxxx()</code> will always returns false.
+That&#8217;s why these objects have to be treated specially.</p>
+<h2>Structures for objects</h2>
+<p>In this section we&#8217;ll see simply, among object structures, what the important
+ones contain and how they are handled.</p>
+<h3><code>struct RString</code></h3>
+<p><code>struct RString</code> is the structure for the instances of the <code>String</code> class and
+its subclasses.</p>
+<p>▼ <code>struct RString</code></p>
+<pre class="longlist">
+ 314  struct RString {
+ 315      struct RBasic basic;
+ 316      long len;
+ 317      char *ptr;
+ 318      union {
+ 319          long capa;
+ 320          VALUE shared;
+ 321      } aux;
+ 322  };
+
+(ruby.h)
+</pre>
+<p><code>ptr</code> is a pointer to the string, and <code>len</code> the length of that string. Very
+straightforward.</p>
+<p>Rather than a string, Ruby&#8217;s string is more a byte array, and can contain any
+byte including <code>NUL</code>. So when thinking at the Ruby level, ending the string
+with <code>NUL</code> does not mean anything. As C functions require <code>NUL</code>, for
+convenience the ending <code>NUL</code> is there, however, it is not included in <code>len</code>.</p>
+<p>When dealing with a string coming from the interpreter or an extension
+library, you can write <code>RSTRING(str)-&gt;ptr</code> or <code>RSTRING(str)-&gt;len</code>, and access
+<code>ptr</code> and <code>len</code>. But there are some points to pay attention to.</p>
+<ol>
+	<li>you have to check before if <code>str</code> really points to a <code>struct RString</code></li>
+	<li>you can read the members, but you must not modify them</li>
+	<li>you can&#8217;t store <code>RSTRING(str)-&gt;ptr</code> in something like a local variable and
+use it later</li>
+</ol>
+<p>Why is that? First, there is an important software engineering principle:
+Don&#8217;t arbitrarily tamper with someone&#8217;s data. Interface functions are there
+for a reason. However, there are concrete reasons in <code>ruby</code>&#8216;s design
+why you should not do such things as consulting or storing a pointer, and
+that&#8217;s related to the fourth member <code>aux</code>. However, to explain properly how to
+use <code>aux</code>, we have to explain first a little more of Ruby&#8217;s strings&#8217;
+characteristics.</p>
+<p>Ruby&#8217;s strings can be modified (are mutable). By mutable I mean after the
+following code:</p>
+<pre class="emlist">
+s = "str"        # create a string and assign it to s
+s.concat("ing")  # append "ing" to this string object
+p(s)             # show the string
+</pre>
+<p>the content of the object pointed by <code>s</code> will become &#8220;<code>string</code>&#8221;. It&#8217;s
+different from Java or Python string objects. Java&#8217;s <code>StringBuffer</code> is closer.</p>
+<p>And what&#8217;s the relation? First, mutable means the length (<code>len</code>) of the string
+can change. We have to increase or decrease the allocated memory size each time
+the length changes. We can of course use <code>realloc()</code> for that, but generally
+<code>malloc()</code> and <code>realloc()</code> are heavy operations. Having to <code>realloc()</code> each
+time the string changes is a huge burden.</p>
+<p>That&#8217;s why the memory pointed by <code>ptr</code> has been allocated with a size a little
+bigger than <code>len</code>. Because of that, if the added part can fit into the
+remaining memory, it&#8217;s taken care of without calling <code>realloc()</code>, so it&#8217;s
+faster. The structure member <code>aux.capa</code> contains the length including this
+additional memory.</p>
+<p>So what is this other <code>aux.shared</code>? It&#8217;s to speed up the creation of literal
+strings. Have a look at the following Ruby program.</p>
+<pre class="emlist">
+while true do  # repeat indefinitely
+  a = "str"        # create a string with "str" as content and assign it to a
+  a.concat("ing")  # append "ing" to the object pointed by a
+  p(a)             # show "string"
+end
+</pre>
+<p>Whatever the number of times you repeat the loop, the fourth line&#8217;s <code>p</code> has to
+show <code>"string"</code>. That&#8217;s why the code <code>"str"</code> should create, each time, a string
+object holding a different <code>char[]</code>. However, if no change occurs for a lot of
+strings, useless copies of <code>char[]</code> can be created many times. It would be better
+to share one common <code>char[]</code>.</p>
+<p>The trick that allows this to happen is <code>aux.shared</code>. String objects created
+with a literal use one shared <code>char[]</code>. When a change occurs, the string is
+copied in unshared memory, and the change is done on this new copy. This
+technique is called &#8220;copy-on-write&#8221;. When using a shared <code>char[]</code>, the flag
+<code>ELTS_SHARED</code> is set in the object structure&#8217;s <code>basic.flags</code>, and <code>aux.shared</code>
+contains the original object. <code>ELTS</code> seems to be the abbreviation of
+<code>ELemenTS</code>.</p>
+<p>But, well, let&#8217;s return to our talk about <code>RSTRING(str)-&gt;ptr</code>. Even if
+consulting the pointer is OK, you must not modify it, first because the value
+of <code>len</code> or <code>capa</code> will no longer agree with the content, and also because when
+modifying strings created as litterals, <code>aux.shared</code> has to be separated.</p>
+<p>To finish this section about <code>RString</code>, let&#8217;s write some examples how to use
+it. <code>str</code> is a <code>VALUE</code> that points to <code>RString</code>.</p>
+<pre class="emlist">
+RSTRING(str)-&gt;len;               /* length */
+RSTRING(str)-&gt;ptr[0];            /* first character */
+str = rb_str_new("content", 7);  /* create a string with "content" as its content
+                                    the second parameter is the length */
+str = rb_str_new2("content");    /* create a string with "content" as its content
+                                    its length is calculated with strlen() */
+rb_str_cat2(str, "end");         /* Concatenate a C string to a Ruby string */
+</pre>
+<h3><code>struct RArray</code></h3>
+<p><code>struct RArray</code> is the structure for the instances of Ruby&#8217;s array class
+<code>Array</code>.</p>
+<p>▼ <code>struct RArray</code></p>
+<pre class="longlist">
+ 324  struct RArray {
+ 325      struct RBasic basic;
+ 326      long len;
+ 327      union {
+ 328          long capa;
+ 329          VALUE shared;
+ 330      } aux;
+ 331      VALUE *ptr;
+ 332  };
+
+(ruby.h)
+</pre>
+<p>Except for the type of <code>ptr</code>, this structure is almost the same as
+<code>struct RString</code>. <code>ptr</code> points to the content of the array, and <code>len</code> is its
+length. <code>aux</code> is exactly the same as in <code>struct RString</code>. <code>aux.capa</code> is the
+&#8220;real&#8221; length of the memory pointed by <code>ptr</code>, and if <code>ptr</code> is shared,
+<code>aux.shared</code> stores the shared original array object.</p>
+<p>From this structure, it&#8217;s clear that Ruby&#8217;s <code>Array</code> is an array and not a
+list. So when the number of elements changes in a big way, a <code>realloc()</code> must
+be done, and if an element must be inserted at an other place than the end, a
+<code>memmove()</code> will occur. But even if we do it, it&#8217;s moving so fast it&#8217;s really
+impressive on current machines.</p>
+<p>That&#8217;s why the way to access it is similar to <code>RString</code>. You can consult
+<code>RARRAY(arr)-&gt;ptr</code> and <code>RARRAY(arr)-&gt;len</code> members, but can&#8217;t set them, etc.,
+etc. We&#8217;ll only look at simple examples:</p>
+<pre class="emlist">
+/* manage an array from C */
+VALUE ary;
+ary = rb_ary_new();             /* create an empty array */
+rb_ary_push(ary, INT2FIX(9));   /* push a Ruby 9 */
+RARRAY(ary)-&gt;ptr[0];            /* look what's at index 0 */
+rb_p(RARRAY(ary)-&gt;ptr[0]);      /* do p on ary[0] (the result is 9) */
+
+# manage an array from Ruby
+ary = []      # create an empty array
+ary.push(9)   # push 9
+ary[0]        # look what's at index 0
+p(ary[0])     # do p on ary[0] (the result is 9)
+</pre>
+<h3><code>struct RRegexp</code></h3>
+<p>It&#8217;s the structure for the instances of the regular expression class <code>Regexp</code>.</p>
+<p>▼ <code>struct RRegexp</code></p>
+<pre class="longlist">
+ 334  struct RRegexp {
+ 335      struct RBasic basic;
+ 336      struct re_pattern_buffer *ptr;
+ 337      long len;
+ 338      char *str;
+ 339  };
+
+(ruby.h)
+</pre>
+<p><code>ptr</code> is the regular expression after compilation. <code>str</code> is the string before
+compilation (the source code of the regular expression), and <code>len</code> is this
+string&#8217;s length.</p>
+<p>As the <code>Regexp</code> object handling code doesn&#8217;t appear in this book, we won&#8217;t see
+how to use it. Even if you use it in extension libraries, as long as you do
+not want to use it a very particular way, the interface functions are enough.</p>
+<h3><code>struct RHash</code></h3>
+<p><code>struct RHash</code> is the structure for Ruby&#8217;s <code>Hash</code> objects.</p>
+<p>▼ <code>struct RHash</code></p>
+<pre class="longlist">
+ 341  struct RHash {
+ 342      struct RBasic basic;
+ 343      struct st_table *tbl;
+ 344      int iter_lev;
+ 345      VALUE ifnone;
+ 346  };
+
+(ruby.h)
+</pre>
+<p>It&#8217;s a wrapper for <code>struct st_table</code>. <code>st_table</code> will be detailed in the next
+chapter &#8220;Names and name tables&#8221;.</p>
+<p><code>ifnone</code> is the value when a key does not have an attached value, its default
+is <code>nil</code>. <code>iter_lev</code> is to make the hashtable reentrant (multithread safe).</p>
+<h3><code>struct RFile</code></h3>
+<p><code>struct RFile</code> is a structure for instances of the built-in IO class and
+its subclasses.</p>
+<p>▼ <code>struct RFile</code></p>
+<pre class="longlist">
+ 348  struct RFile {
+ 349      struct RBasic basic;
+ 350      struct OpenFile *fptr;
+ 351  };
+
+(ruby.h)
+</pre>
+<p>▼ <code>OpenFile</code></p>
+<pre class="longlist">
+  19  typedef struct OpenFile {
+  20      FILE *f;                    /* stdio ptr for read/write */
+  21      FILE *f2;                   /* additional ptr for rw pipes */
+  22      int mode;                   /* mode flags */
+  23      int pid;                    /* child's pid (for pipes) */
+  24      int lineno;                 /* number of lines read */
+  25      char *path;                 /* pathname for file */
+  26      void (*finalize) _((struct OpenFile*)); /* finalize proc */
+  27  } OpenFile;
+
+(rubyio.h)
+</pre>
+<p>All members have been transferred in <code>struct OpenFile</code>. As there aren&#8217;t many
+instances of <code>IO</code> objects, it&#8217;s OK to do it like this. The purpose of each member
+is written in the comments. Basically, it&#8217;s a wrapper around C&#8217;s <code>stdio</code>.</p>
+<h3><code>struct RData</code></h3>
+<p><code>struct RData</code> has a different tenor from what we saw before. It is the
+structure for implementation of extension libraries.</p>
+<p>Of course structures for classes created in extension libraries as necessary,
+but as the types of these structures depend of the created class, it&#8217;s
+impossible to know their size or structure in advance. That&#8217;s why a &#8220;structure
+for managing a pointer to a user defined structure&#8221; has been created on
+<code>ruby</code>&#8217;s side to manage this. This structure is <code>struct RData</code>.</p>
+<p>▼ <code>struct RData</code></p>
+<pre class="longlist">
+ 353  struct RData {
+ 354      struct RBasic basic;
+ 355      void (*dmark) _((void*));
+ 356      void (*dfree) _((void*));
+ 357      void *data;
+ 358  };
+
+(ruby.h)
+</pre>
+<p><code>data</code> is a pointer to the user defined structure,
+<code>dfree</code> is the function used to free this structure, and
+<code>dmark</code> is the function for when the &#8220;mark&#8221; of the mark and sweep occurs.</p>
+<p>Because explaining <code>struct RData</code> is still too complicated, for
+the time being let&#8217;s just look at its representation (figure 8). You&#8217;ll read
+a detailed explanation of its members in chapter 5 &#8220;Garbage collection&#8221; where
+there&#8217;ll be presented once again.</p>
+<p class="image">
+<p><img src="images/ch_object_rdata.png" alt="(rdata)"><br>
+Figure 8: Representation of <code>struct RData</code></p>
+</p>
+
+    <footer>
+      The original work is Copyright © 2002 - 2004 Minero AOKI.
+      Translated by Vincent ISAMBART and Clifford Escobar CAOILE
+      This work is licensed under a
+      <p>
+        <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/2.5/">Creative Commons Attribution-NonCommercial-ShareAlike2.5 License</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

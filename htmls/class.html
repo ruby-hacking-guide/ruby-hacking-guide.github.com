@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>  Classes and modules |  Ruby Hacking Guide </title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <div id="main">
+
+    <header>
+      <h1><a href="/">Ruby Hacking Guide</a></h1>
+    <header>
+
+    <nav role="navigation">
+      <ul>
+      </ul>
+    </nav>
+
+    <p>Translated by Vincent <span class="caps">ISAMBART</span></p>
+<h1>Chapter 4: Classes and modules</h1>
+<p>In this chapter, we&#8217;ll see the details of the data structures created
+for classes and modules.</p>
+<h2>Classes and methods definition</h2>
+<p>First, I&#8217;d like to have a look at how Ruby classes are defined at the
+C level. This chapter investigates almost only particular
+cases, so I&#8217;d like you to know first the way used most often.</p>
+<p>The main <span class="caps">API</span> to define classes and modules consists of the following 6
+functions:</p>
+<ul>
+	<li><code>rb_define_class()</code></li>
+	<li><code>rb_define_class_under()</code></li>
+	<li><code>rb_define_module()</code></li>
+	<li><code>rb_define_module_under()</code></li>
+	<li><code>rb_define_method()</code></li>
+	<li><code>rb_define_singleton_method()</code></li>
+</ul>
+<p>There are a few other versions of these functions, but the extension
+libraries and even most of the core library is defined using just this
+<span class="caps">API</span>. I&#8217;ll introduce to you these functions one by one.</p>
+<h3>Class definition</h3>
+<p><code>rb_define_class()</code> defines a class at the top-level. Let&#8217;s take the
+Ruby array class, <code>Array</code>, as an example.</p>
+<p>▼ <code>Array</code> class definition
+<pre class="longlist">
+  19  <span class="caps">VALUE</span> rb_cArray;</p>
+<p>1809  void
+1810  Init_Array()
+1811  {
+1812      rb_cArray  = rb_define_class(&#8220;Array&#8221;, rb_cObject);</p>
+<p>(array.c)
+</pre></p>
+<p><code>rb_cObject</code> and <code>rb_cArray</code> correspond respectively to <code>Object</code> and
+<code>Array</code> at the Ruby level. The added prefix <code>rb</code> shows that it belongs
+to <code>ruby</code> and the <code>c</code> that it is a class object. These naming rules
+are used everywhere in <code>ruby</code>.</p>
+<p>This call to <code>rb_define_class()</code> defines a class called <code>Array</code>, which
+inherits from <code>Object</code>. At the same time as <code>rb_define_class()</code> creates
+the class object, it also defines the constant. That means that after this
+you can already access <code>Array</code> from a Ruby program. It corresponds to
+the following Ruby program:</p>
+<pre class="emlist">
+class Array &lt; Object
+</pre>
+<p>I&#8217;d like you to note the fact that there is no <code>end</code>. It was
+written like this on purpose. It is because with <code>rb_define_class()</code>
+the body of the class has not been executed.</p>
+<h3>Nested class definition</h3>
+<p>After that, there&#8217;s <code>rb_define_class_under()</code>. This function defines a
+class nested in an other class or module. This time the example is
+what is returned by <code>stat(2)</code>, <code>File::Stat</code>.</p>
+<p>▼ Definition of <code>File::Stat</code>
+<pre class="longlist">
+  78  <span class="caps">VALUE</span> rb_cFile;
+  80  static <span class="caps">VALUE</span> rb_cStat;</p>
+<p>2581      rb_cFile = rb_define_class(&#8220;File&#8221;, rb_cIO);
+2674      rb_cStat = rb_define_class_under(rb_cFile, &#8220;Stat&#8221;, rb_cObject);</p>
+<p>(file.c)
+</pre></p>
+<p>This code corresponds to the following Ruby program;</p>
+<pre class="emlist">
+class File &lt; IO
+  class Stat &lt; Object
+</pre>
+<p>This time again I omitted the <code>end</code> on purpose.</p>
+<h3>Module definition</h3>
+<p><code>rb_define_module()</code> is simple so let&#8217;s end this quickly.</p>
+<p>▼ Definition of <code>Enumerable</code>
+<pre class="longlist">
+  17  <span class="caps">VALUE</span> rb_mEnumerable;</p>
+492      rb_mEnumerable = rb_define_module(&#8220;Enumerable&#8221;);
+<p>(enum.c)
+</pre></p>
+<p>The <code>m</code> in the beginning of <code>rb_mEnumerable</code> is similar to the <code>c</code> for
+classes: it shows that it is a module. The corresponding Ruby program
+is:</p>
+<pre class="emlist">
+module Enumerable
+</pre>
+<p><code>rb_define_module_under()</code> is not used much so we&#8217;ll skip it.</p>
+<h3>Method definition</h3>
+<p>This time the function is the one for defining methods,
+<code>rb_define_method()</code>. It&#8217;s used very often. We&#8217;ll take once again an
+example from <code>Array</code>.</p>
+<p>▼ Definition of <code>Array#to_s</code>
+<pre class="longlist">
+1818  rb_define_method(rb_cArray, &#8220;to_s&#8221;, rb_ary_to_s, 0);</p>
+<p>(array.c)
+</pre></p>
+<p>With this the <code>to_s</code> method is defined in <code>Array</code>. The method body is
+given by a function pointer (<code>rb_ary_to_s</code>). The fourth parameter is
+the number of parameters taken by the method. As <code>to_s</code> does not take
+any parameters, it&#8217;s 0. If we write the corresponding Ruby program,
+we&#8217;ll have this:</p>
+<pre class="emlist">
+class Array &lt; Object
+  def to_s
+    # content of rb_ary_to_s()
+  end
+end
+</pre>
+<p>Of course the <code>class</code> part is not included in <code>rb_define_method()</code> and
+only the <code>def</code> part is accurate. But if there is no <code>class</code> part, it
+will look like the method is defined like a function, so I also wrote
+the enclosing <code>class</code> part.</p>
+<p>One more example, this time taking a parameter:</p>
+<p>▼ Definition of <code>Array#concat</code>
+<pre class="longlist">
+1835  rb_define_method(rb_cArray, &#8220;concat&#8221;, rb_ary_concat, 1);</p>
+<p>(array.c)
+</pre></p>
+<p>The class for the definition is <code>rb_cArray</code>
+(<code>Array</code>), the method name is <code>concat</code>, its body
+is <code>rb_ary_concat()</code> and the number of parameters is 1. It
+corresponds to writing the corresponding Ruby program:</p>
+<pre class="emlist">
+class Array &lt; Object
+  def concat( str )
+    # content of rb_ary_concat()
+  end
+end
+</pre>
+<h3>Singleton methods definition</h3>
+<p>We can define methods that are specific to a single object instance. 
+They are called singleton methods. As I used <code>File.unlink</code> as
+an example in chapter 1 &#8220;Ruby language minimum&#8221;, I first wanted to
+show it here, but for a particular reason we&#8217;ll look at <code>File.link</code>
+instead.</p>
+<p>▼ Definition of <code>File.link</code>
+<pre class="longlist">
+2624  rb_define_singleton_method(rb_cFile, &#8220;link&#8221;, rb_file_s_link, 2);</p>
+<p>(file.c)
+</pre></p>
+<p>It&#8217;s used like <code>rb_define_method()</code>. The only difference is that here
+the first parameter is just the <em>object</em> where the method is
+defined. In this case, it&#8217;s defined in <code>rb_cFile</code>.</p>
+<h3>Entry point</h3>
+<p>Being able to make definitions like before is great, but where
+are these functions called from, and by what means are they executed?
+These definitions are grouped in functions named <code>Init_xxxx()</code>. For
+instance, for <code>Array</code> a function <code>Init_Array()</code> like this has been
+made:</p>
+<p>▼ <code>Init_Array</code>
+<pre class="longlist">
+1809  void
+1810  Init_Array()
+1811  {
+1812      rb_cArray  = rb_define_class(&#8220;Array&#8221;, rb_cObject);
+1813      rb_include_module(rb_cArray, rb_mEnumerable);
+1814
+1815      rb_define_singleton_method(rb_cArray, &#8220;allocate&#8221;,
+                                     rb_ary_s_alloc, 0);
+1816      rb_define_singleton_method(rb_cArray, &#8220;[]&#8221;, rb_ary_s_create, -1);
+1817      rb_define_method(rb_cArray, &#8220;initialize&#8221;, rb_ary_initialize, -1);
+1818      rb_define_method(rb_cArray, &#8220;to_s&#8221;, rb_ary_to_s, 0);
+1819      rb_define_method(rb_cArray, &#8220;inspect&#8221;, rb_ary_inspect, 0);
+1820      rb_define_method(rb_cArray, &#8220;to_a&#8221;, rb_ary_to_a, 0);
+1821      rb_define_method(rb_cArray, &#8220;to_ary&#8221;, rb_ary_to_a, 0);
+1822      rb_define_method(rb_cArray, &#8220;frozen?&#8221;,  rb_ary_frozen_p, 0);</p>
+<p>(array.c)
+</pre></p>
+<p>The <code>Init</code> for the built-in functions are explicitly called during
+the startup of <code>ruby</code>. This is done in <code>inits.c</code>.</p>
+<p>▼ <code>rb_call_inits()</code>
+<pre class="longlist">
+  47  void
+  48  rb_call_inits()
+  49  {
+  50      Init_sym();
+  51      Init_var_tables();
+  52      Init_Object();
+  53      Init_Comparable();
+  54      Init_Enumerable();
+  55      Init_Precision();
+  56      Init_eval();
+  57      Init_String();
+  58      Init_Exception();
+  59      Init_Thread();
+  60      Init_Numeric();
+  61      Init_Bignum();
+  62      Init_Array();</p>
+<p>(inits.c)
+</pre></p>
+<p>This way, <code>Init_Array()</code> is called properly.</p>
+<p>That explains it for the built-in libraries, but what about extension
+libraries? In fact, for extension libraries the convention is the
+same. Take the following code:</p>
+<pre class="emlist">
+require "myextension"
+</pre>
+<p>With this, if the loaded extension library is <code>myextension.so</code>, at
+load time, the (<code>extern</code>) function named <code>Init_myextension()</code> is
+called. How they are called is beyond the scope of this chapter. For
+that, you should read chapter 18, &#8220;Load&#8221;. Here we&#8217;ll just end this
+with an example of <code>Init</code>.</p>
+<p>The following example is from <code>stringio</code>, an extension library
+provided with <code>ruby</code>, that is to say not from a built-in library.</p>
+<p>▼ <code>Init_stringio()</code> (beginning)
+<pre class="longlist">
+ 895  void
+ 896  Init_stringio()
+ 897  {
+ 898      <span class="caps">VALUE</span> StringIO = rb_define_class(&#8220;StringIO&#8221;, rb_cData);
+ 899      rb_define_singleton_method(StringIO, &#8220;allocate&#8221;,
+                                     strio_s_allocate, 0);
+ 900      rb_define_singleton_method(StringIO, &#8220;open&#8221;, strio_s_open, -1);
+ 901      rb_define_method(StringIO, &#8220;initialize&#8221;, strio_initialize, -1);
+ 902      rb_enable_super(StringIO, &#8220;initialize&#8221;);
+ 903      rb_define_method(StringIO, &#8220;become&#8221;, strio_become, 1);
+ 904      rb_define_method(StringIO, &#8220;reopen&#8221;, strio_reopen, -1);</p>
+<p>(ext/stringio/stringio.c)
+</pre></p>
+<h2>Singleton classes</h2>
+<h3><code>rb_define_singleton_method()</code></h3>
+<p>You should now be able to more or less understand how normal methods are
+defined. Somehow making the body of the method, then registering it
+in <code>m_tbl</code> will do. But what about singleton methods? We&#8217;ll now look
+into the way singleton methods are defined.</p>
+<p>▼ <code>rb_define_singleton_method()</code>
+<pre class="longlist">
+ 721  void
+ 722  rb_define_singleton_method(obj, name, func, argc)
+ 723      <span class="caps">VALUE</span> obj;
+ 724      const char <strong>name;
+ 725      <span class="caps">VALUE</span> (</strong>func)();
+ 726      int argc;
+ 727  {
+ 728      rb_define_method(rb_singleton_class(obj), name, func, argc);
+ 729  }</p>
+<p>(class.c)
+</pre></p>
+<p>As I explained, <code>rb_define_method()</code> is a function used to define
+normal methods, so the difference from normal methods is only
+<code>rb_singleton_class()</code>. But what on earth are singleton classes?</p>
+<p>In brief, singleton classes are virtual classes that are only used
+to execute singleton methods. Singleton methods are functions defined
+in singleton classes. Classes themselves are in the first place (in a
+way) the &#8220;implementation&#8221; to link objects and methods, but singleton
+classes are even more on the implementation side. In the Ruby language
+way, they are not formally included, and don&#8217;t appear much at the Ruby
+level.</p>
+<h3><code>rb_singleton_class()</code></h3>
+<p>Well, let&#8217;s confirm what the singleton classes are made of. It&#8217;s too
+simple to just show you the code of a function each time so this time
+I&#8217;ll use a new weapon, a call graph.</p>
+<pre class="emlist">
+rb_define_singleton_method
+    rb_define_method
+    rb_singleton_class
+        SPECIAL_SINGLETON
+        rb_make_metaclass
+            rb_class_boot
+            rb_singleton_class_attached
+</pre>
+<p>Call graphs are graphs showing calling relationships among functions
+(or more generally procedures). The call graphs showing all the calls
+written in the source code are called static call graphs. The ones
+expressing only the calls done during an execution are called dynamic
+call graphs.</p>
+<p>This diagram is a static call graph and the indentation expresses
+which function calls which one. For instance,
+<code>rb_define_singleton_method()</code> calls <code>rb_define_method()</code> and
+<code>rb_singleton_class()</code>. And this <code>rb_singleton_class()</code> itself calls
+<code>SPECIAL_SINGLETON()</code> and <code>rb_make_metaclass()</code>.</p>
+<p>Let&#8217;s go back to the code. When looking at the call graph, you can see
+that the calls made by <code>rb_singleton_class()</code> go very deep. Until now
+all call levels were shallow, so we could simply look at the functions
+without getting too lost. But at this depth, I easily forget
+what is going on in the code. That&#8217;s why in those situations I check
+the call graph to have a better understanding. This time, we&#8217;ll decode
+in parallel what the procedures below <code>rb_singleton_class()</code> do.  The
+two points to look out for are the following ones:</p>
+<ul>
+	<li>What exactly are singleton classes?</li>
+	<li>What is the purpose of singleton classes?</li>
+</ul>
+<h3>Normal classes and singleton classes</h3>
+<p>Singleton classes are special classes: they&#8217;re basically the same as
+normal classes, but there are a few differences. We can say that
+finding these differences is explaining concretely singleton classes.</p>
+<p>What should we do to find them? We should find the differences between
+the function creating normal classes and the one creating singleton
+classes. For this, we have to find the function for creating normal
+classes. That is as normal classes can be defined by
+<code>rb_define_class()</code>, it must call in a way or another a function to
+create normal classes. For the moment, we&#8217;ll not look at the content
+of <code>rb_define_class()</code> itself. I have some reasons to be interested in
+something that&#8217;s deeper. That&#8217;s why we will first look at the call
+graph of <code>rb_define_class()</code>.</p>
+<pre class="emlist">
+rb_define_class
+    rb_class_inherited
+    rb_define_class_id
+        rb_class_new
+            rb_class_boot
+        rb_make_metaclass
+            rb_class_boot
+            rb_singleton_class_attached
+</pre>
+<p>I&#8217;m interested by <code>rb_class_new()</code>. Doesn&#8217;t this name means it creates
+a new class? Let&#8217;s confirm that.</p>
+<p>▼ <code>rb_class_new()</code>
+<pre class="longlist">
+  37  <span class="caps">VALUE</span>
+  38  rb_class_new(super)
+  39      <span class="caps">VALUE</span> super;
+  40  {
+  41      Check_Type(super, T_CLASS);
+  42      if (super == rb_cClass) {
+  43          rb_raise(rb_eTypeError, &#8220;can&#8217;t make subclass of Class&#8221;);
+  44      }
+  45      if (FL_TEST(super, FL_SINGLETON)) {
+  46          rb_raise(rb_eTypeError, &#8220;can&#8217;t make subclass of virtual class&#8221;);
+  47      }
+  48      return rb_class_boot(super);
+  49  }</p>
+<p>(class.c)
+</pre></p>
+<p><code>Check_Type()</code> is checks the type of object structure, so we can
+ignore it. <code>rb_raise()</code> is error handling so we can ignore it. Only
+<code>rb_class_boot()</code> remains. So let&#8217;s look at it.</p>
+<p>▼ <code>rb_class_boot()</code>
+<pre class="longlist">
+  21  <span class="caps">VALUE</span>
+  22  rb_class_boot(super)
+  23      <span class="caps">VALUE</span> super;
+  24  {
+  25      <acronym title="klass, struct RClass"><span class="caps">NEWOBJ</span></acronym>;        /* allocates struct RClass <strong>/
+  26      <acronym title="klass, rb_cClass, T_CLASS"><span class="caps">OBJSETUP</span></acronym>; /</strong> initialization of the RBasic part <strong>/
+  27
+  28      klass&#8594;super = super;       /</strong> (A) */
+  29      klass&#8594;iv_tbl = 0;
+  30      klass&#8594;m_tbl = 0;
+  31      klass&#8594;m_tbl = st_init_numtable();
+  32
+  33      OBJ_INFECT(klass, super);
+  34      return (<span class="caps">VALUE</span>)klass;
+  35  }</p>
+<p>(class.c)
+</pre></p>
+<p><code>NEWOBJ()</code> and <code>OBJSETUP()</code> are fixed expressions used when creating
+Ruby objects that possess one of the internal structure types (`struct
+Rxxxx<code>). They are both macros. In </code><acronym title=")&lt;code&gt;, &lt;/code&gt;struct RClass` is
+created and the pointer is put in its first parameter &lt;code&gt;klass&lt;/code&gt;. In
+&lt;code&gt;OBJSETUP("><span class="caps">NEWOBJ</span></acronym></code>, the struct <code>RBasic</code> member of the <code>RClass</code> (and thus
+<code>basic.klass</code> and <code>basic.flags</code>) is initialized.</p>
+<p><code>OBJ_INFECT()</code> is a macro related to security. From now on, we&#8217;ll
+ignore it.</p>
+<p>At (A), the <code>super</code> member of <code>klass</code>is set to the <code>super</code>
+parameter. It looks like <code>rb_class_boot()</code> is a function that creates
+a class inheriting from <code>super</code>.</p>
+<p>So, as <code>rb_class_boot()</code> is a function that creates a class,
+what does <code>rb_class_new()</code> is very similar.</p>
+<p>Then, let&#8217;s once more look at <code>rb_singleton_class()</code>&#8217;s call graph:</p>
+<pre class="emlist">
+rb_singleton_class
+    SPECIAL_SINGLETON
+    rb_make_metaclass
+        rb_class_boot
+        rb_singleton_class_attached
+</pre>
+<p>Here also <code>rb_class_boot()</code> is called. So up to that point, it&#8217;s the
+same as in normal classes. What&#8217;s going on after is what&#8217;s different
+between normal classes and singleton classes, in other words the
+characteristics of singleton classes. If everything&#8217;s clear so
+far, we just need to read <code>rb_singleton_class()</code> and
+<code>rb_make_metaclass()</code>.</p>
+<h3>Compressed <code>rb_singleton_class()</code></h3>
+<p><code>rb_singleton_class()</code> is a little long so we&#8217;ll first remove its
+non-essential parts.</p>
+<p>▼ <code>rb_singleton_class()</code>
+<pre class="longlist">
+ 678  #define SPECIAL_SINGLETON(x,c) do {\
+ 679      if (obj == (x)) {\
+ 680          return c;\
+ 681      }\
+ 682  } while (0)</p>
+684  <span class="caps">VALUE</span>
+685  rb_singleton_class(obj)
+686      <span class="caps">VALUE</span> obj;
+687  {
+688      <span class="caps">VALUE</span> klass;
+689
+690      if (FIXNUM_P(obj) || SYMBOL_P(obj)) {
+691          rb_raise(rb_eTypeError, &#8220;can&#8217;t define singleton&#8221;);
+692      }
+693      if (rb_special_const_p(obj)) {
+694          SPECIAL_SINGLETON(Qnil, rb_cNilClass);
+695          SPECIAL_SINGLETON(Qfalse, rb_cFalseClass);
+696          SPECIAL_SINGLETON(Qtrue, rb_cTrueClass);
+697          rb_bug(&#8220;unknown immediate %ld&#8221;, obj);
+698      }
+699
+700      DEFER_INTS;
+701      if (FL_TEST(<acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass, FL_SINGLETON) &amp;&amp;
+702          (BUILTIN_TYPE(obj) == T_CLASS ||
+703           rb_iv_get(<acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass, &#8220;<i>attached</i>&#8221;) == obj)) {
+704          klass = <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass;
+705      }
+706      else {
+707          klass = rb_make_metaclass(obj, <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass);
+708      }
+709      if (OBJ_TAINTED(obj)) {
+710          OBJ_TAINT(klass);
+711      }
+712      else {
+713          FL_UNSET(klass, FL_TAINT);
+714      }
+715      if (OBJ_FROZEN(obj)) OBJ_FREEZE(klass);
+716      ALLOW_INTS;
+717
+718      return klass;
+719  }
+<p>(class.c)
+</pre></p>
+<p>The first and the second half are separated by a blank line. The first
+half handles a special case and the second half handles the general
+case. In other words, the second half is the trunk of the
+function. That&#8217;s why we&#8217;ll keep it for later and talk about the first
+half.</p>
+<p>Everything that is handled in the first half are non-pointer <code>VALUE</code>s,
+in other words objects without an existing C structure. First,
+<code>Fixnum</code> and <code>Symbol</code> are explicitly picked. Then,
+<code>rb_special_const_p()</code> is a function that returns true for non-pointer
+<code>VALUE</code>s, so there only <code>Qtrue</code>, <code>Qfalse</code> and <code>Qnil</code> should get
+caught. Other than that, there are no valid non-pointer value so a bug
+is reported with <code>rb_bug()</code>.</p>
+<p><code>DEFER_INTS()</code> and <code>ALLOW_INTS()</code> both end with the same <code>INTS</code> so you
+should see a pair in them. That&#8217;s the case, and they are macros
+related to signals. Because they are defined in <code>rubysig.h</code>, you can
+guess that <code>INTS</code> is the abbreviation of interrupts. You can ignore
+them.</p>
+<h3>Compressed <code>rb_make_metaclass()</code></h3>
+<p>▼ <code>rb_make_metaclass()</code>
+<pre class="longlist">
+ 142  <span class="caps">VALUE</span>
+ 143  rb_make_metaclass(obj, super)
+ 144      <span class="caps">VALUE</span> obj, super;
+ 145  {
+ 146      <span class="caps">VALUE</span> klass = rb_class_boot(super);
+ 147      FL_SET(klass, FL_SINGLETON);
+ 148      <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+ 149      rb_singleton_class_attached(klass, obj);
+ 150      if (BUILTIN_TYPE(obj) == T_CLASS) {
+ 151          <acronym title="klass"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+ 152          if (FL_TEST(obj, FL_SINGLETON)) {
+ 153              <acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super =
+                          <acronym title="rb_class_real(RCLASS(obj"><span class="caps">RBASIC</span></acronym>&#8594;super))&#8594;klass;
+ 154          }
+ 155      }
+ 156
+ 157      return klass;
+ 158  }</p>
+<p>(class.c)
+</pre></p>
+<p>We already saw <code>rb_class_boot()</code>. It creates a (normal) class using
+the <code>super</code> parameter as its superclass. After that, the
+<code>FL_SINGLETON</code> of this class is set. This is clearly suspicious. The
+name of the function makes us think that it is not the indication of
+a singleton class.</p>
+<h3>What are singleton classes?</h3>
+<p>Continuing the simplification process, furthermore as parameters,
+return values, local variables are all <code>VALUE</code>, we can throw away the
+declarations. That makes us able to compress to the following:</p>
+<p>▼ <code>rb_singleton_class() rb_make_metaclass()</code> (after compression)
+<pre class="longlist">
+rb_singleton_class(obj)
+{
+    if (FL_TEST(<acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass, FL_SINGLETON) &amp;&amp;
+        (BUILTIN_TYPE(obj) == T_CLASS || BUILTIN_TYPE(obj) == T_MODULE) &amp;&amp;
+        rb_iv_get(<acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass, &#8220;<i>attached</i>&#8221;) == obj) {
+        klass = <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass;
+    }
+    else {
+        klass = rb_make_metaclass(obj, <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass);
+    }
+    return klass;
+}</p>
+<p>rb_make_metaclass(obj, super)
+{
+    klass = create a class with super as superclass;
+    FL_SET(klass, FL_SINGLETON);
+    <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+    rb_singleton_class_attached(klass, obj);
+    if (BUILTIN_TYPE(obj) == T_CLASS) {
+        <acronym title="klass"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+        if (FL_TEST(obj, FL_SINGLETON)) {
+            <acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super =
+                    <acronym title="rb_class_real(RCLASS(obj"><span class="caps">RBASIC</span></acronym>&#8594;super))&#8594;klass;
+        }
+    }</p>
+return klass;
+<p>}
+</pre></p>
+<p>The condition of the <code>if</code> statement of <code>rb_singleton_class()</code> seems
+quite complicated. However, this condition is not connected to the
+mainstream of <code>rb_make_metaclass()</code> so we&#8217;ll see it later. Let&#8217;s first
+think about what happens on the false branch of the <code>if</code>.</p>
+<p>The <code>BUILTIN_TYPE()</code> of <code>rb_make_metaclass()</code> is similar to <code>TYPE()</code>
+as it is a macro to get the structure type flag (<code>T_xxxx</code>). That means
+this check in <code>rb_make_metaclass</code> means &#8220;if <code>obj</code> is a class&#8221;. For the
+moment it&#8217;s better not to limit ourselves to <code>obj</code> being a class, so
+we&#8217;ll remove it.</p>
+<p>With these simplifications, we get the the following:</p>
+<p>▼ <code>rb_singleton_class() rb_make_metaclass()</code> (after recompression)
+<pre class="longlist">
+rb_singleton_class(obj)
+{
+    klass = create a class with <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass as superclass;
+    FL_SET(klass, FL_SINGLETON);
+    <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+    return klass;
+}
+</pre></p>
+<p>But there is still a quite hard to understand side to it. That&#8217;s
+because <code>klass</code> is used too often. So let&#8217;s rename the <code>klass</code>
+variable to <code>sclass</code>.</p>
+<p>▼ <code>rb_singleton_class() rb_make_metaclass()</code> (variable substitution)
+<pre class="longlist">
+rb_singleton_class(obj)
+{
+    sclass = create a class with <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass as superclass;
+    FL_SET(sclass, FL_SINGLETON);
+    <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass = sclass;
+    return sclass;
+}
+</pre></p>
+<p>Now it should be very easy to understand. To make it even simpler,
+I&#8217;ve represented what is done with a diagram (figure 1). In the
+horizontal direction is the &#8220;instance &#8211; class&#8221; relation, and in the
+vertical direction is inheritance (the superclasses are above).</p>
+<p class="image">
+<p><img src="images/ch_class_addsclass.png" alt="(addsclass)"><br>
+Figure 1: <code>rb_singleton_class</code></p>
+</p>
+<p>When comparing the first and last part of this diagram, you can
+understand that <code>sclass</code> is inserted without changing the
+structure. That&#8217;s all there is to singleton classes. In other words
+the inheritance is increased one step. If a method is defined in a
+singleton class, this construction allows the other instances of
+<code>klass</code> to define completely different methods.</p>
+<h3>Singleton classes and instances</h3>
+<p>By the way, you must have seen that during the compression process,
+the call to <code>rb_singleton_class_attached()</code> was stealthily
+removed. Here:</p>
+<pre class="emlist">
+rb_make_metaclass(obj, super)
+{
+    klass = create a class with super as superclass;
+    FL_SET(klass, FL_SINGLETON);
+    RBASIC(obj)-&gt;klass = klass;
+    rb_singleton_class_attached(klass, obj);   /* THIS */
+</pre>
+<p>Let&#8217;s have a look at what it does.</p>
+<p>▼ <code>rb_singleton_class_attached()</code>
+<pre class="longlist">
+ 130  void
+ 131  rb_singleton_class_attached(klass, obj)
+ 132      <span class="caps">VALUE</span> klass, obj;
+ 133  {
+ 134      if (FL_TEST(klass, FL_SINGLETON)) {
+ 135          if (!<acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;iv_tbl) {
+ 136              <acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;iv_tbl = st_init_numtable();
+ 137          }
+ 138          st_insert(<acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;iv_tbl,
+                        rb_intern(&#8220;<i>attached</i>&#8221;), obj);
+ 139      }
+ 140  }</p>
+<p>(class.c)
+</pre></p>
+<p>If the FL_SINGLETON flag of <code>klass</code> is set&#8230; in other words if it&#8217;s a
+singleton class, put the <code>__attached__</code> → <code>obj</code> relation in the
+instance variable table of <code>klass</code> (<code>iv_tbl</code>). That&#8217;s how it looks
+like (in our case <code>klass</code> is always a singleton class&#8230; in other
+words its <code>FL_SINGLETON</code> flag is always set).</p>
+<p><code>__attached__</code> does not have the <code>@</code> prefix, but it&#8217;s stored in the
+instance variables table so it&#8217;s still an instance variable. Such an
+instance variable can never be read at the Ruby level so it can be
+used to keep values for the system&#8217;s exclusive use.</p>
+<p>Let&#8217;s now think about the relationship between <code>klass</code> and
+<code>obj</code>. <code>klass</code> is the singleton class of <code>obj</code>. In other words, this
+&#8220;invisible&#8221; instance variable allows the singleton class to remember
+the instance it was created from. Its value is used when the singleton
+class is changed, notably to call hook methods on the instance
+(i.e. <code>obj</code>). For example, when a method is added to a singleton
+class, the <code>obj</code>&#8216;s <code>singleton_method_added</code> method is called. There is
+no logical necessity to doing it, it was done because that&#8217;s how it
+was defined in the language.</p>
+<p>But is it really all right? Storing the instance in <code>__attached__</code>
+will force one singleton class to have only one attached instance. For
+example, by getting (in some way or an other) the singleton class and
+calling <code>new</code> on it, won&#8217;t a singleton class end up having multiple
+instances?</p>
+<p>This cannot be done because the proper checks are done to prevent the
+creation of an instance of a singleton class.</p>
+<p>Singleton classes are in the first place for singleton
+methods. Singleton methods are methods existing only on a particular
+object. If singleton classes could have multiple instances, there
+would the same as normal classes. That&#8217;s why they are forced to only
+have one instance.</p>
+<h3>Summary</h3>
+<p>We&#8217;ve done a lot, maybe made a real mayhem, so let&#8217;s finish and put
+everything in order with a summary.</p>
+<p>What are singleton classes? They are classes that have the
+<code>FL_SINGLETON</code> flag set and that can only have one instance.</p>
+<p>What are singleton methods? They are methods defined in the singleton
+class of an object.</p>
+<h2>Metaclasses</h2>
+<h3>Inheritance of singleton methods</h3>
+<h4>Infinite chain of classes</h4>
+<p>Even a class has a class, and it&#8217;s <code>Class</code>. And the class of <code>Class</code>
+is again <code>Class</code>. We find ourselves in an infinite loop (figure 2).</p>
+<p class="image">
+<p><img src="images/ch_class_infloop.png" alt="(infloop)"><br>
+Figure 2: Infinite loop of classes</p>
+</p>
+<p>Up to here it&#8217;s something we&#8217;ve already gone through. What&#8217;s going
+after that is the theme of this chapter. Why do classes have to make a
+loop?</p>
+<p>First, in Ruby all data are objects. And classes are data so in Ruby
+they have to be objects.</p>
+<p>As they are objects, they must answer to methods. And setting the rule
+&#8220;to answer to methods you must belong to a class&#8221; made processing
+easier. That&#8217;s where comes the need for a class to also have a class.</p>
+<p>Let&#8217;s base ourselves on this and think about the way to implement it.
+First, we can try first with the most naïve way, <code>Class</code>&#8216;s class is
+<code>ClassClass</code>, <code>ClassClass</code>&#8217;s class is <code>ClassClassClass</code>&#8230;, chaining
+classes of classes one by one. But whichever the way you look at it,
+this can&#8217;t be implemented effectively. That&#8217;s why it&#8217;s common in
+object oriented languages where classes are objects that <code>Class</code>&#8217;s
+class is to <code>Class</code> itself, creating an endless virtual instance-class
+relationship.</p>
+<p>I&#8217;m repeating myself, but the fact that <code>Class</code>&#8216;s class is <code>Class</code> is
+only to make the implementation easier, there&#8217;s nothing important in
+this logic.</p>
+<h4>&#8220;Class is also an object&#8221;</h4>
+<p>&#8220;Everything is an object&#8221; is often used as advertising statement when
+speaking about Ruby. And as a part of that, &#8220;Classes are also objects!&#8221;
+also appears. But these expressions often go too far. When thinking
+about these sayings, we have to split them in two:</p>
+<ul>
+	<li>all data are objects</li>
+	<li>classes are data</li>
+</ul>
+<p>Talking about data or code makes a discussion much harder to
+understand. That&#8217;s why here we&#8217;ll restrict the meaning of &#8220;data&#8221; to
+&#8220;what can be put in variables in programs&#8221;.</p>
+<p>Being able to manipulate classes from programs gives programs the
+ability to manipulate themselves. This is called reflection. It fits
+object oriented languages, and even more Ruby with the classes it has,
+to be able to directly manipulate classes.</p>
+<p>Nevertheless, classes could be made available in a form that is not an
+object. For example, classes could be manipulated with function-style
+methods (functions defined at the top-level). However, as inside the
+interpreter there are data structures to represent the classes, it&#8217;s
+more natural in object oriented languages to make them available
+directly. And Ruby did this choice.</p>
+<p>Furthermore, an objective in Ruby is for all data to be
+objects. That&#8217;s why it&#8217;s appropriate to make them objects.</p>
+<p>By the way, there is a reason not linked to reflection why in Ruby
+classes had to be made objects. That is to be able to define methods
+independently from instances (what is called static methods in Java in
+C++).</p>
+<p>And to implement static methods, another thing was necessary:
+singleton methods. By chain reaction, that also makes singleton
+classes necessary. Figure 3 shows these dependency relationships.</p>
+<p class="image">
+<p><img src="images/ch_class_reqlink.png" alt="(reqlink)"><br>
+Figure 3: Requirements dependencies</p>
+</p>
+<h4>Class methods inheritance</h4>
+<p>In Ruby, singleton methods defined in a class are called class
+methods. However, their specification is a little strange. Why are
+class methods inherited?</p>
+<pre class="emlist">
+class A
+  def A.test    # defines a singleton method in A
+    puts("ok")
+  end
+end
+
+class B &lt; A
+end
+
+B.test()  # calls it
+</pre>
+<p>This can&#8217;t occur with singleton methods from objects that are not
+classes. In other words, classes are the only ones handled
+specially. In the following section we&#8217;ll see how class methods are
+inherited.</p>
+<h3>Singleton class of a class</h3>
+<p>Assuming that class methods are inherited, where is this operation
+done? At class definition (creation)? At singleton method definition?
+Then let&#8217;s look at the code defining classes.</p>
+<p>Class definition means of course <code>rb_define_class()</code>. Now
+let&#8217;s take the call graph of this function.</p>
+<pre class="emlist">
+rb_define_class
+    rb_class_inherited
+    rb_define_class_id
+        rb_class_new
+            rb_class_boot
+        rb_make_metaclass
+            rb_class_boot
+            rb_singleton_class_attached
+</pre>
+<p>If you&#8217;re wondering where you&#8217;ve seen it before, we looked at it in
+the previous section. At that time you did not see it but if you look
+closely, why does <code>rb_make_metaclass()</code> appear? As we saw before, this
+function introduces a singleton class. This is very suspicious. Why is
+this called even if we are not defining a singleton function?
+Furthermore, why is the lower level <code>rb_make_metaclass()</code> used instead
+of <code>rb_singleton_class()</code>? It looks like we have to check these
+surroundings again.</p>
+<h4><code>rb_define_class_id()</code></h4>
+<p>Let&#8217;s first start our reading with its caller, <code>rb_define_class_id()</code>.</p>
+<p>▼ <code>rb_define_class_id()</code>
+<pre class="longlist">
+ 160  <span class="caps">VALUE</span>
+ 161  rb_define_class_id(id, super)
+ 162      ID id;
+ 163      <span class="caps">VALUE</span> super;
+ 164  {
+ 165      <span class="caps">VALUE</span> klass;
+ 166
+ 167      if (!super) super = rb_cObject;
+ 168      klass = rb_class_new(super);
+ 169      rb_name_class(klass, id);
+ 170      rb_make_metaclass(klass, <acronym title="super"><span class="caps">RBASIC</span></acronym>&#8594;klass);
+ 171
+ 172      return klass;
+ 173  }</p>
+<p>(class.c)
+</pre></p>
+<p><code>rb_class_new()</code> was a function that creates a class with <code>super</code> as
+its superclass. <code>rb_name_class()</code>&#8216;s name means it names a class, but
+for the moment we do note care about names so we&#8217;ll skip it. After
+that there&#8217;s the <code>rb_make_metaclass()</code> in question. I&#8217;m concerned by
+the fact that when called from <code>rb_singleton_class()</code>, the parameters
+were different. Last time was like this:</p>
+<pre class="emlist">
+rb_make_metaclass(obj, RBASIC(obj)-&gt;klass);
+</pre>
+<p>But this time is like this:</p>
+<pre class="emlist">
+rb_make_metaclass(klass, RBASIC(super)-&gt;klass);
+</pre>
+<p>So as you can see it&#8217;s slightly different. How do the results change
+depending on that? Let&#8217;s have once again a look at a simplified
+<code>rb_make_metaclass()</code>.</p>
+<h4><code>rb_make_metaclass</code> (once more)</h4>
+<p>▼ <code>rb_make_metaclass</code> (after first compression)
+<pre class="longlist">
+rb_make_metaclass(obj, super)
+{
+    klass = create a class with super as superclass;
+    FL_SET(klass, FL_SINGLETON);
+    <acronym title="obj"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+    rb_singleton_class_attached(klass, obj);
+    if (BUILTIN_TYPE(obj) == T_CLASS) {
+        <acronym title="klass"><span class="caps">RBASIC</span></acronym>&#8594;klass = klass;
+        if (FL_TEST(obj, FL_SINGLETON)) {
+            <acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super =
+                    <acronym title="rb_class_real(RCLASS(obj"><span class="caps">RBASIC</span></acronym>&#8594;super))&#8594;klass;
+        }
+    }</p>
+return klass;
+<p>}
+</pre></p>
+<p>Last time, the <code>if</code> statement was skillfully skipped, but looking once
+again, something is done only for <code>T_CLASS</code>, in other words
+classes. This clearly looks important. In <code>rb_define_class_id()</code>, as
+it&#8217;s called like this:</p>
+<pre class="emlist">
+rb_make_metaclass(klass, RBASIC(super)-&gt;klass);
+</pre>
+<p>Let&#8217;s expand <code>rb_make_metaclass()</code>&#8217;s parameter variables with this
+values.</p>
+<p>▼ <code>rb_make_metaclass</code> (recompression)
+<pre class="longlist">
+rb_make_metaclass(klass, super_klass /* == <acronym title="super"><span class="caps">RBASIC</span></acronym>&#8594;klass */)
+{
+    sclass = create a class with super_class as superclass;
+    <acronym title="klass"><span class="caps">RBASIC</span></acronym>&#8594;klass = sclass;
+    <acronym title="sclass"><span class="caps">RBASIC</span></acronym>&#8594;klass = sclass;
+    return sclass;
+}
+</pre></p>
+<p>Doing this as a diagram gives something like figure 4. In it, the
+names between parentheses are singleton classes. This notation is
+often used in this book so I&#8217;d like you to remember it. This means
+that <code>obj</code>&#8216;s singleton class is written as <code>(obj)</code>. And <code>(klass)</code> is
+the singleton class for <code>klass</code>. It looks like the singleton class is
+caught between a class and this class&#8217;s superclass&#8217;s class.</p>
+<p class="image">
+<p><img src="images/ch_class_metaclass.png" alt="(metaclass)"><br>
+Figure 4: Introduction of a class&#8217;s singleton class</p>
+</p>
+<p>From this result, and moreover when thinking more deeply, we can think
+that the superclass&#8217;s class must again be the superclass&#8217;s singleton
+class. You&#8217;ll understand with one more inheritance level (figure 5).</p>
+<p class="image">
+<p><img src="images/ch_class_multi.png" alt="(multi)"><br>
+Figure 5: Hierarchy of multi-level inheritance</p>
+</p>
+<p>As the relationship between <code>super</code> and <code>klass</code> is the same as the one
+between <code>klass</code> and <code>klass2</code>, <code>c</code> must be the singleton class
+<code>(super)</code>. If you continue like this, finally you&#8217;ll arrive at the
+conclusion that <code>Object</code>&#8216;s class must be <code>(Object)</code>. And that&#8217;s the
+case in practice. For example, by inheriting like in the following
+program :</p>
+<pre class="emlist">
+class A &lt; Object
+end
+class B &lt; A
+end
+</pre>
+<p>internally, a structure like figure 6 is created.</p>
+<p class="image">
+<p><img src="images/ch_class_metatree.png" alt="(metatree)"><br>
+Figure 6: Class hierarchy and metaclasses</p>
+</p>
+<p>As classes and their metaclasses are linked and inherit like this,
+class methods are inherited.</p>
+<h3>Class of a class of a class</h3>
+<p>You&#8217;ve understood the working of class methods inheritance, but by
+doing that, in the opposite some questions have appeared. What is the
+class of a class&#8217;s singleton class? To do this we can try
+debugging. I&#8217;ve made the figure 7 from the results of this
+investigation.</p>
+<p class="image">
+<p><img src="images/ch_class_mmm.png" alt="(mmm)"><br>
+Figure 7: Class of a class&#8217;s singleton class</p>
+</p>
+<p>A class&#8217;s singleton class puts itself as its own class. Quite
+complicated.</p>
+<p>The second question: the class of <code>Object</code> must be <code>Class</code>. Didn&#8217;t I
+properly confirm this in chapter 1: Ruby language minimum?</p>
+<pre class="emlist">
+p(Object.class())   # Class
+</pre>
+<p>Certainly, that&#8217;s the case &#8220;at the Ruby level&#8221;. But &#8220;at the C level&#8221;,
+it&#8217;s the singleton class <code>(Object)</code>. If <code>(Object)</code> does not appear at
+the Ruby level, it&#8217;s because <code>Object#class</code> skips the singleton
+classes. Let&#8217;s look at the body of the method, <code>rb_obj_class()</code> to
+confirm that.</p>
+<p>▼ <code>rb_obj_class()</code>
+<pre class="longlist">
+  86  <span class="caps">VALUE</span>
+  87  rb_obj_class(obj)
+  88      <span class="caps">VALUE</span> obj;
+  89  {
+  90      return rb_class_real(CLASS_OF(obj));
+  91  }</p>
+76  <span class="caps">VALUE</span>
+77  rb_class_real(cl)
+78      <span class="caps">VALUE</span> cl;
+79  {
+80      while (FL_TEST(cl, FL_SINGLETON) || <acronym title="cl"><span class="caps">TYPE</span></acronym> == T_ICLASS) {
+81          cl = <acronym title="cl"><span class="caps">RCLASS</span></acronym>&#8594;super;
+82      }
+83      return cl;
+84  }
+<p>(object.c)
+</pre></p>
+<p><code>CLASS_OF(obj)</code> returns the <code>basic.klass</code> of <code>obj</code>. While in
+<code>rb_class_real()</code>, all singleton classes are skipped (advancing
+towards the superclass). In the first place, singleton class are
+caught between a class and its superclass, like a proxy. That&#8217;s why
+when a &#8220;real&#8221; class is necessary, we have to follow the superclass
+chain (figure 8).</p>
+<p><code>I_CLASS</code> will appear later when we will talk about include.</p>
+<p class="image">
+<p><img src="images/ch_class_real.png" alt="(real)"><br>
+Figure 8: Singleton class and real class</p>
+</p>
+<h3>Singleton class and metaclass</h3>
+<p>Well, the singleton classes that were introduced in classes is also
+one type of class, it&#8217;s a class&#8217;s class. So it can be called
+metaclass.</p>
+<p>However, you should be wary of the fact that singleton class are
+not metaclasses. It&#8217;s the singleton classes introduced in classes that
+are metaclasses. The important fact is not that they are singleton
+classes, but that they are the classes of classes. I was stuck on this
+point when I started learning Ruby. As I may not be the only one, I
+would like to make this clear.</p>
+<p>Thinking about this, the <code>rb_make_metaclass()</code> function name is not
+very good. When used in classes, it does indeed create a metaclass,
+but not in the other cases, when using objects.</p>
+<p>Then finally, even if you understood that some class are metaclasses,
+it&#8217;s not as if there was any concrete gain. I&#8217;d like you not to care
+too much about it.</p>
+<h3>Bootstrap</h3>
+<p>We have nearly finished our talk about classes and metaclasses. But
+there is still one problem left. It&#8217;s about the 3 metaobjects
+<code>Object</code>, <code>Module</code> and <code>Class</code>. These 3 cannot be created with the
+common use <span class="caps">API</span>. To make a class, its metaclass must be built, but like
+we saw some time ago, the metaclass&#8217;s superclass is <code>Class</code>. However,
+as <code>Class</code> has not been created yet, the metaclass cannot be build. So
+in <code>ruby</code>, only these 3 classes&#8217;s creation is handled specially.</p>
+<p>Then let&#8217;s look at the code:</p>
+<p>▼ <code>Object</code>, <code>Module</code> and <code>Class</code> creation
+<pre class="longlist">
+1243  rb_cObject = boot_defclass(&#8220;Object&#8221;, 0);
+1244  rb_cModule = boot_defclass(&#8220;Module&#8221;, rb_cObject);
+1245  rb_cClass =  boot_defclass(&#8220;Class&#8221;,  rb_cModule);
+1246
+1247  metaclass = rb_make_metaclass(rb_cObject, rb_cClass);
+1248  metaclass = rb_make_metaclass(rb_cModule, metaclass);
+1249  metaclass = rb_make_metaclass(rb_cClass, metaclass);</p>
+<p>(object.c)
+</pre></p>
+<p>First, in the first half, <code>boot_defclass()</code> is similar to
+<code>rb_class_boot()</code>, it just creates a class with its given superclass
+set. These links give us something like the left part of figure 9.</p>
+<p>And in the three lines of the second half, <code>(Object)</code>, <code>(Module)</code> and
+<code>(Class)</code> are created and set (right figure 9). <code>(Object)</code> and
+<code>(Module)</code>&#8216;s classes&#8230; that is themselves&#8230; is already set in
+<code>rb_make_metaclass()</code> so there is no problem. With this, the
+metaobjects&#8217; bootstrap is finished.</p>
+<p class="image">
+<p><img src="images/ch_class_boot1.png" alt="(boot1)"><br>
+Figure 9: Metaobjects creation</p>
+</p>
+<p>After taking everything into account, it gives us a the final shape
+like figure 10.</p>
+<p class="image">
+<p><img src="images/ch_class_metaobj.png" alt="(metaobj)"><br>
+Figure 10: Ruby metaobjects</p>
+</p>
+<h2>Class names</h2>
+<p>In this section, we will analyse how&#8217;s formed the reciprocal
+conversion between class and class names, in other words
+constants. Concretely, we will target <code>rb_define_class()</code> and
+<code>rb_define_class_under()</code>.</p>
+<h3>Name → class</h3>
+<p>First we&#8217;ll read <code>rb_defined_class()</code>. After the end of this function,
+the class can be found from the constant.</p>
+<p>▼ <code>rb_define_class()</code>
+<pre class="longlist">
+ 183  <span class="caps">VALUE</span>
+ 184  rb_define_class(name, super)
+ 185      const char <strong>name;
+ 186      <span class="caps">VALUE</span> super;
+ 187  {
+ 188      <span class="caps">VALUE</span> klass;
+ 189      ID id;
+ 190
+ 191      id = rb_intern(name);
+ 192      if (rb_autoload_defined(id)) {             /</strong> (A) autoload <strong>/
+ 193          rb_autoload_load(id);
+ 194      }
+ 195      if (rb_const_defined(rb_cObject, id)) {    /</strong> (B) rb_const_defined <strong>/
+ 196          klass = rb_const_get(rb_cObject, id);  /</strong> &#169; rb_const_get <strong>/
+ 197          if (<acronym title="klass"><span class="caps">TYPE</span></acronym> != T_CLASS) {
+ 198              rb_raise(rb_eTypeError, &#8220;%s is not a class&#8221;, name);
+ 199          }                                      /</strong> (D) rb_class_real */
+ 200          if (rb_class_real(<acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super) != super) {
+ 201              rb_name_error(id, &#8220;%s is already defined&#8221;, name);
+ 202          }
+ 203          return klass;
+ 204      }
+ 205      if (!super) {
+ 206          rb_warn(&#8220;no super class for &#8216;%s&#8217;, Object assumed&#8221;, name);
+ 207      }
+ 208      klass = rb_define_class_id(id, super);
+ 209      rb_class_inherited(super, klass);
+ 210      st_add_direct(rb_class_tbl, id, klass);
+ 211
+ 212      return klass;
+ 213  }</p>
+<p>(class.c)
+</pre></p>
+<p>Many things can be understood with what&#8217;s before and after
+<code>rb_define_class_id()</code>&#8230; Before we acquire or create the class. After
+we set the constant. We will look at it in more detail below.</p>
+<p>(A) In Ruby, there is an autoload function that automatically loads
+libraries when some constants are accessed. This is done in the
+<code>rb_autoload_xxxx()</code> function. You can ignore it without any problem.</p>
+<p>(B) We determine whether the <code>name</code> constant has been defined or not
+in <code>Object</code>.</p>
+<p>&#169; Get the value of the <code>name</code> constant. This will be explained in
+detail in chapter 6.</p>
+<p>(D) We&#8217;ve seen <code>rb_class_real()</code> some time ago. If the class <code>c</code> is a
+singleton class or an <code>ICLASS</code>, it climbs the <code>super</code> hierarchy up to
+a class that is not and returns it. In short, this function skips the
+virtual classes that should not appear at the Ruby level.</p>
+<p>That&#8217;s what we can read nearby.</p>
+<p>As around constants are involved, it is very troublesome. However, we
+will talk about class definition in the constants chapter so for the
+moment we will content ourselves with a partial description.</p>
+<p>After <code>rb_define_class_id</code>, we can find the following:</p>
+<pre class="emlist">
+st_add_direct(rb_class_tbl, id, klass);
+</pre>
+<p>This part assigns the class to the constant. However, whichever
+way you look at it you do not see that. In fact, top-level classes are
+separated from the other constants and regrouped in
+<code>rb_class_tbl()</code>. The split is slightly related to the GC. It&#8217;s not
+essential.</p>
+<h3>Class → name</h3>
+<p>We understood how the class can be obtained from the class name, but
+how to do the opposite? By doing things like calling <code>p</code> or
+<code>Class#name</code>, we can get the name of the class, but how is it
+implemented?</p>
+<p>In fact this was already done a long time ago by
+<code>rb_name_class()</code>. The call is around the following:</p>
+<pre class="emlist">
+rb_define_class
+    rb_define_class_id
+        rb_name_class
+</pre>
+<p>Let&#8217;s look at its content:</p>
+<p>▼ <code>rb_name_class()</code>
+<pre class="longlist">
+ 269  void
+ 270  rb_name_class(klass, id)
+ 271      <span class="caps">VALUE</span> klass;
+ 272      ID id;
+ 273  {
+ 274      rb_iv_set(klass, &#8220;<i>classid</i>&#8221;, <acronym title="id"><span class="caps">ID2SYM</span></acronym>);
+ 275  }</p>
+<p>(variable.c)
+</pre></p>
+<p><code>__classid__</code> is another instance variable that can&#8217;t be seen from
+Ruby. As only <code>VALUE</code>s can be put in the instance variable table, the
+<code>ID</code> is converted to <code>Symbol</code> using <code>ID2SYM()</code>.</p>
+<p>That&#8217;s how we are able to find the constant name from the class.</p>
+<h3>Nested classes</h3>
+<p>So, in the case of classes defined at the top-level, we know how works
+the reciprocal link between name and class. What&#8217;s left is the case of
+classes defined in modules or other classes, and for that it&#8217;s a
+little more complicated. The function to define these nested classes
+is <code>rb_define_class_under()</code>.</p>
+<p>▼ <code>rb_define_class_under()</code>
+<pre class="longlist">
+ 215  <span class="caps">VALUE</span>
+ 216  rb_define_class_under(outer, name, super)
+ 217      <span class="caps">VALUE</span> outer;
+ 218      const char *name;
+ 219      <span class="caps">VALUE</span> super;
+ 220  {
+ 221      <span class="caps">VALUE</span> klass;
+ 222      ID id;
+ 223
+ 224      id = rb_intern(name);
+ 225      if (rb_const_defined_at(outer, id)) {
+ 226          klass = rb_const_get(outer, id);
+ 227          if (<acronym title="klass"><span class="caps">TYPE</span></acronym> != T_CLASS) {
+ 228              rb_raise(rb_eTypeError, &#8220;%s is not a class&#8221;, name);
+ 229          }
+ 230          if (rb_class_real(<acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super) != super) {
+ 231              rb_name_error(id, &#8220;%s is already defined&#8221;, name);
+ 232          }
+ 233          return klass;
+ 234      }
+ 235      if (!super) {
+ 236          rb_warn(&#8220;no super class for &#8216;%s::%s&#8217;, Object assumed&#8221;,
+ 237                  rb_class2name(outer), name);
+ 238      }
+ 239      klass = rb_define_class_id(id, super);
+ 240      rb_set_class_path(klass, outer, name);
+ 241      rb_class_inherited(super, klass);
+ 242      rb_const_set(outer, id, klass);
+ 243
+ 244      return klass;
+ 245  }</p>
+<p>(class.c)
+</pre></p>
+<p>The structure is like the one of <code>rb_define_class()</code>: before the call
+to <code>rb_define_class_id()</code> is the redefinition check, after is the
+creation of the reciprocal link between constant and class. The first
+half is pretty boringly similar to <code>rb_define_class()</code> so we&#8217;ll skip
+it. In the second half, <code>rb_set_class()</code> is new. We&#8217;re going to look
+at it.</p>
+<h4><code>rb_set_class_path()</code></h4>
+<p>This function gives the name <code>name</code> to the class <code>klass</code> nested in the
+class <code>under</code>. &#8220;class path&#8221; means a name including all the nesting
+information starting from top-level, for example
+&#8220;<code>Net::NetPrivate::Socket</code>&#8221;.</p>
+<p>▼ <code>rb_set_class_path()</code>
+<pre class="longlist">
+ 210  void
+ 211  rb_set_class_path(klass, under, name)
+ 212      <span class="caps">VALUE</span> klass, under;
+ 213      const char <strong>name;
+ 214  {
+ 215      <span class="caps">VALUE</span> str;
+ 216
+ 217      if (under == rb_cObject) {
+              /</strong> defined at top-level <strong>/
+ 218          str = rb_str_new2(name);    /</strong> create a Ruby string from name <strong>/
+ 219      }
+ 220      else {
+              /</strong> nested constant <strong>/
+ 221          str = rb_str_dup(rb_class_path(under));  /</strong> copy the return value <strong>/
+ 222          rb_str_cat2(str, &#8220;::&#8221;);     /</strong> concatenate &#8220;::&#8221; <strong>/
+ 223          rb_str_cat2(str, name);     /</strong> concatenate name */
+ 224      }
+ 225      rb_iv_set(klass, &#8220;<i>classpath</i>&#8221;, str);
+ 226  }</p>
+<p>(variable.c)
+</pre></p>
+<p>Everything except the last line is the construction of the class path,
+and the last line makes the class remember its own
+name. <code>__classpath__</code> is of course another instance variable that
+can&#8217;t be seen from a Ruby program. In <code>rb_name_class()</code> there was
+<code>__classid__</code>, but <code>id</code> is different because it does not include
+nesting information (look at the table below).</p>
+<pre class="emlist">
+__classpath__    Net::NetPrivate::Socket
+__classid__                       Socket
+</pre>
+<p>It means classes defined for example in <code>rb_defined_class()</code> all have
+<code>__classid__</code> or <code>__classpath__</code> defined. So to find <code>under</code>&#8216;s
+classpath we can look up in these instance variables. This is done by
+<code>rb_class_path()</code>. We&#8217;ll omit its content.</p>
+<h3>Nameless classes</h3>
+<p>Contrary to what I have just said, there are in fact cases in which
+neither <code>__classpath__</code> nor <code>__classid__</code> are set. That is because in
+Ruby you can use a method like the following to create a class.</p>
+<pre class="emlist">
+c = Class.new()
+</pre>
+<p>If you create a class like this, we won&#8217;t go through
+<code>rb_define_class_id()</code> and the classpath won&#8217;t be set. In this case,
+<code>c</code> does not have any name, which is to say we get an unnamed class.</p>
+<p>However, if later it&#8217;s assigned to a constant, the name of this
+constant will be attached to the class.</p>
+<pre class="emlist">
+SomeClass = c   # the class name is SomeClass
+</pre>
+<p>Strictly speaking, the name is attached after the assignment, the
+first time it is requested. For instance, when calling <code>p</code> on this
+<code>SomeClass</code> class or when calling the <code>Class#name</code> method. When doing
+this, a value equal to the class is searched in <code>rb_class_tbl</code>, and a
+name has to be chosen. The following case can also happen:</p>
+<pre class="emlist">
+class A
+  class B
+    C = tmp = Class.new()
+    p(tmp)   # here we search for the name
+  end
+end
+</pre>
+<p>so in the worst case we have to search for the whole constant
+space. However, generally, there aren&#8217;t many constants so searching
+all constants does not take too much time.</p>
+<h2>Include</h2>
+<p>We only talked about classes so let&#8217;s finish this chapter with
+something else and talk about module inclusion.</p>
+<h3><code>rb_include_module</code> (1)</h3>
+<p>Includes are done by the ordinary method <code>Module#include</code>. Its
+corresponding function in C is <code>rb_include_module()</code>. In fact, to be
+precise, its body is <code>rb_mod_include()</code>, and there
+<code>Module#append_feature</code> is called, and this function&#8217;s default
+implementation finally calls <code>rb_include_module()</code>. Mixing what&#8217;s
+happening in Ruby and C gives us the following call graph.</p>
+<pre class="emlist">
+Module#include (rb_mod_include)
+    Module#append_features (rb_mod_append_features)
+        rb_include_module
+</pre>
+<p>All usual includes are done by <code>rb_include_module()</code>. This function is
+a little long so we&#8217;ll look at it a half at a time.</p>
+<p>▼ <code>rb_include_module</code> (first half)
+<pre class="longlist">
+      /* include module in class */
+ 347  void
+ 348  rb_include_module(klass, module)
+ 349      <span class="caps">VALUE</span> klass, module;
+ 350  {
+ 351      <span class="caps">VALUE</span> p, c;
+ 352      int changed = 0;
+ 353
+ 354      rb_frozen_class_p(klass);
+ 355      if (!OBJ_TAINTED(klass)) {
+ 356          rb_secure(4);
+ 357      }
+ 358
+ 359      if (NIL_P(module)) return;
+ 360      if (klass == module) return;
+ 361
+ 362      switch (<acronym title="module"><span class="caps">TYPE</span></acronym>) {
+ 363        case T_MODULE:
+ 364        case T_CLASS:
+ 365        case T_ICLASS:
+ 366          break;
+ 367        default:
+ 368          Check_Type(module, T_MODULE);
+ 369      }</p>
+<p>(class.c)
+</pre></p>
+<p>For the moment it&#8217;s only security and type checking, therefore we can
+ignore it. The process itself is below:</p>
+<p>▼ <code>rb_include_module</code> (second half)
+<pre class="longlist">
+ 371      OBJ_INFECT(klass, module);
+ 372      c = klass;
+ 373      while (module) {
+ 374          int superclass_seen = Qfalse;
+ 375
+ 376          if (<acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl == <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl)
+ 377              rb_raise(rb_eArgError, &#8220;cyclic include detected&#8221;);
+ 378          /* (A) skip if the superclass already includes module <strong>/
+ 379          for (p = <acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super; p; p = <acronym title="p"><span class="caps">RCLASS</span></acronym>&#8594;super) {
+ 380              switch (BUILTIN_TYPE(p)) {
+ 381                case T_ICLASS:
+ 382                  if (<acronym title="p"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl == <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl) {
+ 383                      if (!superclass_seen) {
+ 384                          c = p;  /</strong> move the insertion point */
+ 385                      }
+ 386                      goto skip;
+ 387                  }
+ 388                  break;
+ 389                case T_CLASS:
+ 390                  superclass_seen = Qtrue;
+ 391                  break;
+ 392              }
+ 393          }
+ 394          c = <acronym title="c"><span class="caps">RCLASS</span></acronym>&#8594;super =
+                          include_class_new(module, <acronym title="c"><span class="caps">RCLASS</span></acronym>&#8594;super);
+ 395          changed = 1;
+ 396        skip:
+ 397          module = <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;super;
+ 398      }
+ 399      if (changed) rb_clear_cache();
+ 400  }</p>
+<p>(class.c)
+</pre></p>
+<p>First, what the (A) block does is written in the comment. It seems to
+be a special condition so let&#8217;s first skip reading it for now. By
+extracting the important parts from the rest we get the following:</p>
+<pre class="emlist">
+c = klass;
+while (module) {
+    c = RCLASS(c)-&gt;super = include_class_new(module, RCLASS(c)-&gt;super);
+    module = RCLASS(module)-&gt;super;
+}
+</pre>
+<p>In other words, it&#8217;s a repetition of <code>module</code>&#8216;s <code>super</code>. What is in
+<code>module</code>&#8217;s <code>super</code> must be a module included by <code>module</code> (because our
+intuition tells us so). Then the superclass of the class where the
+inclusion occurs is replaced with something. We do not understand much
+what, but at the moment I saw that I felt &#8220;Ah, doesn&#8217;t this look the
+addition of elements to a list (like LISP&#8217;s cons)?&#8221; and it suddenly
+make the story faster. In other words it&#8217;s the following form:</p>
+<pre class="emlist">
+list = new(item, list)
+</pre>
+<p>Thinking about this, it seems we can expect that module is inserted
+between <code>c</code> and <code>c-&gt;super</code>. If it&#8217;s like this, it fits module&#8217;s
+specification.</p>
+<p>But to be sure of this we have to look at <code>include_class_new()</code>.</p>
+<h3><code>include_class_new()</code></h3>
+<p>▼ <code>include_class_new()</code>
+<pre class="longlist">
+ 319  static <span class="caps">VALUE</span>
+ 320  include_class_new(module, super)
+ 321      <span class="caps">VALUE</span> module, super;
+ 322  {
+ 323      <acronym title="klass, struct RClass"><span class="caps">NEWOBJ</span></acronym>;               /* (A) <strong>/
+ 324      <acronym title="klass, rb_cClass, T_ICLASS"><span class="caps">OBJSETUP</span></acronym>;
+ 325
+ 326      if (BUILTIN_TYPE(module) == T_ICLASS) {
+ 327          module = <acronym title="module"><span class="caps">RBASIC</span></acronym>&#8594;klass;
+ 328      }
+ 329      if (!<acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;iv_tbl) {
+ 330          <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;iv_tbl = st_init_numtable();
+ 331      }
+ 332      klass&#8594;iv_tbl = <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;iv_tbl;     /</strong> (B) <strong>/
+ 333      klass&#8594;m_tbl = <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl;
+ 334      klass&#8594;super = super;                       /</strong> &#169; <strong>/
+ 335      if (<acronym title="module"><span class="caps">TYPE</span></acronym> == T_ICLASS) {             /</strong> (D) <strong>/
+ 336          <acronym title="klass"><span class="caps">RBASIC</span></acronym>&#8594;klass = <acronym title="module"><span class="caps">RBASIC</span></acronym>&#8594;klass;   /</strong> (D-1) <strong>/
+ 337      }
+ 338      else {
+ 339          <acronym title="klass"><span class="caps">RBASIC</span></acronym>&#8594;klass = module;                  /</strong> (D-2) */
+ 340      }
+ 341      OBJ_INFECT(klass, module);
+ 342      OBJ_INFECT(klass, super);
+ 343
+ 344      return (<span class="caps">VALUE</span>)klass;
+ 345  }</p>
+<p>(class.c)
+</pre></p>
+<p>We&#8217;re lucky there&#8217;s nothing we do not know.</p>
+<p>(A) First create a new class.</p>
+<p>(B) Transplant <code>module</code>&#8217;s instance variable and method tables into
+this class.</p>
+<p>&#169; Make the including class&#8217;s superclass (<code>super</code>) the super class of
+this new class.</p>
+<p>In other words, this function creates an include class for the
+module. The important point is that at (B) only the pointer is moved
+on, without duplicating the table. Later, if a method is added, the
+module&#8217;s body and the include class will still have exactly the
+same methods (figure 11).</p>
+<p class="image">
+<p><img src="images/ch_class_symbolic.png" alt="(symbolic)"><br>
+Figure 11: Include class</p>
+</p>
+<p>If you look closely at (A), the structure type flag is set to
+T_ICLASS. This seems to be the mark of an include class. This
+function&#8217;s name is <code>include_class_new()</code> so <code>ICLASS</code>&#8217;s <code>I</code> must be
+<code>include</code>.</p>
+<p>And if you think about joining what this function and
+<code>rb_include_module()</code> do, we know that our previous expectations were not
+wrong. In brief, including is inserting the include class of a
+module between a class and its superclass (figure 12).</p>
+<p class="image">
+<p><img src="images/ch_class_include.png" alt="(include)"><br>
+Figure 12: Include</p>
+</p>
+<p>At (D-2) the module is stored in the include class&#8217;s <code>klass</code>. At
+(D-1), the module&#8217;s body is taken out&#8230; at least that&#8217;s what I&#8217;d like
+to say, but in fact this check does not have any use. The <code>T_ICLASS</code>
+check is already done at the beginning of this function, so when
+arriving here there can&#8217;t still be a <code>T_ICLASS</code>. Modification to
+<code>ruby</code> piled up at a fast pace during quite a long period of time so
+there are quite a few small overlooks.</p>
+<p>There is one more thing to consider. Somehow the include class&#8217;s
+<code>basic.klass</code> is only used to point to the module&#8217;s body, so for
+example calling a method on the include class would be very bad. So
+include classes must not be seen from Ruby programs. And in
+practice all methods skip include classes, with no exception.</p>
+<h3>Simulation</h3>
+<p>It was complicated so let&#8217;s look at a concrete example. I&#8217;d like you
+to look at figure 13 (1). We have the <code>c1</code> class and the <code>m1</code> module
+that includes <code>m2</code>. From there, the changes made to include <code>m1</code> in
+<code>c1</code> are (2) and (3). <code>im</code>s are of course include classes.</p>
+<p class="image">
+<p><img src="images/ch_class_simulate.png" alt="(simulate)"><br>
+Figure 13: Include</p>
+</p>
+<h3><code>rb_include_module</code> (2)</h3>
+<p>Well, now we can explain the part of <code>rb_include_module()</code> we skipped.</p>
+<p>▼ <code>rb_include_module</code> (avoiding double inclusion)
+<pre class="longlist">
+ 378  /* (A) skip if the superclass already includes module <strong>/
+ 379  for (p = <acronym title="klass"><span class="caps">RCLASS</span></acronym>&#8594;super; p; p = <acronym title="p"><span class="caps">RCLASS</span></acronym>&#8594;super) {
+ 380      switch (BUILTIN_TYPE(p)) {
+ 381        case T_ICLASS:
+ 382          if (<acronym title="p"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl == <acronym title="module"><span class="caps">RCLASS</span></acronym>&#8594;m_tbl) {
+ 383              if (!superclass_seen) {
+ 384                  c = p;  /</strong> the inserting point is moved */
+ 385              }
+ 386              goto skip;
+ 387          }
+ 388          break;
+ 389        case T_CLASS:
+ 390          superclass_seen = Qtrue;
+ 391          break;
+ 392      }
+ 393  }</p>
+<p>(class.c)
+</pre></p>
+<p>If one of the <code>T_ICLASS</code>es (include classes) that are in <code>klass</code>&#8216;s
+superclasses (<code>p</code>) has the same table as one of the modules we want to
+include (<code>module</code>), it&#8217;s an include class for <code>module</code>. That&#8217;s why we
+skip the inclusion to not include the module twice. If this module
+includes an other module (<code>module-&gt;super</code>), we check this once more.</p>
+<p>However, when we skip an inclusion, <code>p</code> is a module that has been
+included once, so its included modules must already be
+included&#8230; that&#8217;s what I thought for a moment, but we can have the
+following context:</p>
+<pre class="emlist">
+module M
+end
+module M2
+end
+class C
+  include M   # M2 is not yet included in M
+end           # therefore M2 is not in C's superclasses
+
+module M
+  include M2  # as there M2 is included in M,
+end
+class C
+  include M   # I would like here to only add M2
+end
+</pre>
+<p>So on the contrary, there are cases for which <code>include</code> does not have
+real-time repercussions.</p>
+<p>For class inheritance, the class&#8217;s singleton methods were inherited
+but in the case of module there is no such thing. Therefore the
+singleton methods of the module are not inherited by the including
+class (or module). When you want to also inherit singleton methods,
+the usual way is to override <code>Module#append_features</code>.</p>
+
+    <footer>
+      The original work is Copyright © 2002 - 2004 Minero AOKI.
+      Translated by Vincent ISAMBART and Clifford Escobar CAOILE
+      This work is licensed under a
+      <p>
+        <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/2.5/">Creative Commons Attribution-NonCommercial-ShareAlike2.5 License</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
