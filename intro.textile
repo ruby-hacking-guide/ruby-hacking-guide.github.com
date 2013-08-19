@@ -246,7 +246,7 @@ It's sometimes corresponds to crucial importance, sometimes it doesn't matter
 practically. Yet, this is certainly an appealing point if a language seeks for
 "handy and easy", and Ruby does. 
 
-h4. Most of syntactic elements are formulae
+h4. Most of syntactic elements are expressions
 
 This topic is probably difficult to understand it instantly without needs
 supplemental explanation.  For example, the following C-language program
@@ -263,10 +263,10 @@ result = cond ? process(val) : 0;
 </pre>
 
 This rewrite is possible because the conditional operator (@a?b:c@) is defined
-as a formula. 
+as an expression.
 
 
-On the other hand, Ruby acceps a following expression because @if@ is a formula. 
+On the other hand, Ruby acceps a following expression because @if@ is an expression.
 
 p(=emlist). 
 result = if cond then process(val) else nil end
