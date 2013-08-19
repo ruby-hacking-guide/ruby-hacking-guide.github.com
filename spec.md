@@ -1,0 +1,2128 @@
+* * * * *
+
+layout: default\
+title: Ruby Language Details\
+—\
+h1(\#chapter). Chapter 8 : Ruby Language Details
+
+I’ll talk about the details of Ruby’s syntax and evaluation,\
+which haven’t been covered yet. I didn’t intend a complete exposition,\
+so I left out everything which doesn’t come up in this book.\
+That’s why you won’t be able to write Ruby programs just by\
+reading this. A complete exposition can be found in the\
+\footnote{Ruby reference manual: `archives/ruby-refm.tar.gz` in the attached CD-ROM}
+
+Readers who know Ruby can skip over this chapter.
+
+Literals
+--------
+
+The expressiveness of Ruby’s literals is extremely high.\
+What distinguishes Ruby as a scripting language\
+is firstly the existence of\
+the toplevel, secondly it’s the expressiveness of its literals in my\
+opinion. Thirdly it might be the richness of its standard library.
+
+The literals have already as elements enormous power, but even more\
+when combined. Especially that one can create complex literals from\
+hash and array literals is a great advantage of Ruby. One can simply\
+write down a hash of arrays of regular expressions for instance.
+
+Let’s look at the valid expressions one by one.
+
+### Strings
+
+Strings and regular expressions can’t be missing in a scripting
+language.\
+There is a great variety of string literals.
+
+#### Single Quoted Strings
+
+<pre class="emlist">
+‘string’ \# 「string」\
+‘\\begin{document}’ \# 「\\begin{document}」\
+‘\n’ \# 「\\n」backslash and an n, no newline\
+‘\1’ \# 「\\1」backslash and 1\
+‘\'’ \# 「’」\
+
+</pre>
+This is the simplest form. In C everything enclosed in single quotes
+becomes a\
+string, it’s the same in Ruby. Let’s call this a \`’\`-string. The
+backslash escape\
+is in effect only for \`\\\` itself and \`’\`. If one puts a backslash\
+in front of another character the backslash remains as for example\
+in the fourth example.
+
+And Ruby’s strings aren’t divided by newline characters.\
+If we write a string over several lines the newlines are contained\
+in the string.
+
+<pre class="emlist">
+‘multi\
+ line\
+ string’\
+
+</pre>
+And if the \`-K\` option is given to the \`ruby\` command multibyte
+strings\
+will be accepted. At present the three encodings EUC-JP (\`-Ke\`),\
+Shift JIS (\`-Ks\`), and UTF8 (\`-Ku\`) can be specified. (Translator’s
+note:\
+\`-K\` option was removed in Ruby 1.9)
+
+<pre class="emlist">
+‘「漢字が通る」と「マルチバイト文字が通る」はちょっと違う’\
+\# ‘There’s a little difference between “Kanji are accepted” and
+“Multibyte characters are accepted”.’\
+
+</pre>
+#### Double Quoted Strings
+
+<pre class="emlist">
+“string” \# 「string」\
+“\n” \# newline\
+“\x0f” \# a byte given in hexadecimal form\
+“page\#{n}.html” \# embedding a command\
+
+</pre>
+With double quotes we can use command expansion and backslash notation.\
+The backslash notation is classical, it was already supported in C,\
+\`\\n\` is a newline, \`\\b\` is a backspace, this kind of notation.\
+In Ruby also \`Ctrl-C\` and ESC can be expressed, that’s convenient.\
+It’s probably of no use to list the whole notation here.
+
+On the other hand, expression expansion is even more fantastic.\
+We can write an arbitrary Ruby expression inside \`\#{ }\` and it\
+will be evaluated at runtime and embedded into the string. There\
+are no limitations like only one variable or only one method.\
+This is not a mere literal anymore but a whole expression representing\
+a string.
+
+<pre class="emlist">
+“embedded \#{lvar} expression”\
+“embedded \#{@ivar} expression”\
+“embedded \#{1 + 1} expression”\
+“embedded \#{method\_call(arg)} expression”\
+“embedded \#{”string in string“} expression”\
+
+</pre>
+#### Strings with \`%\`
+
+<pre class="emlist">
+q(string)            \# same as 'string'
+Q (string) \# same as “string”\
+             \# same as Q (string) or “string”\
+
+</pre>
+If a lot of separator characters appear in a string, escaping all of
+them\
+becomes a burden. In that case the separator characters can be\
+changed. The string which contains the one character \`“\` can be\
+written with a \`%\` string as follows:
+\
+\<pre class=”emlist“\>\
+”<a href=\"http://i.loveruby.net#{path}\">"\
+Q(")
+\</pre\>
+The expression isn't shorter, but nicer to look at.
+When we have to escape more often, it even becomes more concise.
+
+Here we have used parentheses as delimiters, but something else is fine,
+too. Like brackets or braces or \`\#\`. Almost every symbol is fine, even
+\`\`.
+
+<pre class="emlist">
+q\#this is string\#
+q[this is string]\
+qthis is string
+\</pre\>
+
+h4. Here Documents
+
+Here documents are a syntactical device where one or more lines can
+form a string. A normal string starts right after the delimiter \`"\`
+and takes everything until the ending \`"\`. Here documents start
+at the line after a \`\<\<EOS\` and end at the line before the ending \`EOS\`.
+
+\<pre class="emlist"\>
+
+\<\<EOS
+All lines between the starting and
+the ending line are in this
+here document
+EOS
+\</pre\>
+Here we used \`EOS\` as identifier but any word is fine.
+Precisely speaking all the character matching \`[a-zA-Z\_0-9]\` can be used.
+
+The characteristic of a here document is that every line between
+the start symbol and the ending symbol will form a string. The line
+which contains the start symbol delimits the string.
+That's why the position of the start symbol is not important.
+It can even be in the middle of an expression:
+
+\<pre class="emlist"\>
+printf(\<\<EOS, count\_n(str))
+count=d\
+EOS\
+
+</pre>
+In this case the string
+\`“count=d\\n"\` goes in the place of \`\<\<EOS\`.
+So it's the same as the following.
+
+\<pre class="emlist"\>
+printf("count=d\\n”, count\_n(str))\
+
+</pre>
+The start symbol can be somewhere in the line, but there are strict\
+rules for the ending symbol: It must be at the beginning of the line\
+and there must not be another letter in that line. However\
+if we write the start symbol with a minus like this \`\<\<~~EOS\` we\
+can indent the line with the end symbol.
+\
+\<pre class=“emlist”\>\
+ \<\<~~EOS\
+It would be convenient if one could indent the content\
+of a here document. But that’s not possible.\
+If you want that, the best way is to write\
+a method which delete the indent. But beware\
+of tabs.\
+ EOS\
+
+</pre>
+Furthermore, the start symbol can be enclosed in single or double
+quotes.\
+Then the properties of the whole here document change.\
+When we change \`\<<EOS` to `<<"EOS"` we can use command expression
+imbedding and backslash notation.
+
+<pre class="emlist">\
+ \<\<“EOS”\
+One day is \#{24 \* 60 \* 60} seconds.\
+Incredible.\
+EOS\
+
+</pre>
+But \`\<\<‘EOS’\` is not the same as a single quoted string. It starts\
+the complete literal mode. Everything even backslashes go\
+into the string as they are typed. This is useful for a string which\
+contains many backslashes.
+
+In the second part we also explain how a here document is passed.\
+But I’d like you to guess it before.\
+(Translators Note: In Ruby 1.8 and 1.9 expression expansion and\
+backslash notation can be used in a normal here document.\
+There does not seem to be a difference anymore to a double quote
+enclosed\
+here document.)
+
+### Characters
+
+Ruby strings are byte strings, there are no character objects.\
+Instead there are the following expressions which return the\
+integers which correspond a certain character in ASCII code.
+
+<pre class="emlist">
+?a \# the integer which corresponds to 「a」\
+?. \# the integer which corresponds to 「.」\
+?\n                   \# LF\
+?\C-a \# Ctrl-a\
+
+</pre>
+(Translator’s note: Strings in Ruby 1.9 are not byte strings anymore,\
+they have an attached encoding. \`?a\` returns the string \`“a”\` in
+Ruby1.9)
+
+### Regular Expressions
+
+<pre class="emlist">
+/regexp/\
+/\^Content-Length:/i\
+/正規表現/\
+/\\/\*.**?\*\//m \# An expression which matches C comments\
+/reg\#{1 + 1}exp/ \# the same as /reg2exp/\
+\</pre\>
+\
+What is contained between slashes is a regular expression.\
+Regular expressions are a language to designate string patterns.\
+For example
+\
+\<pre class=“emlist”\>\
+/abc/\
+\</pre\>
+\
+This regular expression matches a string where there’s an \`a\`
+followed\
+by a \`b\` followed by a \`c\`. It matches “abc” or “fffffffabc” or\
+“abcxxxxx”.
+\
+One can designate more special patterns.
+\
+\<pre class=“emlist”\>\
+/\^From:/\
+\</pre\>
+\
+This matches a string where there’s a \`From\` followed by a \`:\` at\
+the beginning. There are several more expressions of this kind,\
+such that one can create quite complex patterns.
+\
+The uses are infinite:\
+Changing the matched part to another string, deleting the matched part,\
+determining if there’s one match and and and…
+\
+A more concrete use case would be extracting the \`From:\` header\
+from a mail. Then changing the \`\\n\` to an \`\\r\` and\
+checking if the rest looks like a mail address.
+\
+The regular expressions form an independent language, it has\
+it’s own parser and evaluator within ruby. It can be found in
+\`regex.c\`\
+in the Ruby source. In effect from a grammar view point they are\
+treated the same as strings. Escapes, backslash notation and command\
+embedding can be used almost the same as in strings.
+\
+Of course regular expressions and strings are treated the same\
+in the Ruby syntax only. Regular expressions themselves are a language\
+of their own with own rules which have to be obeyed. This is a subject\
+of a whole other book. We won’t go deeper into that here.\
+Refer for instance to Jeffrey Friedl, Regular expressions.
+\
+h4. Regular Expressions with \`%\`
+\
+Also as with strings, regular expressions also have a syntax for
+changing\
+delimiters. In this case it is \`%r\`. Here just some examples.
+\
+\<pre class=“emlist”\>\
+r(regexp)
+r[/\*.**?\*/] \# matches a C comment\
+r("(?:[\^"\\\\]+|\\\\.)\*")   \# matches a string in C
+r{reg\#{1 + 1}exp} \# imbedding a Ruby expression\
+
+</pre>
+### Arrays
+
+An array literal is contained in brackets \`[]\`, elements are
+separated\
+by commas.
+
+<pre class="emlist">
+[1, 2, 3]\
+[‘This’, ‘is’, ‘an’, ‘array’, ‘of’, ‘string’]
+
+[/regexp/, {’hash’=\>3}, 4, ‘string’, ?\C-a]
+
+lvar = \$gvar = `ivar = ``cvar = nil
+[lvar, $gvar, `ivar, `` @cvar]
+[Object.new(), Object.new(), Object.new()]
+</pre>
+
+Ruby's arrays  are a list of arbitrary objects. From a syntactical
+standpoint it's characteristic is, that
+the elements can be arbitrary expressions. As mentioned earlier,
+an array of hashes of regular expressions can easily be made.
+Not just literals but also variables or method calls can also be
+put together.
+
+And as with the other literals note that this is really an "expression
+which generates an array object"
+
+<pre class="emlist">
+i = 0
+while i < 5
+  p([1,2,3].id)    # Each time another object id is shown.
+  i += 1
+end
+</pre>
+
+h4. Word Arrays
+
+When writing scripts one uses arrays of strings a lot, hence
+there is a special notation only for arrays of strings.
+That is `%w`. With an example it's immediately obvious.
+
+<pre class="emlist">
+%w( alpha beta gamma delta )   # ['alpha','beta','gamma','delta']
+%w( 月 火 水 木 金 土 日 )
+%w( Jan Feb Mar Apr May Jun
+    Jul Aug Sep Oct Nov Dec )
+</pre>
+
+There's also `%W` where command embedding can be used.
+It's a relatively recent implementation.
+
+<pre class="emlist">
+n = 5
+%w( list0 list#{n} )   # ['list0', 'list#{n}']
+%W( list0 list#{n} )   # ['list0', 'list5']
+</pre>
+
+The author hasn't come up with a good use yet.
+
+h3. Hashes
+
+Hash tables are data structure which store a one-to-one relation between
+arbitrary objects. The following expressions generate a table.
+
+<pre class="emlist">
+{ 'key' => 'value', 'key2' => 'value2' }
+{ 3 => 0, 'string' => 5, ['array'] => 9 }
+{ Object.new() => 3, Object.new() => 'string' }
+
+# Of course we can put it in several lines.
+{ 0 => 0,
+  1 => 3,
+  2 => 6 }
+</pre>
+
+We explained hashes in detail in the third chapter "Names and
+Nametables". They are fast lookup tables which allocate memory slots depending
+on the hash values. In Ruby grammar,
+both keys and values can be arbitrary expressions.
+
+Furthermore inside the argument of a method call the `{...}` can be omitted.
+
+
+<pre class="emlist">
+  some_method(arg, key => value, key2 => value2)
+# some_method(arg, {key => value, key2 => value2}) # same as above
+</pre>
+
+With this we can imitate named arguments.
+
+<pre class="emlist">
+button.set_geometry('x' => 80, 'y' => '240')
+</pre>
+
+Of course in this case `set_geometry` must accept a hash as input.
+Real keyword arguments will be transformed into parameter variables, though.
+With a passed hash it is not quite the real thing.
+
+h3. Ranges
+
+Range literals are oddballs which don't appear in most other languages.
+Here are some expressions which generate Range objects.
+
+<pre class="emlist">
+0..5          # from 0 to 5 containing 5
+0...5         # from 0 to 5 not containing 5
+1+2 .. 9+0    # from 3 to 9 containing 9
+'a'..'z'      # strings from 'a' to 'z' containing 'z'
+</pre>
+
+If there are two dots the last element is included. If there
+are three dots it is not included. Not only integers but also floats
+and strings can be made into ranges, even arbitrary objects can
+be used in ranges. Syntactically arbitrary expressions can be
+used as delimiters of a range object. If the returned object cannot
+be made into a range there will be a runtime error.
+
+Besides, the precedence of `..` and `...` is quite low. Here's a surprising
+interpretation.
+
+<pre class="emlist">
+1..5.to_a()   # 1..(5.to_a())
+</pre>
+
+I thinks the Ruby grammar is really intuitive,
+but I do not like this.
+
+h3. Symbols
+
+In the first part we talked about symbols at length.
+They are something which corresponds one-to-one to strings.
+In Ruby symbols are expressed with a `:` in front.
+
+<pre class="emlist">
+:identifier
+:abcde
+</pre>
+
+These are pretty standard examples. But all symbol and method
+names become symbols with a `:` in front. Like this:
+
+<pre class="emlist">
+:$gvar
+: ``ivar\
+:`` @cvar
+:CONST
+</pre>
+
+We haven't shown any method names so far. Of course `[]` or `attr=`
+can be used as symbols too.
+
+<pre class="emlist">
+:[]
+:attr=
+</pre>
+
+When one uses these symbols as values in an array, it'll look quite
+complicated.
+
+h3. Numerical Values
+
+This is the least interesting. It might be added that
+
+<pre class="emlist">
+1_000_000
+</pre>
+becomes one million and that underscores can be used inside a number.
+But that isn't particularly interesting. This is it about numerical
+values in this book. We'll completely forget them from here on.
+
+h2. Methods
+
+Let's talk about the definition and calling of methods.
+
+h3. Definition and Calls
+
+<pre class="emlist">
+def some_method( arg )
+  ....
+end
+
+class C
+  def some_method( arg )
+    ....
+  end
+end
+</pre>
+
+Methods are defined with `def`. If they are defined at toplevel
+they become function style methods, inside a class they become
+methods of this class. To call a method which was defined in a class,
+one usually has to create an instance with `new` as shown below.
+
+<pre class="emlist">
+C.new().some_method(0)
+</pre>
+
+h3. The Return Value of Methods
+
+The return value of a method is the value of a `return` statement
+if it runs across one.
+If there is none it's the value of the last statement.
+
+<pre class="emlist">
+def one()     # 1 is returned
+  return 1
+  999
+end
+
+def two()     # 2 is returned
+  999
+  2
+end
+
+def three()   # 3 is returned
+  if true then
+    3
+  else
+    999
+  end
+end
+</pre>
+
+If the method body is empty `nil` is returned
+and an expression without a value cannot put at the end.
+Hence every method has a return value.
+
+h3. Optional Arguments
+
+Optional arguments can also be defined. If the number of arguments
+doesn't suffice the parameters are automatically assigned to a
+default value.
+
+<pre class="emlist">
+def some_method( arg = 9 )  # default value is 9
+  p arg
+end
+
+some_method(0)    # 0 is shown.
+some_method()     # The default value 9 is shown.
+</pre>
+
+There can also be several optional arguments.
+But in that case they must all come at the end. It is not
+possible to make an argument in the middle optional.
+It would be unclear how this should be made sense of.
+
+<pre class="emlist">
+def right_decl( arg1, arg2, darg1 = nil, darg2 = nil )
+  ....
+end
+
+# This is not possible
+def wrong_decl( arg, default = nil, arg2 )  # A middle argument cannot be optional
+  ....
+end
+</pre>
+
+h3. Omitting argument parantheses
+
+The parentheses from a method call can be omitted.
+
+<pre class="emlist">
+puts 'Hello, World!'   # puts("Hello, World")
+obj = Object.new       # obj = Object.new()
+</pre>
+
+In Python leaving out parentheses gets the method object, but
+there is no such thing in Ruby.
+
+We can also omit parentheses within the arguments itself.
+
+<pre class="emlist">
+  puts(File.basename fname)
+# puts(File.basename(fname)) same as the above
+</pre>
+
+If we like we can even leave out more
+
+<pre class="emlist">
+  puts File.basename fname
+# puts(File.basename(fname))  same as the above
+</pre>
+
+In Ruby 2.0 such an expression will probably not pass anymore.
+
+Actually let's also leave out the parentheses in the definition
+
+<pre class="emlist">
+def some_method param1, param2, param3
+end
+
+def other_method    # without arguments we see this a lot
+end
+</pre>
+
+Parentheses are often left out in method calls, but leaving out
+parentheses in the definition is not very popular.
+Only if there are no arguments the parentheses are frequently omitted.
+
+h3. Arguments and Lists
+
+Arguments form a list of objects. If we want to use the elements of a list as arguments we can do this as follows:
+
+<pre class="emlist">
+def delegate(a, b, c)
+  p(a, b, c)
+end
+
+list = [1, 2, 3]
+delegate(*list)   # identical to delegate(1, 2, 3)
+</pre>
+
+In this way we can distribute an array into arguments.
+We call this device a `*`argument. Here we used a local variable
+for demonstration, but of course there is no limitation.
+We can also directly put a literal or a method call instead.
+
+<pre class="emlist">
+m(*[1,2,3])    # We could have written the expanded form in the first place...
+m(*mcall())
+</pre>
+
+The  ``**@ argument can be used together with ordinary arguments,\
+but the `*` argument must come last.
+\
+In the definition on the other hand we can handle the arguments in\
+bulk when we put a \`\*\` in front of the parameter variable.
+\
+\<pre class=“emlist”\>\
+def some\_method\
+ p args\
+end
+\
+some\_method \# prints \
+some\_method \# prints \
+\</pre\>
+\
+The surplus arguments are gathered in an array. Only one
+\`\*\`parameter\
+can be declared. It must also come after the default arguments.
+\
+\<pre class=“emlist”\>\
+def some\_method0\
+end\
+def some\_method1\
+end\
+\</pre\>
+\
+If we combine list expansion and bulk reception together, the arguments\
+of one method can be passed as a whole to another method. This might\
+be the most practical use of the \`\*\`parameter.
+\
+\<pre class=“emlist”\>\
+\# a method which passes its arguments to other\_method\
+def delegate\
+ other\_method\
+end
+\
+def other\_method\
+ return a + b + c\
+end
+\
+delegate \# same as other\_method\
+delegate \# same as other\_method\
+\</pre\>
+\
+h3. Various Method Call Expressions
+\
+There is only one mechanism for ‘method call’, but there still\
+can be several representations of the same mechanism. This is\
+colloquially called syntactic sugar.
+\
+In Ruby there is a ton of it,\
+and they are really attractive for a person who has a fetish for
+parsers.\
+For instance the examples below are all method calls.
+\
+\<pre class=“emlist”\>\
+1 + 2 \# 1.*\
+a  b                  \# a.\
+~/regexp/\\ \#\\ /regexp/.~\
+obj.attr = val \# obj.attr=\
+obj[i] \# obj. = v \# obj.=\`, \`\\\`\`\
+are all names of methods. They can appear as names in a method
+definition\
+and can also be used as symbols.
+\
+\<pre class=“emlist”\>\
+class C\
+ def =)\
+p\
+\</pre\>
+\
+There are people who don’t like sweets and there are people who\
+hate syntactic sugar. Maybe because one cannot tell by the looks\
+that it’s really the same thing. It feels like a deception.\
+
+\
+Let’s see some more details.
+\
+h4. Symbol Appendices
+\
+\<pre class=“emlist”\>\
+obj.name?\
+obj.name!\
+\</pre\>
+\
+First a small thing. It’s just appending a \`?\` or a \`!\`. Call and
+Definition\
+do not differ, so it’s not too painful. There are convention for what\
+to use these method names, but there is no enforcement on language
+level.\
+It’s just a convention.\
+These method names are probably an influence from Lisp which has a great
+variety\
+of function names.
+\
+h4. Binary Operators
+\
+\<pre class=“emlist”\>\
+1* 2 \# 1.*\
+\</pre\>
+\
+Binary Operators will be converted to a method call to the object on
+the\
+left hand side. Here the method \`+\` from the object \`1\` is called.\
+As listed below there are many of them. There are the general operators\
+\`+\` and \`-\`, also the equivalence operator
+\`\` and the spaceship operator
+\`\<=\>' as in Perl, all sorts. They are listed in order of their precedence.
+
+\<pre class="emlist"\>
+\*\*
+\* / %
++ -
+\<\< \>\>
+&
+| \^
+\> \>= \< \<=
+\<=\>  = =\~
+\</pre\>
+
+The symbols \`&\` and \`|\` are methods, but the double symbols \`&&\` and \`||\`
+are built-in operators. Remember how it is in C.
+
+h4. Unary Operators
+
+\<pre class="emlist"\>
++2
+-1.0
+\~/regexp/
+\</pre\>
+
+These are the unary operators. There are only three of them: \`+ - \~\`.
+\`+\` and \`-\` work as one would imagine ( in the default setting).
+The operator \`\~\` matches a string or a regular expression
+with the variable \`\$\_\`. With an integer it stands for bit conversion.
+
+To distinguish the unary \`+\` from the binary \`+\` the method names
+for the unary operators are \`+@\` and \`-@\` respectively.
+Of course they can be called by just writing \`+n\` or \`-n\`.
+
+((errata: + or - as the prefix of a numeric literal is actually scanned as a
+part of the literal. This is a kind of optimizations.))
+
+
+h4. Attribute Assignment
+
+\<pre class="emlist"\>
+obj.attr = val   \# obj.attr=(val)
+\</pre\>
+
+This is an attribute assignment statement. The above will be translated
+into the method call \`attr=\`. When using this together with method calls whose
+parentheses are omitted, we can write code which looks like attribute access.
+
+\<pre class="emlist"\>
+class C
+  def i() @i end          \# We can write the definition in one line
+  def i=(n) @i = n end
+end
+
+c = C.new
+c.i = 99
+p c.i    \# prints 99
+\</pre\>
+
+However both are method calls.
+They are similar to get/set property in Delphi or slot accessors in CLOS.
+
+Besides, we cannot define a attribute assignment which takes an argument like
+\`obj.attr(arg)=\`.
+
+h4. Index Notation
+
+\<pre class="emlist"\>
+obj[i]    \# obj.[](i)
+\</pre\>
+
+The above will be translated into a method call for \`[]\`.
+Array and hash access are also implemented with this device.
+
+\<pre class="emlist"\>
+obj[i] = val   \# obj.[]=(i, val)
+\</pre\>
+
+When assigning to an index the \`[]=\` method is used.
+
+h3. \`super\`
+
+Often we don't want to replace a method, but we want to add a little
+bit to the behaviour of an already existing method. Here it becomes
+necessary to not just overwrite the method in the superclass but
+to also call the method in the superclass.
+That's what Ruby's \`super\` is for.
+
+\<pre class="emlist"\>
+class A
+  def test
+    puts 'in A'
+  end
+end
+class B \< A
+  def test
+    super   \# launches A\#test
+  end
+end
+\</pre\>
+
+Ruby's \`super differs from the one in Java. This one here
+calls the method with the same name in the superclass.
+In other words \`super\` is a reserved word.
+
+When using super be careful about the difference between the difference
+of the zero arguments \`super\` and the omitted arguments \`super.
+The super with omitted arguments passes all the parameter variables.
+
+\<pre class="emlist"\>
+class A
+  def test( \*args )
+    p args
+  end
+end
+
+class B \< A
+  def test( a, b, c )
+    \# super with no arguments
+    super()    \# shows []
+
+    \# super with omitted arguments. Same result as super(a, b, c)
+    super      \# shows [1, 2, 3]
+  end
+end
+
+B.new.test(1,2,3)
+\</pre\>
+
+h4. Visibility
+
+Depending on the location ( the object \`self\`) a method can or
+cannot be called. This function was usually called visibility.
+In Ruby there are three kinds of methods.
+
+\* \`public\`
+\* \`private\`
+\* \`protected\`
+
+\`public\` methods can be called from anywhere in any form.
+\`private\` methods can syntactically only be called without a receiver.
+In effect they can only be called by instances of the class
+in which they were defined and in instances of its subclass.
+\`protected\` methods can only be called by instances of the defining class
+and its subclasses.
+It differs from \`private\` that methods can still be called from other
+instances of the same class.
+
+The terms are the same as in C++ but the meaning is slightly different.
+Be careful.
+
+Usually we control visibility as shown below.
+
+\<pre class="emlist"\>
+class C
+  public
+  def a1() end   \# becomes public
+  def a2() end   \# becomes public
+
+  private
+  def b1() end   \# becomes private
+  def b2() end   \# becomes private
+
+  protected
+  def c1() end   \# becomes protected
+  def c2() end   \# becomes protected
+end
+\</pre\>
+
+Here \`public\`, \`private\` and \`protected are method calls without
+parentheses. These aren't reserved words.
+
+\`public\` and \`private\` can also be used with an argument to set
+the visibility of a particular method. But that's not really relevant.
+We'll leave this out.
+
+h4. Module functions
+
+Given a module 'M'. If there are two methods with the exact same
+content
+
+\* \`M.method\_name\`
+\* \`M\#method\_name\`(Visibility is \`private\`)
+
+
+then we call this a module function.
+
+It is not apparent why this should be useful. But let's look
+at the next example which is happily used.
+
+\<pre class="emlist"\>
+Math.sin(5)       \# If used for a few times this is more convenient
+
+include Math
+sin(5)            \# If used more often this is more practical
+\</pre\>
+
+It's important that both functions have the same content.
+With a different \`self\` but with the same code the behavior should
+still be the same. Instance variables become extremely difficult to use.
+Hence these methods are probably only used
+for procedures like \`sin\`. That's why they are called module functions.
+
+h2. Iterators
+
+Ruby's iterators differ a bit from Java's or C++'s iterator classes
+or 'Iterator' design patterns. Precisely speaking those iterators
+are exterior iterators. Ruby's iterators are called interior iterators.
+It's difficult to understand from the definition so
+let's explain it with a concrete example.
+
+\<pre class="emlist"\>
+arr = [0,2,4,6.8]
+\</pre\>
+
+This array is given and we want to access the elements in
+order. In C style we would write the following.
+
+\<pre class="emlist"\>
+i = 0
+while i \< arr.length
+  print arr[i]
+  i += 1
+end
+\</pre\>
+
+Using an iterator we can write:
+
+\<pre class="emlist"\>
+arr.each do |item|
+  print item
+end
+\</pre\>
+
+Everything from \`each do\` to \`end\` is the call to an iterator method.
+More precisely \`each\` is the iterator method and between
+\`do\` and \`end\` is the iterator block.
+The part between the vertical bars are the block parameters.
+They are the arguments passed from the iterator method to the block where
+they become variables.
+
+Saying it quite abstractly, an iterator is something like
+a piece of code which has been cut out and passed. In our example the
+piece \`print item\` has been cut out and is passed to the \`each\` method.
+Then \`each\` takes all the elements of the array in order and passes them
+to the cut out piece of code.
+
+We can also think the other way round. The other parts except \`print item\`
+are being cut out and inserted into the \`each\` method.
+
+\<pre class="emlist"\>
+i = 0
+while i \< arr.length
+  print arr[i]
+  i += 1
+end
+
+arr.each do |item|
+  print item
+end
+\</pre\>
+
+h3. Comparison with higher order functions
+
+What comes closest in C to iterators are functions which receive function pointers,
+or higher order functions. But there are two points in which iterators in Ruby
+and higher order functions in C differ.
+
+Firstly, Ruby iterators can only take one block. For instance we can't
+do the following.
+
+\<pre class="emlist"\>
+\# Mistake. Several blocks cannot be passed.
+array\_of\_array.each do |i|
+  ....
+end do |j|
+  ....
+end
+\</pre\>
+
+Secondly, Ruby's blocks can share local variables with the code outside.
+
+\<pre class="emlist"\>
+lvar = 'ok'
+[0,1,2].each do |i|
+  p lvar    \# Can acces local variable outside the block.
+end
+\</pre\>
+
+That's where iterators are convenient.
+
+But variables can only be shared with the outside. They cannot be shared
+with the inside of the iterator method ( e.g. \`each\`). Putting it intuitively,
+only the local variables can be seen, which are on the  outside of the code.
+
+h3. Block Local Variables
+
+Local variables which are assigned inside a block stay local to that block.
+They become block local variables. Let's check it out.
+
+\<pre class="emlist"\>
+[0].each do
+  i = 0
+  p i     \# 0
+end
+\</pre\>
+
+For the time being we apply each to an array of length 1. ( We can
+leave out the block parameter.) The variable @i@ is first assigned
+and declared inside the block. So @i@ becomes a block local variable.
+
+Block local means that it cannot be accessed from the outside.
+Let's test it.
+
+\<pre class="screen"\>
+% ruby -e '
+[0].each do
+  i = 0
+end
+p i     \# Here occurs an error.
+'
+-e:5: undefined local variable or method \`i'
+for \#\<Object:0x40163a9c\> (NameError)
+\</pre\>
+
+When we referenced a block local variable from outside the block
+an error occured. Without a doubt it stayed local to the block.
+
+Iterators can also be nested repeatedly. Each time
+the new block creates another scope.
+
+\<pre class="emlist"\>
+lvar = 0
+[1].each do
+  var1 = 1
+  [2].each do
+    var2 = 2
+    [3].each do
+      var3 = 3
+      \#  Here lvar, var1, var2, var3 can be seen
+    end
+    \# Here lvar, var1, var2 can be seen
+  end
+  \# Here lvar, var1 can be seen
+end
+\# Here only lvar can be seen
+\</pre\>
+
+There's one point which you have to keep in mind. Differing from
+nowadays' major languages Ruby's block local variables don't do shadowing.
+Shadowing means for instance in C that in the code below the two declared
+variables \`i\` are different.
+
+\<pre class="emlist"\>
+{
+    int i = 3;
+    printf("%d\\n", i);         /\* 3 \*/
+    {
+        int i = 99;
+        printf("%d\\n", i);     /\* 99 \*/
+    }
+    printf("%d\\n", i);         /\* 3 (元に戻った) \*/
+}
+\</pre\>
+
+Inside the block the @i@ inside overshadows the @i@ outside.
+That's why it's called shadowing.
+
+But what happens in Ruby where there's no shadowing.
+Let's look at this example.
+
+\<pre class="emlist"\>
+i = 0
+p i           \# 0
+[0].each do
+  i = 1
+  p i         \# 1
+end
+p i           \# 1 the change is preserved
+\</pre\>
+
+When we assign @i@ inside the block and if there is a variable @i@
+that same variable will be used. Hence if we assign to @i@ inside
+the value for @i@ on the outside changes. On this point there
+came many complains: "This is error prone. Please do shadowing."
+Each time there's flaming but till now no conclusion was reached.
+
+h3. The syntax of iterators
+
+There are some smaller topics left.
+
+First, there are two ways to write an iterator. One is the
+\`do\` \~ \`end\` as used above, the other one is the enclosing in braces.
+The two expressions below have exactly the same meaning.
+
+\<pre class="emlist"\>
+arr.each do |i|
+  puts i
+end
+
+arr.each {|i|    \# The author likes a four space indentation for
+    puts i       \# an iterator with braces.
+}
+\</pre\>
+
+But grammaticarly the precedence is different.
+The braces bind much stronger than \`do\`\~\`end\`.
+
+\<pre class="emlist"\>
+m m do .... end    \# m(m) do....end
+m m { .... }       \# m(m() {....})
+\</pre\>
+
+And iterators are of course just methods so they also take
+arguments.
+
+\<pre class="emlist"\>
+re = /\^\\d/                 \# regular expression to match a digit at the beginning of the line
+\$stdin.grep(re) do |line|  \# look repeatedly for this regular expression
+  ....
+end
+\</pre\>
+
+h3. \`yield\`
+
+Of course users can write their own iterators. Methods which have
+a \`yield\` in their definition text are iterators.
+Let's try to write an iterator with the same effect as \`Array\#each\`:
+
+\<pre class="emlist"\>
+\# adding the definition to the Array class
+class Array
+  def my\_each
+    i = 0
+    while i \< self.length
+      yield self[i]
+      i += 1
+    end
+  end
+end
+
+\# this is the original each
+[0,1,2,3,4].each do |i|
+  p i
+end
+
+\# my\_each works the same
+[0,1,2,3,4].my\_each do |i|
+  p i
+end
+\</pre\>
+
+@yield@ calls the block. At this point control is passed to the block,
+when the execution of the block finishes it returns back to the same
+location. Think about it like calling a special function. When the
+present method does not have a block a runtime error will occur.
+
+\<pre class="screen"\>
+% ruby -e '[0,1,2].each'
+-e:1:in \`each': no block given (LocalJumpError)
+        from -e:1
+\</pre\>
+
+h3. \`Proc\`
+
+I said, that iterators are like cut out code which is passed as an
+argument. But we can even more directly make code to an object
+and carry it around.
+
+\<pre class="emlist"\>
+twice = Proc.new {|n| n \* 2 }
+p twice.call(9)   \# 18 will be printed
+\</pre\>
+
+In short, it is like a function. It can be created with @new@ and
+as might be expected, the return value of @Proc.new@ is an instance
+of the @Proc@ class.
+
+@Proc.new@ looks surely like an iterator and it is indeed so.
+It is an ordinary iterator. There's only some mechanism inside @Proc.new@
+which turns an iterator block into an object.
+
+Besides there is a function style method @lambda@ provided which
+has the same effect as @Proc.new@. Choose whatever suits you.
+
+\<pre class="emlist"\>
+twice = lambda {|n| n \* 2 }
+\</pre\>
+
+h4. Iterators and \`Proc\`
+
+Why did we start talking all of a sudden about @Proc@? Because there
+is a deep relationship between iterators and @Proc@.
+In fact iterators and @Proc@ objects are quite the same thing.
+That's why one can be transformed into the other.
+
+First, to turn an iterator block into a @Proc@ object
+one has to put an @&@ in front of the parameter name.
+
+\<pre class="emlist"\>
+def print\_block( &block )
+  p block
+end
+
+print\_block() do end   \# Shows something like \<Proc:0x40155884\>
+print\_block()          \# Without a block nil is printed
+\</pre\>
+
+With an @&@ in front of the argument name, the block is transformed to
+a @Proc@ object and assigned to the variable. If the method is not an
+iterator (there's no block attached) @nil@ is assigned.
+
+And in the other direction, if we want to pass a @Proc@ to an iterator
+we also use @&@.
+
+\<pre class="emlist"\>
+block = Proc.new {|i| p i }
+[0,1,2].each(&block)
+\</pre\>
+
+This code means exactly the same as the code below.
+
+\<pre class="emlist"\>
+[0,1,2].each {|i| p i }
+\</pre\>
+
+If we combine these two, we can delegate an iterator
+block to a method somewhere else.
+
+\<pre class="emlist"\>
+def each\_item( &block )
+  [0,1,2].each(&block)
+end
+
+each\_item do |i|    \# same as [0,1,2].each do |i|
+  p i
+end
+\</pre\>
+
+h2. Expressions
+
+Expressions in Ruby can be combined to build new expressions or statements.
+For instance a method call can be another method call's argument,
+and so it would become an expression.
+The same goes for literals. But literals and method calls are not combinations
+of other elements. From here on the expressions introduced will always be used
+in combination with other expressions.
+
+h3. \`if\`
+
+We probably do not need to explain the @if@ expression. If the conditional
+expression is true the body expression is executed. As explained in the
+first part in Ruby every object except @nil@ and @false@ is true.
+
+\<pre class="emlist"\>
+if cond0 then
+  ....
+elsif cond1 then
+  ....
+elsif cond2 then
+  ....
+else
+  ....
+end
+\</pre\>
+
+@elsif@ and @else@ can be omitted. Each @then@ can also be omitted
+\`elsif\`・But there are some finer requirements concerning @then@.
+It will be apparent by looking at the examples below.
+All of them are valid.
+
+\<pre class="emlist"\>
+\# 1                                    \# 4
+if cond then ..... end                 if cond
+                                       then .... end
+\# 2
+if cond; .... end                      \# 5
+                                       if cond
+\# 3                                    then
+if cond then; .... end                   ....
+                                       end
+\</pre\>
+
+Furthermore, as every expression has a return value, there
+is also a return value here. It is the return value of the
+body expression which holds. For instance if the condition
+at the beginning is true it is the return value of the
+following expression.
+
+\<pre class="emlist"\>
+p(if true  then 1 else 2 end)   \#=\> 1
+p(if false then 1 else 2 end)   \#=\> 2
+p(if false then 1 elsif true then 2 else 3 end)   \#=\> 2
+\</pre\>
+
+If there's no match, or the match is empty @nil@ is returned.
+
+\<pre class="emlist"\>
+p(if false then 1 end)    \#=\> nil
+p(if true  then   end)    \#=\> nil
+\</pre\>
+
+h3. \`unless\`
+
+An @if@ with a negated condition is the same as an @unless@.
+The following two examples have the same meaning.
+
+\<pre class="emlist"\>
+unless cond then          if not (cond) then
+  ....                      ....
+end                       end
+\</pre\>
+
+@unless@ can also have an @else@ clause but there cannot be an @elsif@.
+Of course @then@ can be omitted.
+
+@unless@ also has a value. Analogous to @if@ it is the value of the of the
+clause which matches. If there's no match or the match is empty @nil@
+is returned.
+
+h3. \`and && or ||\`
+
+The most useful utilization of the @and@ is probably as a boolean operator.
+For instance in the conditional clause of an @if@.
+
+\<pre class="emlist"\>
+if cond1 and cond2
+  puts 'ok'
+end
+\</pre\>
+
+But as in Perl, the Shell or Lisp it can also be used as a conditional
+branch expression.
+The two following expressions have the same meaning.
+
+\<pre class="emlist"\>
+                                        if invalid?(key)
+invalid?(key) and return nil              return nil
+                                        end
+\</pre\>
+
+@&&@ and @and@ have the same meaning. Different is the binding order.
+
+\<pre class="emlist"\>
+method arg0 &&  arg1    \# method(arg0 && arg1)
+method arg0 and arg1    \# method(arg0) and arg1
+\</pre\>
+
+Basically the symbolic operator is used in an expression which becomes an argument.
+The alphabetical operator is used in an expression which will not become
+an argument.
+
+As for @and@, if the evaluation of the left hand side is true,
+the right hand side will also be evaluated.
+
+On the other hand @or@ is the opposite of @and@. If the evaluation of the left hand
+side is false, the right hand side will also be evaluated.
+
+\<pre class="emlist"\>
+valid?(key) or return nil
+\</pre\>
+
+@or@ and @||@ have the same relationship as @&&@ and @and@. Only the precedence is
+different.
+
+h3. The Conditional Operator
+
+There is a conditional operator similar to C:
+
+\<pre class="emlist"\>
+cond ? iftrue : iffalse
+\</pre\>
+
+The space between the symbols is important.
+If they bump together the following weirdness happens.
+
+\<pre class="emlist"\>
+cond?iftrue:iffalse   \# cond?(iftrue(:iffalse))
+\</pre\>
+
+The value of the conditional operator is the value of the last executed expression.
+Either the value of the true side or the value of the false side.
+
+h3. \`while until\`
+
+Here's a \`while\` expression.
+
+\<pre class="emlist"\>
+while cond do
+  ....
+end
+\</pre\>
+
+This is the most basic loop construct. As long as @cond@ is true
+the body is executed. The @do@ can be omitted.
+
+\<pre class="emlist"\>
+until io\_ready?(id) do
+  sleep 0.5
+end
+\</pre\>
+
+@until@ comes to the exact opposite conclusion as the @while@.
+As long as the body expression is false it is executed.
+The @do@ can be omitted.
+
+There is also a jump construct which exits the loop.
+As in C/C++/Java it is called @break@. Instead of @continue@ there
+is @next@. That seems to have come from Perl.
+
+\<pre class="emlist"\>
+i = 0
+while true
+  if i \> 10
+    break   \# exit the loop
+  elsif i % 2  0\
+ i **= 2\
+ next \# next loop iteration\
+ end\
+ i *= 1\
+end\
+\</pre\>
+\
+And there is another Perlism: the `redo`.
+\
+\<pre class=“emlist”\>\
+while cond\
+ \# \
+ ….\
+ redo\
+ ….\
+end\
+\</pre\>
+\
+It will return to `(A)` and repeat from there. With next there\
+is a condition `check`, with `redo` there is none.
+\
+I might come into the world top 100, if the amount of Ruby programs\
+would be counted, but I haven’t used `redo` yet. It does not seem to be\
+that necessary after all.
+\
+h3. \`case\`
+\
+A special form of the `if` expression. It performs branching on a series
+of\
+conditions. The following left and right expressions are identical in
+meaning.
+\
+\<pre class=“emlist”\>\
+case value\
+when cond1 then if cond1 = value
+  ....                           ....
+when cond2 then                elsif cond2 = value\
+ …. ….\
+when cond3, cond4 then elsif cond3 = value or cond4 = value\
+ …. ….\
+else else\
+ …. ….\
+end end\
+\</pre\>
+\
+The threefold equals `===` is, as the same as the `==`, actually a
+method call.\
+Notice that the receiver is the object on the left hand side.
+Concretely,\
+if it is the \`===\` of an \`Array\`, it would check if it contains the
+\`value\`\
+as its element.\
+If it is a \`Hash\`, it tests whether it has the \`value\` as its key.\
+If its is an regular expression, it tests if the `value` matches.\
+And so on.\
+Since \`case\` has many grammatical elements,\
+to list them all would be tedious, thus we will not cover them in this
+book.
+
+\
+h3. Exceptions
+\
+This is a control structure which can pass method boundaries and\
+transmit errors. Readers who are acquainted to C*+ or Java\
+will know about exceptions. Ruby exceptions are basically the\
+same.
+\
+In Ruby exceptions come in the form of the function style method
+\`raise\`.\
+\`raise\` is not a reserved word.
+\
+\<pre class=“emlist”\>\
+raise ArgumentError, “wrong number of argument”\
+\</pre\>
+\
+In Ruby exception are instances of the `Exception` class and it’s\
+subclasses. This form takes an exception class as its first argument\
+and an error message as its second argument. In the above case\
+an instance of `ArgumentError` is created and “thrown”. Exception\
+object ditch the part after the `raise` and return upwards the\
+method call stack.
+\
+\<pre class=“emlist”\>\
+def raise\_exception\
+ raise ArgumentError, “wrong number of argument”\
+ \# the code after the exception will not be executed\
+ puts ‘after raise’\
+end\
+raise\_exception\
+\</pre\>
+\
+If nothing blocks the exception it will move to the top level.\
+When it reaches the top level, `ruby` gives out a message and ends\
+with a non-zero exit code.
+\
+\<pre class=“screen”\>\
+ ruby raise.rb
+raise.rb:2:in \`raise\_exception': wrong number of argument (ArgumentError)
+        from raise.rb:7
+\</pre\>
+
+However, for this an @exit@ would be sufficient, for an exception ther
+should be ways to handle it. In Ruby there is the @begin@, @rescue@, @end@ for this.
+It resembles the @try@ and @catch@ in C++ and Java.
+
+\<pre class="emlist"\>
+def raise\_exception
+  raise ArgumentError, "wrong number of argument"
+end
+
+begin
+  raise\_exception()
+rescue ArgumentError =\> err then
+  puts 'exception catched'
+  p err
+end
+\</pre\>
+
+@rescue@ is a control structure which captures an exception, it catches
+the exceptions of the declared class and its subclasses. If in the
+above example an instance of @ArgumentError@ comes flying this @rescue@
+matches it. By @=\>err@ the exception object will be assigned to the local variable
+@err@, after that the @rescue@ part is executed.
+
+\<pre class="screen"\>
+ ruby rescue.rb\
+exception catched\
+\#<ArgumentError: wrong number of argument>\
+\</pre\>
+\
+If the exception is resuced the execution carries on after the rescue\
+as if nothing happened. We can also make it retry the critical part\
+with `retry`.
+\
+\<pre class=“emlist”\>\
+begin \# return here\
+ ….\
+rescue ArgumentError =\> err then\
+ retry \# beginning anew\
+end\
+\</pre\>
+\
+We can omit the `=>err` and the `then` after `rescue`. We can also
+leave\
+out the exception class. In this case the class `StandardError` is
+matched.
+\
+If we want to add more exception classes we can just list them after
+`rescue`.\
+When we want to handle different errors differently we can use several
+\`rescue\`s\
+in one `begin`~`end`\\ block.
+\
+\<pre\\ class=“emlist”\>\
+begin\
+\\ raise\\ IOError,\\ ‘port\\ not\\ ready’\
+rescue\\ ArgumentError,\\ TypeError\
+rescue\\ IOError\
+rescue\\ NameError\
+end\
+\</pre\>
+\
+In\\ this\\ case\\ the\\ exception\\ class\\ is\\ checked\\ in\\ order\\ until\\ there\\ is\\ a\\ match.\
+Only\\ the\\ one\\ matched\\ part\\ is\\ executed.\\ For\\ instance\\ in\\ the\\ above\\ case\\ only\
+`IOError`\\ is\\ executed.
+\
+On\\ the\\ othor\\ hand,\\ when\\ there\\ is\\ an\\ `else`\\ clause,\\ it\\ is\\ executed\
+only\\ when\\ there\\ is\\ no\\ exception.
+\
+\<pre\\ class=“emlist”\>\
+begin\
+\\ nil\\ \#\\ Of\\ course\\ here\\ will\\ no\\ error\\ occur\
+rescue\\ ArgumentError\
+\\ \#\\ This\\ part\\ will\\ not\\ be\\ executed\
+else\
+\\ \#\\ This\\ part\\ will\\ be\\ executed\
+end\
+\</pre\>
+\
+Moreover\\ an\\ `ensure`\\ clause\\ will\\ be\\ executed\\ in\\ every\\ case:\
+when\\ there\\ is\\ no\\ exception,\\ when\\ there\\ is\\ an\\ exception,\\ rescued\\ or\\ not.
+\
+\<pre\\ class=“emlist”\>\
+begin\
+\\ f\\ =\\ File.open\
+\\ \#\\ do\\ stuff\
+ensure\\ \#\\ this\\ part\\ will\\ be\\ executed\\ anyway\
+\\ f.close\
+end\
+\</pre\>
+\
+Besides,\\ this\\ `begin`\\ expression\\ also\\ has\\ a\\ value.\\ The\\ value\\ of\\ the\
+whole\\ `begin`~`end` expression is the value of the part which was
+executed\
+last. The `ensure` part does not count as it is normally used for
+cleanup only.
+\
+h3. Variables and Constants
+\
+Referring a variable or a constant. The value is the object the variable
+points to.\
+We already talked in too much detail about the various behaviors.
+\
+\<pre class=“emlist”\>\
+lvar\
+`ivar
+``cvar
+CONST
+$gvar
+</pre>
+
+I want to add one more thing. The variables starting with `\$@ are\
+of a special kind. Some have strange names, but they are not\
+necessarily global.
+\
+First the Perlish variables `$_` and `$~`. `$_` saves the return\
+value of `gets` and other methods, `$~` contains the last match\
+of a regular expression. They are called local and thread local.\
+Incredible variables.
+\
+And the variable `$!` which saves the exceptional object when\
+an exception has occurred as well as the variable `$?` which\
+saves the status of a child process and `$SAFE` which represents\
+the security level are all thread local.
+\
+h3. Assignment
+\
+Variable assignment are all performed by \`=\`. All variables are\
+typeless. What is saved is a reference to an object. It is\
+implemented with \`VALUE\` .
+\
+\<pre class=“emlist”\>\
+var = 1\
+obj = Object.new\
+`ivar = 'string'
+``` cvar = ['array']
+PI = 3.1415926535
+$gvar = {'key' => 'value'}
+</pre>
+However, as mentioned earlier `obj.attr=val` is not an assignment.
+It is a method call.
+
+h3. Self Assignment
+
+<pre class="emlist">
+var += 1
+</pre>
+
+This syntax is also in C/C++/Java. In Ruby,
+
+<pre class="emlist">
+var = var + 1
+</pre>
+
+it is a shortcut of this code.
+Differing from C, the Ruby  ``*@ is a method and thus part of the
+library.\
+In the whole meaning of `+=` is built in the language processor itself.\
+And in \`C**\`, `+=` and `*=` can be wholly overwritten,\
+but we cannot do this in Ruby.\
+In Ruby `` `= `` is always defined as an operation of the combination of
+`` ` `` and assignment.
+\
+We can also combine self assignment and an attribute-access-flavor
+method.\
+The result more looks like an attribute.
+\
+\<pre class=“emlist”\>\
+class C\
+ def i `i end          # A method definition can be written in one line.
+  def i=(n) `i = n end\
+end
+\
+obj = C.new\
+obj.i = 1\
+obj.i*= 2 \# obj.i = obj.i + 2\
+p obj.i \# 3\
+\</pre\>
+\
+If there is \`*=\` there might also be \`**\` but this is not the case.\
+Why is that so? In Ruby assignment is dealt with on the language level.\
+But on the other hand methods are in the library. Keeping these two,\
+the world of variables and the world of objects, strictly apart is an\
+important peculiarity of Ruby. If `++` were introduced the separation\
+might easily be broken. That’s why there’s no `++`
+\
+Some people don’t want to go without the brevity of `++`. It has been\
+proposed again and again in the mailing list but was always turned
+down.\
+I also am in favor of `++` but I can do without, there has never been\
+a `++` in Ruby so let’s forget about it.
+\
+h3. \`defined?\`
+\
+`defined?` is a strange construct in Ruby. It tells whether an\
+expression value is defined or not.
+\
+\<pre class=“emlist”\>\
+var = 1\
+defined? \#=\> true\
+\</pre\>
+\
+In other words it tells whether the received argument returns a value
+after evaluation. But it won’t tell you if there’s\
+a parse error or an exception is raised.
+\
+I would have loved to tell you more about `defined?`\
+but it will not appear again in this book. What a pity.
+\
+h2. Statements
+\
+A statement is a syntactic construct which basically\
+cannot be combined with something else and is written\
+in a separate line.
+\
+But it still can be evaluated. For instance there are return values\
+for class definition statements and method definition statements.\
+However this is only rarely used, not recommended and isn’t useful.\
+We stick with this informal criteria.\
+Here we also don’t mention the various return values.
+\
+h3. The Ending of a statement
+\
+Up to now we just said “For now one line’s one statement”.\
+But Ruby’s statement ending’s aren’t that straightforward.
+\
+First a statement can be ended explicitly with a semicolon as in C.\
+Of course then we can write two and more statements in one line.
+\
+\<pre class=“emlist”\>\
+puts ‘Hello, World![]('; puts 'Hello, World once more)’\
+\</pre\>
+\
+On the other hand after opened parentheses, dyadic operators, or commas\
+when the command apparently continues the sentence continues
+automatically.
+\
+\<pre class=“emlist”\>\
+\# 1* 3** method\
+1*\
+ 3**\
+ method(\
+ 6,\
+ 7 + 8)\
+
+</pre>
+But it’s also no problem to connect lines explicitly with a backslash.
+
+<pre class="emlist">
+p 1 + \
+ 2\
+
+</pre>
+### The Modifiers \`if\` and \`unless\`
+
+The \`if\` modifier is an irregular version of the normal \`if\`\
+The programs on the left and right mean exactly the same.
+
+<pre class="emlist">
+on\_true() if cond if cond\
+ on\_true()\
+ end\
+
+</pre>
+The \`unless\` is the negative version.\
+Guard statements ( statements which exclude exceptions) can\
+be conveniently written with it.
+
+### The Modifiers \`while\` and \`until\`
+
+\`while\` and \`until\` also have a back notation.
+
+<pre class="emlist">
+process() while have\_content?\
+sleep(1) until ready?\
+
+</pre>
+Combining this with \`begin\` and \`end\` gives a \`do\`-\`while\`-loop
+like in C.
+
+<pre class="emlist">
+begin\
+ res = get\_response(id)\
+end while need\_continue?(res)\
+
+</pre>
+### Class Definition
+
+<pre class="emlist">
+class C \< SuperClass\
+ ….\
+end\
+
+</pre>
+Defines the class \`C\` which inherits from \`SuperClass\`
+
+We talked quite extensively about classes in the first part.\
+This statement will be executed, within the definition the class will\
+become `self`, arbitrary expressions can be written within. Class\
+definitions can be nested. They form the foundation of Ruby execution\
+image.
+
+### Method Definition
+
+<pre class="emlist">
+def m(arg)\
+end\
+
+</pre>
+I’ve already written about method definition and won’t add more.\
+They also belong to statements.
+
+### Singleton method definition
+
+We already talked a lot about singleton methods in the first part.\
+They do not belong to classes but to objects, in fact, they belong\
+to singleton classes. We define singleton methods by putting the\
+receiver in front of the method name. Parameter declaration is done\
+the same way like with ordinary methods.
+
+<pre class="emlist">
+def obj.some\_method\
+end
+
+def obj.some\_method2( arg1, arg2, darg = nil, **rest, &block )\
+end\
+\</pre\>
+\
+h3. Definition of Singleton methods
+\
+\<pre class=“emlist”\>\
+class \<\< obj\
+ ….\
+end\
+\</pre\>
+\
+From the viewpoint of purposes,\
+it is the statement to define some singleton methods in a bundle.\
+From the viewpoint of measures,\
+it is the statement in which the singleton class of \`obj\` becomes
+\`self\` when\
+executed.\
+In all over the Ruby program,\
+this is the only place where a singleton class is exposed.
+\
+\<pre class=“emlist”\>\
+class \<\< obj\
+ p self \#=\> \#<Class:#<Object:0x40156fcc>\> \# Singleton Class 「」\
+ def a end \# def obj.a\
+ def b end \# def obj.b\
+end\
+\</pre\>
+\
+h3. Multiple Assignment
+\
+With a multiple assignment several assignments can be combined into
+one.\
+The following is a simple example:
+\
+\<pre class=“emlist”\>\
+a, b, c = 1, 2, 3\
+\</pre\>
+\
+It’s exactly the same as the following.
+\
+\<pre class=“emlist”\>\
+a = 1\
+b = 2\
+c = 3\
+\</pre\>
+\
+It’s not just for brevity’s sake. When we bind variables to an elements\
+of an array it becomes delightful.
+\
+\<pre class=“emlist”\>\
+a, b, c = \
+\</pre\>
+\
+This also has the same result as the above.\
+Furthermore, the right handside does not need to be a literal.\
+It can also be a variable or a method call.
+\
+\<pre class=“emlist”\>\
+tmp = \
+a, b, c = tmp\
+ret1, ret2 = some\_method \# some\_method might probably return several
+values\
+\</pre\>
+\
+Precisely speaking it is as follows. We will write the value of the\
+left hand side as `obj`.
+\
+\# \`obj\` if it is an array\
+\# if its \`to\_ary\` method is defined, it is used to convert \`obj\`
+to an array.\
+\# \`[obj]\`
+
+\
+Decide the right-hand side by following this procedure and perform
+assignments.\
+It means the evaluation of the right-hand side and the operation of
+assignments\
+are totally independent from each other.
+\
+And it goes on, the left and right hand side can be infinitely nested.
+\
+\<pre class=“emlist”\>\
+a, = ]\
+a, ) = ]]\
+, = , ]\
+\</pre\>
+\
+As the result of the execution of this program,\
+each line will be \`a=1 b=2 c=3 d=4\`.
+\
+And it goes on. The left hand side can be index or parameter
+assignments.
+\
+\<pre class=“emlist”\>\
+i = 0\
+arr = , arr[i+1], arr[i+2] = 0, 2, 4\
+p arr \#
+\
+obj.attr0, obj.attr1, obj.attr2 = “a”, “b”, “c”\
+\</pre\>
+\
+And like with method parameters,\
+`*` can be used to receive in a bundle.
+\
+\<pre class=“emlist”\>\
+first,**rest = 0, 1, 2, 3, 4\
+p first \# 0\
+p rest \# [1, 2, 3, 4]\
+
+</pre>
+If all of them are used all at once, you will easily get confused.
+
+#### Block parameter and multiple assignment
+
+We brushed over block parameters when we were talking about iterators.\
+But there is a deep relationship between them and multiple assignment.\
+For instance in the following case.
+
+<pre class="emlist">
+array.each do |i|\
+ ….\
+end\
+
+</pre>
+When the block is called with a \`yield\`, the provided parameters are
+multi-assigned to \`i\`.\
+Here there’s only one variable on the left hand side, so it does not
+look like multi assignment.\
+But if there are two or more variables we see what’s going on. For
+instance `Hash#each`\
+provides a key and a value we usually call it like that:
+
+<pre class="emlist">
+hash.each do |key, value|\
+ ….\
+end\
+
+</pre>
+In this case an array with elements key and value are yielded\
+from the hash.
+
+Hence we can also use nested multiple assignment as shown below.
+
+<pre class="emlist">
+1.  [[key,value],index] are given to yield\
+    hash.each\_with\_index do |(key, value), index|\
+     ….\
+    end\
+    \</pre\>
+
+### \`alias\`
+
+<pre class="emlist">
+class C\
+ alias new orig\
+end\
+
+</pre>
+Defining another method \`new\` with the same body as the already\
+defined method \`orig\`. \`alias\` are similar to hardlinks in a unix\
+file system. They are a means of assigning multiple names to one method
+body. I other words,\
+because the names themselves are independent of each other,\
+if one method name is overwritten by a subclass method, the\
+other one still returns the method as before.
+
+### \`undef\`
+
+<pre class="emlist">
+class C\
+ undef method\_name\
+end\
+
+</pre>
+Prohibits the calling of \`C\#method\_name\`. It’s not just a simple\
+revoking of the definition. If there even were a method in the\
+superclass it would also be forbidden. In other words the method is\
+exchanged for a sign which says “This method must not be called”.
+
+\`undef\` is extremely powerful, once it is set it cannot be\
+deleted on the Ruby level, because it is used to cover up
+contradictions\
+in the internal structure. One must define a method in the lower class.\
+Even then when one calls \`super\` an\
+error occurs.
+
+By the way the method which corresponds to \`unlink\` in a file system\
+is \`Module\#remove\_method\`. While defining a class, \`self\` refers\
+to that class, we can call it as follows ( Remember that \`Class\` is a\
+subclass of \`Module\`.
+
+<pre class="emlist">
+class C\
+ remove\_method(:method\_name)\
+end\
+
+</pre>
+But even with a \`remove\_method\` one cannot cancel the \`undef\`.\
+It’s because the sign put up by \`undef\` prohibits any kind of
+searches.
+
+((errata: It can be redefined by using \`def\`))
+
+Some more small topics
+----------------------
+
+### Comments
+
+<pre class="emlist">
+1.  examples of bad comments.\
+    1 + 1 \# compute 1+1.\
+    alias my\_id id \# my\_id is an alias of id.\
+    \</pre\>
+
+From a \`\#\` to the end of line is a comment.\
+It doesn’t have a meaning for the program.
+
+### Embedded documents
+
+<pre class="emlist">
+=begin\
+This is an embedded document.\
+It’s so called because it is embedded in the program.\
+Plain and simple.\
+=end\
+
+</pre>
+An embedded document stretches from\
+an \`=begin\` outside a string at the beginning of a line\
+to a \`=end\`. The interior can be arbitrary.\
+The program reads and ignores it like a simple comment.
+
+### Multi-byte strings
+
+When the global variable `$KCODE` is set to either `EUC`, `SJIS`\
+or `UTF8`, strings encoded in euc-jp, shift\_jis, or utf8 respectively
+can be\
+used in a string of a data.
+
+And if the option `-Ke`, `-Ks` or `-Ku` is given to the `ruby`\
+command multibyte strings can be used within the Ruby code.\
+String literals, regular expressions and even operator names\
+can contain multibyte characters. Hence it is possible to do\
+something like this:
+
+<pre class="emlist">
+def 表示( arg )\
+ puts arg\
+end
+
+表示 ‘にほんご’\
+
+</pre>
+But I really cannot recommend doing things like that.
