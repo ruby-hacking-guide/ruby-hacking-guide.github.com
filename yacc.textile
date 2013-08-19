@@ -1,7 +1,3 @@
----
-layout: default
-title: YACC crash course
----
 Translated by Vincent ISAMBART & ocha-
 
 h1. Chapter 9: `yacc` crash course

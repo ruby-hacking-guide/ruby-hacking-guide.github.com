@@ -1,7 +1,3 @@
----
-layout: default
----
-
 h2. Table of contents
 
 Some chapters are previews. It means they have not been fully reviewed,

@@ -1,7 +1,3 @@
----
-layout: default
-title: Objects - Structure of Ruby objects
----
 Translated by Vincent ISAMBART
 
 h1. Chapter 2: Objects

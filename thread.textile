@@ -1,7 +1,3 @@
----
-layout: default
-title: "Chapter 19: Threads"
----
 h1. Chapter 19: Threads
 
 h2. Outline

@@ -1,7 +1,3 @@
----
-layout: default
-title: A Minimal Introduction to Ruby
----
 Translated by Sebastian Krause
 
 h1. Chapter 1: Introduction

@@ -1,8 +1,3 @@
----
-layout: default
-title: "Chapter 13: Structure of the evaluator"
----
-
 h1(#chapter). Chapter 13: Structure of the evaluator
 
 h2. Outline

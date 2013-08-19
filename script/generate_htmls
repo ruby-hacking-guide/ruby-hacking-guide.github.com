@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+
+require "pathname"
+require "fileutils"
+
+GUIDE_DIR = Pathname(File.expand_path("../..", __FILE__))
+TEMP_SRC_DIR = GUIDE_DIR.join "tmp_src"
+TEMP_DEST_DIR = GUIDE_DIR.join "tmp_dest"
+
+FileUtils.mkdir_p TEMP_SRC_DIR.join("_layouts")
+FileUtils.cp Dir.glob(GUIDE_DIR.join("_layouts/*")), TEMP_SRC_DIR.join("_layouts")
+FileUtils.mkdir_p TEMP_SRC_DIR.join("_plugins")
+FileUtils.cp Dir.glob(GUIDE_DIR.join("_plugins/*")), TEMP_SRC_DIR.join("_plugins")
+
+titles = {
+  "preface.textile" => "Preface",
+  "intro.textile" => "Introduction - translation in progress",
+  "minimum.textile" => "Chapter 1: A Minimal Introduction to Ruby",
+  "object.textile" => "Chapter 2: Objects",
+  "name.textile" => "Chapter 3: Names and name tables",
+  "class.textile" => "Chapter 4: Classes and modules",
+  "gc.textile" => "Chapter 5: Garbage collection",
+  "variable.textile" => "Chapter 6: Variables and constants",
+  "security.textile" => "Chapter 7: Security",
+  "spec.textile" => "Chapter 8: Ruby Language Details",
+  "yacc.textile" => "Chapter 9: yacc crash course",
+  "parser.textile" => "Chapter 10: Parser",
+  "contextual.textile" => "Chapter 11: Context-dependent scanner",
+  "syntree.textile" => "Chapter 12: Syntax tree construction",
+  "evaluator.textile" => "Chapter 13: Structure of the evaluator",
+  "module.textile" => "Chapter 14: Context",
+  "method.textile" => "Chapter 15: Methods",
+  "iterator.textile" => "Chapter 16: Blocks",
+  "anyeval.textile" => "Chapter 17: Dynamic evaluation",
+  "load.textile" => "Chapter 18: Loading",
+  "thread.textile" => "Chapter 19: Threads",
+  "fin.textile" => "Final chapter: Ruby's future - translation unstarted"
+}
+
+Dir.glob(GUIDE_DIR.join("*.textile")) do |src|
+  title = titles[File.basename(src)]
+  title = title.inspect if title
+  content = File.read src
+  File.open(TEMP_SRC_DIR.join(File.basename(src)), "w") do |dest|
+    dest.puts <<-EOS.gsub(/^\s*/, "")
+    ---
+    layout: default
+    title: #{title}
+    ---
+    EOS
+    dest.puts content
+  end
+end
+
+system("jekyll build --config _config.compile.yml")
+
+FileUtils.cp(Dir.glob(TEMP_DEST_DIR.join("*.html")), GUIDE_DIR)
+
+FileUtils.rm_rf TEMP_SRC_DIR
+FileUtils.rm_rf TEMP_DEST_DIR

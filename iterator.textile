@@ -1,8 +1,3 @@
----
-layout: default
-title: "Chapter 16: Blocks"
----
-
 h1. Chapter 16: Blocks
 
 h2. Iterator

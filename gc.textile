@@ -1,7 +1,3 @@
----
-layout: default
-title: Garbage Collection
----
 Translated by Sebastian Krause & ocha-
 
 h1. Chapter 5: Garbage Collection

@@ -1,7 +1,3 @@
----
-layout: default
-title: "Chapter 17: Dynamic evaluation"
----
 h1. Chapter 17: Dynamic evaluation
 
 h2. Overview

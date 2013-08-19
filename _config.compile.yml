@@ -1,0 +1,4 @@
+redcloth:
+  hard_breaks: false
+source: tmp_src
+destination: tmp_dest
