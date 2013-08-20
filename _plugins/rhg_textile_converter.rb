@@ -17,11 +17,17 @@ module Jekyll::Converters
       skips << "cvs diff parse.y" # chapter 11
       skips << "69      EXPR_DOT,      /*" # chapter 11
       content = lines.map do |line|
-        if skips.any? {|s| line.include? s }
-          line
-        else
-          line.gsub(RHG_CODE_RE) { "<code>#{$1}</code>" }
+        unless skips.any? {|s| line.include? s }
+          line = line.gsub(RHG_CODE_RE) { "<code>#{$1}</code>" }
         end
+
+        # this applies the markup of the original book and
+        # fixes improper markups of the generated htmls at the same time.
+        if line =~ /^▼ /
+          line = %{<p class="caption">#{line.rstrip}</p>\n}
+        end
+
+        line
       end.join
 
       # try to apply the style for images of the original book
