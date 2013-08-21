@@ -86,8 +86,8 @@ Thus, it is a variable which shows the scanner’s state.
 What states are there? Let’s look at the definitions.
 
 ▼ `enum lex_state`
-
-pre(longlist).   61  static enum lex_state {
+<pre class="longlist">
+  61  static enum lex_state {
   62      EXPR_BEG,      /* ignore newline, +/- is a sign. */
   63      EXPR_END,      /* newline significant, +/- is a operator. */
   64      EXPR_ARG,      /* newline significant, +/- is a operator. */
@@ -98,7 +98,9 @@ pre(longlist).   61  static enum lex_state {
   69      EXPR_DOT,      /* right after `.' or `::', no reserved words. */
   70      EXPR_CLASS,    /* immediate after `class', no here document. */
   71  } lex_state;
+
 (parse.y)
+</pre>
 
 The EXPR prefix stands for “expression”. `EXPR_BEG` is “Beginning of
 expression” and `EXPR_DOT` is “inside the expression, after the dot”.
@@ -617,8 +619,8 @@ operators. In all, there are five - `kUNLESS_MOD kUNTIL_MOD kWHILE_MOD`
 `kRESCUE_MOD` and `kIF_MOD` The distinction is made here:
 
 ▼ `yylex`-Reserved word
-
-pre(longlist). 4173                  struct kwtable *kw;
+<pre class="longlist">
+4173                  struct kwtable *kw;
 4174
 4175                  /* See if it is a reserved word.  */
 4176                  kw = rb_reserved_word(tok(), toklen());
@@ -644,7 +646,9 @@ pre(longlist). 4173                  struct kwtable *kw;
 4196                          return kw->id[1];
 4197                      }
 4198                  }
+
 (parse.y)
+</pre>
 
 This is located at the end of `yylex` after the identifiers are scanned.
 The part that handles modifiers is the last (innermost) `if`〜`else` Whether
@@ -657,9 +661,11 @@ structure defined in `keywords` and the hash function `rb_reserved_word()` is
 created by `gperf`. I’ll show the structure here again.
 
 ▼ `keywords` - `struct kwtable`
+<pre class="longlist">
+   1  struct kwtable {char *name; int id[2]; enum lex_state state;};
 
-pre(longlist).    1  struct kwtable {char *name; int id[2]; enum lex_state state;};
 (keywords)
+</pre>
 
 I’ve already explained about `name` and `id[0]` - they are the reserved word
 name and its symbol. Here I will speak about the remaining members.
@@ -789,8 +795,8 @@ It’s the only part tasked with processing `do` so looking at this code should
 be enough to understand the criteria for making the distinction.
 
 ▼ `yylex`-Identifier-Reserved word
-
-pre(longlist). 4183                      if (kw->id[0] == kDO) {
+<pre class="longlist">
+4183                      if (kw->id[0] == kDO) {
 4184                          if (COND_P()) return kDO_COND;
 4185                          if (CMDARG_P() && state != EXPR_CMDARG)
 4186                              return kDO_BLOCK;
@@ -798,7 +804,9 @@ pre(longlist). 4183                      if (kw->id[0] == kDO) {
 4188                              return kDO_BLOCK;
 4189                          return kDO;
 4190                      }
+
 (parse.y)
+</pre>
 
 It’s a little messy, but you only need the part associated with `kDO_COND`.
 That is because only two comparisons are meaningful.
@@ -1384,8 +1392,8 @@ This is the important part. As shown previously, you can avoid a conflict by
 changing the `do` and `'{'` symbols.
 
 ▼ `yylex`-`'{'`
-
-pre(longlist). 3884        case '{':
+<pre class="longlist">
+3884        case '{':
 3885          if (IS_ARG() || lex_state == EXPR_END)
 3886              c = '{';          /* block (primary) */
 3887          else if (lex_state == EXPR_ENDARG)
@@ -1396,7 +1404,9 @@ pre(longlist). 3884        case '{':
 3892          CMDARG_PUSH(0);
 3893          lex_state = EXPR_BEG;
 3894          return c;
+
 (parse.y)
+</pre>
 
 `IS_ARG()` is defined as
 
