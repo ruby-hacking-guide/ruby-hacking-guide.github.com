@@ -196,8 +196,8 @@ There are other easy methods to observe the functioning. For example, you can
 use a debugger to “hook” the `yylex()` and look at the `lex_state`
 
 Another way is to rewrite the source code to output state transitions. In the
-case of `lex_state` we only have numerical patterns for assignment and
-comparison, so the solution would be to treat them as text patterns and rewrite
+case of `lex_state` we only have a few patterns for assignment and
+comparison, so the solution would be to grasp them as text patterns and rewrite
 the code to output state transitions. The CD that comes with this book contains
 the `rubylex-analyser` tool. When necessary, I will refer to it in this text.
 
@@ -246,13 +246,13 @@ Refer to the section “First parameter enclosed in parentheses”
 * `EXPR_FNAME`
 
 Comes before the method name, usually after `def`, `alias`, `undef` or the
-symbol `':'` In an independent position <code>`</code> is the method name.
+symbol `':'` A single "<code>`</code>" can be a name.
 
 * `EXPR_DOT`
 
 Comes after the dot in a method call. Handled similarly to `EXPR_FNAME`
 Various reserved words are treated as simple identifiers.
-In an independent position <code>'`'</code> is the name.
+A single <code>'`'</code> can be a name.
 
 * `EXPR_CLASS`
 
@@ -1494,7 +1494,7 @@ The problem here are parts of single lines that come out as `+EXPR_ENDARG`.
 This indicates a transition occurring during parser action. According to this,
 for some reason an action is executed after reading the `')'` a transition to
 `EXPR_ENDARG` occurs and `'{'` is nicely changed into `tLBRACE_ARG` This is
-actually a pretty high-level technique – indiscriminately (ab)using
+actually a pretty high-level technique – generously (ab)using
 the LALR(1) up to the (1).
 
 h4. Abusing the lookahead
