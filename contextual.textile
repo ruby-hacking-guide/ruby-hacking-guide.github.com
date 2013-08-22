@@ -175,6 +175,17 @@ which case suits best (see image 1)
 
 !images/ch_contextual_transittobeg.jpg(Transition to `EXPR_BEG`)!
 
+((errata:<br>
+1. Actually when the state is `EXPR_DOT`, the state after reading a
+`tIDENTIFIER` would be either `ARG` or `CMDARG`.
+However, because the author wanted to roughly group them as `FNAME/DOT` and the
+others here, these two are shown together.
+Therefore, to be precise, `EXPR_FNAME` and `EXPR_DOT` should have also been
+separated.<br>
+2. '`)`' does not cause the transition from "everything else" to `EXPR_BEG`.
+))
+
+
 This does indeed look like the head of statement. Especially the `'\n'` and the
 `';'` The open parentheses and the comma also suggest that it’s the head not
 just of the statement, but of the expression as well.
@@ -224,7 +235,7 @@ For more information, see the section “The `do` conflict”
 * `EXPR_END`
 
 Used when there is a possibility that the statement is terminal. For example,
-after a literal or brackets. Except for cases when `EXPR_ENDARG` is used
+after a literal or a closing parenthesis. Except for cases when `EXPR_ENDARG` is used
 
 * `EXPR_ENDARG`
 
@@ -881,6 +892,14 @@ MSB←   →LSB
 ...0000000100         COND_PUSH(0)
 ...0000000010         COND_LEXPOP()
 </pre>
+
+((errata:<br>
+It leaves `COND_P()` only when it is 1.
+When `COND_P()` is 0 and the second bottom bit is 1,  
+it would become 1 after doing LEXPOP,
+thus `COND_P()` is not left in this case.
+))
+
 
 Now I will explain what that means.
 
@@ -1680,6 +1699,17 @@ The decision-making part using `EXPR_ENDARG` is the same as  `tLBRACE_ARG` so
 priorities shouldn’t be an issue here. Similarly to `'{'` the right course of
 action is probably to make it `kDO_BLOCK`
 
+((errata:<br>
+In the following case, priorities should have an influence.
+(But it does not in the actual code. It means this is a bug.)
+
+<pre>
+m m (a) { ... } # This should be interpreted as m(m(a) {...}), 
+                # but is interpreted as m(m(a)) {...}
+m m (a) do ... end # as the same as this: m(m(a)) do ... end 
+</pre>
+))
+
 The problem lies with `CMDARG_P()` and `EXPR_CMDARG`. Let’s look at both.
 
 h4. `CMDARG_P()`
@@ -1868,6 +1898,10 @@ m(m _
 m m _
 </pre>
 
+((errata:<br>
+The third one "m m _" is not `EXPR_CMDARG`. (It is `EXPR_ARG`.)
+))
+
 h4. Conclusion
 
 Let us now return to the `do` decision code.
@@ -2010,6 +2044,14 @@ investigating something, focus on what really happens. The source code will not
 tell you everything. It can’t tell anything other than what the reader infers.
 
 And with this very useful sermon, I close the chapter.
+
+((errata:<br>
+This confidently written conclusion was wrong.
+Without `EXPR_CMDARG`, for instance, this program "`m (m do end)`" cannot be
+parsed. This is an example of the fact that correctness is not proved even if
+dynamic analyses are done so many times.
+))
+
 
 h4. Still not the end
 
