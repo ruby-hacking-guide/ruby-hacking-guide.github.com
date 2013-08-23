@@ -2,7 +2,6 @@
 layout: default
 title: Loading
 ---
-
 Translated by Vincent ISAMBART
 
 h1. Chapter 18: Loading
@@ -102,7 +101,7 @@ require 'nkf'   # nothing happens if we require it again
 p $"            # ["nkf.so"]  the content of the lock array does not change
 </pre>
 
-The are two reasons for adding the missing extension. The first one is
+There are two reasons for adding the missing extension. The first one is
 not to load it twice if the same file is later `require`d with its
 extension. The second one is to be able to load both `nkf.rb` and
 `nkf.so`. In fact the extensions are disparate (`.so .dll .bundle`
@@ -179,9 +178,11 @@ end
 
 h3. Highlights of this chapter
 
-Here the mechanism is a lot about details, so it's a little difficult
-to enumerate it simply. That's why we will work a little differently
-on it, and we are going to reduce the target to 3 points:
+With the above knowledge in our mind, we are going to read.
+But because this time its specification is defined very particularly,
+if we simply read it, it could be just a enumeration of the codes.
+Therefore, in this chapter,
+we are going to reduce the target to the following 3 points:
 
 * loading serialisation
 * the repartition of the functions in the different source files
@@ -190,12 +191,13 @@ on it, and we are going to reduce the target to 3 points:
 Regarding the first point, you will understand it when you see it.
 
 For the second point, the functions that appear in this chapter come
-from 4 different files, `eval.c ruby.c file.c dln.c`.  We'll look at
-the reason they are stretched in different places.
+from 4 different files, `eval.c ruby.c file.c dln.c`.
+Why is this in this way?
+We'll try to think about the realistic situation behind it.
 
 The third point is just like its name says. We will see how the
 currently popular trend of execution time loading, more commonly
-referred to as plug-ins, works. This is the most important part of this
+referred to as plug-ins, works. This is the most interesting part of this
 chapter, so I'd like to use as many pages as possible to talk about it.
 
 h2. Searching the library
@@ -267,7 +269,7 @@ actually like subroutines, and the two variables `feature` and `fname`
 are more or less their parameters. These variables have the following
 meaning.
 
-|variable|meaning|example|
+|_. variable|_. meaning|_. example|
 |`feature`|the library file name that will be put in `$"`|`uri.rb`、`nkf.so`|
 |`fname`|the full path to the library|`/usr/lib/ruby/1.7/uri.rb`|
 
@@ -444,7 +446,15 @@ returned back to the thread where it was called. When the file name
 disappears from `loading_tbl`, the loading is finished so the function
 can end. The `curr_thread` check is not to lock itself (figure 1).
 
-!images/ch_load_loadwait.png(Serialisation of loads)!
+<div class="image">
+<img src="images/ch_load_loadwait.jpg" alt="(loadwait)"><br>
+Figure 1: Serialisation of loads
+* スレッド thread
+* ロック lock
+* ロード開始 loading is started
+* ロード完了 loading is completed
+* アンロック unlock
+</div>
 
 h2. Loading of Ruby programs
 
@@ -466,11 +476,12 @@ part inside `rb_f_require()`'s `load_rb` loading Ruby programs.
 
 The `rb_load()` which is called here is actually the "meat" of the
 Ruby-level `load`.
-ということは探索がもう一回必要になるわけで、同じ作業をもう一回見るなん
-てやっていられない。そこでその部分は以下では省略してある。
+This means it needs to search once again,
+but looking at the same procedure once again is too much trouble.
+Therefore, that part is omitted in the below codes.
 
-And since the second argument (`wrap`) passed to `rb_load` in the above code is 0, the call is wrapped in 0. (*** What is this supposed to mean??? That the nesting level is 0?)
-また第二引数の`wrap`も、上記の呼び出しコードで0なので、0で畳み込んである。
+And the second argument `wrap` is folded with 0
+because it is 0 in the above calling code.
 
 ▼ `rb_load()` (simplified edition)
 <pre class="longlist">
@@ -487,13 +498,13 @@ rb_load(fname, /* wrap=0 */)
     PUSH_VARS();
     PUSH_CLASS();
     ruby_class = rb_cObject;
-    ruby_cref = top_cref;           /* (A-1) CREFを変える */
+    ruby_cref = top_cref;           /* (A-1) change CREF */
     wrapper = ruby_wrapper;
     ruby_wrapper = 0;
     PUSH_FRAME();
     ruby_frame->last_func = 0;
     ruby_frame->last_class = 0;
-    ruby_frame->self = self;        /* (A-2) ruby_frame->cbaseを変える */
+    ruby_frame->self = self;        /* (A-2) change ruby_frame->cbase */
     ruby_frame->cbase = (VALUE)rb_node_newnode(NODE_CREF,ruby_class,0,0);
     PUSH_SCOPE();
     /* at the top-level the visibility is private by default */
@@ -505,7 +516,7 @@ rb_load(fname, /* wrap=0 */)
     if (state == 0) {
         NODE *node;
 
-        /* (B)なぜかevalと同じ扱い */
+        /* (B) this is dealt with as eval for some reasons */
         ruby_in_eval++;
         rb_load_file(RSTRING(fname)->ptr);
         ruby_in_eval--;
@@ -532,32 +543,46 @@ rb_load(fname, /* wrap=0 */)
 }
 </pre>
 
-やっとスタック操作の嵐から抜けられたと思った瞬間また突入するというのも
-精神的に苦しいものがあるが、気を取りなおして読んでいこう。
+Just after we thought we've been through the storm of stack manipulations
+we entered again. Although this is tough,
+let's cheer up and read it.
 
-長い関数の常で、コードのほとんどがイディオムで占められている。
-`PUSH`/`POP`、タグプロテクトと再ジャンプ。その中でも注目したいのは
-(A)の`CREF`関係だ。ロードしたプログラムは常にトップレベル上で
-実行されるので、`ruby_cref`を(プッシュではなく)退避し`top_cref`に戻す。
-`ruby_frame->cbase`も新しいものにしている。
 
-それともう一ヶ所、(B)でなぜか`ruby_in_eval`をオンにしている。そもそも
-この変数はいったい何に影響するのか調べてみると、`rb_compile_error()`とい
-う関数だけのようだ。`ruby_in_eval`が真のときは例外オブジェクトにメッセージを
-保存、そうでないときは`stderr`にメッセージを出力、となっている。つまりコ
-マンドのメインプログラムのパースエラーのときはいきなり`stderr`に出力した
-いのだが評価器の中ではそれはまずいので止める、という仕組みらしい。すると
-`ruby_in_eval`のevalはメソッド`eval`や関数`eval()`ではなくて一般動詞の
-evaluateか、はたまた`eval.c`のことを指すのかもしれない。
+As the long functions usually are,
+almost all of the code are occupied by the idioms.
+`PUSH`/`POP`, tag protecting and re-jumping.
+Among them, what we want to focus on is the things on (A) which relate to `CREF`.
+Since a loaded program is always executed on the top-level,
+it sets aside (not push) `ruby_cref` and brings back `top_cref`.
+`ruby_frame->cbase` also becomes a new one.
+
+
+And one more place, at (B) somehow `ruby_in_eval` is turned on.
+What is the part influenced by this variable?
+I investigated it and it turned out that it seems only `rb_compile_error()`.
+When `ruby_in_eval` is true, the message is stored in the exception object,
+but when it is not true, the message is printed to `stderr`.
+In other words, when it is a parse error of the main program of the command,
+it wants to print directly to `stderr`, but when inside of the evaluator,
+it is not appropriate so it stops to do it.
+It seems the "eval" of `ruby_in_eval` means neither the `eval` method nor the
+`eval()` function but "evaluate" as a general noun.
+Or, it's possible it indicates `eval.c`.
+
+
+
 
 h3. `rb_load_file()`
 
-ここでソースファイルは突然`ruby.c`へと移る。と言うよりも実際のところは
-こうではないだろうか。即ち、ロード関係のファイルは本来`ruby.c`に置きたい。
-しかし`rb_load()`では`PUSH_TAG()`などを使わざるを得ない。だから仕方なく
-`eval.c`に置く。でなければ最初から全部`eval.c`に置くだろう。
+Then, all of a sudden, the source file is `ruby.c` here.
+Or to put it more accurately,
+essentially it is favorable if the entire loading code was put in `ruby.c`,
+but `rb_load()` has no choice but to use `PUSH_TAG` and such.
+Therefore, putting it in `eval.c` is inevitable.
+If it were not the case,
+all of them would be put in `eval.c` in the first place.
 
-それで、`rb_load_file()`だ。
+Then, it is `rb_load_file()`.
 
 ▼ `rb_load_file()`
 <pre class="longlist">
@@ -571,12 +596,15 @@ h3. `rb_load_file()`
 (ruby.c)
 </pre>
 
-まるごと委譲。`load_file()`の第二引数`script`は真偽値で、`ruby`コマンドの
-引数のファイルをロードしているのかどうかを示す。今はそうではなく
-ライブラリのロードと考えたいので`script=0`で疊み込もう。
-さらに以下では意味も考え本質的でないものを削ってある。
+Delegated entirely. The second argument `script` of `load_file()` is a boolean
+value and it indicates whether it is loading the file of the argument of the
+`ruby` command. Now, because we'd like to assume we are loading a library,
+let's fold it by replacing it with `script=0`.
+Furthermore, in the below code, also thinking about the meanings,
+non essential things have already been removed.
 
-▼ `load_file()` (simplified edition)
+
+<p class="caption">▼ `load_file()` (simplified edition)</p>
 <pre class="longlist">
 static void
 load_file(fname, /* script=0 */)
@@ -591,7 +619,7 @@ load_file(fname, /* script=0 */)
         fclose(fp);
     }
     f = rb_file_open(fname, "r");       (B)
-    rb_compile_file(fname, f, 1);       ==(C)==
+    rb_compile_file(fname, f, 1);       (C)
     rb_io_close(f);
 }
 </pre>
@@ -603,8 +631,8 @@ highly portable and reliable way to do it.
 
 (B) The file is opened once again, this time using the Ruby level
 library `File.open`. The file was not opened with `File.open` from the
-beginning so as not to raise any Ruby exception if the file cannot be
-opened.  Here if any exception occurred we would like to have a
+beginning so as not to raise any Ruby exception.
+Here if any exception occurred we would like to have a
 loading error, but getting the errors related to `open`, for example
 `Errno::ENOENT`, `Errno::EACCESS`..., would be problematic. We are in
 `ruby.c` so we cannot stop a tag jump.
@@ -615,7 +643,7 @@ tree is added to `ruby_eval_tree` so there is no need to get the
 result.
 
 That's all for the loading code. Finally, the calls were quite deep so
-let's look at the callgraph of `rb_f_require()` bellow.
+the callgraph of `rb_f_require()` is shown bellow.
 
 <pre class="emlist">
 rb_f_require           ....eval.c
@@ -629,19 +657,23 @@ rb_f_require           ....eval.c
         eval_node
 </pre>
 
-We've seen a lot of callgraphs, they are now common sense.
+
+You must bring callgraphs on a long trip. It's common knowledge.
+
+
 
 h4. The number of `open` required for loading
 
-Like we've seen before, there are `open` used just to check if a file
-can be open, but in fact during the loading process other functions
-like for example `rb_find_file_ext()` also do checks using `open`. How
+Previously, there was `open` used just to check if a file can be open,
+but in fact, during the loading process of `ruby`, additionally other functions
+such as `rb_find_file_ext()` also internally do checks by using `open`. How
 many times is `open()` called in the whole process?
 
-If you're wondering that, it's just a matter of having the right program available to count and see. You can easily find out using a system call tracer. On Linux, the tool to use would be `strace`; on Solaris, `truss`; or on BSD, `ktrace` or `truss`.
-
-というように
-OSによって名前がてんでバラバラなのだが、Googleで検索すればすぐ見付かる
+If you're wondering that, just actually counting it is the right attitude as a
+programmer. We can easily count it by using a system call tracer.
+The tool to use would be `strace` on Linux, `truss` on Solaris, `ktrace` or
+`truss` on BSD. Like this, for each OS, the name is different
+and there's no consistency, but you can find them by googling.
 
 If you're using Windows, probably your IDE will have a tracer built in. Well, as my main environment is Linux, I looked using `strace`.
 
@@ -661,8 +693,9 @@ open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
 open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
 </pre>
 
-`libc.so.6`の`open`まではダイナミックリンクの実装で使っている`open`なので
-残りの`open`は計四回。つまり三回は無駄になっているようだ。
+Until the `open` of `libc.so.6`, it is the `open` used in the implementation of
+dynamic links, and there are the other four `open`s.
+Thus it seems the three of them are useless.
 
 h2. Loading of extension libraries
 
@@ -693,189 +726,222 @@ part about locking anymore so it was removed.
 (eval.c)
 </pre>
 
-By now, there is very little here which is novel. タグはイディオム通りの使いかた
-しかしていないし、可視性スコープの退避・復帰も見慣れた手法だ。
+By now, there is very little here which is novel.
+The tags are used only in the way of the idiom,
+and to save/restore the visibility scope is done in the way we get used to see.
 All that remains is `dln_load()`. What on earth is that for? For the answer, continue to the next section.
 
 
-h3. リンクについて復習
+h3. Brush up about links
 
-`dln_load()`は拡張ライブラリをロードしているわけだが、拡張ライブラリを
-ロードするとはどういうことなのだろうか。それを話すにはまず話を思い切り
-物理世界方向に巻き戻し、リンクのことから始めなければならない。
+`dln_load()` is loading an extension library,
+but what does loading an extension library mean?
+To talk about it, we need to dramatically roll back the talk to the physical world,
+and start with about links.
 
-Cのプログラムをコンパイルしたことはもちろんあると思う。筆者は
-Linuxで`gcc`を使っているので、次のようにすれば動くプログラムが
-作成できる。
+I think compiling C programs is, of course, not a new thing for you.
+Since I'm using `gcc` on Linux, I can create a runnable program in the following
+manner.
+
 
 <pre class="screen">
 % gcc hello.c
 </pre>
 
-ファイル名からするときっとこれはHello, World!プログラムなんだろう。
-`gcc`はUNIXではデフォルトで`a.out`というファイルにプログラムを
-出力するので続いて次のように実行できる。
+
+According to the file name, this is probably an "Hello, World!" program.
+In UNIX, `gcc` outputs a program into a file named `a.out` by default,
+so you can subsequently execute it in the following way:
 
 <pre class="screen">
 % ./a.out
 Hello, World!
 </pre>
 
-It prints out just as expected.
+It is created properly.
 
-By the way, what is `gcc` actually doing here? Usually we just say is "compiles", but actually it...
+By the way, what is `gcc` actually doing here?
+Usually we just say "compile" or "compile", but actually
 
-# Preprocesses (`cpp`)
-# Compiles C into assembly (`cc`)
-# Assembles the assembly language into machine code (`as`)
-# Links (`ld`)
+# preprocess (`cpp`)
+# compile C into assembly (`cc`)
+# assemble the assembly language into machine code (`as`)
+# link (`ld`)
 
-という四つの段階を通っている。このうちプリプロセス・コンパイル・アセン
-ブルまではいろいろなところで説明を見掛けるのだが、なぜかリンクの段階だ
-けは明文化されずに終わることが多いようだ。学校の歴史の授業では絶対に
-「現代」まで行き着かない、というのと同じようなものだろうか。そこで本書
-ではその断絶を埋めるべく、まずリンクとは何なのか簡単にまとめておくこと
-にする。
+there are these four steps. Among them, preprocessing and compiling and
+assembling are described in a lot of places, but the description often ends
+without clearly describing about the linking phase.
+It is like a history class in school which would never reach "modern age".
+Therefore, in this book, trying to provide the extinguished part,
+I'll briefly summarize what is linking.
 
-アセンブルまでの段階が完了したプログラムはなんらかの形式の
-「オブジェクトファイル」
-になっている。そのような形式でメジャーなものには以下のよう
-なものがある。
+A program finished the assembling phase becomes an "object file" in
+somewhat format. The following formats are some of such formats which are major.
 
-* ELF, Executable and Linking Format(新しめのUNIX)
-* `a.out`, assembler output(比較的古いUNIX)
-* COFF, Common Object File Format(Win32)
+* ELF, Executable and Linking Format (recent UNIX)
+* `a.out`, assembler output (relatively old UNIX)
+* COFF, Common Object File Format (Win32)
 
-念のため言っておくが、オブジェクトファイル形式の`a.out`と`cc`の
-デフォルト出力ファイル名の`a.out`は全然別物である。例えば今時のLinuxで
-普通に作ればELF形式のファイル`a.out`ができる。
+It might go without saying that the `a.out` as an object file format and
+the `a.out` as a default output file name of `cc` are totally different things.
+For example, on modern Linux, when we create it ordinarily, the `a.out` file
+in ELF format is created.
 
-それで、このオブジェクトファイル形式がどう違うのか、という話はこのさい
-どうでもいい。今認識しなければならないのは、これらのオブジェクトファイ
-ルはどれも「名前の集合」と考えられるということだ。例えばこのファイルに
-存在する関数名や変数名など。
+And, how these object file formats differ each other is not important now.
+What we have to recognize now is, all of these object files
+can be considered as "a set of names".
+For example, the function names and the variable names which exist in this file.
 
-またオブジェクトファイルに含まれる名前の集合には二種類がある。即ち
+And, sets of names contained in the object file have two types.
 
-* 必要な名前の集合(例えば内部から呼んでいる外部関数。例:`printf`)
-* 提供する名前の集合(例えば内部で定義している関数。例:`hello`)
+* set of necessary names
+(for instance, the external functions called internally. e.g. `printf`)
 
-である。そしてリンクとは、複数のオブジェクトファイルを集めてきたときに
-全てのオブジェクトファイルの「必要な名前の集合」が「提供する名前の集合」
-の中に含まれることを確認し、かつ互いに結び付けることだ。つまり全ての
-「必要な名前」から線をひっぱって、どこかのオブジェクトファイルが「提供
-する名前」につなげられるようにしなければいけない(図2)。
-このことを用語を使って
-言えば、未定義シンボルを解決する(resolving undefined symbol)、となる。
+* set of providing names
+(for instance, the functions defined internally. e.g. `hello`)
 
-!images/ch_load_link.png(オブジェクトファイルとリンク)!
 
-論理的にはそういうことだが、現実にはそれだけではプログラムは走らないわ
-けだ。少なくともCのプログラムは走らない。名前をアドレス(数)に変換し
-てもらわなければ動けないからだ。
+And linking is, when gathering multiple object files,
+checking if "the set of providing names" contains "the set of necessary names"
+entirely, and connecting them each other.
+In other words, pulling the lines from all of "the necessary names",
+each line must be connected to one of "the providing names" of a particular
+object file. (Figure. 2)
+To put this in technical terms,
+it is resolving undefined symbols.
 
-そこで論理的な結合の次には物理的な結合が必要になる。オブジェクトファイ
-ルを現実のメモリ空間にマップし、全ての名前を数で置き換えないといけない。
-具体的に言えば関数呼び出し時のジャンプ先アドレスを調節したりする。
+<div class="image">
+<img src="images/ch_load_link.jpg" alt="(link)"><br>
+Figure 2: object files and linking
+* 提供する名前 the providing names
+* 必要な名前 the necessary names
+* オブジェクトファイル object file
+</div>
 
-そしてこの二つの結合をいつやるかによってリンクは二種類に分かれる。即ち
-スタティックリンクとダイナミックリンクである。スタティックリンクはコン
-パイル時に全段階を終了してしまう。一方ダイナミックリンクは結合のうちい
-くらかをプログラムの実行時まで遅らせる。そしてプログラムの実行時になっ
-て初めてリンクが完了する。
+Logically this is how it is, but in reality a program can't run only because of
+this. At least, C programs cannot run without converting the names to the
+addresses (numbers).
 
-もっともここで説明したのは非常に単純な理想的モデルであって現実をかなり
-歪曲している面がある。論理結合と物理結合はそんなにキッパリ分かれるもの
-ではないし、「オブジェクトファイルは名前の集合」というのもナイーブに過
-ぎる。しかしなにしろこのあたりはプラットフォームによってあまりに動作が
-違いすぎるので、真面目に話していたら本がもう一冊書けてしまう。
-現実レベルの知識を得るためにはさらに
-『エキスパートCプログラミング』\footnote{『エキスパートCプログラミング』Peter van der Linden著、梅原系訳、アスキー出版局、1996}
-『Linkers&amp;Loaders』@footnote{『Linkers&amp;Loaders』John R.Levine著、榊原一矢監訳 ポジティブエッジ訳、オーム社、2001}
-あたりも読んでおくとよい。
+So, after the logical conjunctions, the physical conjunctions become necessary.
+We have to map object files into the real memory space
+and substitute the all names with numbers.
+Concretely speaking, for instance, the addresses to jump to on function calls
+are adjusted here.
 
-h3. 真にダイナミックなリンク
+And, based on the timing when to do these two conjunctions,
+linking is divided into two types:
+static linking and dynamic linking.
+Static linking finishes the all phases during the compile time.
+On the other hand, dynamic linking defers some of the conjunctions to the
+executing time. And linking is finally completed when executing.
+
+However, what explained here is a very simple idealistic model,
+and it has an aspect distorting the reality a lot.
+Logical conjunctions and physical conjunctions are not so completely separated,
+and "an object file is a set of names" is too naive.
+But the behavior around this considerably differs depending on each platform,
+describing seriously would end up with one more book.
+To obtain the realistic level knowledge, additionally,
+"Expert C Programming: Deep C Secrets" by Peter van der Linden,
+"Linkers and Loaders" by John R.Levine
+I recommend to read these books.
+
+
+
+h3. Linking that is truly dynamic
 
 And finally we get into our main topic. The "dynamic" in "dynamic linking" naturally means it "occurs at execution time", but what people usually refer to as "dynamic linking" is pretty much decided already at compile time. For example, the names of the needed functions, and which library they can be found in, are already known. For instance, if you need `cos()`, you know it's in `libm`, so you use `gcc -lm`. If you didn't specify the correct library at compile time, you'd get a link error.
 
 But extension libraries are different. Neither the names of the needed functions, or the name of the library which defines them are known at compile time.
-文字列をプログラムの実
-行中に組み立ててロード・リンクしなければいけないのである。つまり先程の
-言葉で言う「論理結合」すらも全て実行時に行わなければならない。そのため
-には普通に言うところのダイナミックリンクとはまた少し違う仕組みが必要に
-なる。
+We need to construct a string at execution time and load and link.
+It means that even "the logical conjunctions" in the sense of the previous words
+should be done entirely at execution time.
+In order to do it, another mechanism that is a little different form the ordinal
+dynamic linkings is required.
 
-この操作、つまり実行時に全てを決めるリンク、のことを普通は
-「動的ロード(dynamic load)」と呼ぶ。本書の用語遣いからいくと
-「ダイナミックロード」と片仮名にひらくべきなのだろうが、
-ダイナミックリンクと
-ダイナミックロードだと紛らわしいのであえて漢字で「動的ロード」とする。
+This manipulation, linking that is entirely decided at runtime,
+is usually called "dynamic load".
 
-h3. 動的ロードAPI
 
-概念の説明は以上だ。あとはその動的ロードをどうやればいいかである。とは
-言っても難しいことはなくて、普通はシステムに専用APIが用意されているの
-でこちらは単にそれを呼べばいい。
 
-例えばUNIXならわりと広範囲にあるのが`dlopen`というAPIである。ただし
-「UNIXならある」とまでは言えない。例えばちょっと前のHP-UXには全く違う
-インターフェイスがあるしMac OS XだとNeXT風のAPIを使う。また同じ
-`dlopen`でもBSD系だと`libc`にあるのにLinuxだと`libdl`として外付けになっ
-ている、などなど、壮絶なまでに移植性がない。いちおうUNIX系と並び称され
-ていてもこれだけ違うわけだから、他のOSになれば全然違うのもあたりまえで
-ある。同じAPIが使われていることはまずありえない。
+h3. Dynamic load API
 
-そこで`ruby`はどうしているかというと、その全然違うインターフェイスを吸収
-するために`dln.c`というファイルを用意している。`dln`はdynamic linkの略だろ
-う。`dln_load()`はその`dln.c`の関数の一つなのである。
+I've finished to explain the concept. The rest is how to do that dynamic loading.
+This is not a difficult thing. Usually there's a specific API prepared in the
+system, we can accomplish it by merely calling it.
 
-そんなふうに全くバラバラの動的ロードAPIだが、せめてもの救
-いはAPIの使用パターンが全く同じだということだ。どのプラットフォームだ
-ろうと
+For example, what is relatively broad for UNIX is the API named `dlopen`.
+However, I can't say "It is always available on UNIX".
+For example, for a little previous HP-UX has a totally different interface,
+and a NeXT-flavor API is used on Mac OS X.
+And even if it is the same `dlopen`,
+it is included in `libc` on BSD-derived OS,
+and it is attached from outside as `libdl` on Linux.
+Therefore, it is desperately not portable.
+It differs even among UNIX-based platforms,
+it is obvious to be completely different in the other Operating Systems.
+It is unlikely that the same API is used.
 
-# ライブラリをプロセスのアドレス空間にマップする
-# ライブラリに含まれる関数へのポインタを取る
-# ライブラリをアンマップ
+Then, how `ruby` is doing is, in order to absorb the totally different
+interfaces, the file named `dln.c` is prepared.
+`dln` is probably the abbreviation of "dynamic link".
+`dln_load()` is one of functions of `dln.c`.
 
-という三段階で構成されている。例えば`dlopen`系APIならば
+Where dynamic loading APIs are totally different each other,
+the only saving is the usage pattern of API is completely the same.
+Whichever platform you are on,
+
+# map the library to the address space of the process
+# take the pointers to the functions contained in the library
+# unmap the library
+
+it consists of these there steps.
+For example, if it is `dlopen`-based API,
 
 # `dlopen`
 # `dlsym`
 # `dlclose`
 
-が対応する。Win32 APIならば
+are the correspondences. If it is Win32 API,
 
-# `LoadLibrary`(または`LoadLibraryEx`)
+# `LoadLibrary` (or `LoadLibraryEx`)
 # `GetProcAddress`
 # `FreeLibrary`
 
-が対応する。
+are the correspondences.
 
-最後に、このAPI群を使って`dln_load()`が何をするかを話そう。これが実は、
-`Init_xxxx()`の呼び出しなのだ。ここに至ってついに`ruby`起動から終了までの全
-過程が欠落なく描けるようになる。即ち、`ruby`は起動すると評価器を初期化し
-なんらかの方法で受け取ったメインプログラムの評価を開始する。その途中で
-`require`か`load`が起こるとライブラリをロードし制御を移す。制御を移す、と
-は、Rubyライブラリならばパースして評価することであり、拡張ライブラリな
-らばロード・リンクして`Init_xxxx()`を呼ぶことである。
+At last, I'll talk about what `dln_load()` is doing by using these APIs.
+It is, in fact, calling `Init_xxxx()`.
+By reaching here, we finally become to be able to illustrate the entire process
+of `ruby` from the invocation to the completion without any lacks.
+In other words, when `ruby` is invoked, it initializes the evaluator and starts
+evaluating a program passed in somewhat way.
+If `require` or `load` occurs during the process,
+it loads the library and transfers the control.
+Transferring the control means parsing and evaluating if it is a Ruby library
+and it means loading and linking and finally calling `Init_xxxx()`
+if it is an extension library.
+
 
 h3. `dln_load()`
 
-ようやく`dln_load()`の中身にたどりつけた。`dln_load()`も長い関数だが、これ
-また理由があって構造は単純である。まず概形を見てほしい。
+Finally, we've reached the content of `dln_load()`.
+`dln_load()` is also a long function,
+but its structure is simple because of some reasons.
+Take a look at the outline first.
 
-▼ `dln_load()`(概形)
+▼ `dln_load()` (outline)
 <pre class="longlist">
 void*
 dln_load(file)
     const char *file;
 {
 #if defined _WIN32 && !defined __CYGWIN__
-    Win32 APIでロード
+    load with Win32 API
 #else
-    プラットフォーム独立の初期化
-#ifdef 各プラットフォーム
-    ……プラットフォームごとのルーチン……
+    initialization depending on each platform
+#ifdef each platform
+    ……routines for each platform……
 #endif
 #endif
 #if !defined(_AIX) && !defined(NeXT)
@@ -886,19 +952,20 @@ dln_load(file)
 }
 </pre>
 
-このようにメインとなる部分がプラットフォームごとに完璧に分離しているため、
-考えるときは一つ一つのプラットフォームのことだけを考えていればいい。
-サポートされているAPIは以下の通りだ。
+This way, the part connecting to the main is completely separated based on each
+platform. When thinking, we only have to think about one platform at a time.
+Supported APIs are as follows:
 
-* `dlopen`(多くのUNIX)
-* `LoadLibrary`(Win32)
-* `shl_load`(少し古いHP-UX)
-* `a.out`(かなり古いUNIX)
-* `rld_load`(`NeXT4`未満)
-* `dyld`(`NeXT`またはMac OS X)
-* `get_image_symbol`(BeOS)
-* `GetDiskFragment`(Mac OS 9以前)
-* `load`(少し古いAIX)
+* `dlopen` (Most of UNIX)
+* `LoadLibrary` (Win32)
+* `shl_load` (a bit old HP-UX)
+* `a.out` (very old UNIX)
+* `rld_load` (before `NeXT4`)
+* `dyld` (`NeXT` or Mac OS X)
+* `get_image_symbol` (BeOS)
+* `GetDiskFragment` (Mac Os 9 and before)
+* `load` (a bit old AIX)
+
 
 h3. `dln_load()`-`dlopen()`
 
@@ -914,7 +981,7 @@ First, let's start with the API code for the `dlopen` series.
 1260  #define DLN_ERROR() (error = dln_strerror(),\
                            strcpy(ALLOCA_N(char, strlen(error) + 1), error))
 1298      char *buf;
-1299      /* Init_xxxxという文字列をbufに書き込む(領域はalloca割り当て) */
+1299      /* write a string "Init_xxxx" to buf (the space is allocated with alloca) */
 1300      init_funcname(&buf, file);
 
 1304      {
@@ -928,21 +995,21 @@ First, let's start with the API code for the `dlopen` series.
 1312  # define RTLD_GLOBAL 0
 1313  #endif
 1314
-1315          /* (A)ライブラリをロード */
+1315          /* (A) load the library */
 1316          if ((handle = (void*)dlopen(file, RTLD_LAZY | RTLD_GLOBAL))
                                                                  == NULL) {
 1317              error = dln_strerror();
 1318              goto failed;
 1319          }
 1320
-              /* (B)Init_xxxx()へのポインタを取る */
+              /* (B) get the pointer to Init_xxxx() */
 1321          init_fct = (void(*)())dlsym(handle, buf);
 1322          if (init_fct == NULL) {
 1323              error = DLN_ERROR();
 1324              dlclose(handle);
 1325              goto failed;
 1326          }
-1327          /* ==(C)==Init_xxxx()を呼ぶ */
+1327          /* (C) call Init_xxxx() */
 1328          (*init_fct)();
 1329
 1330          return handle;
@@ -955,22 +1022,34 @@ First, let's start with the API code for the `dlopen` series.
 (dln.c)
 </pre>
 
-(A)`dlopen()`の引数の`RTLD_LAZY`は「実際に関数を要求したときに
-未解決シンボルを解決する」ことを示す。返り値はライブラリを識別する
-ための印(ハンドル)で、`dl*()`には常にこれを渡さないといけない。
 
-(B)`dlsym()`はハンドルの示すライブラリから関数ポインタを取る。返り値が
-`NULL`なら失敗だ。ここで`Init_xxxx()`へのポインタを取り、呼ぶ。
+(A) the `RTLD_LAZY` as the argument of `dlopen()` indicates "resolving the
+undefined symbols when the functions are actually demanded"
+The return value is the mark (handle) to distinguish the library and
+we always need to pass it when using `dl*()`.
 
-`dlclose()`の呼び出しはない。`Init_xxxx()`の中でロードした
-ライブラリの関数ポインタを
-返したりしているはずだが、`dlclose()`するとライブラリ全体が使えなくなって
-しまうのでまずいのだ。つまりプロセスが終了するまで`dlclose()`は呼べない。
 
-h3. `dln_load()`-Win32
+(B) `dlsym()` gets the function pointer from the library specified by the
+handle. If the return value is `NULL`, it means failure.
+Here, getting the pointer to `Init_xxxx()`
+If the return value is `NULL`, it means failure. Here, the pointer to
+`Init_xxxx()` is obtained and called.
 
-Win32では`LoadLibrary()`と`GetProcAddress()`を使う。
-MSDNにも載っているごく一般的なWin32 APIである。
+
+`dlclose()` is not called here. Since the pointers to the
+functions of the loaded library are possibly returned inside `Init_xxx()`,
+it is troublesome if `dlclose()` is done
+because the entire library would be disabled to use.
+Thus, we can't call `dlclose()` until the process will be finished.
+
+
+
+
+h3. `dln_load()` -- Win32
+
+
+As for Win32, `LoadLibrary()` and `GetProcAddress()` are used.
+It is very general Win32 API which also appears on MSDN.
 
 ▼ `dln_load()`-Win32
 <pre class="longlist">
@@ -986,12 +1065,12 @@ MSDNにも載っているごく一般的なWin32 APIである。
 1268
 1269      if (strlen(file) >= MAXPATHLEN) rb_loaderror("filename too long");
 1270
-1271      /* "Init_xxxx"という文字列をbufに書き込む(領域はalloca割り当て) */
+1271      /* write the "Init_xxxx" string to buf (the space is allocated with alloca) */
 1272      init_funcname(&buf, file);
 1273
 1274      strcpy(winfile, file);
 1275
-1276      /* ライブラリをロード */
+1276      /* load the library */
 1277      if ((handle = LoadLibrary(winfile)) == NULL) {
 1278          error = dln_strerror();
 1279          goto failed;
@@ -1001,7 +1080,7 @@ MSDNにも載っているごく一般的なWin32 APIである。
 1283          rb_loaderror("%s - %s\n%s", dln_strerror(), buf, file);
 1284      }
 1285
-1286      /* Init_xxxx()を呼ぶ */
+1286      /* call Init_xxxx() */
 1287      (*init_fct)();
 1288      return handle;
 
@@ -1012,6 +1091,6 @@ MSDNにも載っているごく一般的なWin32 APIである。
 (dln.c)
 </pre>
 
-`LoadLibrary()`して`GetProcAddress()`。ここまでパターンが同じだと
-言うこともないので、終わってしまうことにしよう。
-
+Doing `LoadLibrary()` then `GetProcAddress()`.
+The pattern is so equivalent that nothing is left to say,
+I decided to end this chapter.
