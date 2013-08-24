@@ -1330,7 +1330,7 @@ The method @initialize@ to initialize an object will unquestionably become @priv
 My feeling is that there're few cases @protected@ is required in Ruby.
 
 
-(C) This is a bug. I found this just before the submission of this book,
+==(C)== This is a bug. I found this just before the submission of this book,
 so I couldn't fix this beforehand.
 In the latest code this part is probably already removed.
 The original intention is to enforce the methods defined at top level to be @private@ .
@@ -2035,7 +2035,7 @@ Fig.9. assign when corresponded
 array and assign it into (the left-hand side expressed by) the @node->nd_args@ .
 
 
-(C) if there are remainders on the left-hand side, assign @nil@ to all of them.
+==(C)== if there are remainders on the left-hand side, assign @nil@ to all of them.
 
 
 

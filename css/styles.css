@@ -86,7 +86,7 @@ span.ami {
     background-color: #ccc;
 }
 
-p.image {
+.image {
     align: center;
     margin-top: 2em;
     margin-bottom: 2em;
@@ -152,3 +152,22 @@ pre.emlist {
 }
 
 p { width: 35em }
+
+.image ul {
+  list-style-type: none;
+  padding-left: 0;
+  font-size: .8em;
+  margin: 0
+}
+
+.image p { margin: 0 }
+
+/* for chapter 16 */
+div.longlist {
+  padding: 8px;
+  background: #eee;
+  font-size: .8em;
+  font-family: Menlo, Monaco, "Andale Mono", "Lucida console", "courier New", monospace;
+}
+
+div.longlist p { margin: 0 }

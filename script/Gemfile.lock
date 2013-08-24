@@ -1,0 +1,14 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    builder (3.2.2)
+    eeepub (0.8.1)
+      builder
+      rubyzip
+    rubyzip (0.9.9)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  eeepub

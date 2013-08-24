@@ -174,7 +174,7 @@ or the highest level from the program's standpoint. Hence it's called the
 <em>toplevel</em>.
 The existence of a toplevel is a characteristic trait of a scripting language.
 
-In Ruby one line is usually one statement. A semicolon at the end isn't necessary.
+In Ruby, one line is usually one statement. A semicolon at the end isn't necessary.
 Therefore the program below is interpreted as three statements.
 
 <pre class="emlist">
@@ -281,9 +281,6 @@ By the way, to indicate that an object itself shouldn't be changed
 another means is used: `freeze`.
 
 !images/ch_minimum_const.jpg(constant means read only)!
-
-(定数:constant, オブジェクト: object, 変わらない:doesn't change,
-変わることもある:might change)
 
 And we cannot talk about the scope yet. We talk about it later in
 the context of classes.
@@ -603,8 +600,6 @@ by a vertical arrow as in Fig.3.
 
 !images/ch_minimum_supersub.jpg(Inheritance)!
 
-(スーパークラス:superclass,サブクラス:subclass)
-
 In the illustration the inherited class (`Object`) is called
 superclass or superior class. The inheriting class (`String`) is called
 subclass or inferior class. This point differs from C++ jargon, be careful.
@@ -678,9 +673,6 @@ preference. As type overloading isn't there at all the requisites are
 extremely straigtforward.
 
 !images/ch_minimum_multiinherit.jpg(Inheitance over multiple steps)!
-
-(数のクラス:class of numbers,整数のクラス:class of integers,
-小さい整数のクラス:class of small integers)
 
 In C++ it's possible to create a class which inherits nothing.
 While in Ruby one has to inherit from the `Object` class either
