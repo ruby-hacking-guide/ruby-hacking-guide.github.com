@@ -272,192 +272,175 @@ p(=emlist).
 result = if cond then process(val) else nil end
 </pre>
 
-大雑把に言うと、関数やメソッドの引数にできるものは式だと思っていい。
+Roughly, you can assume any element which can be fed as an argument for a function
+or a method is a formula. 
 
+Of course, there are other languages whose syntactic elements are mostly a formula.
+Namely, Lisp is the best example. For this characteristic, many people seem to
+regard Ruby is similar to Lisp. 
 
-もちろん「ほとんどの文法要素が式」という言語は他にもいろいろある。例えば
-Lispはその最たるものだ。このあたりの特徴からなんとなく「RubyはLispに似
-てる」と感じる人が多いようである。
+h4. Iterators
 
-h4. イテレータ
+Ruby has iterators. What is an iterator? Before getting into iterators, I should
+mention the necessity of using an alternative term, because the word "iterator" is
+disliked recently. However, I don't have a good alternation. So let us keep calling
+it "iterator" for the time being. 
 
-Rubyにはイテレータがある。イテレータとは何か。いやその前にイテレータと
-いう言葉は最近嫌われているので別の言葉を使うべきかもしれない。だがい
-い言葉を思いつかないので当面イテレータと呼ぶことにする。
+Well again, what is an iterator? If you are already familiar with a high level
+function which is similar, you can assume it for now. C-language example is the way
+you feed function pointer as an argument. C++ example is a way to envelope the
+operation part of STL's @Iterator@ into a method. If you are familiar with sh and
+Perl, you can imagine it like a custom defined @for@ statement. 
 
+Yet, the above are merely examples of "similar" concepts. All of them are similar,
+but they are not identical to Ruby's iterator. I will expand the precise story
+when it's a good time later. 
 
-それでイテレータとは何か。高階の関数を知っているなら、とりあえずはそれ
-と似たようなものだと思っておけばいい。Cで言えば関数ポインタを引数
-に渡すやつである。C++で言えばSTLにある@Iterator@の操作部分までをメソッド
-に封入したものである。shやPerlを知っているのなら、独自に定義できる
-@for@文みたいなもんだと思って見てみるといい。
+h4. Written in C-language
 
+Being written in C-language is not distinctive these days, but it's still a notable
+characteristic for sure. Unlike being written in Haskell or PL/I, it should possibly
+be readable for a wide range of people generally. (I want you to confirm it in the
+later in this book.) 
 
-もっともあくまでここに挙げたのは全て「似たようなもの」であって、どれも
-Rubyのイテレータと似てはいるが、同じでは、全くない。いずれその時が来た
-らもう少し厳密な話をしよう。
+Well, I just said it's in C-language, but the actual language version which ruby is
+targetting is basically K&R C.  Until a little while ago, there were a decent number
+of - not plenty though - K&R-only-environment.  Considering the trend of ANSI C being
+a popular environment that seems to pass most of programs, there appears to be no
+problem to port to ANSI C. However, the K&R style code is still maintained, with the
+author Matsumoto's preference being one aspect. 
 
-h4. C言語で書いてある
+For this reason, the function definition is all in K&R style, and the prototype
+declarations are not strictly written. Looking at the mailing list, I can see a lot
+of topics in which @gcc@ with @-Wall@ option outputs a huge dump of errors, and C++
+compiler warns prototype mismatch that fails to finish compiling. 
 
-Cで書いたプログラムなどいまどき珍しくもないが、特徴であることは間違い
-ない。少なくともHaskellやPL/Iで書いてあるわけではないので一般人にも
-読める可能性が高い（本当にそうかどうかはこれから自分で確かめてほしい）。
+h4. Extension library
 
+Ruby library can be written in C. It can be loaded at execution without recompiling Ruby.
+This type of library is called "Ruby extension library" or just "Extension library". 
 
-それからC言語と言っても@ruby@が対象としているのは基本的にK&R Cだ。
-少し前まではK&R onlyの環境が、たくさんとは言わないが、それなりにあったからだ。
-しかしさすがに最近はANSI Cが通らない環境はなくなってきており技術的には
-ANSI Cに移っても特に問題はない。だが作者のまつもとさん個人の趣味もあっ
-てまだK&Rスタイルを通している。
-
-
-そんなわけで関数定義は全てK&Rスタイルだし、プロトタイプ宣言もあまり真面
-目に書かれていない。@gcc@でうっかり@-Wall@を付けると大量に警告が出て
-くるとか、
-C++コンパイラでコンパイルするとプロトタイプが合わないと怒られてコンパ
-イルできない......なんて話がポロポロとメーリングリストに流れている。
-
-h4. 拡張ライブラリ
-
-RubyのライブラリをCで書くことができ、Rubyを再コンパイルすることなく
-実行時にロードできる。このようなライブラリを「Ruby拡張ライブラリ」
-または単に「拡張ライブラリ」と言う。
-
-
-単にCで書けるだけでなくRubyレベルとCレベルでのコードの表現の差が小さい
-のも大きな特徴である。Rubyで使える命令はほとんどそのままCでも使うこと
-ができる。例えば以下のように。
+In addition to the fact that's written in C, one of the important feature is that Ruby
+level and C level code differences are very small. Most commands available in Ruby are
+also available in C. See following example. 
 
 p(=emlist). 
-# メソッド呼び出し
+# Method call
 obj.method(arg)                                 # Ruby
 rb_funcall(obj, rb_intern("method"), 1, arg);   # C
-# ブロック呼び出し
+
+# Block call
 yield arg        # Ruby
 rb_yield(arg);   # C
-# 例外送出
+
+# Raising exception
 raise ArgumentError, 'wrong number of arguments'       # Ruby
 rb_raise(rb_eArgError, "wrong number of arguments");   # C
-# オブジェクトの生成
+
+# Generating an object
 arr = Array.new             # Ruby
 VALUE arr = rb_ary_new();   # C
 </pre>
 
-拡張ライブラリを書くうえでは非常に楽をできていいし、現実に
-このことが代えがたい@ruby@の長所にもなっている。しかしそのぶん
-@ruby@の実装にとっては非常に重い足枷となっており、随所にその
-影響を見ることができる。特にGCやスレッドへの影響は顕著である。
+It's good because it provides easiness in composing an extension library, and actually
+it makes an indispensable prominence of @ruby@. However, it's also a burden for @ruby@
+implementation. You can see the affects of it in many places. The affects to GC and
+thread-processing is eminent. 
 
-h4. スレッド
+h4. Thread
 
-Rubyにはスレッドがある。さすがに最近はスレッドを知らない人はほとんどい
-ないと思うのでスレッド自体に関する説明は省略する。以下はもう少し細かい
-話だ。
+Ruby is equipped with thread. Assuming a very few people knowing none about thread these
+days, I will omit an explanation about the thread itself. I will start a story in detail. 
+
+The thread level of @ruby@ belongs to the user level of origin. The characteristic of
+this implementation is a very high portability in both specification and implementation.
+Surprisingly a MS-DOS can run the thread. Furthermore, you can expect the same response
+in any environment. Many people mention that this point is the best feature of @ruby@.
+
+However, as a trade off for such an extremeness of portability, @ruby@ abandons the speed.
+It's, say, probably the slowest of all user-level thread implementations in this world.
+The trend of @ruby@ implementation may be seen here the most clearly. 
+
+h2. Technique to read source code
+
+Well. After an introduction of @ruby@, we are about to start reading source code. But wait. 
+
+Any programmer has to read a source code somewhere, but I guess there are not many occasions
+that someone teaches you the concrete ways how to read. Why? Is it because writing a program
+naturally assumes reading a program? 
+
+I don't think so. It's not easy to actually read a code written by other people.
+In the same way as writing programs, there must be techniques and theories in reading programs.
+And they are necessary. Therefore, before starting to ready @ruby@, I'd like to expand a general
+summary of an approach you need to take in reading a source code. 
+
+h3. Principles
+
+At first, I mention the principle. 
+
+h4. Decide a goal
 
 
-@ruby@のスレッドはオリジナルのユーザレベルスレッドである。この実装の
-特徴は、仕様と実装、両方の移植性が非常に高いことである。なにしろDOS上で
-さえスレッドが動き、どこでも同じ挙動で使えるのだ。この点を@ruby@の最大の
-長所として挙げる人も多い。
-
-
-しかし@ruby@スレッドは凄まじい移植性を実現した反面で速度をおもいきり犠牲
-にしている。どのくらい遅いかというと、世の中に数あるユーザレベルスレッ
-ドの実装の中でも一番遅いのではないか、というくらい遅い。これほど@ruby@の
-実装の傾向を明確に表しているところもないだろう。
-
-h2. ソースコードを読む技術
-
-さて。@ruby@の紹介も終わっていよいよソースコード読みに入ろうか、というと
-ころだが、ちょっと待ってほしい。
-
-
-ソースコードを読む、というのはプログラマならば誰しもやらなければいけな
-いことだが、その具体的な方法を教えてもらえることはあまりないのではない
-だろうか。どうしてだろう。プログラムが書けるなら読むのも当然できるとい
-うのだろうか。
-
-
-しかし筆者には人の書いたプログラムを読むことがそんなに簡単なことだとは
-思えない。プログラムを書くのと同じくらい、読むことにも技術や定石がある
-はずだし、必要だと考える。そこで@ruby@を読んでいく前にもう少し一般的に、
-ソースコードを読むにはどういう考えかたをすればいいのか、整理することに
-しよう。
-
-h3. 原則
-
-まずは原則について触れる。
-
-h4. 目的の決定
 bq. 
-「ソースコードを読むための極意」は『目的をもって読む』ことです。
+An important key to reading the source code is to set a concrete goal. 
 
 
-これはRuby作者のまつもとさんの言だ。なるほど、この言葉には非常にうなず
-けるものがある。「カーネルくらいは読んどかなきゃいかんかなあ」と思って
-ソースコードを展開したり解説本を買ったりしてはみたものの、いったいどう
-していいのかわからないまま放ってしまった、という経験のある人は多いので
-はないだろうか。その一方で、「このツールのどこかにバグがある、とにかく
-これを速攻で直して動かさないと納期に間に合わない」......というときには他
-人のプログラムだろうとなんだろうと瞬く間に直せてしまうこともあるのでは
-ないだろうか。
+This is a word by the author of Ruby, Matsumoto. Indeed, his word is very convincing for me.
+When the motivation is a spontaneous idea "May be I should read a kernel, at least...",
+you would get source code expanded or explanatory books ready on the desk. But not knowing
+what to do, the studies are to be left untouched. Haven't you? On the other hand, when you
+have in mind "I'm sure there is a bug somewhere in this tool. I need to quickly fix it and
+make it work. Otherwise I will not be able to make the deadline...", you will probably be
+able to fix the code in a blink, even if it's written by someone else. Haven't you? 
 
+The difference in these two cases is motivation you have. In order to know something,
+you at least have to know what you want to know. Therefore, the first step of all is
+to figure out what you want to know in explicit words. 
 
-この二つのケースで違うのは、意識の持ちかたである。自分が何を知ろうと
-しているのかわからなければ「わかる」ことはありえない。だからまず自分が
-何を知りたいのか、それを明確に言葉にすることが全ての第一歩である。
+However, of course this is not all needed to make it your own "technique".
+Because "technique" needs to be a common method that anybody can make use of it by following it.
+In the following section, I will explain how to bring the first step into the landing place
+where you achieve the goal finally. 
 
+h4. Visualising the goal
 
-だがこれだけではもちろん「技術」たりえない。「技術」とは、意識すれば誰に
-でもできるものでなければならないからだ。続いて、この第一歩から最終的に
-目的を達成するところまで敷衍する方法について延べる。
+Now let us suppose that our final goal is set "Understand all about @ruby@". This is certainly
+considered as "one set goal", but apparently it will not be useful for reading the source code
+actually. It will not be a trigger of any concrete action. Therefore, your first job will be to
+drag down the vague goal to the level of a concrete thing. 
 
-h4. 目的の具体化
+Then, what will the method be? Firstly, it's good if you pretend that you are the composer of
+the program. You can utilize your knowledge in writing a program, in this case. For example,
+when you are reading a traditional "structured" programming by somebody, you will analyze it
+hiring the strategies of structured programming too. That is, you will divide the target into
+pieces, little by little. For another example, suppose you are reading a GUI program that walks
+around in an event loop, you can just start looking at the event loop before studying the roles
+of the event handlers. In another case, you will look up what "M" is for in MVC (Model View Controller). 
 
-いま「@ruby@全部を理解する」を最終目標に決めたとしよう。これでも「目的を
-決めた」とは言えそうだが、しかし実際にソースコードを読む役に立たないこ
-とは明らかである。具体的な作業には何にもつながっていないからだ。従って
-まずはこの曖昧な目標を具体的なところまで引きずり下ろさなければならない。
+Secondly, keep in mind the methods of analysis. Everybody might have certain analysis methods,
+but they are often done based on experience and relying inspiration. It's crucially important
+to give it to the notion how to read source code well. 
 
+Well, what are such methods like? I will explain it in the next section. 
 
-どうすればいいだろうか。まず第一に、そのプログラムを書いた人間になった
-つもりで考えてみることだ。そのときにはプログラムを作るときの知識が流用
-できる。例えば伝統的な「構造化」プログラムを読むとしたら、こちらも
-構造化プログラムの手法に則って考えるようにする。即ち目的を徐々に徐々に分割
-していく。あるいはGUIプログラムのようにイベントループに入ってグルグル
-するものならば、とりあえず適当にイベントループを眺めてからイベントハン
-ドラの役割を調べてみる。あるいはMVC（Model View Controler）のMをまず調
-べてみる。
+h3. Analysis methods
 
+The methods to read source code can be roughly divided into two; one is a static method and
+the other is dynamic method. Static method is to read and analyze the source code without
+running the program. Dynamic method is to watch the actual behavior using tools like a debugger. 
 
-第二に解析の手法を意識することだ。誰しも自分なりの解析方法というのはそ
-れなりに持っていると思うが、それは経験と勘に頼って行われていることが多
-い。どうしたらうまくソースコードを読めるのか、そのこと自体を考え、意識
-することが非常に重要である。
+It's better to start studying a program by dynamic analysis. That is because what you can see
+there is the "fact". The results from static analysis, due to the fact of not running the program
+actually, may well be "prediction" to a greater or lesser extent. If you want to know the truth,
+you should start from watching the fact. 
 
+Of course, you don't know whether the results of dynamic analysis are the fact really.
+The debugger could run with a bug, or the CPU may not be working properly due to overheat.
+The conditions of your configuration could be wrong. However, the results of static analysis
+should at least be closer to the fact than dynamic analysis. 
 
-ではそのような手法にはどんなものがあるだろうか。それを次に説明する。
+h3. Dynamic analysis
 
-h3. 解析の手法
-
-ソースコードを読む手法は大雑把に言って静的な手法と動的な手法の二つに分
-類できる。静的な手法とはプログラムを動かさずソースコードを読んだり解析
-したりすること。動的な手法とはデバッガなどのツールを使って実際の動きを
-見ることだ。
-
-
-プログラムを調査するときはまず動的な解析から始めたほうがよい。なぜなら
-それは「事実」だからだ。静的な解析では現実にプログラムを動かしていない
-のでその結果は多かれ少なかれ「予想」になってしまう。真実を知りたいのな
-らばまず事実から始めるべきなのだ。
-
-
-もちろん動的な解析の結果が本当に事実であるかどうかはわからない。デバッガがバ
-グっているかもしれないし、CPUが熱暴走しているかもしれない。自分が設定
-した条件が間違っているかもしれない。しかし少なくとも静的解析よりは動的
-な解析の結果のほうが事実に近いはずである。
-
-h3. 動的な解析
 h4. 対象プログラムを使う
 
 これがなければ始まらない。そもそもそのプログラムがどういうものなのか、
