@@ -572,7 +572,7 @@ all right but how is it in practice? Let's look at the function
 necessary, but it's not the main part of the treatment, so you should ignore
 them at first read.
 
-After removing error treatment, only the `switch` remains, but this
+If we ignore the error handling, only the `switch` remains, but this
 
 <pre class="emlist">
 switch (TYPE(obj)) {
