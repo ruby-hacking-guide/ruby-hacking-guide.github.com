@@ -444,13 +444,20 @@ h3. Dynamic analysis
 
 h4. Use the target program
 
-You can't start without the target program. First of all, you need to know in advance what the program is like, and what are expected behaviors. 
+You can't start without the target program. First of all, you need to know in advance what
+the program is like, and what are expected behaviors. 
 
 h4. Follow the behavior using the debugger
 
-If you want to see the paths of code execution and the data structure produced as a result, it's quicker to look at the result by running the program actually than to emulate the behavior in your brain. In order to do so easily, use the debugger. 
+If you want to see the paths of code execution and the data structure produced as a result,
+it's quicker to look at the result by running the program actually than to emulate the behavior
+in your brain. In order to do so easily, use the debugger. 
 
-However, there is not adequate tools unfortunately, especially in free software, that can generate the picture of the data structure at execution. A snapshot of the comparatively simpler structure may be obtained by converting text data obtained instantly into a picture using graphviz\footnote{graphviz……See doc/graphviz.html in the attached CD-ROM}. But it's very difficult to find a way for general purpose and real time analysis. 
+However, there is not adequate tools unfortunately, especially in free software,
+that can generate the picture of the data structure at execution. A snapshot of the comparatively
+simpler structure may be obtained by converting text data obtained instantly into a picture using
+graphviz\footnote{graphviz……See doc/graphviz.html in the attached CD-ROM}.
+But it's very difficult to find a way for general purpose and real time analysis. 
 
 h4. Tracer
 
@@ -458,33 +465,36 @@ You can use the tracer if you want to trace the procedures that code goes throug
 
 h4. Print everywhere
 
-There is a word "printf debugging". This method also works for analysis other than debugging.  If you are watching the history of one variable, for example, it may be easier to understand to look at the dump of the result of the print statements embed, than to track the variable with a debugger.
+There is a word "printf debugging". This method also works for analysis other than debugging.
+If you are watching the history of one variable, for example, it may be easier to understand
+to look at the dump of the result of the print statements embed, than to track the variable
+with a debugger.
 
 h4. Understanding code by modifying it
 
-Say for example, you do not understand some part of the code or a particular parameter, just make a small change and then re-run the program.
+Say for example, you do not understand some part of the code or a particular parameter,
+just make a small change and then re-run the program.
 By trying out small changes and seeing how they affect the code you will understand how it works.
 
 It goes without saying, you should have an original binary to compare your changes to.
 
 h3. Static analysis
 
-h4. The importance of naming
+h4. The importance of names
 
-Static analysis is simply source code analysis. Therefore, source code analysis is really an analysis of names. File names, function names, variable names, type names, member names -- A program is just a bunch of names.
+Static analysis is simply source code analysis. Therefore, source code analysis is
+really an analysis of names. File names, function names, variable names, type names,
+member names -- A program is just a bunch of names.
 
-One of the most powerful tools for creating abstractions in programming is naming. This may seem obvious but keeping this in mind will make reading much more efficient.
+One of the most powerful tools for creating abstractions in programming is naming.
+This may seem obvious but keeping this in mind will make reading much more efficient.
 
 Also, I'd like to mention something about coding rules.
+For example, in C language, @extern@ function often uses prefix to distinguish the type of functions.
+And in object-oriented programs, the name of member fields in a function often includes prefix,
+which is really important information (e.g. @rb_str_length@).
 
-
-またコーディングルールについてもあたりをつけておきたい。例えばCの関数
-名なら@extern@関数にはプリフィクスを使っていることが多く、関数の種類を見
-分けるのに使える。またオブジェクト指向様式のプログラムだと関数の所属情
-報がプリフィクスに入っていることがあり、貴重な情報になる。
-（例：@rb_str_length@）
-
-h4. ドキュメントを読む
+h4. Read documents
 
 内部構造を解説したドキュメントが入っていることもある。
 特に「@HACKING@」といった名前のファイルには注意だ。
