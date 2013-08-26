@@ -10,11 +10,13 @@ h2. Structure of Ruby objects
 
 h3. Guideline
 
-In this chapter we will begin exploring the `ruby` source code, starting by
-studying the declaration of object structures.
+From this chapter, we will begin actually exploring the `ruby` source code.
+First, as declared at the beginning of this book,
+we'll start with the object structure.
 
-What do objects need to exist? There are many answers to this question, but for
-our purposes an object only needs three things:
+What are the necessary conditions for objects to be objects?
+There could be many ways to explain about object itself,
+but there are only three conditions that are truly indispensable.
 
 # The ability to differentiate itself from other objects (an identity)
 # The ability to respond to messages (methods)
@@ -22,13 +24,13 @@ our purposes an object only needs three things:
 
 In this chapter, we are going to confirm these three features one by one.
 
-The most interesting file in this quest will be `ruby.h`, but we will also
+The target file is mainly `ruby.h`, but we will also
 briefly look at other files such as `object.c`, `class.c` or `variable.c`.
 
-h3. Structure of `VALUE` and objects
+h3. `VALUE` and object struct
 
-In `ruby`, the contents of an object are expressed by a `C` structure, always
-handled via a pointer. A different kind of structure is used for each class, but
+In `ruby`, the body of an object is expressed by a struct and always
+handled via a pointer. A different struct type is used for each class, but
 the pointer type will always be `VALUE` (figure 1).
 
 !images/ch_object_value.png(`VALUE` and structure)!
@@ -43,13 +45,15 @@ Here is the definition of `VALUE`:
 (ruby.h)
 </pre>
 
-In practice, a `VALUE` must be cast to different types of structure pointer.
+In practice, when using a `VALUE`, we cast it to the pointer to each object struct.
 Therefore if an `unsigned long` and a pointer have a different size, `ruby`
-will not work well. Strictly speaking, it will not work for pointer types
-bigger than `sizeof(unsigned long)`. Fortunately, no recent machine feature
-this capability, even if some time ago there were quite a few of them.
+will not work well. Strictly speaking, it will not work if there's a pointer
+type that is bigger than `sizeof(unsigned long)`. Fortunately, systems which
+could not meet this requirement is unlikely recently,
+but some time ago it seems there were quite a few of them.
 
-Several structures are available according to object classes:
+The structs, on the other hand, have several variations,
+a different struct is used based on the class of the object.
 
 | `struct RObject`		| all things for which none of the following
 						  applies |
@@ -110,7 +114,8 @@ Before looking at every one of them in detail, let's begin with something more
 general.
 
 First, as `VALUE` is defined as `unsigned long`, it must be cast before
-being used. That's why `Rxxxx()` macros have been made for each object
+being used when it is used as a pointer.
+That's why `Rxxxx()` macros have been made for each object
 structure. For example, for `struct RString` there is `RSTRING()`, for
 `struct RArray` there is `RARRAY()`, etc... These macros are used like this:
 
@@ -129,8 +134,9 @@ of the type of structure pointed to by `VALUE`.
 
 !images/ch_object_rbasic.png(`struct RBasic`)!
 
-You probably guessed that `struct RBasic` has been designed to contain some
-important information shared by all object structures. Here is the definition
+Because it is purposefully designed this way,
+`struct RBasic` must contain very important information for Ruby objects.
+Here is the definition
 for `struct RBasic`:
 
 ▼ `struct RBasic`
@@ -154,8 +160,9 @@ str = rb_str_new();    /* creates a Ruby string (its structure is RString) */
 TYPE(str);             /* the return value is T_STRING */
 </pre>
 
-The names of these `T_xxxx` flags are directly linked to the corresponding type
-name, like `T_STRING` for `struct RString` and `T_ARRAY` for `struct RArray`.
+The all flags are named as `T_xxxx`,
+like `T_STRING` for `struct RString` and `T_ARRAY` for `struct RArray`.
+They are very straightforwardly corresponded to the type names.
 
 The other member of `struct RBasic`, `klass`, contains the class this object
 belongs to. As the `klass` member is of type `VALUE`, what is stored is (a
@@ -199,10 +206,11 @@ easier and faster to put the information about the type in the structure.
 
 h4. The use of `basic.flags`
 
-As limiting myself to saying that `basic.flags` is used for different things
-including the type of structure makes me feel bad, here's a general
-illustration for it (figure 5). There is no need to understand everything
-right away, I just wanted to show its uses while it was bothering me.
+Regarding the use of `basic.flags`,
+because I feel bad to say it is the structure type "and such",
+I'll illustrate it entirely here. (Figure 5)
+There is no need to understand everything right away,
+because this is prepared for the time when you will be wondering about it later.
 
 !images/ch_object_flags.png(Use of `flags`)!
 
@@ -229,13 +237,14 @@ I'll explain them one by one.
 
 h4. Small integers
 
-Just like in Ruby itself, all data are objects. Likewise, integers are objects.
-However during normal program execution, lots of instances of integers are
-created. Using structures to express them would risk slowing down execution. For
-example, if we created 50000 objects when incrementing from 0 to 50000 we'd
-definitely have to consider the performance issues.
+All data are objects in Ruby, thus integers are also objects.
+But since there are so many kind of integer objects,
+if each of them is expressed as a structure,
+it would risk slowing down execution significantly.
+For example, when incrementing from 0 to 50000,
+we would hesitate to create 50000 objects for only that purpose.
 
-That's why in `ruby`, to some extent, small integers are treated specially and
+That's why in `ruby`, integers that are small to some extent are treated specially and
 embedded directly into `VALUE`. "Small" means signed integers that can be held
 in `sizeof(VALUE)*8-1` bits. In other words, on 32 bits machines, the integers
 have 1 bit for the sign, and 30 bits for the integer part. Integers in this
@@ -277,8 +286,8 @@ h4. Symbols
 What are symbols?
 
 As this question is quite troublesome to answer, let's start with the reasons
-why symbols were necessary. First, let's start with the `ID` type used inside
-`ruby`. It's like this:
+why symbols were necessary.
+In the first place, there's a type named `ID` used inside `ruby`. Here it is.
 
 ▼ `ID`
 
@@ -289,13 +298,13 @@ why symbols were necessary. First, let's start with the `ID` type used inside
 </pre>
 
 This `ID` is a number having a one-to-one association with a string. However,
-in this world it's not possible to have an association between all strings and
-a numerical value. That's why they are limited to the one to one relationships
+it's not possible to have an association between all strings in this world and
+numerical values. It is limited to the one to one relationships
 inside one `ruby` process. I'll speak of the method to find an `ID` in the
 next chapter "Names and name tables".
 
-In language implementations, there are a lot of names to handle. Method names
-or variable names, constant names, file names in class names... It's
+In language processor, there are a lot of names to handle. Method names
+or variable names, constant names, file names, class names... It's
 troublesome to handle all of them as strings (`char*`), because of memory
 management and memory management and memory management... Also, lots of
 comparisons would certainly be necessary, but comparing strings character by
@@ -304,14 +313,14 @@ directly, something will be associated and used instead. And generally that
 "something" will be integers, as they are the simplest to handle.
 
 These `ID` are found as symbols in the Ruby world. Up to `ruby 1.4`, the
-values of `ID` were converted to `Fixnum`, but used as symbols. Even today
+values of `ID` converted to `Fixnum` were used as symbols. Even today
 these values can be obtained using `Symbol#to_i`. However, as real use results
 came piling up, it was understood that making `Fixnum` and `Symbol` the same
 was not a good idea, so since 1.6 an independent class `Symbol` has been
 created.
 
 `Symbol` objects are used a lot, especially as keys for hash tables. That's
-why `Symbol`, like `Fixnum`, was made stored in `VALUE`. Let's look at the
+why `Symbol`, like `Fixnum`, was made embedded in `VALUE`. Let's look at the
 `ID2SYM()` macro converting `ID` to `Symbol` object.
 
 ▼ `ID2SYM`
@@ -358,7 +367,7 @@ values at the C level are defined like this:
 (ruby.h)
 </pre>
 This time it's even numbers, but as 0 or 2 can't be used by pointers, they
-can't overlap with other `VALUE`. It's because usually the first bloc of
+can't overlap with other `VALUE`. It's because usually the first block of
 virtual memory is not allocated, to make the programs dereferencing a `NULL`
 pointer crash.
 
@@ -382,10 +391,10 @@ function returning a boolean value. In other words, `NIL_P` means "is the
 argument `nil`?". It seems the "`p`" character comes from "predicate." This
 naming rule is used at many different places in `ruby`.
 
-Also, in Ruby, `false` and `nil` are falsy (that is, they count as false in
-conditional statements) and all the other objects are truthy.
-However, in C, `nil` (`Qnil`) is true. That's why in C a Ruby-style macro,
-`RTEST()`, has been created.
+Also, in Ruby, `false` and `nil` are false (in conditional statements)
+and all the other objects are true.
+However, in C, `nil` (`Qnil`) is true.
+That's why there's the `RTEST()` macro to do Ruby-style test in C.
 
 ▼ `RTEST()`
 
@@ -417,7 +426,7 @@ h4. `Qundef`
 </pre>
 
 This value is used to express an undefined value in the interpreter. It can't
-be found at all at the Ruby level.
+(must not) be found at all at the Ruby level.
 
 h2. Methods
 
@@ -432,7 +441,7 @@ In Ruby, classes exist as objects during the execution. Of course. So there
 must be a structure for class objects. That structure is `struct RClass`. Its
 structure type flag is `T_CLASS`.
 
-As class and modules are very similar, there is no need to differentiate their
+As classes and modules are very similar, there is no need to differentiate their
 content. That's why modules also use the `struct RClass` structure, and are
 differentiated by the `T_MODULE` structure flag.
 
@@ -455,6 +464,8 @@ next chapter "Names and name tables", but basically, it is a table mapping
 names to objects. In the case of `m_tbl`, it keeps the
 correspondence between the name (`ID`) of the methods possessed by this class
 and the methods entity itself.
+As for the structure of the method entity,
+it will be explained in Part 2 and Part 3.
 
 The fourth member `super` keeps, like its name suggests, the superclass. As
 it's a `VALUE`, it's (a pointer to) the class object of the superclass. In Ruby
@@ -463,14 +474,14 @@ there is only one class that has no superclass (the root class): `Object`.
 However I already said that all `Object` methods are defined in the `Kernel`
 module, `Object` just includes it. As modules are functionally similar to
 multiple inheritance, it may seem having just `super` is problematic, but
-in `ruby` some clever changes are made to make it look like single
+in `ruby` some clever conversions are made to make it look like single
 inheritance. The details of this process will be explained in the fourth
 chapter "Classes and modules".
 
-Because of this, `super` of the structure of `Object` points to `struct RClass`
-of the `Kernel` object. Only the `super` of Kernel is NULL. So contrary to
-what I said, if `super` is NULL, this `RClass` is the `Kernel` object (figure
-6).
+Because of this conversion, `super` of the structure of `Object` points to `struct RClass`
+which is the entity of `Kernel` object and the `super` of Kernel is `NULL`.
+So to put it conversely, if `super` is `NULL`,
+its `RClass` is the entity of `Kernel` (figure 6).
 
 !images/ch_object_classtree.png(Class tree at the C level)!
 
