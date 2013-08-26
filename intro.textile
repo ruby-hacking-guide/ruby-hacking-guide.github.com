@@ -363,7 +363,7 @@ h4. Thread
 Ruby is equipped with thread. Assuming a very few people knowing none about thread these
 days, I will omit an explanation about the thread itself. I will start a story in detail. 
 
-+ruby+'s thread is a user-level thread that is originally written. The characteristic of
+`ruby`'s thread is a user-level thread that is originally written. The characteristic of
 this implementation is a very high portability in both specification and implementation.
 Surprisingly a MS-DOS can run the thread. Furthermore, you can expect the same response
 in any environment. Many people mention that this point is the best feature of @ruby@.
