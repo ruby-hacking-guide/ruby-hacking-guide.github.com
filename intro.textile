@@ -7,58 +7,61 @@ h1. Preface: Introduction
 
 h2. Characteristics of Ruby
 
-Some of the readers may have already been familiar with Ruby, some may be not.
-(I wish the latter for this chapter to be most useful) First let's go though a
+Some of the readers may have already been familiar with Ruby,
+but (I hope) there are also many readers who have not. First let's go though a
 rough summary of the characteristics of Ruby for such people. 
 
 
-Hereafter capital "Ruby" refers to Ruby as a language scheme, and lowercase
-"@ruby@" refers to the implementation of @ruby@ command. 
+Hereafter capital "Ruby" refers to Ruby as a language specification, and lowercase
+"@ruby@" refers to @ruby@ command as an implementation.
 
-h4. Development pattern
+h4. Development style
 
-Ruby is a personally created language by Yukihiro Matsumoto.  That means Ruby
-doesn't have a standard scheme that C or Java have. The specification is merely
-shown as an implementation as @ruby@, and its varying continuously. Whichever
-you mention good or bad, it's unbind. 
-
-
-Furthermore @ruby@ itself is a free software  -  source code being open and
-being in public free of charge  -  this is what I must add in the introduction.
-That's why it allows the approach of this book into publication. 
+Ruby is a language that is being developped by the hand of Yukihiro Matsumoto as
+an individual. Unlike C or Java or Scheme, it does not have any standard.
+The specification is merely
+shown as an implementation as @ruby@, and its varying continuously.
+For good or bad, it's free.
 
 
-Giving the @README@ and @LEGAL@ included in the distribution package the
-complete reading of the license, let's list up what you can do for the time
-being: 
+Furthermore @ruby@ itself is a free software.
+It's probably necessary to mention at least the two points here:
+The source code is open in public and distributed free of charge.
+Thanks to such condition, an attempt like this book can be approved.
 
 
-You can redistribute source code of @ruby@
-You can modify source code of @ruby@
-You can redistribute a copy of source code with your modification
+If you'd like to know the exact lisence, you can read @README@ and @LEGAL@.
+For the time being, I'd like you to remember that you can do at least the
+following things:
+
+
+* You can redistribute source code of @ruby@
+* You can modify source code of @ruby@
+* You can redistribute a copy of source code with your modification
 
 
 There is no need for special permission and payment in all these cases. 
 
 
-By the way, the original @ruby@ is the version referred to in this book unless
-otherwise stated, because our main purpose is to read it. However, I modified
-the code without notice at a certain extent such as to remove or add white
-spaces, new lines, and comments. 
+By the way, the purpose of this book is to read the original @ruby@,
+thus the target source is the one not modified unless it is particulary
+specified. However, white spaces, new lines and comments were added or removed
+without asking.
+
 
 h4. It's conservative
 
 Ruby is a very conservative language. It is equipped with only carefully chosen
-features that have been tested and washed out in a variety of languages​.
+features that have been tested and washed out in a variety of languages.
 Therefore it doesn't have plenty of fresh and experimental features very much.
 So it has a tendency to appeal to programmers who put importance on practical
 functionalities. The dyed-in-the-wool hackers like Scheme and Haskell lovers
-don't seem to find appeal in ruby in a short glance. 
+don't seem to find appeal in ruby, at least in a short glance.
 
 
 The library is conservative in the same way. Clear and unabbreviated names are
 given for new functions, while names that appears in C and Perl libraries have
-been took over from them. For example, @printf@, @getpwent@, @sub@, and @tr@. 
+been taken from them. For example, @printf@, @getpwent@, @sub@, and @tr@.
 
 
 It is also conservative in implementation. Assembler is not its option for
@@ -67,18 +70,18 @@ conflicts with speed.
 
 h4. It is an object-oriented language
 
-Ruby is an object-oriented language. It is not possible to forget about it
-absolutely, when you talk about the features of Ruby. 
+Ruby is an object-oriented language. It is absolutely impossible to exclude it
+from the features of Ruby.
 
 
 I will not give a page to this book about what an object-oriented language is.
 To tell about an object-oriented feature about Ruby, the expression of the code
-that just going to be explained below is the exact sample. 
+that just going to be explained is the exact sample.
 
 h4. It is a script language
 
-Ruby is a script language. It is also not possible to forget about it
-absolutely, when you talk about the features of Ruby. To gain agreement of
+Ruby is a script language. It seems also absolutely impossible to exclude this
+from the features of Ruby. To gain agreement of
 everyone, an introduction of Ruby must include "object-oriented" and "script
 language". 
 
@@ -92,13 +95,14 @@ file from the command line, etc.
 
 
 However, I dare to use another definition, because I don't find much interest
-in "what" a script language. To call it a script language, it at least has to
-avoid gaining disagreement of calling it so. That's the definition I suggest.
+in "what" a script language.
+I have the only one measure to decide to call it a script language,
+that is, whether no one would complain about calling it a script language.
 To fulfill this definition, I would define the meaning of "script language" as
 follows. 
 
 
-Whether the author of the language calls it "script language" or not. 
+A language that its author calls it a "script language".
 
 
 I'm sure this definition will have no failure. And Ruby fulfills this point. 
