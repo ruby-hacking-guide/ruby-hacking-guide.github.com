@@ -111,19 +111,20 @@ Therefore I call Ruby a "script language".
 h4. It's an interpreter
 
 @ruby@ is an interpreter. That's the fact. But why it's an interpreter?  For
-example, couldn't it be made as a compiler? The answer should be "no", because
-I guess Ruby has at least something better than being an interpreter than a
-compiler. Well, what is good about being an interpreter? 
+example, couldn't it be made as a compiler?
+It must be because in some points being an interpreter is better than being
+a compiler ... at least for ruby, it must be better.
+Well, what is good about being an interpreter?
 
 
 As a preparation step to investigating into it, let's start by thinking about
 the difference between an interpreter and a compiler. If the matter is to
-attempt a comparison with the process how a program is executed theoretically,
+attempt a theoretical comparison in the process how a program is executed,
 there's no difference between an interpreter language and a compile language.
-It may be possible to say that a compiler language involves an interpreter,
-because of the fact that CPU "interprets" a code into a machine language using
-a compiler. What's the difference actually?  I suppose it's in a practical
-things  -  in the process of development. 
+Because it works by letting CPU interpret the code compiled to the machine
+language, it may be possible to say it works as an interpretor.
+Then where is the place that actually makes a difference?
+It is a more practical place, in the process of development.
 
 
 I know somebody, as soon as hearing "in the process of development", would
@@ -137,60 +138,63 @@ side.
 
 
 Well, why people perceive an interpreter and compiler so much different like
-this? I think that it is because the developers have long distinguished the use
-of the implementations of these languages according to the characteristics. In
-short, a comparatively small, a daily routine fits well with developing an
-interpreter language. On the other hand, a compiler language is a goal for a
-large project where a number of people are involved in the development and
-accuracy is required. That may be because of the speed, as well as the
-readiness of creating a language. 
+this? I think that it is because the language developers so far have chosen
+either implementation based on the trait of each language. In other words,
+if it is a language for a comparatively small purpose such as a daily routine,
+it would be an interpretor.
+If it is for a large project where a number of people are involved in the
+development and accuracy is required,
+it would be a compiler.
+That may be because of the speed, as well as the ease of creating a language.
 
 
-Therefore, "it's handy because it's an interpreter" is merely an outsized myth.
+Therefore, I think "it's handy because it's an interpreter" is an outsized myth.
 Being an interpreter doesn't necessarily contribute the readiness in usage;
 seeking readiness in usage naturally makes your path toward building an
-interprer language. 
+interpreter language.
 
 
 Anyway, @ruby@ is an interpreter; it has an important fact about where this
-book is facing, so I emphasize it here again. It doesn't matter whether it's
-easy being an interpreter; anyway @ruby@ is implemented as an interpreter. 
+book is facing, so I emphasize it here again.
+Though I don't know about "it's handy because it is an interpreter",
+anyway @ruby@ is implemented as an interpreter.
 
 h4. High portability
 
-Even with a fundamental problem that the interface is built targeting Unix, I
-would insist @ruby@ possesses a high portability. It doesn't often require an
-unfamiliar library. It doesn't have a part written in assembler gorigorily.
-Therefore it's easy to port to a new platform, comparatively. Namely, it works
+Even with a problem that fundamentally the interfaces are Unix-centered, I
+would insist @ruby@ possesses a high portability.
+It doesn't require any extremely unfamiliar library.
+It has only a few parts written in assembler.
+Therefore porting to a new platform is comparatively easy. Namely, it works
 on the following platforms currently. 
 
 
-Linux
-Win32 (Windows 95, 98, Me, NT, 2000, XP)
-Cygwin
-djgpp
-FreeBSD
-NetBSD
-OpenBSD
-BSD/OS
-Mac OS X
-Solaris
-Tru64 UNIX
-HP-UX
-AIX
-VMS
-UX/4800
-BeOS
-OS/2 (emx)
-Psion
+* Linux
+* Win32 (Windows 95, 98, Me, NT, 2000, XP)
+* Cygwin
+* djgpp
+* FreeBSD
+* NetBSD
+* OpenBSD
+* BSD/OS
+* Mac OS X
+* Solaris
+* Tru64 UNIX
+* HP-UX
+* AIX
+* VMS
+* UX/4800
+* BeOS
+* OS/2 (emx)
+* Psion
 
 
-The main machine of the author Matsumoto is Linux, reportedly. You can assume
-that a Linux will not fail to build any version of ruby. 
+I heard that the main machine of the author Matsumoto is Linux.
+Thus when using Linux, you will not fail to compile any time.
 
 
-Furthermore, a typical Unix environment basically can expect a stable
-functionality. Considering the release cycle of packages, the primary option
+Furthermore, you can expect a stable functionality on a (typical) Unix environment.
+Considering the release cycle of packages, the primary option
 for the environment to hit around @ruby@ should fall on a branch of PC UNIX,
   currently. 
 
@@ -221,27 +225,29 @@ the Palm platform, rather than the processes of actual implementation. Well I
 saw a porting to Psion has been done. ([ruby-list:36028]). 
 
 
-How about hot stories about VM seen in Java and .NET? I need to mention these
-together with implementation in the final chapter. 
+How about hot stories about VM seen in Java and .NET?
+Because I'd like to talk about them combining together with the implementation,
+this topic will be in the final chapter.
+
 
 h4. Automatic memory control
 
 Functionally it's called GC, or Garbage Collection. Saying it in C-language,
 this feature allows you to skip @free()@ after @malloc()@.  Unused memory is
 detected by the system automatically, and will be released. It's so convenient
-that once you get used to GC you will likely be unwilling to do it manual
+that once you get used to GC you won't be willing to do such manual
 memory control again. 
 
 
 The topics about GC have been common because of its popularity in recent
-languages with GC as a standard set, and the GS is fun to talk about because it
-has a lot to devise better algorithms. 
+languages with GC as a standard set, and it is fun that
+its algorithms can still be improved further.
 
 h4. Typeless variables
 
 The variables in Ruby don't have types. The reason is probably typeless
 variables conforms more with polymorphism, which is one of the strongest
-features of an object-oriented language.  Of course a language with variable
+advantages of an object-oriented language.  Of course a language with variable
 type has a way to deal with polymorphism.  What I mean here is a typeless
 variables have better conformance. 
 
@@ -253,15 +259,16 @@ practically. Yet, this is certainly an appealing point if a language seeks for
 
 h4. Most of syntactic elements are expressions
 
-This topic is probably difficult to understand it instantly without needs
+This topic is probably difficult to understand instantly without a little
 supplemental explanation.  For example, the following C-language program
-contains a syntactic error. 
+results in a syntactic error.
 
 <pre class="emlist"> 
 result = if (cond) { process(val); } else { 0; }
 </pre>
 
-Because the C-language syntax defines @if@ as a statement. See following rewrite. 
+Because the C-language syntax defines @if@ as a statement.
+But you can write it as follows.
 
 <pre class="emlist"> 
 result = cond ? process(val) : 0;
@@ -271,7 +278,7 @@ This rewrite is possible because the conditional operator (@a?b:c@) is defined
 as an expression.
 
 
-On the other hand, Ruby acceps a following expression because @if@ is an expression.
+On the other hand, in Ruby, you can write as follows because @if@ is an expression.
 
 <pre class="emlist"> 
 result = if cond then process(val) else nil end
