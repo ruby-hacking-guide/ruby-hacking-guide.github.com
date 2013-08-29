@@ -623,7 +623,7 @@ if (RTEST(rb_eval(self, node->nd_cond))) {     (A)
     RETURN(rb_eval(self, node->nd_body));      (B)
 }
 else {
-    RETURN(rb_eval(self, node->nd_else));      ==(C)==
+    RETURN(rb_eval(self, node->nd_else));      (C)
 }
 </pre>
 

@@ -1493,7 +1493,7 @@ This hook is called "finalizer".
  890                  }
  891                  n++;
  892              }
- 893  ==(C)==         else if (RBASIC(p)->flags == FL_MARK) {
+ 893  (C)         else if (RBASIC(p)->flags == FL_MARK) {
  894                  /* the objects that need to finalize */
  895                  /* are left untouched */
  896              }

@@ -2232,7 +2232,7 @@ Therefore, here is `heredoc_identifier()`.
 2982      lex_strterm = rb_node_newnode(NODE_HEREDOC,
 2983                          rb_str_new(tok(), toklen()),  /* nd_lit */
 2984                          len,                          /* nd_nth */
-2985          /*==(C)==*/       lex_lastline);                /* nd_orig */
+2985          /*(C)*/       lex_lastline);                  /* nd_orig */
 2986
 2987      return term == '`' ? tXSTRING_BEG : tSTRING_BEG;
 2988  }
@@ -2289,7 +2289,7 @@ here_document(NODE *here)
             line = lex_lastline;     /*(A)*/
             rb_str_cat(str, RSTRING(line)->ptr, RSTRING(line)->len);
             lex_p = lex_pend;        /*(B)*/
-            if (nextc() == -1) {     /*==(C)==*/
+            if (nextc() == -1) {     /*(C)*/
                 goto error;
             }
         } while (the currently read line is not equal to the finishing symbol);
