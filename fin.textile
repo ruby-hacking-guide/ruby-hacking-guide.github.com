@@ -4,11 +4,15 @@ layout: default
 
 h1. Final Chapter: Ruby's future
 
-h2. Issues toe be addressed
+h2. Issues to be addressed
 
-@ruby@ は「完成してしまったソフトウェア」ではない。まだまだ発展途上で
-あり、多くの課題を抱えている。まずは現在のインタプリタに内在する
-問題を摘出してみよう。話題の順番はだいたい本書の章の順番に沿っている。
+@ruby@ isn't 'completely finished software'。It's still being developed,
+there are still a lot of issues. Firstly, we want to try removing
+inherent problems in the interpreter.
+
+The order of the topics is mostly in the same order as the chapters of 
+this book.
+
 
 h3. Performance of GC
 
