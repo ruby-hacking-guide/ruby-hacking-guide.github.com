@@ -809,7 +809,7 @@ to be able to directly manipulate classes.
 
 Nevertheless, there's also a way in which classes are not objects.
 For example, there's no problem in providing a feature to manipulate classes
-as a function-style methods (functions defined at the top-level).
+as function-style methods (functions defined at the top-level).
 However, as inside the
 interpreter there are data structures to represent the classes, it's
 more natural in object oriented languages to make them available
