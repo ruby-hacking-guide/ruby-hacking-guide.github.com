@@ -80,8 +80,8 @@ VALUE rb_gvar_set(struct global_entry *ent, VALUE val)
 </pre>
 
 These last functions are for accessing global variables.  They are a
-little different from the others due to the use of `struct
-global_entry`. We'll explain this while describing the implementation.
+little different from the others due to the use of `struct global_entry`.
+We'll explain this while describing the implementation.
 
 h3. Points of this chapter
 
@@ -532,8 +532,8 @@ structure used by global variables.
 
 `rb_global_tbl` is the main table. All global variables are stored in
 this table. The keys of this table are of course variable names
-(`ID`). A value is expressed by a `struct global_entry` and a `struct
-global_variable` (figure 1).
+(`ID`). A value is expressed by a `struct global_entry` and
+a `struct global_variable` (figure 1).
 
 !images/ch_variable_gvar.png(Global variables table at execution time)!
 
