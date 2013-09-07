@@ -623,7 +623,7 @@ think about what happens on the false branch of the `if`.
 The `BUILTIN_TYPE()` of `rb_make_metaclass()` is similar to `TYPE()`
 as it is a macro to get the structure type flag (`T_xxxx`). That means
 this check in `rb_make_metaclass` means "if `obj` is a class". For the
-moment it's better not to limit ourselves to `obj` being a class, so
+moment we assume that `obj` is a class, so
 we'll remove it.
 
 With these simplifications, we get the following:
@@ -782,6 +782,11 @@ this can't be implemented effectively. That's why it's common in
 object oriented languages where classes are objects that `Class`'s
 class is to `Class` itself, creating an endless virtual instance-class
 relationship.
+
+((errata:<br>
+This structure is implemented efficiently in recent Ruby 1.8,
+thus it can be implemented efficiently.
+))
 
 I'm repeating myself, but the fact that `Class`'s class is `Class` is
 only to make the implementation easier, there's nothing important in
@@ -1219,7 +1224,8 @@ st_add_direct(rb_class_tbl, id, klass);
 </pre>
 
 This part assigns the class to the constant. However, whichever
-way you look at it you do not see that. In fact, top-level classes are
+way you look at it you do not see that. In fact, top-level classes and modules
+that are defined in C are
 separated from the other constants and regrouped in
 `rb_class_tbl()`. The split is slightly related to the GC. It's not
 essential.
