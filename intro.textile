@@ -518,38 +518,40 @@ which is really important information (e.g. @rb_str_length@).
 
 h4. Read documents
 
-内部構造を解説したドキュメントが入っていることもある。
-特に「@HACKING@」といった名前のファイルには注意だ。
+Sometimes a document describes the internal structure is included.
+Especially be careful of a file named @HACKING@ etc.
 
-h4. ディレクトリ構造を読む
+h4. Read the directory structure
 
-どういう方針でディレクトリが分割されているのか見る。
-そのプログラムがどういう作りになっているのか、
-どういうパートがあるのか、概要を把握する。
+You should read in what policy the directories are devided.
+You can grasp the overview about how the program is structured, and what the parts are.
 
-h4. ファイル構成を読む
+h4. Read the configuration of the files
 
-ファイルの中に入っている関数（名）も合わせて見ながら、
-どういう方針でファイルが分割されているのか見る。ファイル名は
-有効期間が非常に長いコメントのようなものであり、注目すべきである。
+While browsing the name of the functions, see how the file files are divided.
+You should pay attention to the file names because they are like comments
+whose lifetime is very long.
 
+Another important viewpoint is to locate a module in the file.
+Functions for the module are thought to be located in a series.
+So, you can understand the module's structure from the order of functions.
 
-さらに、ファイルの中にまたモジュールがある場合、モジュールを構成する関
-数は近くにまとまっているはずだ。つまり関数の並び順からモジュール構成
-を見付けることができる。
+h4. Investigate abbreviations
 
-h4. 略語の調査
+As you encounter ambiguous abbreviations, make a list of them and investigate
+each of them as early as possible. For example, suppose @GC@ is short for Garbage Collection.
+But the context will be very different if it's actually short for Graphic Context.
 
-わかりにくい略語があればリストアップしておいて早めに調べる。
-例えば「GC」と書いてあった場合、それがGarbage Collectionなのか
-それともGraphic Contextなのかで随分と話が違ってしまう。
-
+Abbreviations for a program are generally made by the methods like taking
+the initial letters or dropping the vowels. Note especially the fact that
+popular abbreviations in the fields of the program's target are used without notice.
+You should be familiar with them at an early stage.
 
 プログラム関係の略語はたいてい単語の頭文字を取るとか、単語から母音を落とす、
 という方法で作られる。特に対象プログラムの分野で有名な略語は問答無用で
 使われるのであらかじめチェックしておこう。
 
-h4. データ構造を知る
+h4. Understand data structure
 
 データとコードが並んでいたら、まずデータ構造から調べるべきである。つま
 りCならヘッダファイルから眺めるほうが、たぶんいい。そのときはファイル
@@ -562,7 +564,7 @@ h4. データ構造を知る
 リストだろうと想像できる。同様に、@parent@・@children@・@sibling@と言った要
 素があれば十中八九ツリーだ。@prev@ならスタックだろう。
 
-h4. 関数同士の呼び出し関係を把握する
+h4. Understand the relationship between functions
 
 関数同士の関係は名前の次に重要な情報だ。呼び出し関係を表現したものを
 特に「コールグラフ」と言うが、これは非常に便利である。このへんは
@@ -574,7 +576,7 @@ h4. 関数同士の呼び出し関係を把握する
 筆者が本書のために@ruby@を解析したときは、小さなコマンド言語と
 パーサを適当にRubyで書き、@graphviz@というツールに渡して半自動生成した。
 
-h4. 関数を読む
+h4. Read functions
 
 動作を読んで、関数のやることを一言で説明できるようにする。関数関連図を
 見ながらパートごとに読んでいくのがいい。
