@@ -547,34 +547,28 @@ the initial letters or dropping the vowels. Note especially the fact that
 popular abbreviations in the fields of the program's target are used without notice.
 You should be familiar with them at an early stage.
 
-プログラム関係の略語はたいてい単語の頭文字を取るとか、単語から母音を落とす、
-という方法で作られる。特に対象プログラムの分野で有名な略語は問答無用で
-使われるのであらかじめチェックしておこう。
-
 h4. Understand data structure
 
-データとコードが並んでいたら、まずデータ構造から調べるべきである。つま
-りCならヘッダファイルから眺めるほうが、たぶんいい。そのときはファイル
-名から想像力を最大限に働かせよう。例えば言語処理系で@frame.h@というファ
-イルがあったら恐らくスタックフレームの定義だ。
+If you find both data and code, you should first investigate the data structure.
+In other words, when exploring code in C, it's better to start with the header file.
+When reading filenames, you should use your imagination as much as possible.
+For example, if you find @frame.h@, it would probably be the stack frame definition.
 
+Also, you can understand many things from the type and member name in a structure.
+For example, if you find the member @next@, which points to its own type, then it
+will be a linked list. Similarly, when you find members such as @parent@, @children@,
+and @sibling@, then it must be a tree structure. When @prev@, it will be a stack.
 
-また構造体の型とメンバ名だけでも随分といろいろなことがわかる。例え
-ば構造体の定義中に自分の型へのポインタで@next@というメンバがあればリンク
-リストだろうと想像できる。同様に、@parent@・@children@・@sibling@と言った要
-素があれば十中八九ツリーだ。@prev@ならスタックだろう。
+h4. Understanding the relationship between functions
 
-h4. Understand the relationship between functions
+After names, the next most important thing to understand is the relationships between
+functions. It's very useful to visualize the relationship between functions and
+their callers with a tool called a "call graph". I highly recommend you use one.
 
-関数同士の関係は名前の次に重要な情報だ。呼び出し関係を表現したものを
-特に「コールグラフ」と言うが、これは非常に便利である。このへんは
-ツールを活用したい。
-
-
-ツールはテキストベースで十分だが、図にしてくれれば文句無しだ。
-ただそういう便利なものはなかなかない（特にフリーのものは少ない）。
-筆者が本書のために@ruby@を解析したときは、小さなコマンド言語と
-パーサを適当にRubyで書き、@graphviz@というツールに渡して半自動生成した。
+A text-based tool is sufficient, but call graph tool that generates an actual graph is even better.
+There are not so many tools that generate these graphs, though and most are shareware, not OSS or freeware.
+I often use graphviz to generate these graphs.
+I also implemented a small Ruby parser to generate output for graphviz, then graphviz generates the graph.
 
 h4. Read functions
 
