@@ -588,63 +588,71 @@ generated diagrams half-automatically by passing the results to the tool named @
 
 h4. Reading functions
 
-動作を読んで、関数のやることを一言で説明できるようにする。関数関連図を
-見ながらパートごとに読んでいくのがいい。
+Reading how it works to be able to explain things done by the function concisely.
+It's good to read it part by part as looking at the figure of the function
+relationships.
+
+What is important when reading functions is not "what to read"
+but "what not to read". The ease of reading is decided by how much we can cut
+out the codes. What should exactly be cut out? It is hard to understand without
+seeing the actual example, thus it will be explained in the main part.
+
+Additionally, when you don't like its coding style,
+you can convert it by using the tool like @indent@.
 
 
-関数を読むときに重要なのは「何を読むか」ではなく「何を読まないか」であ
-る。どれだけコードを削るかで読みやすさが決まると言ってよい。具体的に何
-を削ればいいか、というのは実際に見せてみないとわかりづらいので本文で解
-説する。
+h4. Experimenting by modifying it as you like
+
+It's a mystery of human body,
+when something is done using a lot of parts of your body,
+it can easily persist in your memory.
+I think the reason why
+not a few people prefer using manuscript papers to a keyboard
+is not only they are just nostalgic
+but such fact is also related.
+
+Therefore, because merely reading on a monitor is very ineffective to remember
+with our bodies, rewrite it while reading.
+This way often helps our bodies get used to the code relatively soon.
+If there are names or code you don't like, rewrite them.
+If there's a cryptic abbreviation,
+substitute it so that it would be no longer abbreviated.
+
+However, it goes without saying but you should also keep the original source
+aside and check the original one when you think it does not make sense along the
+way. Otherwise, you would be wondering for hours because of a simple your own
+mistake. And since the purpose of rewriting is getting used to and not rewriting
+itself, please be careful not to be enthusiastic very much.
 
 
-それとコーディングスタイルが気にいらないときは@indent@のようなツールを
-使って変換してしまえばいい。
+h3. Reading the history
 
-h4. 好みに書き換えてみる
+A program often comes with a document which is about the history of changes.
+For example, if it is a software of GNU, there's always a file named
+@ChangeLog@. This is the best resource to know about "the reason why the
+program is as it is".
 
-人間の身体というのは不思議なもので、できるだけ身体のいろんな場所を使い
-ながらやったことは記憶に残りやすい。パソコンのキーボードより原稿用紙の
-ほうがいい、という人が少なからずいるのは、単なる懐古趣味ではなくそうい
-うことも関係しているのではないかと思う。
+Alternatively, when a version control system like CVS or SCCS is used and you
+can access it, its utility value is higher than @ChangeLog@.
+Taking CVS as an example, @cvs annotate@, which displays the place which
+modified a particular line, and @cvs diff@, which takes difference from the
+specified version, and so on are convenient.
 
-
-そういうわけで単にモニタで読むというのは非常に身体に残りにくいので、
-書き換えながら読む。そうするとわりと早く身体がコードに馴染んでくること
-が多い。気にくわない名前やコードがあったら書き換える。わかりづらい略語
-は置換して省略しないようにしてしまえばよい。
-
-
-ただし当然のことだが書き換えるときはオリジナルのソースは別に残しておき、
-途中で辻褄が合わないと思ったら元のソースを見て確認すること。でないと自
-分の単純ミスで何時間も悩む羽目になる。それに書き換えるのはあくまで馴染
-むためであって書き換えること自体が目的ではないので熱中しすぎないように
-注意してほしい。
-
-h3. 歴史を読む
-
-プログラムにはたいてい変更個所の履歴を書いた文書が付いている。例えば
-GNUのソフトウェアだと必ず@ChangeLog@というファイルがある。これは
-「プログラムがそうなっている理由」を知るのには最高に役に立つ。
+Moreover, in the case when there's a mailing list or a news group for
+developers, you should get the archives so that you can search over them any
+time because often there's the information about the exact reason of a certain
+change. Of course, if you can search online, it's also sufficient.
 
 
-またCVSやSCCSのようなバージョン管理システムを使っていてしかもそれにア
-クセスできる場合は、@ChangeLog@以上に利用価値が高い。CVSを例に取ると、特
-定の行を最後に変更した場所を表示する@cvs annotate@、指定した版からの差分
-を取る@cvs diff@などが便利だ。
+h3. The tools for static analysis
 
-
-さらに、開発用のメーリングリストやニュースグループがある場合はその過去
-ログを入手してすぐに検索できるようにしておく。変更の理由がズバリ載って
-いることが多いからだ。もちろんWeb上で検索できるならそれでもいい。
-
-h3. 静的解析用ツール
-
-いろいろな目的のためにいろいろなツールがあるので一口には言えないが、筆
-者が一つだけ選ぶとしたら@global@をお勧めする。なんと言っても他の用途に応
-用しやすい作りになっているところがポイントだ。例えば同梱されている
-@gctags@は本当はタグファイルを作るためのツールなのだが、
-これを使ってファイルに含まれる関数名のリストを取ることもできる。
+Since various tools are available for various purposes,
+I can't describe them as a whole.
+But if I have to choose only one of them, I'd recommend @global@.
+The most attractive point is that its structure allows us to easily use it for
+the other purposes. For instance, @gctags@, which comes with it, is actually a
+tool to create tag files, but you can use it to create a list of the function
+names contained in a file.
 
 <pre class="screen">
 ~/src/ruby % gctags class.c | awk '{print $1}'
@@ -660,47 +668,62 @@ method_list
         ：
 </pre>
 
-とは言えこれはあくまでも筆者のお勧めなので読者は自分の好きなツールを使っ
-てもらえばいい。ただその時は最低でも次の機能を備えているものを選ぶように
-すべきだ。
+That said, but this is just a recommendation of this author,
+you as a reader can use whichever tool you like.
+But in that case, you should choose a tool equipped with at least the following
+features.
+
+* list up the function names contained in a file
+* find the location from a function name or a variable name
+(It's more preferable if you can jump to the location)
+* function cross-reference
 
 
-ファイルに含まれる関数名をリストアップする
-関数名や変数名から位置を探す（さらにそこに飛べるとなおよい）
-関数クロスリファレンス
-
-h2. ビルド
-
-h3. 対象バージョン
-
-本書で解説している@ruby@のバージョンは1.7の2002-09-12版である。@ruby@はマ
-イナーバージョンが偶数だと安定版で奇数だと開発版だから、1.7は開発版と
-いうことになる。しかも9月12日は特に何かの区切りというわけではないの
-で、該当バージョンの公式パッケージは配布されていない。従ってこの版を入
-手するには本書添付のCD-ROMまたはサポートサイト
-footnote{本書のサポートサイト......@http://i.loveruby.net/ja/rhg/@}
-から入手するか、後述のCVSを使うしかない。
 
 
-安定版の1.6でなく1.7にした理由は、1.7のほうが仕様・実装ともに整理され
-ていて扱いやすいことが一つ。次に、開発版先端のほうがCVSが使いやすい。
-さらに、わりと近いうちに次の安定版の1.8が出そうな雰囲気になってきたこと。
-そして最後に、最先端を見ていくほうが気分的に楽しい。
 
-h3. ソースコードを入手する
+h2. Build
 
-添付CD-ROMに解説対象の版のアーカイブを収録した。
-CD-ROMのトップディレクトリに
+h3. Target version
 
-<pre class="emlist"> 
+The version of @ruby@ described in this book is 1.7 (2002-09-12).
+Regarding @ruby@,
+it is a stable version if its minor version is an even number,
+and it is a developing version if it is an odd number.
+Hence, 1.7 is a developing version.
+Moreover, 9/12 does not indicate any particular period,
+thus this version is not distributed as an official package.
+Therefore, in order to get this version,
+you can get from the CD-ROM attached to this book or the support site
+\footnote{The support site of this book……<code>http://i.loveruby.net/ja/rhg/</code>}
+or you need to use the CVS which will be described later.
+
+There are some reasons why it is not 1.6, which is the stable version, but 1.7.
+One thing is that,
+because both the specification and the implementation are organized,
+1.7 is easier to deal with.
+Secondly, it's easier to use CVS if it is the edge of the developing version.
+Additionally, it is likely that 1.8, which is the next stable version, will be
+out in the near future.
+And the last one is, investigating the edge would make our mood more pleasant.
+
+
+h3. Getting the source code
+
+The archive of the target version is included in the attached CD-ROM.
+In the top directory of the CD-ROM,
+
+
+<pre class="emlist">
 ruby-rhg.tar.gz
 ruby-rhg.zip
 ruby-rhg.lzh
 </pre>
 
-の三種類が置いてあるので、便利なものを選んで使ってほしい。
-もちろん中身はどれも同じだ。例えば@tar.gz@のアーカイブなら
-次のように展開すればいいだろう。
+these three versions are placed,
+so I'd like you to use whichever one that is convenient for you.
+Of course, whichever one you choose, the content is the same.
+For example, the archive of @tar.gz@ can be extracted as follows.
 
 <pre class="screen">
 ~/src % mount /mnt/cdrom
@@ -708,24 +731,30 @@ ruby-rhg.lzh
 ~/src % umount /mnt/cdrom
 </pre>
 
-h3. コンパイルする
-
-ソースコードを見るだけでも「読む」ことはできる。しかしプログラムを知る
-ためには実際にそれを使い、改造し、実験してみることが必要だ。実験をする
-なら見ているソースコードと同じものを使わなければ意味がないので、当然自
-分でコンパイルすることになる。
 
 
-そこでここからはコンパイルの方法を説明する。まずはUNIX系OSの場合から話
-を始めよう。Windows上ではいろいろあるので次の項でまとめて話す。ただし
-CygwinはWindows上ではあるがほとんどUNIXなので、こちらの話を読んでほし
-い。
+h3. Compiling
 
-h4. UNIX系OSでのビルド
+Just by looking at the source code, you can "read" it.
+But in order to know about the program, you need to actually use it, remodel it
+and experiment with it.
+When experimenting,
+there's no meaning if you didn't use the same version you are looking at,
+thus naturally you'd need to compile it by yourself.
 
-さて、UNIX系OSなら普通Cコンパイラは標準装備なので、次の手順でやれば
-たいがい通ってしまう。
-@~/src/ruby@にソースコードが展開されているとする。
+Therefore, from now on, I'll explain how to compile.
+First, let's start with the case of Unix-like OS.
+There's several things to consider on Windows,
+so it will be described in the next section altogether.
+However, Cygwin is on Windows but almost Unix,
+thus I'd like you to read this section for it.
+
+
+h4. Building on a Unix-like OS
+
+When it is a Unix-like OS, because generally it is equipped with a C
+compiler, by following the below procedures, it can pass in most cases.
+Let us suppose @~/src/ruby@ is the place where the source code is extracted.
 
 <pre class="screen">
 ~/src/ruby % ./configure
@@ -734,176 +763,205 @@ h4. UNIX系OSでのビルド
 ~/src/ruby # make install
 </pre>
 
-以下、いくつか注意すべき点を述べる。
 
+Below, I'll describe several points to be careful about.
 
-Cygwin、UX/4800など一部のプラットフォームでは@configure@の段階で
-@--enable-shared@オプションを付けないとリンクに失敗する。
-@--enable-shared@というのは@ruby@のほとんどを共有ライブラリ
-（@libruby.so@）としてコマンドの外に出すオプションである。
+On some platforms like Cygwin, UX/4800,
+you need to specify the @--enable-shared@ option at the phase of @configure@,
+or you'd fail to link.
+@--enable-shared@ is an option to put the most of @ruby@ out of the command
+as shared libraries (@libruby.so@).
 
 <pre class="screen">
 ~/src/ruby % ./configure --enable-shared
 </pre>
 
-ビルドに関するより詳しいチュートリアルを添付CD-ROMの
-@doc/build.html@に入れたので、それを読みながらやってみてほしい。
-
-h4. Windowsでのビルド
-
-Windowsでのビルドとなるとどうも話がややこしくなる。
-問題の根源はビルド環境が複数あることだ。
+The detailed tutorial about building is included in @doc/build.html@ of the
+attached CD-ROM, I'd like you to try as reading it.
 
 
-Visual C++
-MinGW
-Cygwin
-Borland C++ Compiler
 
 
-まずCygwin環境はWindowsよりもUNIXに条件が近いのでUNIX系のビルド手順に
-従えばいい。
+h4. Building on Windows
 
 
-Visual C++でコンパイルする場合はVisual C++ 5.0以上が
-必要である。バージョン6か.NETならまず問題ないだろう。
+If the thing is to build on windows, it becomes way complicated.
+The source of the problem is, there are multiple building environments.
+
+* Visual C++
+* MinGW
+* Cygwin
+* Borland C++ Compiler
 
 
-MinGW、Minimalist GNU for WindowsというのはGNUのコンパイル環境（ようするに
-@gcc@と@binutils@）をWindowsに移植したものだ。CygwinがUNIX環境全体を移植し
-たのに対し、MinGWはあくまでコンパイルのためのツールだけを移植してある。
-またMinGWでコンパイルしたプログラムは実行時に特別なDLLを必要としない。
-つまりMinGWでコンパイルした@ruby@はVisual C++版と全く同じに扱える。
+First, the condition of the Cygwin environment is closer to UNIX than Windows,
+you can follow the building procedures for Unix-like OS.
+
+If you'd like to compile with Visual C++,
+Visual C++ 5.0 and later is required.
+There's probably no problem if it is version 6 or .NET.
+
+MinGW or Minimalist GNU for Windows,
+it is what the GNU compiling environment (Namely, @gcc@ and @binutils@)
+is transplanted on Windows.
+Cygwin transplants the whole UNIX environment.
+On the contrary, MinGW transplants only the tools to compile.
+Moreover, a program compiled with MinGW does not require any special DLL at
+runtime. It means, the @ruby@ compiled with MinGW can be treated completely the
+same as the Visual C++ version.
+
+Alternatively, if it is personal use, you can download the version 5.5 of
+Borland C++ Compiler for free from the site of Boarland.
+\footnote{The Borland site: <code>http://www.borland.co.jp</code>}
+Because @ruby@ started to support this environment fairly recently,
+there's more or less anxiety,
+but there was not any particular problem on the build test done before the
+publication of this book.
 
 
-また個人利用ならばBorland C++ Compilerのバージョン5.5がBorlandのサイト
-footnote{Borlandのサイト：@http://www.borland.co.jp@}
-から無料でダウンロードできる。@ruby@がサポートしたのがかなり最近なのが
-多少不安だが、本書出版前に行ったビルドテストでは特に問題は出ていない。
+Then, among the above four environments, which one should we choose?
+First, basically the Visual C++ version is the most unlikely to cause a problem,
+thus I recommend it.
+If you have experienced with UNIX,
+installing the whole Cygwin and using it is good.
+If you have not experienced with UNIX and you don't have Visual C++,
+using MinGW is probably good.
+
+Below, I'll explain how to build with Visual C++ and MinGW,
+but only about the outlines.
+For more detailed explanations and how to build with Borland C++ Compiler,
+they are included in @doc/build.html@ of the attached CD-ROM,
+thus I'd like you to check it when it is necessary.
 
 
-さて以上四つの環境のうちどれを選べばいいだろうか。まず基本的には
-Visual C++版が最も問題が出にくいのでそれをお勧めする。UNIXの経験がある
-ならCygwin一式入れてCygwinを使うのもよい。UNIXの経験がなくVisual C++も
-持っていない場合はMinGWを使うのがいいだろう。
-
-
-以下ではVisual C++とMinGWでのビルド方法について説明するが、
-あくまで概要だけに留めた。より細かい解説とBorland C++ Compilerでの
-ビルド方法は添付CD-ROMの@doc/build.html@に収録したので適宜そちらも
-参照してほしい。
 
 h4. Visual C++
 
-Visual C++と言っても普通はIDEは使わず、DOSプロンプトからビルドする。そ
-のときはまずVisual C++自体を動かせるようにするために環境変数の初期化を
-しなければいけない。Visual C++にそのためのバッチファイルが付いてくるの
-で、まずはそれを実行しよう。
+It is said Visual C++, but usually IDE is not used, we'll build from DOS prompt.
+In this case, first we need to initialize environment variables to be able to
+run Visual C++ itself.
+Since a batch file for this purpose came with Visual C++,
+let's execute it first.
 
 <pre class="screen">
-C:> cd "Program FilesMicrosoft Visual Studio .NETVc7bin"
-C:Program FilesMicrosoft Visual Studio .NETVc7bin> vcvars32
+C:\> cd "\Program Files\Microsoft Visual Studio .NET\Vc7\bin"
+C:\Program Files\Microsoft Visual Studio .NET\Vc7\bin> vcvars32
 </pre>
 
-これはVisual C++.NETの場合だ。バージョン6なら以下の場所にある。
 
-<pre class="emlist"> 
-C:Program FilesMicrosoft Visual StudioVC98bin
+This is the case of Visual C++ .NET.
+If it is version 6, it can be found in the following place.
+
+<pre class="emlist">
+C:\Program Files\Microsoft Visual Studio\VC98\bin\
 </pre>
 
-@vcvars32@を実行したらその後は@ruby@のソースツリーの中のフォルダ
-@win32@に移動してビルドすればいい。以下、ソースツリーは@C:src@に
-あるとしよう。
+
+After executing @vcvars32@,
+all you have to do is to move to the @win32\@ folder of the source tree of
+@ruby@ and build. Below, let us suppose the source tree is in @C:\src@.
 
 <pre class="screen">
-C:> cd srcruby
-C:srcruby> cd win32
-C:srcrubywin32> configure
-C:srcrubywin32> nmake
-C:srcrubywin32> nmake DESTDIR="C:Program Filesruby" install
+C:\> cd src\ruby
+C:\src\ruby> cd win32
+C:\src\ruby\win32> configure
+C:\src\ruby\win32> nmake
+C:\src\ruby\win32> nmake DESTDIR="C:\Program Files\ruby" install
 </pre>
 
-これで@C:Program Filesrubybin@に@ruby@コマンドが、
-@C:Program Filesrubylib@以下にRubyのライブラリが、
-それぞれインストールされる。@ruby@はレジストリなどは一切使わない
-ので、アンインストールするときは@C:ruby@以下を消せばよい。
+
+Then, @ruby@ command would be installed in @C:\Program Files\ruby\bin\@,
+and Ruby libraries would be in @C:\Program Files\ruby\lib\@.
+Because @ruby@ does not use registries and such at all,
+you can uninstall it by deleting @C:\Program Files\ruby@ and below.
+
 
 h4. MinGW
 
-前述のようにMinGWはコンパイル環境のみなので、一般的なUNIXのツール、
-例えば@sed@や@sh@が存在しない。しかし@ruby@のビルドにはそれが必要なので
-それをどこかから調達しなければならない。それにはまた二つの方法が
-存在する。CygwinとMSYS（Minimal SYStem）である。
+As described before, MinGW is only an environment to compile,
+thus the general UNIX tools like @sed@ or @sh@ are not available.
+However, because they are necessary to build @ruby@,
+you need to obtain it from somewhere.
+For this, there are also two methods:
+Cygwin and MSYS (Minimal SYStem).
 
+However, I can't recommend MSYS because troubles were continuously happened at
+the building contest performed before the publication of this book.
+On the contrary, in the way of using Cygwin, it can pass very straightforwardly.
+Therefore, in this book, I'll explain the way of using Cygwin.
 
-だがMSYSのほうは本書の出版前に行ったビルド大会でトラブルが続出してしまっ
-たのでお勧めできない。対照的にCygwinを使う方法だと非常に素直に通った。
-従って本書ではCygwinを使う方法を説明する。
-
-
-まずCygwinの@setup.exe@でMinGWと開発ツール一式を入れておく。
-CygwinとMinGWは添付CD-ROMにも収録した
-footnote{CygwinとMinGW......添付CD-ROMの@doc/win.html@を参照}。
-あとはCygwinの@bash@プロンプトから以下のように打てばよい。
+First, install MinGW and the entire developing tools by using @setup.exe@ of
+Cygwin. Both Cygwin and MinGW are also included in the attached CD-ROM.
+\footnote{Cygwin and MinGW……See also <code>doc/win.html</code> of the attached CD-ROM}
+After that, all you have to do is to type as follows from @bash@ prompt of Cygwin.
 
 <pre class="screen">
-~/src/ruby % ./configure --with-gcc='gcc -mno-cygwin' 
+~/src/ruby % ./configure --with-gcc='gcc -mno-cygwin' \
                                  --enable-shared i386-mingw32
 ~/src/ruby % make
 ~/src/ruby % make install
 </pre>
 
-これだけだ。ここでは@configure@の行を折り返しているが実際には一行に
-入れる。またバックスラッシュを入れる必要はない。インストール先は
-コンパイルしたドライブの@usrlocal@以下になる。このあたりはかなり
-ややこしいことが起こっていて説明が長くなるので、
-添付CD-ROMの@doc/build.html@で徹底的に説明しよう。
-
-h2. ビルド詳細
-
-ここまでが@README@的な解説である。今度はこれまでやったことが具体的に
-何をしているのか、つっこんで見ていこう。ただしここの話は部分的に
-かなり高度な知識が必要になる。わからない場合はいきなり次の節に
-飛んでほしい。本書全体を読んでから戻ってきてもらえばわかるように
-なっているはずだ。
+That's it. Here the line of @configure@ spans multi-lines but in practice
+we'd write it on one line and the backslash is not necessary.
+The place to install is @\usr\local\@ and below of the drive on which it is
+compiled. Because really complicated things occur around here, the explanation
+would be fairly long, so I'll explain it comprehensively in @doc/build.html@ of
+the attached CD-ROM.
 
 
-さて、どのプラットフォームでも@ruby@のビルドは三段階に分かれている。
-即ち@configure@、@make@、@make install@だ。@make install@はいいとして、
-@configure@と@make@の段階について解説しよう。
+
+
+h2. Building Details
+
+Until here, it has been the @README@-like description.
+This time, let's look at exactly what is done by what we have been done.
+However, the talks here partially require very high-level knowledge.
+If you can't understand, I'd like you to skip this and directly jump to the next
+section. This should be written so that you can understand by coming back after
+reading the entire book.
+
+Now, on whichever platform, building @ruby@ is separated into three phases.
+Namely, @configure@, @make@ and @make install@.
+As considering the explanation about @make install@ unnecessary,
+I'll explain the @configure@ phase and the @make@ phase.
+
 
 h3. @configure@
 
-まず@configure@である。この中身はシェルスクリプトになっており、これ
-でシステムのパラメータを検出する。例えば「ヘッダファイル@setjmp.h@が存
-在するか」とか、「@alloca()@は使えるか」ということを調べてくれる。調べ
-る方法は意外と単純である。
+First, @configure@. Its content is a shell script, and we detect the system
+parameters by using it. For example, "whether there's the header file
+@setjmp.h@" or "whether @alloca()@ is available", these things are checked.
+The way to check is unexpectedly simple.
 
+|_. Target to check |_. Method |
+| commands | execute it actually and then check @$?@ |
+| header files | if [ -f $includedir/stdio.h ] |
+| functions | compile a small program and check whether linking is success |
 
-チェック対象方法
-コマンド実際に実行してみて@$?@を見る
-ヘッダファイル@if [ -f $includedir/stdio.h ]@
-関数小さいプログラムをコンパイルしてみてリンクが成功するかどうか試す
+When some differences are detected, somehow it should be reported to us.
+The way to report is,
+the first way is @Makefile@.
+If we put a @Makefile.in@ in which parameters are embedded in the form of
+`@param@`, it would generate a @Makefile@ in which they are substituted
+with the actual values.
+For example, as follows,
 
-
-違いを検出したら、それをどうにかしてこちらに伝えてもらわないと
-いけない。その方法は、まず@Makefile@が一つ。パラメータを@@PARAM@@の
-ように埋め込んだ@Makefile.in@を置いておくと、それを実際の値に変換
-した@Makefile@を生成してくれる。例えば次のように。
-
-<pre class="emlist"> 
+<pre class="emlist">
 Makefile.in:  CFLAGS = @CFLAGS@
                      ↓
 Makefile   :  CFLAGS = -g -O2
 </pre>
 
-もう一つ、関数やヘッダファイルがあるかどうかといった情報を
-ヘッダファイルにして出力してくれる。出力ファイルの名前は変更
-できるのでプログラムによって違うが、@ruby@では@config.h@である。
-@configure@を実行した後にこのファイルができていることを確かめてほしい。
-中身はこんな感じだ。
 
-▼@config.h@
+Alternatively, it writes out the information about, for instance, whether
+there are certain functions or particular header files, into a header file. 
+Because the output file name can be changed, it is different depending on each
+program, but it is @config.h@ in @ruby@.
+I'd like you to confirm this file is created after executing @configure@.
+Its content is something like this.
+
+<p class="caption">▼<code>config.h</code></p>
 <pre class="longlist">
          ：
          ：
@@ -924,174 +982,193 @@ Makefile   :  CFLAGS = -g -O2
          ：
 </pre>
 
-どれも意味はわかりやすい。@HAVE_xxxx_H@ならヘッダファイルが存在するか
-どうかのチェックだろうし、@SIZEOF_SHORT@ならCの@short@型が何バイトかを
-示しているに違いない。同じく@SIZEOF_INT@なら@int@のバイト長だし、
-@HAVE_OFF_T@は@offset_t@型が定義されているかを示している。これに限らず
-@configure@では「ある／ない」の情報は@HAVE_xxxx@というマクロで定義される
-（する）。
+
+Each meaning is easy to understand.
+@HAVE_xxxx_H@ probably indicates whether a certain header file exists,
+@SIZEOF_SHORT@ must indicate the size of the @short@ type of C.
+Likewise, @SIZEOF_INT@ indicates the byte length of @int@,
+@HAVE_OFF_T@ indicates whether the @offset_t@ type is defined or not.
 
 
-以上のことからわかるように、@configure@は違いを検出してはくれるが、
-その違いを自動的に吸収してくれるわけではない。ここで定義された値を
-使って差を埋めるのはあくまで各プログラマの仕事である。例えば次の
-ように。
+As we can understand from the above things,
+@configure@ does detect the differences but it does not automatically absorb the
+differences. Bridging the difference is left to each programmer.
+For example, as follows,
 
-
-▼@HAVE_@マクロの典型的な使いかた
+▼ A typical usage of the `HAVE_` macro
 <pre class="longlist">
   24  #ifdef HAVE_STDLIB_H
-  25  # include 
+  25  # include <stdlib.h>
   26  #endif
+
 (ruby.h)
 </pre>
+
+
+
+
+
 h3. @autoconf@
 
-@configure@は@ruby@の専用ツールではない。関数があるか、ヘッダファイルが
-あるか......といったテストには明らかに規則性があるのだから、プログラムを
-書く人がみんなでそれぞれに別のものを書くのは無駄だ。
+@configure@ is not a `ruby`-specific tool.
+Whether there are functions, there are header files, ...
+it is obvious that these tests have regularity.
+It is wasteful if each person who writes a program wrote each own distinct tool.
 
+Here a tool named @autoconf@ comes in.
+In the files named @configure.in@ or @configure.ac@,
+write about "I'd like to do these checks",
+process it with @autoconf@,
+then an adequate @configure@ would be generated.
+The @.in@ of @configure.in@ is probably an abbreviation of @input@.
+It's the same as the relationship between @Makefile@ and @Makefile.in@.
+@.ac@ is, of course, an abbreviation of @AutoConf@.
 
-そこで登場するのが@autoconf@というツールである。@configure.in@とか
-@configure.ac@というファイルに「こういうチェックがしたいんだ」と
-書いておき、それを@autoconf@で処理すると適切な@configure@を作ってくれる。
-@configure.in@の@.in@は@input@の略だろう。@Makefile@と@Makefile.in@の関係と
-同じである。@.ac@のほうはもちろん@AutoConf@の略だ。
+To illustrate this talk up until here,
+it would be like Figure 1.
 
+!images/ch_abstract_build.jpg(The process until @Makefile@ is created)!
 
-ここまでを絵にすると図1のようになる。
+For the readers who want to know more details,
+I recommend "GNU Autoconf/Automake/Libtool" Gary V.Vaughan, Ben Elliston, Tom
+Tromey, Ian Lance Taylor.
 
-!images/ch_abstract_build.jpg([build])!
-図1: @Makefile@ができるまで
+By the way, `ruby`'s `configure` is, as said before, generated by using
+@autoconf@, but not all the @configure@ in this world are generated with
+@autoconf@. It can be written by hand or another tool to automatically generate
+can be used. Anyway, it's sufficient if ultimately there are @Makefile@ and
+@config.h@ and many others.
 
-
-もっと詳しいことが知りたい読者には『GNU Autoconf/Automake/Libtool』
-footnote{『GNU Autoconf/Automake/Libtool』Gary V.Vaughan, Ben Elliston, Tom Tromey, Ian Lance Taylor共著、でびあんぐる監訳、オーム社}
-をお勧めする。
-
-
-ところで@ruby@の@configure@は言ったとおり@autoconf@を使って生成してい
-るのだが、世の中にある@configure@が必ずしも@autoconf@で生成されている
-とは限らない。手書きだったり、別の自動生成ツールを使っていたりすること
-もある。なんにせよ、最終的に@Makefile@や@config.h@やその他いろいろがで
-きればそれでいいのだ。
 
 h3. @make@
 
-第二段階、@make@では何をするのだろうか。もちろん@ruby@のソースコードを
-コンパイルするわけだが、@make@の出力を見ているとどうもその他にいろいろ
-やっているように見える。その過程を簡単に説明しておこう。
+At the second phase, @make@, what is done?
+Of course, it would compile the source code of @ruby@,
+but when looking at the output of @make@,
+I feel like there are many other things it does.
+I'll briefly explain the process of it.
+
+# compile the source code composing @ruby@ itself
+# create the static library @libruby.a@ gathering the crucial parts of @ruby@
+# create "@miniruby@", which is an always statically-linked @ruby@
+# create the shared library @libruby.so@ when @--enable-shared@
+# compile the extension libraries (under @ext/@) by using @miniurby@
+# At last, generate the real @ruby@
+
+There are two reasons why it creates @miniruby@ and @ruby@ separately.
+The first one is that compiling the extension libraries requires @ruby@.
+In the case when @--enable-shared@, @ruby@ itself is dynamically linked,
+thus there's a possibility not be able to run instantly because of the load
+paths of the libraries. Therefore, create @miniruby@, which is statically
+linked, and use it during the building process.
+
+The second reason is, in a platform where we cannot use shared libraries,
+there's a case when the extension libraries are statically linked to @ruby@
+itself. In this case, it cannot create @ruby@ before compiling all extension
+libraries, but the extension libraries cannot be compiled without @ruby@.
+In order to resolve this dilemma, it uses @miniruby@.
 
 
-@ruby@自体を構成するソースコードをコンパイルする。
-@ruby@の主要部分を集めたスタティックライブラリ@libruby.a@を作る。
-常にスタティックリンクされる@ruby@「@miniruby@」を作る。
-@--enable-shared@のときは共有ライブラリ@libruby.so@を作る。
-@miniruby@を使って拡張ライブラリ（@ext/@以下）をコンパイルする。
-最後に、本物の@ruby@を生成する。
 
 
-@miniruby@と@ruby@の生成が分かれているのには二つ理由がある。一つめは拡張ラ
-イブラリのコンパイルに@ruby@が必要になることだ。@--enable-shared@の場合は
-@ruby@自身がダイナミックリンクされるので、ライブラリのロードパスの関係で
-すぐに動かせないかもしれない。そこでスタティックリンクした@miniruby@を作り、
-ビルドの過程ではそちらを使うようにする。
+h2. @CVS@
+
+The @ruby@ archive included in the attached CD-ROM is,
+as the same as the official release package,
+just a snapshot which is an appearance at just a particular moment of @ruby@,
+which is a continuously changing program.
+How @ruby@ has been changed, why it has been so, these things are not described
+there. Then what is the way to see the entire picture including the past.
+We can do it by using CVS.
 
 
-二つめの理由は、共有ライブラリが使えないプラットフォームでは拡張ライブ
-ラリを@ruby@自体にスタティックリンクしてしまう場合があるということだ。そ
-の場合、@ruby@は拡張ライブラリを全てコンパイルしてからでないと作れないが、
-拡張ライブラリは@ruby@がないとコンパイルできない。そのジレンマを解消する
-ために@miniruby@を使うのである。
+h3. About CVS
 
-h2. CVS
-
-本書の添付CD-ROMに入っている@ruby@のアーカイブにしても公式のリリースパッ
-ケージにしても、それは@ruby@という、変化しつづているプログラムのほんの一
-瞬の姿をとらえたスナップショットにすぎない。@ruby@がどう変わってきたか、
-どうしてそうだったのか、ということはここには記述されていない。では過去
-も含めた全体を見るにはどうしたらいいだろうか。CVSを使えばそれができる。
-
-h3. CVSとは
-
-CVSを一言で言うとエディタのundoリストである。
-ソースコードをCVSの管理下に入れておけばいつでも昔の姿に戻せるし、誰が、
-どこを、いつ、どう変えたのかすぐにわかる。一般にそういうことをしてくれ
-るプログラムのことをソースコード管理システムと言うが、オープンソースの
-世界で一番有名なソースコード管理システムがCVSである。
+CVS is shortly an undo list of editors.
+If the source code is under the management of CVS,
+the past appearance can be restored anytime,
+and we can understand who and where and when and how changed it immediately any
+time. Generally a program doing such job is called source code management
+system and CVS is the most famous open-source source code management system in
+this world.
 
 
-@ruby@もやはりCVSで管理されているのでCVSの仕組みと使いかたについて少し説
-明しよう。まずCVSの最重要概念はレポジトリとワーキングコピーである。
-CVSはエディタのundoリストのようなものと言ったが、そのためには歴代の変更の
-記録を
-どこかに残しておかないといけない。それを全部まとめて保存しておく場所が
-「CVSレポジトリ」である。
+Since @ruby@ is also managed with CVS,
+I'll explain a little about the mechanism and usage of CVS.
+First, the most important idea of CVS is repository and working-copy.
+I said CVS is something like an undo list of editor,
+in order to archive this, the records of every changing history should be saved
+somewhere. The place to store all of them is "CVS repository".
 
 
-ぶっちゃけて言うと、過去のソースコードを全部集めてあるのがレポジトリで
-ある。もちろんそれはあくまで概念であって、実際には容量を節約するために、
-最新の姿一つと、そこに至るまでの変更差分（ようするにパッチ）の形で集積
-されている。なんにしてもファイルの過去の姿をどの時点だろうと取り出せる
-ようになっていればそれでいいのだ。
+Directly speaking, repository is what gathers all the past source codes.
+Of course, this is only a concept, in reality, in order to save spaces,
+it is stored in the form of
+one recent appearance and the changing differences (namely, batches).
+In any ways, it is sufficient if we can obtain the appearance of a particular
+file of a particular moment any time.
 
 
-一方、レポジトリからある一点を選んでファイルを取り出したものが
-「ワーキングコピー」だ。レポジトリは一つだけだがワーキングコピーは
-いくつあってもいい（図2）。
-
-!images/ch_abstract_repo.jpg([repo])!
-図2: レポジトリとワーキングコピー
+On the other hand, "working copy" is the result of taking files from the
+repository by choosing a certain point.
+There's only one repository,
+but you can have multiple working copies. (Figure 2)
 
 
-自分がソースコードを変更したいときはまずワーキングコピーを取り出して、
-それをエディタなどで編集してからレポジトリに「戻す」。するとレポジトリ
-に変更が記録される。レポジトリからワーキングコピーを取り出すことを
-「チェックアウト（checkout）」、戻すことを「チェックイン
-（checkin）」
-または「コミット（commit）」と言う（図3）。チェックインするとレ
-ポジトリに変更が記録されて、いつでもそれを取り出せるようになる。
-
-!images/ch_abstract_ci.jpg([ci])!
-図3: チェックインとチェックアウト
+!images/ch_abstract_repo.jpg(Repository and working copies)!
 
 
-そしてCVS最大の特徴はCVSレポジトリにネットワーク越しにアクセスできると
-いうところだ。つまりレポジトリを保持するサーバが一つあればインターネッ
-ト越しに誰でもどこからでもチェックアウト・チェックインすることができる。
-ただし普通はチェックインにはアクセス制限がかかっているので無制限
-にできるというわけではない。
+When you'd like to modify the source code,
+first take a working copy,
+edit it by using editor and such, and "return" it.
+Then, the change is recorded to the repository.
+Taking a working copy from the repository is called "checkout",
+returning is called "checkin" or "commit" (Figure 3).
+By checking in, the change is recorded to the repository,
+then we can obtain it any time.
 
-h4. リビジョン
-
-レポジトリから特定の版を取り出すにはどうしたらいいだろうか。一つには時
-刻で指定する方法がある。「この当時の最新版をくれ」と要求するとそれを選
-んでくれるわけだ。しかし実際には時刻で指定することはあまりない。普通は
-「リビジョン（revision）」というものを使う。
+!images/ch_abstract_ci.jpg(Checkin and Checkout)!
 
 
-「リビジョン」は「バージョン」とほとんど同じ意味である。ただ普通はプロ
-ジェクト自体に「バージョン」が付いているので、バージョンという言葉を使
-うと紛らわしい。そこでもうちょっと細かい単位を意図してリビジョンという
-言葉を使う。
+The biggest trait of CVS is we can access it over the networks.
+It means, if there's only one server which holds the repository,
+everyone can checkin/checkout over the internet any time.
+But generally the access to check in is restricted and we can't do it freely.
 
 
-CVSでは、レポジトリに入れたばかりのファイルはリビジョン1.1である。
-チェックアウトして、変更して、チェックインするとリビジョン1.2になる。
-その次は1.3になる。その次は1.4になる。
+h4. Revision
 
-h4. CVSの簡単な使用例
-
-以上をふまえてごくごく簡単にCVSの使いかたを話す。まず@cvs@コマンドがな
-いとどうにもならないのでインストールしておいてほしい。添付CD-ROMにも
-@cvs@のソースコードを収録した
-footnote{@cvs@：@archives/cvs-1.11.2.tar.gz@}。
-@cvs@のインストールの方法はあまりにも本筋から外れるのでここでは書かな
-い。
+How can we do to obtain a certain version from the repository?
+One way is to specify with time. By requiring "give me the edge version of that
+time", it would select it. But in practice, we rarely specify with time.
+Most commonly, we use something named "revision".
 
 
-インストールしたら試しに@ruby@のソースコードをチェックアウトしてみよう。
-インターネットに接続中に次のように打つ。
+"Revision" and "Version" have the almost same meaning.
+But usually "version" is attached to the project itself,
+thus using the word "version" can be confusing.
+Therefore, the word "revision" is used to indicate a bit smaller unit.
+
+
+In CVS, the file just stored in the repository is revision 1.1.
+Checking out it, modifying it, checking in it, then it would be revision 1.2.
+Next it would be 1.3 then 1.4.
+
+
+
+
+h4. A simple usage example of CVS
+
+Keeping in mind the above things,
+I'll talk about the usage of CVS very very briefly.
+First, @cvs@ command is essential, so I'd like you to install it beforehand.
+The source code of @cvs@ is included in the attached CD-ROM
+\footnote{<code>cvs</code>：<code>archives/cvs-1.11.2.tar.gz</code>}.
+How to install @cvs@ is really far from the main line,
+thus it won't be explained here.
+
+After installing it, let's checkout the source code of @ruby@ as an experiment.
+Type the following commands when you are online.
 
 <pre class="screen">
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src login
@@ -1099,47 +1176,55 @@ CVS Password: anonymous
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src checkout ruby
 </pre>
 
-何もオプションを付けないと自動的に最新版がチェックアウトされるので、
-@ruby/@以下に@ruby@の真の最新版が現れているはずだ。
 
+Any options were not specified,
+thus the edge version would be automatically checked out.
+The truly edge version of @ruby@ must appear under @ruby/@.
 
-また、とある日の版を取り出すには@cvs checkout@に@-D@オプションをつけれ
-ばいい。次のように打てば本書が解説しているバージョンのワーキングコピー
-が取り出せる。
+Additionally, if you'd like to obtain the version of a certain day,
+you can use @-D@ option of @cvs checkout@.
+By typing as follows, you can obtain a working copy of the version which is
+being explained by this book.
 
 <pre class="screen">
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src checkout -D2002-09-12 ruby
 </pre>
 
-このとき、オプションは必ず@checkout@の直後に書かないといけないことに注
-意。先に「@ruby@」を書いてしまうと「モジュールがない」という変なエラー
-になる。
+At this moment, you have to write options immediately after @checkout@.
+If you wrote "@ruby@" first, it would cause a strange error complaining "missing
+a module".
+
+And, with the anonymous access like this example, we cannot check in.
+In order to practice checking in, it's good to create a (local) repository and
+store a "Hello, World!" program in it.
+The concrete way to store is not explained here.
+The manual coming with @cvs@ is fairly friendly.
+Regarding books which you can read in Japanese,
+I recommend translated "Open Source Development with CVS" Karl Fogel, Moshe Bar.
 
 
-ちなみにこの例のようなanonymousアクセスだとチェックインはできないようになっている。
-チェックインの練習をするには適当に（ローカルの）レポジトリを作って
-Hello, World!プログラムでも入れてみるのがいいだろう。具体的な入れかた
-はここには書かない。@cvs@に付いてくるマニュアルが結構親切だ。日本語の書
-籍ならオーム社の『CVSによるオープンソース開発』
-footnote{『CVSによるオープンソース開発』Karl Fogel, Moshe Bar共著、竹内利佳訳、オーム社}
-をお勧めする。
-
-h2. @ruby@の構成
-h3. 物理構造
-
-さてそろそろソースコードを見ていこうと思うのだが、まず最初にしなければ
-ならないことはなんだろうか。それはディレクトリ構造を眺めることである。
-たいていの場合ディレクトリ構造すなわちソースツリーはそのままプログラム
-のモジュール構造を示している。いきなり@grep@で@main()@を探して頭から処理順
-に読んでいく、なんていうのは賢くない。もちろん@main()@を探すのも大切だが、
-まずはのんびりと@ls@したり@head@したりして全体の様子をつかもう。
 
 
-以下はCVSレポジトリからチェックアウトした直後の
-トップディレクトリの様子だ。
-スラッシュで終わっているのはサブディレクトリである。
+h2. The composition of @ruby@
 
-<pre class="emlist"> 
+h3. The physical structure
+
+Now it is time to start to read the source code,
+but what is the thing we should do first?
+It is looking over the directory structure.
+In most cases, the directory structure, meaning the source tree, directly
+indicate the module structure of the program.
+Abruptly searching @main()@ by using @grep@ and reading from the top in its
+processing order is not smart.
+Of course finding out @main()@ is also important,
+but first let's take time to do @ls@ or @head@ to grasp the whole picture.
+
+Below is the appearance of the top directory immediately after checking out from
+the CVS repository.
+What end with a slash are subdirectories.
+
+
+<pre class="emlist">
 COPYING        compar.c       gc.c           numeric.c      sample/
 COPYING.ja     config.guess   hash.c         object.c       signal.c
 CVS/           config.sub     inits.c        pack.c         sprintf.c
@@ -1160,219 +1245,239 @@ bignum.c       ext/           mkconfig.rb    rubysig.h
 class.c        file.c         node.h         rubytest.rb
 </pre>
 
-最近はプログラム自体が大きくなってきてサブディレクトリが細かく分割され
-ているソフトウェアも多いが、@ruby@はかなり長いことトップディレクトリ
-一筋である。あまりにファイル数が多いと困るが、この程度なら慣れればな
-んでもない。
+
+Recently the size of a program itself has become larger,
+and there are many softwares whose subdirectories are divided into pieces,
+but @ruby@ has been consistently used the top directory for a long time.
+It becomes problematic if there are too many files,
+but we can get used to this amount.
+
+The files at the top level can be categorized into six:
+
+* documents
+* the source code of @ruby@ itself
+* the tool to build @ruby@
+* standard extension libraries
+* standard Ruby libraries
+* the others
 
 
-トップレベルのファイルは六つに分類できる。即ち
+The source code and the build tool are obviously important.
+Aside from them,
+I'll list up what seems useful for us.
+
+* @ChangeLog@
+
+The records of changes on @ruby@.
+This is very important when investigating the reason of a certain change.
+
+* @README.EXT README.EXT.ja@
+
+How to create an extension library is described,
+but in the course of it, things relating to the implementation of @ruby@ itself
+are also written.
 
 
-ドキュメント
-@ruby@自身のソースコード
-@ruby@ビルド用のツール
-標準添付拡張ライブラリ
-標準添付Rubyライブラリ
-その他
 
 
-である。ソースコードとビルドツールが重要なのは当然として、その他に
-我々の役に立ちそうなものを挙げておこう。
+h3. Dissecting Source Code
+
+From now on, I'll further split the source code of @ruby@ itself into more tiny
+pieces. As for the main files, its categorization is described in @README.EXT@,
+thus I'll follow it. Regarding what is not described, I categorized it by myself.
 
 
-@ChangeLog@
+h4. Ruby Language Core
+
+| @class.c@ | class relating API |
+| @error.c@ | exception relating API |
+| @eval.c@  | evaluator |
+| @gc.c@    | garbage collector |
+| @lex.c@   | reserved word table |
+| @object.c@ | object system |
+| @parse.y@ | parser |
+| @variable.c@ | constants, global variables, class variables |
+| @ruby.h@  | The main macros and prototypes of @ruby@ |
+| @intern.h@ | the prototypes of C API of @ruby@.
+@intern@ seems to be an abbreviation of internal, but the functions written here
+can be used from extension libraries. |
+| @rubysig.h@ | the header file containing the macros relating to signals |
+| @node.h@  | the definitions relating to the syntax tree nodes |
+| @env.h@   | the definitions of the structs to express the context of the evaluator |
 
 
-@ruby@への変更の記録。変更の理由を調べるうえでは非常に重要。
+The parts to compose the core of the @ruby@ interpretor.
+The most of the files which will be explained in this book are contained here.
+If you consider the number of the files of the entire @ruby@,
+it is really only a few. But if you think based on the byte size,  
+50% of the entire amount is occupied by these files.
+Especially, @eval.c@ is 200KB, @parse.y@ is 100KB, these files are large.
 
 
-@README.EXT README.EXT.ja@
+h4. Utility
+
+| dln.c | dynamic loader |
+| regex.c | regular expression engine |
+| st.c | hash table |
+| util.c | libraries for radix conversions and sort and so on |
+
+It means utility for @ruby@.
+However, some of them are so large that you cannot imagine it from the word
+"utility". For instance, @regex.c@ is 120 KB.
 
 
-拡張ライブラリの作成方法が書いてあるのだが、その一環として
-@ruby@自身の実装に関することも書いてある。
 
-h3. ソースコードの腑分け
+h4. Implementation of @ruby@ command
 
-ここからは@ruby@自身のソースコードについてさらに細かく分割していく。
-主要なファイルについては@README.EXT@に分類が書いてあったので
-それに従う。記載がないものは筆者が分類した。
-
-h4. Ruby言語のコア
-
-@class.c@クラス関連API
-@error.c@例外関連API
-@eval.c@評価器
-@gc.c@ガーベージコレクタ
-@lex.c@予約語テーブル
-@object.c@オブジェクトシステム
-@parse.y@パーサ
-@variable.c@定数、グローバル変数、クラス変数
-@ruby.h@@ruby@の主要マクロとプロトタイプ
-@intern.h@@ruby@のC APIのプロトタイプ。@intern@はinternalの略だと思われるが、ここに載っている関数を拡張ライブラリで使うのは別に構わない。
-@rubysig.h@シグナル関係のマクロを収めたヘッダファイル
-@node.h@構文木ノード関連の定義
-@env.h@評価器のコンテキストを表現する構造体の定義
+| @dmyext.c@ | dummy of the routine to initialize extension libraries ( DumMY EXTension ) |
+| @inits.c@  | the entry point for core and the routine to initialize
+extension libraries |
+| @main.c@   | the entry point of @ruby@ command (this is unnecessary for
+@libruby@ ) |
+| @ruby.c@   | the main part of @ruby@ command (this is also necessary for
+@libruby@ ) |
+| @version.c@ | the version of @ruby@ |
 
 
-@ruby@インタプリタのコアを構成する部分。本書が解説するのは
-ここのファイルがほとんどである。@ruby@全体のファイル数と比べれば
-非常に少ないが、バイトベースでは全体の50%近くを占める。
-特に@eval.c@は200Kバイト、@parse.y@が100Kバイトと大きい。
-
-h4. ユーティリティ
-
-@dln.c@動的ローダ
-@regex.c@正規表現エンジン
-@st.c@ハッシュテーブル
-@util.c@基数変換やソートなどのライブラリ
+The implementation of @ruby@ command,
+which is of when typing @ruby@ on the command line and execute it.
+This is the part, for instance, to interpret the command line options.
+Aside from @ruby@ command, as the commands utilizing @ruby@ core,
+there are @mod_ruby@ and @vim@.
+These commands are functioning by linking to the @libruby@ library
+(@.a@/@.so@/@.dll@ and so on).
 
 
-@ruby@にとってのユーティリティという意味。ただしユーティリティという
-言葉からは想像できないほど大きいものもある。例えば@regex.c@は120Kバイトだ。
 
-h4. @ruby@コマンドの実装
+h4. Class Libraries
 
-@dmyext.c@拡張ライブラリ初期化ルーチンのダミー（DumMY EXTention）
-@inits.c@コアとライブラリの初期化ルーチンのエントリポイント
-@main.c@コマンドのエントリポイント（@libruby@には不要）
-@ruby.c@@ruby@コマンドの主要部分（@libruby@にも必要）
-@version.c@@ruby@のバージョン
+| @array.c@ | @class Array@ |
+| @bignum.c@ | @class Bignum@ |
+| @compar.c@ | @module Comparable@ |
+| @dir.c@ | @class Dir@ |
+| @enum.c@ | @module Enumerable@ |
+| @file.c@ | @class File@ |
+| @hash.c@ | @class Hash@ (Its actual body is @st.c@) |
+| @io.c@ | @class IO@ |
+| @marshal.c@ | @module Marshal@ |
+| @math.c@ | @module Math@ |
+| @numeric.c@ | @class Numeric@, @Integer@, @Fixnum@, @Float@ |
+| @pack.c@ | @Array#pack@, @String#unpack@ |
+| @prec.c@ | @module Precision@ |
+| @process.c@ | @module Process@ |
+| @random.c@ | @Kernel#srand()@, @rand()@ |
+| @range.c@ | @class Range@ |
+| @re.c@ | @class Regexp@ (Its actual body is @regex.c@) |
+| @signal.c@ | @module Signal@ |
+| @sprintf.c@ | @ruby@-specific @sprintf()@ |
+| @string.c@ | @class String@ |
+| @struct.c@ | @class Struct@ |
+| @time.c@ | @class Time@ |
 
-
-コマンドラインで@ruby@と打って実行するときの@ruby@コマンドの実装。コマンドライン
-オプションの解釈などを行っている部分だ。@ruby@コマンド以外に@ruby@コアを利
-用するコマンドとしては@mod_ruby@や@vim@が挙げられる。これらのコマンドは
-ライブラリ@libruby@（@.a@/@.so@/@.dll@など）とリンクして動作する。
-
-h4. クラスライブラリ
-
-@array.c@@class Array@
-@bignum.c@@class Bignum@
-@compar.c@@module Comparable@
-@dir.c@@class Dir@
-@enum.c@@module Enumerable@
-@file.c@@class File@
-@hash.c@@class Hash@（実体は@st.c@）
-@io.c@@class IO@
-@marshal.c@@module Marshal@
-@math.c@@module Math@
-@numeric.c@@class Numeric@、@Integer@、@Fixnum@、@Float@
-@pack.c@@Array#pack@、@String#unpack@
-@prec.c@@module Precision@
-@process.c@@module Process@
-@random.c@@Kernel#srand()@、@rand()@
-@range.c@@class Range@
-@re.c@@class Regexp@（実体は@regex.c@）
-@signal.c@@module Signal@
-@sprintf.c@@ruby@専用の@sprintf()@
-@string.c@@class String@
-@struct.c@@class Struct@
-@time.c@@class Time@
+The implementations of the Ruby class libraries.
+What listed here are basically implemented in the completely same way as the
+ordinary Ruby extension libraries. It means that these libraries are also
+examples of how to write an extension library.
 
 
-Rubyのクラスライブラリの実装。ここにあるものは基本的に通常の
-Ruby拡張ライブラリと全く同じ方法で実装されている。つまりこの
-ライブラリが拡張ライブラリの書きかたの例にもなっているということだ。
 
-h4. プラットフォーム依存ファイル
+h4. Files depending on a particular platform
 
-@bcc32/@Borland C++（Win32）
-@beos/@BeOS
-@cygwin/@Cygwin（Win32でのUNIXエミュレーションレイヤー）
-@djgpp/@djgpp（DOS用のフリーな開発環境）
-@vms/@VMS（かつてDECがリリースしていたOS）
-@win32/@Visual C++（Win32）
-@x68/@Sharp X680x0系（OSはHuman68k）
+| @bcc32/@ | Borland C++ (Win32) |
+| @beos/@ | BeOS |
+| @cygwin/@ | Cygwin (the UNIX simulation layer on Win32) |
+| @djgpp/@ | djgpp (the free developing environment for DOS) |
+| @vms/@ | VMS (an OS had been released by DEC before) |
+| @win32/@ | Visual C++ (Win32) |
+| @x68/@ | Sharp X680x0 series (OS is Human68k) |
+
+Each platform-specific code is stored.
 
 
-各プラットフォーム特有のコードが入っている。
+h4. fallback functions
 
-h4. フォールバック関数
-<pre class="emlist"> 
+<pre class="emlist">
 missing/
 </pre>
 
-各種プラットフォームにない関数を補うためのファイル。
-主に@libc@の関数が多い。
-
-h3. 論理構造
-
-さて、以上四つのグループのうちコアはさらに大きく三つに分けられる。
-一つめはRubyのオブジェクト世界を作りだす「オブジェクト空間（object space）」。
-二つめはRubyプログラム（テキスト）を内部形式に変換する「パーサ（parser）」。
-三つめはRubyプログラムを駆動する「評価器（evaluator）」。
-パーサも評価器もオブジェクト空間の上に成立し、
-パーサがプログラムを内部形式に変換し、
-評価器がプログラムを駆動する。
-順番に解説していこう。
-
-h4. オブジェクト空間
-
-一つめのオブジェクト空間。これは非常に、理解しやすい。なぜならこれが扱
-うものは基本的にメモリ上のモノが全てであり、関数を使って直接表示したり
-操作したりすることができるからだ。従って本書ではまずここから解説を
-始める。第2章から
-第7章までが第一部である。
-
-h4. パーサ
-
-二つめのパーサ。これは説明が必要だろう。
+Files to offset the functions which are missing on each platform.
+Mainly functions of @libc@.
 
 
-@ruby@コマンドはRuby言語のインタプリタである。つまり起動時にテキストの入
-力を解析し、それに従って実行する。だから@ruby@はテキストとして書かれたプ
-ログラムの意味を解釈できなければいけないのだが、不幸にしてテキストとい
-うのはコンピュータにとっては非常に理解しづらいものである。コンピュータ
-にとってはテキストファイルはあくまでバイト列であって、それ以上ではない。
-そこからテキストの意味を読みとるには何か特別な仕掛けが必要になる。そ
-の仕掛けがパーサだ。このパーサを通すことでRubyプログラム（であるテキス
-ト）は@ruby@専用の、プログラムから扱いやすい内部表現に変換される。
 
 
-その内部表現とは具体的には「構文木」というものだ。構文木はプログラムを
-ツリー構造で表現したもので、例えば@if@文ならば図4のように
-表現される。
 
-!images/ch_abstract_syntree.jpg([syntree])!
-図4: @if@文と、それに対応する構文木
+h3. Logical Structure
 
-
-パーサの解説は第二部『構文解析』で行う。
-第二部は第10章から第12章までだ。
-対象となるファイルは@parse.y@だけである。
-
-h4. 評価器
-
-オブジェクトは実際に触ることができるのでわかりやすい。パーサにしてもやっ
-ていること自体はようするにデータ形式の変換なんだから、まあわかる。しか
-し三つめの評価器、こいつはつかみどころが全くない。
+Now, there are the above four groups and the core can be divided further into
+three:
+First, "object space" which creates the object world of Ruby.
+Second, "parser" which converts Ruby programs (in text) to the internal format.
+Third, "evaluator" which drives Ruby programs.
+Both parser and evaluator are composed above object space,
+parser converts a program into the internal format,
+and evaluator actuates the program.
+Let me explain them in order.
 
 
-評価器がやるのは構文木に従ってプログラムを「実行」していくことだ。と言
-うと簡単そうに見えるのだが、では「実行する」とはどういうことか、ちゃん
-と考えるとこれが結構難しい。@if@文を実行するとはどういうことだろうか。
-@while@文を実行するとはどういうことだろうか。ローカル変数に代入するとは
-どういうことだろうか。メソッドを呼ぶとはどういうことだろうか。その
-全てにキチンキチンと答えを出していかなければ評価器はわからないのだ。
+h4. Object Space
+
+The first one is object space. This is very easy to understand. It is because
+all of what dealt with by this are basically on the memory,
+thus we can directly show or manipulate them by using functions.
+Therefore, in this book, the explanation will start with this part.
+Part 1 is from chapter 2 to chapter 7.
 
 
-本書では第三部『評価』で評価器を扱う。対象ファイルは@eval.c@だ。
-「評価器」は英語でevaluatorと言うので、それを省略して@eval@である。
+h4. Parser
 
-さて、@ruby@の作りについて簡単に説明してきたが、プログラムの動作なんてい
-くら概念を説明してもわかりにくいものだ。次の章ではまず実際に@ruby@を使う
-ことから始めるとしよう。
+The second one is parser. Probably some preliminary explanations are necessary
+for this.
+
+@ruby@ command is the interpretor of Ruby language.
+It means that it analyzes the input which is a text on invocation
+and executes it by following it.
+Therefore, @ruby@ needs to be able to interpret the meaning of the program
+written as a text, but unfortunately text is very hard to understand for
+computers. For computers, text files are merely byte sequences and nothing more than
+that. In order to comprehend the meaning of text from it, some special gimmick
+is necessary. And the gimmick is parser. By passing through parser, (a text as) a
+Ruby program would be converted into the `ruby`-specific internal expression
+which can be easily handled from the program.
+
+The internal expression is called "syntax tree".
+Syntax tree expresses a program by a tree structure,
+for instance, figure 4 shows how an @if@ statement is expressed.
+
+!images/ch_abstract_syntree.jpg(an @if@ statement and its corresponding syntax tree)!
+
+Parser will be described in Part 2 "Syntactic Analysis".
+Part 2 is from chapter 10 to chapter 12.
+Its target file is only @parse.y@.
 
 
-御意見・御感想・誤殖の指摘などは
-"青木峰郎 ":mailto:aamine@loveruby.net
-までお願いします。
+h4. Evaluator
 
+Objects are easy to understand because they are tangible.
+Also regarding parser,
+What it does is ultimately converting a data format into another one,
+so it's reasonably easy to understand.
+However, the third one, evaluator, this is completely elusive.
 
-"『Rubyソースコード完全解説』
-":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721"はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
+What evaluator does is "executing" a program by following a syntax tree.
+This sounds easy, but what is "executing"?
+To answer this question precisely is fairly difficult.
+What is "executing an @if@ statement"?
+What is "executing a @while@ statement"?
+What does "assigning to a local variable" mean?
+We cannot understand evaluator without answering all of such questions clearly
+and precisely.
 
-Copyright (c) 2002-2004 Minero Aoki, All rights reserved.
+In this book, evaluator will be discussed in Part 3 "Evaluate".
+Its target file is @eval.c@.
+@eval@ is an abbreviation of "evaluator".
 
+Now, I've described briefly about the structure of @ruby@,
+however even though the ideas were explained,
+it does not so much help us understand the behavior of program.
+In the next chapter, we'll start with actually using @ruby@.
