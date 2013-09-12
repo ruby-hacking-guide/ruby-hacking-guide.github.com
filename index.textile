@@ -10,7 +10,7 @@ rough. But it also means they are in open review, so do not hesitate
 to address issues on the mailing list.
 
 * "Preface":preface.html
-* "Introduction - translation in progress":intro.html
+* "Introduction":intro.html
 
 h3. Part 1: Objects
 
