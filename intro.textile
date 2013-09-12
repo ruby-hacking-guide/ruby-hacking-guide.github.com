@@ -1,9 +1,10 @@
 ---
 layout: default
+title: Introduction
 ---
 
 
-h1. Preface: Introduction
+h1. Introduction
 
 h2. Characteristics of Ruby
 
