@@ -56,7 +56,7 @@ navigation = [
     {:label => "Chapter 8: Ruby Language Details", :content => "spec.html"},
     {:label => "Chapter 9: yacc crash course", :content => "yacc.html"},
     {:label => "Chapter 10: Parser", :content => "parser.html"},
-    {:label => "Chapter 11: Context-dependent scanner", :content => "contextual.html"},
+    {:label => "Chapter 11: Finite-state scanner", :content => "contextual.html"},
     {:label => "Chapter 12: Syntax tree construction", :content => "syntree.html"}
   ]},
   {:label => "Part 3: Evaluation", :content => "evaluator.html", :nav => [

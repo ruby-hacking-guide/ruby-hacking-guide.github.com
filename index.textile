@@ -27,7 +27,7 @@ h3. Part 2: Syntax analysis
 * "Chapter 8: Ruby Language Details":spec.html
 * "Chapter 9: yacc crash course":yacc.html
 * "Chapter 10: Parser":parser.html
-* "Chapter 11: Context-dependent scanner":contextual.html
+* "Chapter 11: Finite-state scanner":contextual.html
 * "Chapter 12: Syntax tree construction":syntree.html
 
 h3. Part 3: Evaluation
