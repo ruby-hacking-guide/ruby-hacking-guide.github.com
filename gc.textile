@@ -1887,7 +1887,7 @@ First, `C.new` is actually `Class#new`. Its actual body is this:
 </pre>
 
 
-`rb_obj_alloc()` calles the `allocate` method against the `klass`.
+`rb_obj_alloc()` calls the `allocate` method against the `klass`.
 In other words, it calls `C.allocate` in this example currently explained.
 It is `Class#allocate` by default and its actual body is `rb_class_allocate_instance()`.
 
