@@ -41,15 +41,7 @@ is a function call, one stack frame is pushed.
 When doing `return`, one stack frame will be popped.
 Figure 1 shows the really simplified appearance of the machine stack.
 
-<div class="image">
-<img src="images/ch_gc_macstack.jpg" alt="(macstack)"><br>
-Figure 1: Machine Stack
-* 上（先端）above (top)
-* 下（末端）below (bottom)
-* スタックフレーム stack frame
-* 現在実行中の関数フレーム presently executing function frame
-</div>
-
+!images/ch_gc_macstack.jpg(Machine Stack)!
 
 In this picture, "above" is written above the top of the stack,
 but this it is not necessarily always the case that the machine stack goes
@@ -89,13 +81,7 @@ if there are the memories allocated for the functions already finished,
 free them by using `free()`.
 
 
-<div class="image">
-<img src="images/ch_gc_calloca.jpg" alt="(calloca)"><br>
-Figure 2: The behavior of an `alloca()` implemented in C
-* D->alloca(8)の対応を記録 record the relation D-> alloca(8)
-* B->alloca(32)の対応を記録 record the relation B-> alloca(32)
-* Dで割り当てたメモりを解放 release the memory allocated in D
-</div>
+!images/ch_gc_calloca.jpg(The behavior of an `alloca()` implemented in C)!
 
 
 The @missing/alloca.c@ of @ruby@ is an example of an emulated @alloca()@ .
@@ -159,7 +145,7 @@ To make descriptions more concrete,
 let's simplify the structure by assuming that there are only objects and links.
 This would look as shown in Figure 3.
 
-!images/ch_gc_objects.jpg(Figure 3: Objects)!
+!images/ch_gc_objects.jpg(Objects)!
 
 
 The objects pointed to by global variables and the objects on the stack of a
@@ -177,14 +163,7 @@ These objects colored black are the
 necessary objects. The rest of the objects can be released.
 
 
-<div class="image">
-<img src="images/ch_gc_gcimage.jpg" alt="(gcimage)"><br>
-Figure 4: necessary objects and unnecessary objects
-* ルートオブジェクト　root objects
-* 不要なオブジェクト unnecessary objects
-* ルートオブジェクトから参照されているオブジェクト objects referenced by the
-  root objects
-</div>
+!images/ch_gc_gcimage.jpg(necessary objects and unnecessary objects)!
 
 
 In technical terms, "the surely necessary objects" are called "the roots of GC".
@@ -233,7 +212,7 @@ areas. To simplify this description, assume there are two areas @A@ and @B@ here
 And put an "active" mark on the one of the areas.
 When creating an object, create it only in the "active" one. (Figure 5)
 
-!images/ch_gc_stop2.jpg(Figure 5: Stop and Copy (1))!
+!images/ch_gc_stop2.jpg(Stop and Copy (1))!
 
 
 When the GC starts, follow links from the roots in the same manner as
@@ -241,7 +220,7 @@ mark-and-sweep. However, move objects to another area instead of marking them
 (Figure 6). When all the links have been followed, discard the all elements
 which remain in @A@, and make @B@ active next.
 
-!images/ch_gc_stop3.jpg(Figure 6: Stop and Copy (2))!
+!images/ch_gc_stop3.jpg(Stop and Copy (2))!
 
 
 Stop and Copy also has two advantages:
@@ -270,7 +249,7 @@ increased. When quitting to refer, decrease the counter.
 When the counter of an object becomes zero, release the object.
 This is the method called reference counting (Figure 7).
 
-!images/ch_gc_refcnt.jpg(Figure 7: Reference counting)!
+!images/ch_gc_refcnt.jpg(Reference counting)!
 
 
 This method also has two advantages:
@@ -288,7 +267,7 @@ a cycle of references as shown in Figure 8.
 If this is the case the counters will never decrease
 and the objects will never be released.
 
-!images/ch_gc_cycle.jpg(Figure 8: Cycle)!
+!images/ch_gc_cycle.jpg(Cycle)!
 
 
 By the way, latest Python(2.2) uses reference counting GC but it can free cycles.
@@ -422,14 +401,14 @@ Hereafter, let's call this an object heap.
 the each contained array is probably each @heap@.
 Each element of @heap@ is each @slot@ (Figure 9).
 
-!images/ch_gc_heapitems.jpg(Figure 9: `heaps`, `heap`, `slot`)!
+!images/ch_gc_heapitems.jpg(`heaps`, `heap`, `slot`)!
 
 The length of @heaps@ is @heap_length@ and it can be changed. The number of
 the slots actually in use is @heaps_used@. The length of each heap
 is in the corresponding @heaps_limits[index]@.
 Figure 10 shows the structure of the object heap.
 
-!images/ch_gc_heaps.jpg(Figure 10: conceptual diagram of `heaps` in memory)!
+!images/ch_gc_heaps.jpg(conceptual diagram of `heaps` in memory)!
 
 This structure has a necessity to be this way.
 For instance, if all structs are stored in an array,
@@ -1705,13 +1684,7 @@ However, when there are links from old-generation to new-generation,
 the new-generation objects will not be marked. (Figure 11)
 
 
-<div class="image">
-<img src="images/ch_gc_gengc.jpg" alt="(gengc)"><br>
-Figure 11: reference over generations
-* ルートオブジェクト the root objects
-* 新世代 new-generation
-* 旧世代 old-generation
-</div>
+!images/ch_gc_gengc.jpg(reference over generations)!
 
 
 This is not good, so at the moment when an old-generational object refers to a new-generational object,
@@ -1752,13 +1725,7 @@ But as trade-offs, accessing speed slows down and the compatibility of
 extension libraries is lost.
 
 
-<div class="image">
-<img src="images/ch_gc_objid.jpg" alt="(objid)"><br>
-Figure 12: reference through the object ID
-* アドレスを入れる store addresses
-* インデックスを入れる store indexes
-* 移動できる can be moved
-</div>
+!images/ch_gc_objid.jpg(reference through the object ID)!
 
 
 Then, the next way is to allow moving the struct only when they are pointed
@@ -1769,15 +1736,7 @@ In the ordinary programs, there are not so many objects that
 object structs is quite high.
 
 
-<div class="image">
-<img src="images/ch_gc_mostcopy.jpg" alt="(mostcopy)"><br>
-Figure 13: Mostly-copying garbage collection
-* (above) Since there's a possibility of being referred to by non-VALUE,
-  this object is not moved.
-* (bottom) Since it is sure that this is referred only VALUEs,
-  this object can be moved.
-* 移動 move
-</div>
+!images/ch_gc_mostcopy.jpg(Mostly-copying garbage collection)!
 
 
 Moreover and moreover, by enabling to move the struct,
