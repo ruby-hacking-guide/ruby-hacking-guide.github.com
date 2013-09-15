@@ -25,7 +25,7 @@ using Windows who may not be aware, the `mv` (move) command creates a new copy
 of a file and removes the original. `cc` is, of course, the C compiler and `cpp`
 the C pre-processor.
 
-!images/ch_parser_build.jpg(Figure 1: Parser construction process)!
+!images/ch_parser_build.jpg(Parser construction process)!
 
 h3. Dissecting `parse.y`
 
@@ -256,7 +256,7 @@ of this rule is demote an `expr` to a `primary`. This creates
 a cycle which can the seen in Figure 2, and the arrow shows how this rule is
 reduced during parsing.
 
-!images/ch_parser_exprloop.jpg(Figure 2: `expr` demotion)!
+!images/ch_parser_exprloop.jpg(`expr` demotion)!
 
 The next rule is also particularly interesting.
 
@@ -270,7 +270,7 @@ primary         : literal
 A `compstmt`, which equals to the entire program (`program`), can be demoted to
 a `primary` with this rule. The next figure illustrates this rule in action.
 
-!images/ch_parser_progloop.jpg(Figure 3: `program` demotion)!
+!images/ch_parser_progloop.jpg(`program` demotion)!
 
 This means that for any syntax element in Ruby, if we surround it with
 parenthesis it will become a `primary` and can be passed as an argument to a
@@ -915,10 +915,7 @@ them are going to appear, replace them to a single `o` when they appear.
 All we have to do is repeating this procedure.
 Figure 4 shows the consequence.
 
-<p class="image">
-<img src="images/ch_parser_ablist.jpg" alt="(ablist)"><br>
-Figure 4: parse a list which starts with A and ends with B
-</p>
+!images/ch_parser_ablist.jpg(parse a list which starts with A and ends with B)!
 
 
 However, if the ending `B` is missing, ...
@@ -954,10 +951,7 @@ let's follow it as an experiment and parse the input
 with shift (meaning interior) which takes precedence. (Figure 5)
 
 
-<p class="image">
-<img src="images/ch_parser_alist.jpg" alt="(alist)"><br>
-Figure 5: parse a list of lists which start with A
-</p>
+!images/ch_parser_alist.jpg(parse a list of lists which start with A)!
 
 
 It could be parsed. However, this is completely different from the intention of
@@ -988,10 +982,7 @@ I'll explain about the outline of the parser before moving on to the scanner.
 Take a look at Figure 6.
 
 
-<p class="image">
-<img src="images/ch_parser_interf.jpg" alt="(interf)"><br>
-Figure 6: Parser Interface (Call Graph)
-</p>
+!images/ch_parser_interf.jpg(Parser Interface (Call Graph))!
 
 
 There are three official interfaces of the parser: `rb_compile_cstr()`,
@@ -1028,14 +1019,7 @@ and keeps them until it will form a token.
 Therefore, the whole structure of `yylex` can be depicted as Figure 7.
 
 
-<div class="image">
-<img src="images/ch_parser_scanner.jpg" alt="(scanner)"><br>
-Figure 7: The whole picture of the scanner
-* 入力バッファ input buffer
-* バイト列 byte sequence
-* トークンバッファ token buffer
-* 記号列 symbol sequence
-</div>
+!images/ch_parser_scanner.jpg(The whole picture of the scanner)!
 
 
 
@@ -1066,7 +1050,7 @@ The beginning, the current position and the end of the buffer.
 Apparently, this buffer seems a simple single-line string buffer (Figure 8).
 
 
-!images/ch_parser_ibuffer.jpg(Figure 8: The input buffer)!
+!images/ch_parser_ibuffer.jpg(The input buffer)!
 
 
 
@@ -1321,7 +1305,7 @@ This is also simply structured. If depicting it,
 it would look like Figure 9.
 
 
-!images/ch_parser_tbuffer.jpg(Figure 9: The token buffer)!
+!images/ch_parser_tbuffer.jpg(The token buffer)!
 
 
 Let's continuously go to the interface and
@@ -2245,7 +2229,7 @@ The part which reads the starting symbol (`<<EOS`) is not important, so it is to
 Until now, the input buffer probably has become as depicted as Figure 10.
 Let's recall that the input buffer reads a line at a time.
 
-!images/ch_parser_lexparams.jpg(Figure 10: scanning `"printf\(<<EOS,n\)"`)!
+!images/ch_parser_lexparams.jpg(scanning `"printf\(<<EOS,n\)"`)!
 
 
 What `heredoc_identifier()` is doing is as follows:<br>
@@ -2347,7 +2331,4 @@ It means it can continue to scan from the just after the starting symbol
 as if there was nothing happened. (Figure 11)
 
 
-<p class="image">
-<img src="images/ch_parser_heredoc.jpg" alt="(heredoc)"><br>
-Figure 11: The picture of assignation of scanning Here Document
-</p>
+!images/ch_parser_heredoc.jpg(The picture of assignation of scanning Here Document)!
