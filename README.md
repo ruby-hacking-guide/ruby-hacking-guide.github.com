@@ -59,5 +59,10 @@ http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
 License
 =======
 
-This work is licensed under a
+Copyright (c) 2002-2004 Minero Aoki, All rights reserved.
+
+This translation work is licensed under a
 [Creative Commons Attribution-NonCommercial-ShareAlike2.5 License](http://creativecommons.org/licenses/by-nc-sa/2.5/)
+
+If you'd like to translate this work to another language,
+please contact the author Minero Aoki first.
