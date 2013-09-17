@@ -57,7 +57,7 @@ You can download the version of the source code explained and
 the tool used in the book
 from the official support site of the original book.
 * "ruby (1.7.3 2002-09-12) in tar.gz format":http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
-* "ruby (1.7.3 2002-09-12) in zip format":http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
+* "ruby (1.7.3 2002-09-12) in zip format":http://i.loveruby.net/ja/rhg/ar/ruby-rhg.zip
 * "Pragmatic Programmers' nodeDump 0.1.7":http://i.loveruby.net/ja/rhg/ar/nodeDump-0.1.7.tgz
 * "RHG-version nodedump":http://i.loveruby.net/ja/rhg/ar/nodedump-rhg.tar.gz
 
