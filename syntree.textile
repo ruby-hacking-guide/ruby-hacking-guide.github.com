@@ -157,7 +157,7 @@ Fig.1 shows how it seems like.
 
 <p class="image">
 <img src="images/ch_syntree_flagUsage.jpg" alt="(flagUsage)"><br>
-Fig.1: How RNode.flags is used
+Fig.1: The usage of RNode.flags
 </p>
 
 
