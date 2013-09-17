@@ -44,6 +44,7 @@ About the version of ruby explained
 ==========
 
 The version of ruby used is ruby (1.7.3 2002-09-12).
+
 It's almost a year before the release of Ruby 1.8.0,
 so things explained in this book are basically the same in Ruby 1.8.
 
@@ -51,11 +52,11 @@ The details about this version are written in the
 [Introduction](http://ruby-hacking-guide.github.io/intro.html)
 
 You can download it from the official support site of the book.
-http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
-http://i.loveruby.net/ja/rhg/ar/ruby-rhg.zip
+* http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
+* http://i.loveruby.net/ja/rhg/ar/ruby-rhg.zip
 
 It's also available from this Organization's repo at
-https://github.com/ruby-hacking-guide/ruby-1.7.3
+* https://github.com/ruby-hacking-guide/ruby-1.7.3
 
 
 License
