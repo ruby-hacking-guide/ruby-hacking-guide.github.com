@@ -65,4 +65,4 @@ This translation work is licensed under a
 [Creative Commons Attribution-NonCommercial-ShareAlike2.5 License](http://creativecommons.org/licenses/by-nc-sa/2.5/)
 
 If you'd like to translate this work to another language,
-please contact the author Minero Aoki first.
+please contact the author Minero Aoki.
