@@ -13,7 +13,7 @@ h3. @NODE@
 
 As I've already described, a Ruby program is first converted to a syntax tree.
 To be more precise, a syntax tree is a tree structure made of structs called "nodes".
-In @ruby@ , all nodes are of type @NODE@ .
+In @ruby@, all nodes are of type @NODE@.
 
 
 <p class="caption">▼ @NODE@ </p>
@@ -49,20 +49,20 @@ In @ruby@ , all nodes are of type @NODE@ .
 </pre>
 
 
-Although you might be able to infer from the struct name @RNode@ , nodes are Ruby objects.
-This means the creation and release of nodes are taken care of by the @ruby@ 's garbage collector.
+Although you might be able to infer from the struct name @RNode@, nodes are Ruby objects.
+This means the creation and release of nodes are taken care of by the `ruby`'s garbage collector.
 
 
 Therefore, @flags@ naturally has the same role as @basic.flags@ of the object struct.
 It means that @T_NODE@ which is the type of a struct and flags such as @FL_FREEZE@ are stored in it.
-As for @NODE@ , in addition to these, its node type is stored in @flags@ .
+As for @NODE@, in addition to these, its node type is stored in @flags@.
 
 
 What does it mean? Since a program could contain various elements
 such as @if@ and @while@ and @def@ and so on, there are also various corresponding node types.
 The three available union are complicated,
 but how these unions are used is decided to only one specific way for each node.
-For example, the below table shows the case when it is @NODE_IF@ that is the node of @if@ .
+For example, the below table shows the case when it is @NODE_IF@ that is the node of @if@.
 
 
 |_. member |_. union member |_. role |
@@ -71,7 +71,7 @@ For example, the below table shows the case when it is @NODE_IF@ that is the nod
 | @u3@ | @u3.node@ | the body of false |
 
 
-And, in @node.h@ , the macros to access each union member are available.
+And, in @node.h@, the macros to access each union member are available.
 
 
 <p class="caption">▼ the macros to access @NODE@ </p>
@@ -104,7 +104,7 @@ head->nd_next = tail;    /* head->u3.node = tail */
 
 In the source code, it's almost certain that these macros are used.
 A very few exceptions are only the two places where creating @NODE@ in @parse.y@
-and where marking @NODE@ in @gc.c@ .
+and where marking @NODE@ in @gc.c@.
 
 
 By the way, what is the reason why such macros are used?
@@ -112,10 +112,10 @@ For one thing, it might be because it's cumbersome to remember numbers like @u1@
 that are not meaningful by just themselves.
 But what is more important than that is, there should be no problem if the
 corresponding number is changed and it's possible that it will actually be changed.
-For example, since a condition clause of @if@ does not have to be stored in @u1@ ,
+For example, since a condition clause of @if@ does not have to be stored in @u1@,
 someone might want to change it to @u2@ for some reason. But if @u1@ is directly used,
 he needs to modify a lot of places all over the source codes, it is inconvenient.
-Since nodes are all declared as @NODE@ , it's hard to find nodes that represent @if@ .
+Since nodes are all declared as @NODE@, it's hard to find nodes that represent @if@.
 By preparing the macros to access, this kind of trouble can be avoided
 and conversely we can determine the node types from the macros.
 
@@ -126,7 +126,7 @@ h3. Node Type
 
 I said that in the @flags@ of a @NODE@ struct its node type is stored.
 We'll look at in what form this information is stored.
-A node type can be set by @nd_set_type()@ and obtained by @nd_type()@ .
+A node type can be set by @nd_set_type()@ and obtained by @nd_type()@.
 
 
 <p class="caption">▼ @nd_type nd_set_type@ </p>
@@ -151,7 +151,7 @@ A node type can be set by @nd_set_type()@ and obtained by @nd_type()@ .
 </pre>
 
 
-It won't be so much trouble if we'll keep focus on around @nd_type@ .
+It won't be so much trouble if we'll keep focus on around @nd_type@.
 Fig.1 shows how it seems like.
 
 
@@ -214,13 +214,13 @@ in the first place.
 
 
 
-The first thing is @NODE_LSHIFT@ , as you can guess from the description of the
-node types of the previous section, it is the number of used bits in @flags@ .
-@FL_USHIFT@ is reserved by system of @ruby@ (11 bits, @ruby.h@ ), 8 bits are for
+The first thing is @NODE_LSHIFT@, as you can guess from the description of the
+node types of the previous section, it is the number of used bits in @flags@.
+@FL_USHIFT@ is reserved by system of @ruby@ (11 bits, @ruby.h@), 8 bits are for
 its node type.
 
 
-The next thing is @NODE_LMASK@ .
+The next thing is @NODE_LMASK@.
 
 
 
@@ -230,7 +230,7 @@ sizeof(NODE*) * CHAR_BIT - NODE_LSHIFT
 
 
 This is the number of the rest of the bits.
-Let's assume it is  @restbits@ . This makes the code a lot simpler.
+Let's assume it is  @restbits@. This makes the code a lot simpler.
 
 
 
@@ -324,7 +324,7 @@ Lastly let's look at the function @rb_node_newnode()@ that creates a node.
 
 
 We've seen @rb_newobj()@ in the Chapter 5: Garbage collection. It is the function to get a
-vacant @RVALUE@ . By attaching the @T_NODE@ struct-type flag to it,
+vacant @RVALUE@. By attaching the @T_NODE@ struct-type flag to it,
 the initialization as a @VALUE@ will complete.
 Of course, it's possible that some values that are not of type @NODE*@ are
 passed for @u1 u2 u3@, but received as @NODE*@ for the time being.
@@ -385,7 +385,7 @@ Let's look at the @%union@ of @ruby@ first.
 
 
 @struct RVarmap@ is a struct used by the evaluator and holds a block local variable.
-You can tell the rest. The most used one is of course @node@ .
+You can tell the rest. The most used one is of course @node@.
 
 
 
@@ -408,7 +408,7 @@ but this remodeled version deeply and directly displays the appearance of the
 syntax tree.
 
 
-For example, in order to dump the simple expression @m(a)@ , you can do as follows:
+For example, in order to dump the simple expression @m(a)@, you can do as follows:
 
 
 
@@ -438,9 +438,9 @@ Then, the syntax tree expression of the program will be dumped.
 I'll briefly explain about how to see the content.
 @NODE_NEWLINE@ and @NODE_FCALL@ and such are the node types.
 What are written at the same indent level of each node are the contents of its node members.
-For example, the root is @NODE_NEWLINE@ , and it has the three members:
+For example, the root is @NODE_NEWLINE@, and it has the three members:
 @nd_file nd_nth nd_next@. @nd_file@ points to the @"-e"@ string of C,
-and @ng_nth@ points to the 1 integer of C, and @nd_next@ holds the next node @NODE_CALL@ .
+and @ng_nth@ points to the 1 integer of C, and @nd_next@ holds the next node @NODE_CALL@.
 But since these explanation in text are probably not intuitive,
 I recommend you to also check Fig.4 at the same time.
 
@@ -458,9 +458,9 @@ undefined local variable will become this.
 
 
 Then, what is @NODE_NEWLINE@ ? This is the node to join the name of the currently
-executed file and the line number at runtime and is set for each @stmt@ .
+executed file and the line number at runtime and is set for each @stmt@.
 Therefore, when only thinking about the meaning of the execution, this node can
-be ignored. When you @require@ @nodedump-short@ instead of @nodedump@ ,
+be ignored. When you @require@ @nodedump-short@ instead of @nodedump@,
 distractions like @NODE_NEWLINE@ are left out in the first place. Since it is
 easier to see if it is simple, @nodedump-short@ will be used later on except for
 when particularly written.
@@ -494,7 +494,7 @@ nd_lit = 1:Fixnum
 
 
 1 as a numeric value. There's not any twist. However, notice that what is
-stored in the node is not 1 of C but 1 of Ruby (1 of @Fixnum@ ). This is because ...
+stored in the node is not 1 of C but 1 of Ruby (1 of @Fixnum@). This is because ...
 
 
 
@@ -568,11 +568,11 @@ h4. @if@
 
 
 I feel like @if@ is always used as an example, that's because its structure is
-simple and there's not any reader who don't know about @if@ , so it is convenient
+simple and there's not any reader who don't know about @if@, so it is convenient
 for writers.
 
 
-Anyway, this is an example of @if@ .
+Anyway, this is an example of @if@.
 For example, let's convert this code to a syntax tree.
 
 
@@ -627,7 +627,7 @@ Then, let's look at the code to build this.
 </pre>
 
 
-It seems that @NEW_IF()@ is the macro to create @NODE_IF@ . Among the values of
+It seems that @NEW_IF()@ is the macro to create @NODE_IF@. Among the values of
 the symbols, @$2 $4 $5@ are used, thus the correspondences between the symbols
 of the rule and @$n@ are:
 
@@ -642,11 +642,11 @@ NEW_IF(expr_value,       compstmt, if_tail)
 
 
 this way. In other words, @expr_value@ is the condition expression, @compstmt@
-( @$4@ ) is the case of true, @if_tail@ is the case of false.
+(@$4@) is the case of true, @if_tail@ is the case of false.
 
 
-On the other hand, the macros to create nodes are all named @NEW_xxxx@ , and they
-are defined @node.h@ . Let's look at @NEW_IF()@ .
+On the other hand, the macros to create nodes are all named @NEW_xxxx@, and they
+are defined @node.h@. Let's look at @NEW_IF()@.
 
 
 
@@ -673,8 +673,8 @@ action is a semantic analysis function. This will be described later.
 Additionally, @fixpos()@ corrects the line number. @NODE@ is initialized with
 the file name and the line number of the time when it is "created". However,
 for instance, the code of @if@ should already be parsed by @end@ by the time
-when creating @NODE_IF@ . Thus, the line number would go wrong if it remains
-untouched. Therefore, it needs to be corrected by @fixpos()@ .
+when creating @NODE_IF@. Thus, the line number would go wrong if it remains
+untouched. Therefore, it needs to be corrected by @fixpos()@.
 
 
 
@@ -683,8 +683,8 @@ fixpos(dest, src)
 </pre>
 
 
-This way, the line number of the node @dest@ is set to the one of the node @src@ .
-As for @if@ , the line number of the condition expression becomes the line number
+This way, the line number of the node @dest@ is set to the one of the node @src@.
+As for @if@, the line number of the condition expression becomes the line number
 of the whole @if@ expression.
 
 
@@ -694,7 +694,7 @@ of the whole @if@ expression.
 h4. @elsif@
 
 
-Subsequently, let's look at the rule of @if_tail@ .
+Subsequently, let's look at the rule of @if_tail@.
 
 
 <p class="caption">▼ @if_tail@ </p>
@@ -735,7 +735,7 @@ if_tail: kELSIF .... kELSIF .... kELSIF .... kELSE compstmt
 </pre>
 
 
-Next, let's focus on the actions, surprisingly, @elsif@ uses the same @NEW_IF()@ as @if@ .
+Next, let's focus on the actions, surprisingly, @elsif@ uses the same @NEW_IF()@ as @if@.
 It means, the below two programs will lose the difference after they become syntax trees.
 
 
@@ -759,7 +759,7 @@ end                           else
 
 Come to think of it, in C language and such, there's no distinction between
 the two also at the syntax level. Thus this might be a matter of course.
-Alternatively, the conditional operator ( @a?b:c@ ) becomes indistinguishable
+Alternatively, the conditional operator (@a?b:c@) becomes indistinguishable
 from @if@ statement after they become syntax trees.
 
 
@@ -773,7 +773,7 @@ are the same in its syntax tree expression.
 
 
 I'll introduce a few more examples. @add@ and @&&@ become the same.
-@or@ and @||@ are also equal to each other. @not@ and @!@ , @if@ and modifier @if@ ,
+@or@ and @||@ are also equal to each other. @not@ and @!@, @if@ and modifier @if@,
 and so on. These pairs also become equal to each other.
 
 
@@ -809,16 +809,16 @@ list: END_ITEM
 
 
 when you write in this way, it becomes the list that contains continuous zero
-or more number of @ITEM@ and ends with @END_ITEM@ .
+or more number of @ITEM@ and ends with @END_ITEM@.
 
 
 As an expression of a list, whichever is used it does not create a so much difference,
 but the way that the actions are executed is fatally different.
 With the form that @list@ is written at the right, the actions are sequentially
-executed from the last @ITEM@ . We've already learned about the behavior of the
+executed from the last @ITEM@. We've already learned about the behavior of the
 stack of when @list@ is at the left,
 so let's try the case that @list@ is at the right.
-The input is 4 @ITEM@ s and @END_ITEM@ .
+The input is 4 @ITEM@ s and @END_ITEM@.
 
 
 | | empty at first |
@@ -849,10 +849,10 @@ Thus, @if_tail@ is constructed in the "@list@ at the right" manner.
 
 
 Finally, the meaning of the headline is, in grammar terms,
-"the left is @list@ " is called left-recursive,
-"the right is @list@ " is called right-recursive.
+"the left is @list@" is called left-recursive,
+"the right is @list@" is called right-recursive.
 These terms are used mainly when reading papers about processing grammars or
-writing a book of @yacc@ .
+writing a book of @yacc@.
 
 
 
@@ -920,8 +920,8 @@ Fig.5: @NODE_BLOCK@ and @NODE_NEWLINE@
 </p>
 
 
-It means, for each statement ( @stmt@ ) @NODE_NEWLINE@ is attached,
-and when they are multiple, it will be a list of @NODE_BLOCK@ .
+It means, for each statement (@stmt@) @NODE_NEWLINE@ is attached,
+and when they are multiple, it will be a list of @NODE_BLOCK@.
 Let's also see the code.
 
 
@@ -942,9 +942,9 @@ Let's also see the code.
 </pre>
 
 
-@newline_node()@ caps @NODE_NEWLINE@ , @block_append()@ appends it to the list.
+@newline_node()@ caps @NODE_NEWLINE@, @block_append()@ appends it to the list.
 It's straightforward.
-Let's look at the content only of the @block_append()@ .
+Let's look at the content only of the @block_append()@.
 
 
 
@@ -993,8 +993,8 @@ Thus I'll show the code without that part.
 </pre>
 
 
-According to the previous syntax tree dump, @NEW_BLOCK@ was a linked list uses @nd_next@ .
-Being aware of it while reading, it can be read "if either @head@ or @tail@ is not @NODE_BLOCK@ ,
+According to the previous syntax tree dump, @NEW_BLOCK@ was a linked list uses @nd_next@.
+Being aware of it while reading, it can be read "if either @head@ or @tail@ is not @NODE_BLOCK@,
 wrap it with @NODE_BLOCK@ and join the lists each other."
 
 
@@ -1023,9 +1023,9 @@ But before ending, there's one more thing I'd like to talk about.
 It is about the two general-purpose lists.
 
 
-The two general-purpose lists mean @BLOCK@ and @LIST@ .
+The two general-purpose lists mean @BLOCK@ and @LIST@.
 @BLOCK@ is, as previously described, a linked list of @NODE_BLOCK@ to join the statements.
-@LIST@ is, although it is called @LIST@ , a list of @NODE_ARRAY@ .
+@LIST@ is, although it is called @LIST@, a list of @NODE_ARRAY@.
 This is what is used for array literals.
 @LIST@ is used to store the arguments of a method or the list of multiple assignments.
 
@@ -1042,9 +1042,9 @@ looking at the usage of the nodes is helpful to understand.
 |              | @nd_next@ | pointing to the next @NODE_ARRAY@ |
 
 
-The usage differs only in the second elements that are @nd_end@ and @nd_alen@ .
+The usage differs only in the second elements that are @nd_end@ and @nd_alen@.
 And this is exactly the significance of the existence of each type of the two nodes.
-Since its size can be stored in @NODE_ARRAY@ , we use an @ARRAY@ list
+Since its size can be stored in @NODE_ARRAY@, we use an @ARRAY@ list
 when the size of the list will frequently be required.
 Otherwise, we use a @BLOCK@ list that is very fast to join.
 I don't describe this topic in details because the codes that use them is
@@ -1060,7 +1060,7 @@ h2. Semantic Analysis
 
 As I briefly mentioned at the beginning of Part 2, there are two types of analysis
 that are appearance analysis and semantic analysis.
-The appearance analysis is mostly done by @yacc@ , the rest is doing the semantic
+The appearance analysis is mostly done by @yacc@, the rest is doing the semantic
 analysis inside actions.
 
 
@@ -1079,9 +1079,9 @@ These are part of the semantic analysis.
 
 
 What kind of semantic analysis is done in the current @ruby@ ?
-Since the error checks occupies almost all of semantic analysis in @ruby@ ,
+Since the error checks occupies almost all of semantic analysis in @ruby@,
 searching the places where generating errors seems a good way.
-In a parser of @yacc@ , @yyerror()@ is supposed to be called when an error occurs.
+In a parser of @yacc@, @yyerror()@ is supposed to be called when an error occurs.
 Conversely speaking, there's an error where @yyerror()@ exists.
 So, I made a list of the places where calling @yyerror()@ inside the actions.
 
@@ -1120,7 +1120,7 @@ allowed respectively. But this is in any way cumbersome and rejecting it in an
 action is far more concise.
 
 
-And, "an assignment to @self@ " seems a check for the better error message.
+And, "an assignment to @self@" seems a check for the better error message.
 In comparison to "@return@ outside of methods", rejecting it by grammar is much easier,
 but if it is rejected by the parser, the output would be just @"parse error"@.
 Comparing to it, the current
@@ -1242,9 +1242,9 @@ h4. Algorithm
 
 Summary: It sequentially checks the nodes of the tree, if it hits "an expression
 certainly not having its value", it means the tree does not have any value.
-Then it warns about that by using @rb_warning()@ and return @Qfalse@ . If it
+Then it warns about that by using @rb_warning()@ and return @Qfalse@. If it
 finishes to traverse the entire tree without hitting any "an expression not
-having its value", it means the tree does have a value. Thus it returns @Qtrue@ .
+having its value", it means the tree does have a value. Thus it returns @Qtrue@.
 
 
 Here, notice that it does not always need to check the whole tree.
@@ -1265,9 +1265,9 @@ Here:
 </pre>
 
 
-Inside of this argument @$1@ , there can also be other nesting method calls again.
+Inside of this argument @$1@, there can also be other nesting method calls again.
 But, the argument of the inside method must have been already checked with
-@value_expr()@ , so you don't have to check it again.
+@value_expr()@, so you don't have to check it again.
 
 
 Let's think more generally. Assume an arbitrary grammar element @A@ exists,
@@ -1312,7 +1312,7 @@ end
 
 So, in this case, the @if@ statement must be checked when checking the entire
 assignment expression. This kind of things are laid out in the @switch@
-statement of @value_expr()@ .
+statement of @value_expr()@.
 
 
 
@@ -1320,7 +1320,7 @@ statement of @value_expr()@ .
 h4. Removing Tail Recursion
 
 
-By the way, when looking over the whole @value_expr@ , we can see that there's
+By the way, when looking over the whole @value_expr@, we can see that there's
 the following pattern appears frequently:
 
 
@@ -1348,15 +1348,15 @@ return value_expr(node->nd_xxxx)
 
 
 A code like this which does a recursive call just before @return@ is called a
-tail recursion. It is known that this can generally be converted to @goto@ .
+tail recursion. It is known that this can generally be converted to @goto@.
 This method is often used when optimizing.
 As for Scheme, it is defined in specifications that tail recursions must be
 removed by language processors. This is because recursions are often used
 instead of loops in Lisp-like languages.
 
 
-However, be careful that tail recursions are only when "calling just before @return@ ".
-For example, take a look at the @NODE_IF@ of @value_expr()@ ,
+However, be careful that tail recursions are only when "calling just before @return@".
+For example, take a look at the @NODE_IF@ of @value_expr()@,
 
 
 
@@ -1368,7 +1368,7 @@ break;
 
 
 As shown above, the first time is a recursive call.
-Rewriting this to the form of using @return@ ,
+Rewriting this to the form of using @return@,
 
 
 
@@ -1378,9 +1378,9 @@ return value_expr(node->nd_body) && value_expr(node->nd_else);
 
 
 If the left @value_expr()@ is false, the right @value_expr()@ is also executed.
-In this case, the left @value_expr()@ is not "just before" @return@ .
+In this case, the left @value_expr()@ is not "just before" @return@.
 Therefore, it is not a tail recursion.
-Hence, it can't be extracted to @goto@ .
+Hence, it can't be extracted to @goto@.
 
 
 
@@ -1390,7 +1390,7 @@ h3. The whole picture of the value check
 
 As for value checks, we won't read the functions further.
 You might think it's too early, but all of the other functions are, as the same
-as @value_expr()@ , step-by-step one-by-one only traversing and checking nodes,
+as @value_expr()@, step-by-step one-by-one only traversing and checking nodes,
 so they are completely not interesting.
 However, I'd like to cover the whole picture at least,
 so I finish this section by just showing the call graph of the relevant functions (Fig.7).
@@ -1483,7 +1483,7 @@ It has completely nothing to do with the order of evaluations.
 For example, for the next code, naturally the condition expression is evaluated first,
 but in the symbol sequence, at the moment when @p@ appears the assignment
 to @lvar@ has not appeared yet.
-Therefore, this produces @NameError@ .
+Therefore, this produces @NameError@.
 
 
 
@@ -1497,7 +1497,7 @@ by the appearances. When a symbol sequence that expresses an assignment appears,
 it will be defined in the appearance order. Based on this information, we can
 infer that @ruby@ seems to define local variables while parsing because the
 order of the symbol sequence does not exist after leaving the parser.
-And in fact, it is true. In @ruby@ , the parser defines local variables.
+And in fact, it is true. In @ruby@, the parser defines local variables.
 
 
 
@@ -1542,7 +1542,7 @@ The simultaneously declared global variable @lvtbl@ points to @local_vars@ that
 is the top of that stack.
 
 
-And, @struct RVarmap@ is defined in @env.h@ ,
+And, @struct RVarmap@ is defined in @env.h@,
 and is available to other files and is also used by the evaluator.
 This is used to store the block local variables.
 
@@ -1582,7 +1582,7 @@ Fig.8: The image of local variable tables at runtime
 h3. Local Variable Scope
 
 
-When looking over the list of function names of @parse.y@ ,
+When looking over the list of function names of @parse.y@,
 we can find functions such as @local_push() local_pop() local_cnt()@ are laid out.
 In whatever way of thinking, they appear to be relating to a local variable.
 Moreover, because the names are @push pop@, it is clearly a stack.
@@ -1618,7 +1618,7 @@ So first, let's find out the places where using these functions.
 </pre>
 
 
-At @def@ , I could find the place where it is used. It can also be found in class
+At @def@, I could find the place where it is used. It can also be found in class
 definitions and singleton class definitions, and module definitions.
 In other words, it is the place where the scope of local variables is cut.
 Moreover, as for how they are used,
@@ -1628,7 +1628,7 @@ This means, as we expected, it is almost certain that the functions start with
 between @push@ and @pop@ is probably a local variable scope.
 
 
-Moreover, I also searched @local_cnt()@ .
+Moreover, I also searched @local_cnt()@.
 
 
 <p class="caption">▼ @NEW_LASGN()@ </p>
@@ -1640,7 +1640,7 @@ Moreover, I also searched @local_cnt()@ .
 </pre>
 
 
-This is found in @node.h@ . Even though there are also the places where using in @parse.y@ ,
+This is found in @node.h@. Even though there are also the places where using in @parse.y@,
 I found it in the other file. Thus, probably I'm in desperation.
 
 
@@ -1732,18 +1732,18 @@ Subsequently, we'll look at @local_pop()@ and @local_tbl()@ at the same time.
 </pre>
 
 
-I'd like you to look at @local_tbl()@ .
-This is the function to obtain the current local variable table ( @lvtbl->tbl@ ).
+I'd like you to look at @local_tbl()@.
+This is the function to obtain the current local variable table (@lvtbl->tbl@).
 By calling this, the @nofree@ of the current table becomes true.
-The meaning of @nofree@ seems naturally "Don't @free()@ ".
+The meaning of @nofree@ seems naturally "Don't @free()@".
 In other words, this is like reference counting, "this table will be used, so
-please don't @free()@ ". Conversely speaking,
+please don't @free()@". Conversely speaking,
 when @local_tbl()@ was not called with a table even once,
 that table will be freed at the moment when being popped and be discarded.
 For example, this situation probably happens when a method without any local variables.
 
 
-However, the "necessary table" here means @lvtbl->tbl@ .
+However, the "necessary table" here means @lvtbl->tbl@.
 As you can see, @lvtbl@ itself will be freed at the same moment when being popped.
 It means only the generated @lvtbl->tbl@ is used in the evaluator.
 Then, the structure of @lvtbl->tbl@ is becoming important.
@@ -1752,7 +1752,7 @@ which is probably helpful to understand how the structure is.
 
 
 And before that, I'd like you to remember that @lvtbl->cnt@ is stored
-at the index 0 of the @lvtbl->tbl@ .
+at the index 0 of the @lvtbl->tbl@.
 
 
 
@@ -1760,7 +1760,7 @@ at the index 0 of the @lvtbl->tbl@ .
 h3. Adding variables
 
 
-The function (which seems) to add a local variable is @local_cnt()@ .
+The function (which seems) to add a local variable is @local_cnt()@.
 
 
 <p class="caption">▼ @local_cnt()@ </p>
@@ -1784,17 +1784,17 @@ The function (which seems) to add a local variable is @local_cnt()@ .
 </pre>
 
 
-This scans @lvtbl->tbl@ and searches what is equals to @id@ .
-If the searched one is found, it straightforwardly returns @cnt-1@ .
-If nothing is found, it does @local_append()@ .
-@local_append()@ must be, as it is called @append@ , the procedure to append.
+This scans @lvtbl->tbl@ and searches what is equals to @id@.
+If the searched one is found, it straightforwardly returns @cnt-1@.
+If nothing is found, it does @local_append()@.
+@local_append()@ must be, as it is called @append@, the procedure to append.
 In other words, @local_cnt()@ checks if the variable was already registered,
 if it was not, adds it by using @local_append()@ and returns it.
 
 
 What is the meaning of the return value of this function? @lvtbl->tbl@ seems an
 array of the variables, so there're one-to-one correspondences between the
-variable names and "their index - 1 ( @cnt-1@ )". (Fig.10)
+variable names and "their index - 1 (@cnt-1@)". (Fig.10)
 
 
 <p class="image">
@@ -1812,13 +1812,13 @@ If it is not, like the instance variables or constants,
 
 
 You might want to know why it is avoiding index 0 (the loop start
-from @cnt=1@ ) for some reasons, it is probably to store a value at @local_pop()@ .
+from @cnt=1@) for some reasons, it is probably to store a value at @local_pop()@.
 
 
 Based on the knowledge we've learned, we can understand the role of @local_append()@
 without actually looking at the content.
 It registers a local variable and returns
-"(the index of the variable in @lvtbl->tbl@ ) - 1".
+"(the index of the variable in @lvtbl->tbl@) - 1".
 It is shown below, let's make sure.
 
 
@@ -1854,7 +1854,7 @@ It seems definitely true. @lvtbl->tbl@ is an array of the local variable names,
 and its index - 1 is the return value (local variable ID).
 
 
-Note that it increases @lvtbl->cnt@ .
+Note that it increases @lvtbl->cnt@.
 Since the code to increase @lvtbl->cnt@ only exists here,
 from only this code its meaning can be decided.
 Then, what is the meaning? It is,
@@ -1863,9 +1863,9 @@ since "@lvtbl->cnt@ increases by 1 when a new variable is added",
 
 
 
-Finally, I'll explain about @tbl[1]@ and @tbl[2]@ . These @'_'@ and @'~'@ are,
+Finally, I'll explain about @tbl[1]@ and @tbl[2]@. These @'_'@ and @'~'@ are,
 as you can guess if you are familiar with Ruby,
-the special variables named @$_@ and @$~@ .
+the special variables named @$_@ and @$~@.
 Though their appearances are identical to global variables,
 they are actually local variables.
 Even If you didn't explicitly use it, when the methods such as @Kernel#gets@ are called,
@@ -1883,13 +1883,13 @@ let's summarize it.
 
 
 First, It seems the local variables are different from the other variables
-because they are not managed with @st_table@ .
+because they are not managed with @st_table@.
 Then, where are they stored in? It seems the answer is an array.
 Moreover, it is stored in a different array for each scope.
 
 
-The array is @lvtbl->tbl@ , and the index 0 holds the @lvtbl->cnt@ which is set
-at @local_pop()@ . In other words, it holds the number of the local variables.
+The array is @lvtbl->tbl@, and the index 0 holds the @lvtbl->cnt@ which is set
+at @local_pop()@. In other words, it holds the number of the local variables.
 The index 1 or more hold the local variable names defined in the scope.
 Fig.11 shows the final appearance we expect.
 
@@ -1978,22 +1978,22 @@ Meanwhile, @rb_dvar_push()@ is ...
 
 
 It creates a @struct RVarmap@ that has the variable name @id@ and the value
-@val@ as its members, adds it to the top of the global variable @ruby_dyna_vars@ .
+@val@ as its members, adds it to the top of the global variable @ruby_dyna_vars@.
 This is again and again the form of cons.
-In @dyna_push()@ , @ruby_dyan_vars@ is not set aside,
+In @dyna_push()@, @ruby_dyan_vars@ is not set aside,
 it seems it adds directly to the @ruby_dyna_vars@ of the previous scope.
 
 
 Moreover, the value of the @id@ member of the @RVarmap@ to be added here is 0.
 Although it was not seriously discussed in this book,
-the @ID@ of @ruby@ will never be 0 while it is normally created by @rb_intern()@ .
-Thus, we can infer that this @RVarmap@ , as it is like @NUL@ or @NULL@ ,
+the @ID@ of @ruby@ will never be 0 while it is normally created by @rb_intern()@.
+Thus, we can infer that this @RVarmap@, as it is like @NUL@ or @NULL@,
 probably has a role as sentinel.
 If we think based on this assumption, we can describe the reason why the holder
-of a variable ( @RVarmap@ ) is added even though not any variables are added.
+of a variable (@RVarmap@) is added even though not any variables are added.
 
 
-Next, @dyna_pop()@ .
+Next, @dyna_pop()@.
 
 
 <p class="caption">▼ @dyna_pop()@ </p>
@@ -2011,7 +2011,7 @@ Next, @dyna_pop()@ .
 </pre>
 
 
-By reducing @lvtbl->dlev@ , it writes down the fact that the block local
+By reducing @lvtbl->dlev@, it writes down the fact that the block local
 variable scope ended.
 It seems that something is done by using the argument,
 let's see this later at once.
@@ -2019,7 +2019,7 @@ let's see this later at once.
 
 The place to add a block local variable has not appeared yet.
 Something like @local_cnt()@ of local variables is missing.
-So, I did plenty of @grep@ with @dvar@ and @dyna@ , and this code was found.
+So, I did plenty of @grep@ with @dvar@ and @dyna@, and this code was found.
 
 
 <p class="caption">▼ @assignable()@  (partial)</p>
@@ -2041,7 +2041,7 @@ So, I did plenty of @grep@ with @dvar@ and @dyna@ , and this code was found.
 @assignable()@ is the function to create a node relates to assignments,
 this citation is the fragment of that function only contains the part to deal
 with block local variables.
-It seems that it adds a new variable (to @ruby_dyna_vars@ )
+It seems that it adds a new variable (to @ruby_dyna_vars@)
 by using @rb_dvar_push()@ that we've just seen.
 
 
@@ -2058,7 +2058,7 @@ parsed.
 First, as I said previously,
 the @RVarmap@ of @id=0@ which is added at the beginning of a block scope is a
 sentinel which represents a break between two block scopes.
-We'll call this "the header of @ruby_dyna_vars@ ".
+We'll call this "the header of @ruby_dyna_vars@".
 
 
 Next, among the previously shown actions of the rule of the iterator block,
@@ -2075,7 +2075,7 @@ dyna_pop($<vars>2);        /* …… appears at $<vars>2 */
 
 
 @dyna_push()@ returns the @ruby_dyna_vars@ at the moment.
-@dyna_pop()@ put the argument into @ruby_dyna_vars@ .
+@dyna_pop()@ put the argument into @ruby_dyna_vars@.
 This means @ruby_dyna_vars@ would be saved and restored for each the block local
 variable scope.
 Therefore, when parsing the following program,
@@ -2128,8 +2128,8 @@ is expressed in a natural form.
 
 
 And finally, at each cut of local variable scopes (this is not of block local
-variable scopes), this link is entirely saved or restored to @lvtbl->dyna_vars@ .
-I'd like you to go back a little and check @local_push()@ and @local_pop()@ .
+variable scopes), this link is entirely saved or restored to @lvtbl->dyna_vars@.
+I'd like you to go back a little and check @local_push()@ and @local_pop()@.
 
 
 By the way, although creating the @ruby_dyna_vars@ list was a huge task,
