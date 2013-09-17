@@ -39,21 +39,23 @@ $ jekyll serve # this compiles files and starts a server on localhost:4000.
 
 [Jekyll usage](https://github.com/mojombo/jekyll/wiki/usage)
 
-Version of ruby used is very old 1.7.3
-It seems there is
-[no tag on github for this version](https://github.com/ruby/ruby/tags?after=v1_8_3_preview2)
 
+About the version of ruby explained
+==========
 
-Get Ruby 1.7.3
-==============
+The version of ruby used is ruby (1.7.3 2002-09-12).
+It's almost a year before the release of Ruby 1.8.0,
+so things explained in this book are basically the same in Ruby 1.8.
 
-It's available from this Organization's repo at
-https://github.com/ruby-hacking-guide/ruby-1.7.3
+The details about this version are written in the
+[Introduction](http://ruby-hacking-guide.github.io/intro.html)
 
-`git clone git://github.com/ruby-hacking-guide/ruby-1.7.3.git`
-
-or from the original site zipped up
+You can download it from the official support site of the book.
 http://i.loveruby.net/ja/rhg/ar/ruby-rhg.tar.gz
+http://i.loveruby.net/ja/rhg/ar/ruby-rhg.zip
+
+It's also available from this Organization's repo at
+https://github.com/ruby-hacking-guide/ruby-1.7.3
 
 
 License
