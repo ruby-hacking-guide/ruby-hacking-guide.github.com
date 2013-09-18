@@ -60,12 +60,12 @@ I'd like you to remember.
 h3. The characteristics of @ruby's@ evaluator.
 
 
-The biggest characteristic of @ruby@ 's evaluator is that, as this is also of
-the whole @ruby@ 's interpretor, the difference in expressions between
+The biggest characteristic of `ruby`'s evaluator is that, as this is also of
+the whole `ruby`'s interpretor, the difference in expressions between
 the C-level code (extension libraries) and the Ruby-level code is small.
 In ordinary programming languages,
 the amount of the features of its interpretor we can use from extension
-libraries is usually very limited, but there are awfully few limits in @ruby@ .
+libraries is usually very limited, but there are awfully few limits in @ruby@.
 Defining classes, defining methods and calling a method without limitation,
 these can be taken for granted. We can also use exception handling, iterators.
 Furthermore, threads.
@@ -90,7 +90,7 @@ answer = eval("lvar + lvar")    # the answer is 2
 </pre>
 
 
-There are also @Module#module_eval@ and @Object#instance_eval@ , each method
+There are also @Module#module_eval@ and @Object#instance_eval@, each method
 behaves slightly differently. I'll describe about them in detail in Chapter 17: Dynamic evaluation.
 
 
@@ -98,7 +98,7 @@ behaves slightly differently. I'll describe about them in detail in Chapter 17: 
 h3. @eval.c@
 
 
-The evaluator is implemented in @eval.c@ . However, this @eval.c@ is a
+The evaluator is implemented in @eval.c@. However, this @eval.c@ is a
 really huge file: it has 9000 lines, its size is 200K bytes,
 and the number of the functions in it is 309. It is hard to fight against.
 When the size becomes this amount,
@@ -113,13 +113,13 @@ I'll list up some ways.
 
 
 The first way is to print the list of the defined functions and look at the
-prefixes of them. @rb_dvar_@ , @rb_mod_@ , @rb_thread@ -- there are plenty of
+prefixes of them. @rb_dvar_@, @rb_mod_@, @rb_thread@ -- there are plenty of
 functions with these prefixes.
 Each prefix clearly indicate a group of the same type of functions.
 
 
 Alternatively, as we can tell when looking at the code of the class libraries,
-@Init_xxxx()@ is always put at the end of a block in @ruby@ .
+@Init_xxxx()@ is always put at the end of a block in @ruby@.
 Therefore, @Init_xxxx()@ also indicates a break between modules.
 
 
@@ -128,7 +128,7 @@ Since @eval()@ and @rb_eval()@ and @eval_node()@ appear close to each other,
 we naturally think there should be a deep relationship among them.
 
 
-Finally, in the source code of @ruby@ , the definitions of types or variables
+Finally, in the source code of @ruby@, the definitions of types or variables
 and the declarations of prototypes often indicate a break between modules.
 
 
@@ -147,9 +147,9 @@ it seems that @eval.c@ can be mainly divided into these modules listed below:
 | Thread | the implementation of Ruby threads |
 
 
-Among them, "Load" and "Thread" are the parts that essentially should not be in @eval.c@ .
+Among them, "Load" and "Thread" are the parts that essentially should not be in @eval.c@.
 They are in @eval.c@ merely because of the restrictions of C language.
-To put it more precisely, they need the macros such as @PUSH_TAG@ defined in @eval.c@ .
+To put it more precisely, they need the macros such as @PUSH_TAG@ defined in @eval.c@.
 So, I decided to exclude the two topics from Part 3 and deal with them
 at Part 4. And, it's probably all right if I don't explain the safe level here
 because I've already done in Part 1.
@@ -175,8 +175,8 @@ h3. From @main@ by way of @ruby_run@ to @rb_eval@
 h3. Call Graph
 
 
-The true core of the evaluator is a function called @rb_eval()@ .
-In this chapter, we will follow the path from @main()@ to that @rb_eval()@ .
+The true core of the evaluator is a function called @rb_eval()@.
+In this chapter, we will follow the path from @main()@ to that @rb_eval()@.
 First of all, here is a rough call graph around @rb_eval@ :
 
 
@@ -210,8 +210,8 @@ Then, why is this in this way? It's mainly because of the restrictions of C lang
 Because the functions such as @ruby_prog_init()@ and @ruby_process_options()@
 start to use the API of the ruby world, it's possible an exception occurs.
 However, in order to stop an exception of Ruby, it's necessary to use the macro
-named @PUSH_TAG()@ which can only be used in @eval.c@ . In other words, essentially,
-@ruby_init()@ and @ruby_run()@ should have been defined in @ruby.c@ .
+named @PUSH_TAG()@ which can only be used in @eval.c@. In other words, essentially,
+@ruby_init()@ and @ruby_run()@ should have been defined in @ruby.c@.
 
 
 Then, why isn't @PUSH_TAG@ an @extern@ function or something which is available
@@ -244,15 +244,15 @@ programs with built-in Ruby in theory, to use these interfaces is natural.
 
 
 What is the @ruby_@ prefix ? So far, the all of @ruby@ 's functions are prefixed
-with @rb_@ . Why are there the two types: @rb_@ and @ruby_@ ? I investigated but
+with @rb_@. Why are there the two types: @rb_@ and @ruby_@? I investigated but
 could not understand the difference, so I asked directly. The answer was,
 "@ruby_@ is for the auxiliary functions of @ruby@ command and @rb_@ is for the
 official interfaces"
 
 
-"Then, why are the variables like @ruby_scope@ are @ruby_@ ?", I asked further.
+"Then, why are the variables like @ruby_scope@ are @ruby_@?", I asked further.
 It seems this is just a coincidence. The variables like @ruby_scope@
-are originally named as @the_xxxx@ , but in the middle of the version 1.3 there's
+are originally named as @the_xxxx@, but in the middle of the version 1.3 there's
 a change to add prefixes to all interfaces. At that time @ruby_@ was added to
 the "may-be-internals-for-some-reasons" variables.
 
@@ -268,7 +268,7 @@ official interfaces of @ruby@ interpretor.
 h3. @main()@
 
 
-First, straightforwardly, I'll start with @main()@ .
+First, straightforwardly, I'll start with @main()@.
 It is nice that this is very short.
 
 
@@ -338,7 +338,7 @@ This point is generally considered as "lack of features".
 
 When there's only a single interpretor,
 what have difficulty most is probably around the development environment of Ruby.
-Concretely, they are the applications such as @irb@ , RubyWin, and RDE.
+Concretely, they are the applications such as @irb@, RubyWin, and RDE.
 Although loading a rewritten program, the classes which are supposed to be
 deleted would remain. To counter this with the reflection API is not impossible
 but requires a lot of effort.
@@ -358,7 +358,7 @@ The code of @ruby_init()@ is omitted because it's unnecessary to read.
 h3. @ruby_options()@
 
 
-What to parse command-line options for the Ruby interpreter is @ruby_options()@ .
+What to parse command-line options for the Ruby interpreter is @ruby_options()@.
 Of course, depending on the command, we do not have to use this.
 
 
@@ -368,10 +368,10 @@ This is also where the file passed as a command-line argument is parsed as
 a Ruby program.
 
 
-@ruby@ command reads the main program from a file if it was given, otherwise from @stdin@ .
+@ruby@ command reads the main program from a file if it was given, otherwise from @stdin@.
 After that, using @rb_compile_string()@ or @rb_compile_file()@ introduced at Part 2,
 it compiles the text into a syntax tree.
-The result will be set into the global variable @ruby_eval_tree@ .
+The result will be set into the global variable @ruby_eval_tree@.
 
 
 I also omit the code of @ruby_options()@ because it's just doing necessary
@@ -383,9 +383,9 @@ things one by one and not interesting.
 h3. @ruby_run()@
 
 
-Finally, @ruby_run()@ starts to evaluate the syntax tree which was set to @ruby_eval_tree@ .
-We also don't always need to call this function. Other than @ruby_run()@ ,
-for instance, we can evaluate a string by using a function named @rb_eval_string()@ .
+Finally, @ruby_run()@ starts to evaluate the syntax tree which was set to @ruby_eval_tree@.
+We also don't always need to call this function. Other than @ruby_run()@,
+for instance, we can evaluate a string by using a function named @rb_eval_string()@.
 
 
 <p class="caption">▼ @ruby_run()@ </p>
@@ -417,9 +417,9 @@ for instance, we can evaluate a string by using a function named @rb_eval_string
 </pre>
 
 
-We can see the macros @PUSH_xxxx()@ , but we can ignore them for now. I'll
+We can see the macros @PUSH_xxxx()@, but we can ignore them for now. I'll
 explain about around them later when the time comes. The important thing here
-is only @eval_node()@ . Its content is:
+is only @eval_node()@. Its content is:
 
 
 <p class="caption">▼ @eval_node()@ </p>
@@ -444,12 +444,12 @@ is only @eval_node()@ . Its content is:
 (eval.c)
 </pre>
 
-This calls @rb_eval()@ on @ruby_eval_tree@ . The @ruby_eval_tree_begin@ is
-storing the statements registered by @BEGIN@ . But, this is also not important.
+This calls @rb_eval()@ on @ruby_eval_tree@. The @ruby_eval_tree_begin@ is
+storing the statements registered by @BEGIN@. But, this is also not important.
 
 
 And, @ruby_stop()@ inside of @ruby_run()@ terminates all threads and
-finalizes all objects and checks exceptions and, in the end, calls @exit()@ .
+finalizes all objects and checks exceptions and, in the end, calls @exit()@.
 This is also not important, so we won't see this.
 
 
@@ -461,8 +461,8 @@ h2. @rb_eval()@
 h3. Outline
 
 
-Now, @rb_eval()@ . This function is exactly the real core of @ruby@ .
-One @rb_eval()@ call processes a single @NODE@ , and the whole syntax tree will
+Now, @rb_eval()@. This function is exactly the real core of @ruby@.
+One @rb_eval()@ call processes a single @NODE@, and the whole syntax tree will
 be processed by calling recursively. (Fig.1)
 
 
@@ -472,7 +472,7 @@ Fig.1: @rb_eval@
 </p>
 
 
-@rb_eval@ is, as the same as @yylex()@ , made of a huge switch statement and
+@rb_eval@ is, as the same as @yylex()@, made of a huge switch statement and
 branching by each type of the nodes. First, let's look at the outline.
 
 
@@ -522,12 +522,12 @@ branching by each type of the nodes. First, let's look at the outline.
 
 In the omitted part, plenty of the codes to process all nodes are listed.
 By branching like this, it processes each node. When the code is only a few,
-it will be processed in @rb_eval()@ . But when it becoming many, it will be a
+it will be processed in @rb_eval()@. But when it becoming many, it will be a
 separated function. Most of functions in @eval.c@ are created in this way.
 
 
-When returning a value from @rb_eval()@ , it uses the macro @RETURN()@ instead
-of @return@ , in order to always pass through @CHECK_INTS@ . Since this macro is
+When returning a value from @rb_eval()@, it uses the macro @RETURN()@ instead
+of @return@, in order to always pass through @CHECK_INTS@. Since this macro is
 related to threads, you can ignore this until the chapter about it.
 
 
@@ -541,7 +541,7 @@ h3. @NODE_IF@
 
 Now, taking the @if@ statement as an example, let's look at the process of
 the @rb_eval()@ evaluation concretely.
-From here, in the description of  @rb_eval()@ ,
+From here, in the description of  @rb_eval()@,
 
 * The source code (a Ruby program)
 * Its corresponding syntax tree
@@ -629,7 +629,7 @@ else {
 
 
 First, at (A), evaluating (the node of) the Ruby's condition statement and
-testing its value with @RTEST()@ .
+testing its value with @RTEST()@.
 I've mentioned that @RTEST()@ is a macro to test whether or not
 a @VALUE@ is true of Ruby.
 If that was true, evaluating the @then@ side clause at (B).
@@ -639,11 +639,11 @@ If false, evaluating the @else@ side clause at ==(C)==.
 In addition, I've mentioned that @if@ statement of Ruby also has its own value,
 so it's necessary to return a value.
 Since the value of an @if@ is the value of either the @then@ side or the @else@
-side which is the one executed, returning it by using the macro @RETURN()@ .
+side which is the one executed, returning it by using the macro @RETURN()@.
 
 
 
-In the original list, it does not call @rb_eval()@ recursively but just does @goto@ .
+In the original list, it does not call @rb_eval()@ recursively but just does @goto@.
 This is the "conversion from tail recursion to @goto@ " which has also appeared
 in the previous chapter "Syntax tree construction".
 
@@ -677,7 +677,7 @@ let's look at the code for it.
 There's nothing particularly difficult.
 
 
-@call_trace_func()@ has already appeared at @NODE_IF@ . Here is a simple
+@call_trace_func()@ has already appeared at @NODE_IF@. Here is a simple
 explanation of what kind of thing it is. This is a feature to trace a Ruby
 program from Ruby level. The debugger ( @debug.rb@ ) and the tracer ( @tracer.rb@ )
 and the profiler ( @profile.rb@ ) and @irb@ (interactive @ruby@ command) and more
@@ -685,8 +685,8 @@ are using this feature.
 
 
 By using the function-like method @set_trace_func@ you can register a @Proc@
-object to trace, and that @Proc@ object is stored into @trace_func@ . If
-@trace_func@ is not 0, it means not @QFalse@ , it will be considered as a @Proc@
+object to trace, and that @Proc@ object is stored into @trace_func@. If
+@trace_func@ is not 0, it means not @QFalse@, it will be considered as a @Proc@
 object and executed (at @call_trace_func()@ ).
 
 
@@ -724,7 +724,7 @@ Let's look at the leaves, too.
 </pre>
 
 
-We've seen @self@ as the argument of @rb_eval()@ . I'd like you to make sure it
+We've seen @self@ as the argument of @rb_eval()@. I'd like you to make sure it
 by going back a little.
 The others are probably not needed to be explained.
 
@@ -734,19 +734,19 @@ The others are probably not needed to be explained.
 h3. Jump Tag
 
 
-Next, I'd like to explain @NODE_WHILE@ which is corresponding to @while@ ,
+Next, I'd like to explain @NODE_WHILE@ which is corresponding to @while@,
 but to implement @break@ or @next@ only with recursive calls of a function is difficult.
 Since @ruby@ enables these syntaxes by using what named "jump tag",
 I'll start with describing it first.
 
 
 Simply put, "jump tag" is a wrapper of @setjmp()@ and @longjump()@ which are
-library functions of C language. Do you know about @setjmp()@ ?
-This function has already appeared at @gc.c@ ,
+library functions of C language. Do you know about @setjmp()@?
+This function has already appeared at @gc.c@,
 but it is used in very abnormal way there.
 @setjmp()@ is usually used to jump over functions.
 I'll explain by taking the below code as an example.
-The entry point is @parent()@ .
+The entry point is @parent()@.
 
 
 <p class="caption">▼ @setjmp()@ and @longjmp()@ </p>
@@ -778,28 +778,28 @@ void parent(void) {
 </pre>
 
 
-First, when @setjmp()@ is called at @parent()@ ,
-the executing state at the time is saved to the argument @buf@ .
+First, when @setjmp()@ is called at @parent()@,
+the executing state at the time is saved to the argument @buf@.
 To put it a little more directly, the address of the top of the machine
 stack and the CPU registers are saved.
-If the return value of @setjmp()@ was 0, it means it normally returned from @setjmp()@ ,
+If the return value of @setjmp()@ was 0, it means it normally returned from @setjmp()@,
 thus you can write the subsequent code as usual.
-This is the @if@ side. Here, it calls @child1()@ .
+This is the @if@ side. Here, it calls @child1()@.
 
 
-Next, the control moves to @child2()@ and calls @longjump@ ,
+Next, the control moves to @child2()@ and calls @longjump@,
 then it can go back straight to the place where the argument @buf@ was @setjmp@ ed.
-So in this case, it goes back to the @setjmp@ at @parent()@ .
-When coming back via @longjmp@ , the return value of @setjmp@ becomes
-the value of the second argument of @longjmp@ , so the @else@ side is executed.
-And, even if we pass 0 to @longjmp@ ,
+So in this case, it goes back to the @setjmp@ at @parent()@.
+When coming back via @longjmp@, the return value of @setjmp@ becomes
+the value of the second argument of @longjmp@, so the @else@ side is executed.
+And, even if we pass 0 to @longjmp@,
 it will be forced to be another value. Thus it's fruitless.
 
 
 Fig.2 shows the state of the machine stack.
 The ordinary functions return only once for each call.
 However, it's possible @setjmp()@ returns twice.
-Is it helpful to grasp the concept if I say that it is something like @fork()@ ?
+Is it helpful to grasp the concept if I say that it is something like @fork()@?
 
 
 
@@ -810,7 +810,7 @@ Fig.2: @setjmp()@ @longjmp()@ Image
 
 
 Now, we've learned about @setjmp()@ as a preparation.
-In @eval.c@ , @EXEC_TAG@ corresponds to @setjmp()@ and @JUMP_TAG()@ corresponds
+In @eval.c@, @EXEC_TAG@ corresponds to @setjmp()@ and @JUMP_TAG()@ corresponds
 to @longjmp()@ respectively. (Fig.3)
 
 
@@ -822,7 +822,7 @@ Fig.3: "tag jump" image
 
 Take a look at this image, it seems that @EXEC_TAG()@ does not have any arguments.
 Where has @jmp_buf@ gone?
-Actually, in @ruby@ , @jmp_buf@ is wrapped by the struct @struct tag@.
+Actually, in @ruby@, @jmp_buf@ is wrapped by the struct @struct tag@.
 Let's look at it.
 
 
@@ -844,9 +844,9 @@ Let's look at it.
 </pre>
 
 
-Because there's the member @prev@ , we can infer that @struct tag@ is probably
+Because there's the member @prev@, we can infer that @struct tag@ is probably
 a stack structure using a linked list. Moreover, by looking around it, we can
-find the macros @PUSH_TAG()@ and @POP_TAG@ , thus it definitely seems a stack.
+find the macros @PUSH_TAG()@ and @POP_TAG@, thus it definitely seems a stack.
 
 
 <p class="caption">▼ @PUSH_TAG() POP_TAG()@</p>
@@ -897,7 +897,7 @@ do {
 This method does not have any overhead of function calls,
 and its cost of the memory allocation is next to nothing.
 This technique is only possible because the @ruby@ evaluator is made of
-recursive calls of @rb_eval()@ .
+recursive calls of @rb_eval()@.
 
 
 
@@ -913,7 +913,7 @@ carelessly used at the outside of the evaluator,
 we can't make them available to other files.
 
 
-Additionally, let's also take a look at @EXEC_TAG()@ and @JUMP_TAG()@ .
+Additionally, let's also take a look at @EXEC_TAG()@ and @JUMP_TAG()@.
 
 
 <p class="caption">▼ @EXEC_TAG() JUMP_TAG()@</p>
@@ -933,13 +933,13 @@ Additionally, let's also take a look at @EXEC_TAG()@ and @JUMP_TAG()@ .
 
 In this way, @setjmp@ and @longjmp@ are wrapped by @EXEC_TAG()@ and @JUMP_TAG()@ respectively.
 The name @EXEC_TAG()@ can look like a wrapper of @longjmp()@ at first sight,
-but this one is to execute @setjmp()@ .
+but this one is to execute @setjmp()@.
 
 
-Based on all of the above, I'll explain the mechanism of @while@ .
+Based on all of the above, I'll explain the mechanism of @while@.
 First, when starting @while@ it does @EXEC_TAG()@ ( @setjmp@ ).
 After that, it executes the main body by calling @rb_eval()@
-recursively. If there's @break@ or @next@ , it does @JUMP_TAG()@ ( @longjmp@ ).
+recursively. If there's @break@ or @next@, it does @JUMP_TAG()@ ( @longjmp@ ).
 Then, it can go back to the start point of the @while@ loop. (Fig.5)
 
 
@@ -950,10 +950,10 @@ Fig.5: the implementation of @while@ by using "tag jump"
 
 
 Though @break@ was taken as an example here, what cannot be implemented without
-jumping is not only @break@ . Even if we limit the case to @while@ ,
-there are @next@ and @redo@ .
+jumping is not only @break@. Even if we limit the case to @while@,
+there are @next@ and @redo@.
 Additionally, @return@ from a method and exceptions also should have to
-climb over the wall of @rb_eval()@ .
+climb over the wall of @rb_eval()@.
 And since it's cumbersome to use a different tag stack for each case,
 we want for only one stack to handle all cases in one way or another.
 
@@ -961,7 +961,7 @@ we want for only one stack to handle all cases in one way or another.
 What we need to make it possible is just attaching information about
 "what the purpose of this jump is".
 Conveniently, the return value of @setjmp()@ could be specified as the argument
-of @longjmp()@ , thus we can use this. The types are expressed by the following flags:
+of @longjmp()@, thus we can use this. The types are expressed by the following flags:
 
 
 
@@ -983,7 +983,7 @@ of @longjmp()@ , thus we can use this. The types are expressed by the following 
 
 
 The meanings are written as each comment. The last @TAG_MASK@ is the bitmask to
-take out these flags from a return value of @setjmp()@ . This is because the
+take out these flags from a return value of @setjmp()@. This is because the
 return value of @setjmp()@ can also include information which is not about a
 "type of jump".
 
@@ -993,7 +993,7 @@ return value of @setjmp()@ can also include information which is not about a
 h3. @NODE_WHILE@
 
 
-Now, by examining the code of @NODE_WHILE@ , let's check the actual usage of tags.
+Now, by examining the code of @NODE_WHILE@, let's check the actual usage of tags.
 
 
 <p class="caption">▼ The Source Program</p>
@@ -1085,18 +1085,18 @@ if (state) JUMP_TAG(state);   /* .. jump again here */
 
 First, as @PUSH_TAG()@ and @POP_TAG()@ are the previously described mechanism,
 it's necessary to be used always as a pair. Also, they need to be written
-outside of @EXEC_TAG()@ . And, apply @EXEC_TAG()@ to the just pushed @jmp_buf@ .
-This means doing @setjmp()@ .
-If the return value is 0, since it means immediately returning from @setjmp()@ ,
+outside of @EXEC_TAG()@. And, apply @EXEC_TAG()@ to the just pushed @jmp_buf@.
+This means doing @setjmp()@.
+If the return value is 0, since it means immediately returning from @setjmp()@,
 it does the normal processing (this usually contains @rb_eval()@ ).
-If the return value of @EXEC_TAG()@ is not 0, since it means returning via @longjmp()@ ,
+If the return value of @EXEC_TAG()@ is not 0, since it means returning via @longjmp()@,
 it filters only the own necessary jumps by using @case@ and
 lets the rest ( @default@ ) pass.
 
 
 
 It might be helpful to see also the code of the jumping side.
-The below code is the handler of the node of @redo@ .
+The below code is the handler of the node of @redo@.
 
 
 <p class="caption">▼ @rb_eval()@ - @NODE_REDO@ </p>
@@ -1111,8 +1111,8 @@ The below code is the handler of the node of @redo@ .
 </pre>
 
 
-As a result of jumping via @JUMP_TAG()@ , it goes back to the last @EXEC_TAG()@ .
-The return value at the time is the argument @TAG_REDO@ . Being aware of this,
+As a result of jumping via @JUMP_TAG()@, it goes back to the last @EXEC_TAG()@.
+The return value at the time is the argument @TAG_REDO@. Being aware of this,
 I'd like you to look at the code of @NODE_WHILE@ and check what route is taken.
 
 
@@ -1136,8 +1136,8 @@ while_out:
 There are the two places calling @rb_eval()@ on @node->nd_state@ which
 corresponds to the conditional statement. It seems that only the first test of
 the condition is separated. This is to deal with both @do@ ~ @while@ and @while@
-at once. When @node->nd_state@ is 0 it is a @do@ ~ @while@ , when 1 it is an
-ordinary @while@ . The rest might be understood by following step-by-step,
+at once. When @node->nd_state@ is 0 it is a @do@ ~ @while@, when 1 it is an
+ordinary @while@. The rest might be understood by following step-by-step,
 I won't particularly explain.
 
 
@@ -1156,7 +1156,7 @@ So, I've actually tried it.
 
 It's simply rejected at the time of parsing.
 It's safe but not an interesting result.
-What produces this error is @value_expr()@ of @parse.y@ .
+What produces this error is @value_expr()@ of @parse.y@.
 
 
 
@@ -1168,7 +1168,7 @@ h3. The value of an evaluation of @while@
 a value by using @break@ since @ruby@ 1.7.
 This time, let's focus on the flow of the value of an evaluation.
 Keeping in mind that the value of the local variable @result@ becomes the
-return value of @rb_eval()@ , I'd like you to look at the following code:
+return value of @rb_eval()@, I'd like you to look at the following code:
 
 
 
@@ -1215,12 +1215,12 @@ Here is the passing side:
 </pre>
 
 
-In this way, by using the macro @return_value()@ , it assigns the value to the
+In this way, by using the macro @return_value()@, it assigns the value to the
 struct of the top of the tag stack.
 
 
 The basic flow is this, but in practice there could be another @EXEC_TAG@
-between @EXEC_TAG()@ of @NODE_WHILE@ and @JUMP_TAG()@ of @NODE_BREAK@ .
+between @EXEC_TAG()@ of @NODE_WHILE@ and @JUMP_TAG()@ of @NODE_BREAK@.
 For example, @rescue@ of an exception handling can exist between them.
 
 
@@ -1236,7 +1236,7 @@ end
 
 
 Therefore, it's hard to determine whether or not the @strict tag@ of when doing
-@JUMP_TAG()@ at @NODE_BREAK@ is the one which was pushed at @NODE_WHILE@ .
+@JUMP_TAG()@ at @NODE_BREAK@ is the one which was pushed at @NODE_WHILE@.
 In this case, because @retval@ is propagated in @POP_TAG()@ as shown below,
 the return value can be passed to the next tag without particular thought.
 
@@ -1278,9 +1278,9 @@ are dealt with.
 h3. @raise@
 
 
-When I explained @while@ , we looked at the @setjmp()@ side first. This time,
+When I explained @while@, we looked at the @setjmp()@ side first. This time,
 we'll look at the @longjmp()@ side first for a change. It's @rb_exc_raise()@
-which is the substance of @raise@ .
+which is the substance of @raise@.
 
 
 <p class="caption">▼ @rb_exc_raise()@ </p>
@@ -1299,7 +1299,7 @@ which is the substance of @raise@ .
 
 @mesg@ is an exception object (an instance of @Exception@ or one of its subclass).
 Notice that It seems to jump with @TAG_RAISE@ this time.
-And the below code is very simplified @rb_longjmp()@ .
+And the below code is very simplified @rb_longjmp()@.
 
 
 <p class="caption">▼ @rb_longjmp()@ (simplified)</p>
@@ -1320,10 +1320,10 @@ rb_longjmp(tag, mesg)
 
 
 Well, though this can be considered as a matter of course, this is just to jump
-as usual by using @JUMP_TAG()@ .
+as usual by using @JUMP_TAG()@.
 
 
-What is @ruby_errinfo@ ? By doing @grep@ a few times, I figured out that this
+What is @ruby_errinfo@? By doing @grep@ a few times, I figured out that this
 variable is the substance of the global variable @$!@ of Ruby.
 Since this variable indicates the exception which is currently occurring,
 naturally its substance @ruby_errinfo@ should have the same meaning as well.
@@ -1387,7 +1387,7 @@ virtually on the top.
 
 
 This means, since @NODE_ENSURE@ and @NODE_RESCUE@ are above the main body which
-we want to protect, we can stop @raise@ by merely doing @EXEC_TAG()@ . Or rather,
+we want to protect, we can stop @raise@ by merely doing @EXEC_TAG()@. Or rather,
 the two nodes are put above in syntax tree for this purpose, is probably more
 accurate to say.
 
@@ -1398,7 +1398,7 @@ accurate to say.
 h3. @ensure@
 
 
-We are going to look at the handler of @NODE_ENSURE@ which is the node of @ensure@ .
+We are going to look at the handler of @NODE_ENSURE@ which is the node of @ensure@.
 
 
 <p class="caption">▼ @rb_eval()@ - @NODE_ENSURE@ </p>
@@ -1451,7 +1451,7 @@ so the value of the evaluation of an @ensure@ clause is completely discarded.
 
 
 At (B-1,3), it deals with the evaluated value of when a jump occurred at the main body.
-I mentioned that the value of this case is stored in @prot_tag->retval@ ,
+I mentioned that the value of this case is stored in @prot_tag->retval@,
 so it saves the value to a local variable to prevent from being carelessly
 overwritten during the execution of the @ensure@ clause (B-1).
 After the evaluation of the @ensure@ clause, it restores the value by using
@@ -1509,7 +1509,7 @@ nd_body:
 
 
 I'd like you to make sure that (the syntax tree of) the statement to be
-@rescue@ ed is "under" @NODE_RESCUE@ .
+@rescue@ ed is "under" @NODE_RESCUE@.
 
 
 <p class="caption">▼ @rb_eval()@ - @NODE_RESCUE@ </p>
@@ -1577,7 +1577,7 @@ static int handle_rescue(VALUE self, NODE *resq)
 </pre>
 
 
-and it determines whether the currently occurring exception ( @ruby_errinfo@ ) is
-a subclass of the class that is expressed by @resq@ ( @TypeError@ , for instance).
+and it determines whether the currently occurring exception (@ruby_errinfo@) is
+a subclass of the class that is expressed by @resq@ (@TypeError@, for instance).
 The reason why passing @self@ is that it's necessary to call @rb_eval()@ inside
-this function in order to evaluate @resq@ .
+this function in order to evaluate @resq@.
