@@ -1260,7 +1260,7 @@ This can probably be depicted as Fig.6.
 
 <p class="image">
 <img src="images/ch_evaluator_usetag.jpg" alt="(usetag)"><br>
-Fig.6: the return value propagation
+Fig.6: Transferring the return value
 </p>
 
 
