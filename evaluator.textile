@@ -257,10 +257,9 @@ a change to add prefixes to all interfaces. At that time @ruby_@ was added to
 the "may-be-internals-for-some-reasons" variables.
 
 
-The bottom line is that what @ruby_@ is attached to are either what to support
-@ruby@ command or the internal variables and  what @rb_@ is attached to are the
-official interfaces of @ruby@ interpretor.
-
+The bottom line is that @ruby_@ is attached to things that support
+@ruby@ command or the internal variables and @rb_@ is attached to
+the official interfaces of @ruby@ interpretor.
 
 
 
@@ -337,16 +336,17 @@ This point is generally considered as "lack of features".
 
 
 When there's only a single interpretor,
-what have difficulty most is probably around the development environment of Ruby.
-Concretely, they are the applications such as @irb@, RubyWin, and RDE.
+more than anything,
+things around the development environment should be especially troublesome.
+Namely, the applications such as @irb@, RubyWin, and RDE.
 Although loading a rewritten program, the classes which are supposed to be
 deleted would remain. To counter this with the reflection API is not impossible
-but requires a lot of effort.
+but requires a lot of efforts.
 
 
 However, it seems that Mr. Matsumoto (Matz) purposefully limits the number of
-interpretors to one. "it's impossible to initialize completely" appears to be
-its reason. For example, "the loaded extension libraries could not be removed"
+interpretors to one. "it's impossible to initialize completely" seems
+its reason. For instance, "the loaded extension libraries could not be removed"
 is taken as an example.
 
 
@@ -613,7 +613,7 @@ bundled to a single @NODE_IF@ type, so we don't have to treat them specially.
 </pre>
 
 
-What is important is only the last @if@ statement.
+Only the last @if@ statement is important.
 If rewriting it without any change in its meaning, it becomes this:
 
 
