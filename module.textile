@@ -34,7 +34,7 @@ is a perfect example.
 
 What to be careful about here is, what is changing during the execution is only
 the stack, on the contrary, the program remains unchanged wherever it is.
-For example, if it is "a reference to the local variable @i@ ", there's just an
+For example, if it is "a reference to the local variable @i@", there's just an
 order of "give me @i@ of the current frame", it is not written as "give me @i@
 of that frame". In other words, "only" the state of the stack influences the
 consequence. This is why,
@@ -56,7 +56,7 @@ And these kind of scopes are expressed by stacks.
 
 
 However in Ruby, for instance, you can temporarily go back to the scope
-previously used by using iterators or @Proc@ .
+previously used by using iterators or @Proc@.
 This cannot be implemented with just simply pushing/popping a stack.
 Therefore the frames of the Ruby stack will be intricately rearranged during
 execution. Although I call it "stack", it could be better to consider it
@@ -86,13 +86,13 @@ it's at least twenty times more complicated.
 
 
 First, I'll briefly describe about these stacks and their stack frame structs.
-The defined file is either @eval.c@ or @evn.h@ . Basically these stack frames
+The defined file is either @eval.c@ or @evn.h@. Basically these stack frames
 are touched only by @eval.c@ ... is what it should be if it were possible,
 but @gc.c@ needs to know the struct types when marking,
-so some of them are exposed in @env.h@ .
+so some of them are exposed in @env.h@.
 
 
-Of course, marking could be done in the other file but @gc.c@ , but it requires
+Of course, marking could be done in the other file but @gc.c@, but it requires
 separated functions which cause slowing down. The ordinary programs had better
 not care about such things, but both the garbage collector and the core of the
 evaluator is the ruby's biggest bottleneck, so it's quite worth to optimize
@@ -149,11 +149,11 @@ The fact that @ruby_xxxx@ points to the top stack frame is common to all stacks
 and won't be mentioned every time.
 
 
-The first member of the struct is @self@ .
-There is also @self@ in the arguments of @rb_eval()@ ,
+The first member of the struct is @self@.
+There is also @self@ in the arguments of @rb_eval()@,
 but why this struct remembers another @self@ ?
 This is for the C-level functions. More precisely, it's for @rb_call_super()@ that is
-corresponding to @super@ . In order to execute @super@ , it requires the receiver
+corresponding to @super@. In order to execute @super@, it requires the receiver
 of the current method, but the caller side of @rb_call_super()@ could not have
 such information. However, the chain of @rb_eval()@ is interrupted before the
 time when the execution of the user-defined C code starts. Therefore, the
@@ -161,7 +161,7 @@ conclusion is that there need a way to obtain the information of @self@ out of
 nothing. And, @FRAME@ is the right place to store it.
 
 
-Thinking a little further, It's mysterious that there are @argc@ and @argv@ .
+Thinking a little further, It's mysterious that there are @argc@ and @argv@.
 Because parameter variables are local variables after all, it is unnecessary to
 preserve the given arguments after assigning them into the local variable with
 the same names at the beginning of the method, isn't it?
@@ -187,8 +187,8 @@ C.new.ali
 </pre>
 
 
-in this case, @last_func=ali@ and @orig_func=orig@ .
-Not surprisingly, these members also have to do with @super@ .
+in this case, @last_func=ali@ and @orig_func=orig@.
+Not surprisingly, these members also have to do with @super@.
 
 
 
@@ -200,7 +200,7 @@ h3. @ruby_scope@
 class definition statements, the module definition statements and the singleton
 class definition statements, all of them are different scopes. The stack frame
 struct is @struct SCOPE@.
-I'll call this frame @SCOPE@ .
+I'll call this frame @SCOPE@.
 
 
 <p class="caption">▼ @ruby_scope@ </p>
@@ -243,7 +243,7 @@ cnt = nil  # cut the reference. The created Proc finally becomes unnecessary her
 
 
 The @Proc@ object created by this method will persist longer than the method that
-creates it. And, because the @Proc@ can refer to the local variable @lvar@ ,
+creates it. And, because the @Proc@ can refer to the local variable @lvar@,
 the local variables must be preserved until the @Proc@ will disappear.
 Thus, if it were not handled by the garbage collector, no one can determine the
 time to free.
@@ -264,7 +264,7 @@ h3. @ruby_block@
 @struct BLOCK@ is the real body of a Ruby's iterator block or a @Proc@ object,
 it is also kind of a snapshot of the evaluator at some point.
 This frame will also be briefly written as @BLOCK@ as in the same manner as
-@FRAME@ and @SCOPE@ .
+@FRAME@ and @SCOPE@.
 
 
 <p class="caption">▼ @ruby_block@ </p>
@@ -313,7 +313,7 @@ preparation for that case.
 
 Additionally, @struct BLOCKTAG@ is separated in order to detect the same block
 when multiple @Proc@ objects are created from the block. The @Proc@ objects
-which were created from the one same block have the same @BLOCKTAG@ .
+which were created from the one same block have the same @BLOCKTAG@.
 
 
 
@@ -323,7 +323,7 @@ h3. @ruby_iter@
 
 The stack @ruby_iter@ indicates whether currently calling method is an iterator
 (whether it is called with a block). The frame is @struct iter@.
-But for consistency I'll call it @ITER@ .
+But for consistency I'll call it @ITER@.
 
 
 <p class="caption">▼ @ruby_iter@ </p>
@@ -352,7 +352,7 @@ but you also need to inform the fact when "it is not an iterator".
 However, pushing a whole @BLOCK@ just for this is very heavy. It will also
 cause that in the caller side the procedures such as variable references
 would needlessly increase.
-Thus, it's better to push the smaller and lighter @ITER@ instead of @BLOCK@ .
+Thus, it's better to push the smaller and lighter @ITER@ instead of @BLOCK@.
 This will be discussed in detail in Chapter 16: Blocks.
 
 
@@ -362,7 +362,7 @@ h3. @ruby_dyna_vars@
 
 
 The block local variable space. The frame struct is @struct RVarmap@ that has
-already seen in Part 2. Form now on, I'll call it just @VARS@ .
+already seen in Part 2. Form now on, I'll call it just @VARS@.
 
 
 <p class="caption">▼ @struct RVarmap@</p>
@@ -384,7 +384,7 @@ And each frame is corresponding to a local variable scope.
 Since it corresponds to "local variable scope" and not "block local variable scope",
 for instance, even if blocks are nested, only a single list is used to express.
 The break between blocks are similar to the one of the parser,
-it is expressed by a @RVarmap@ (header) whose @id@ is @0@ .
+it is expressed by a @RVarmap@ (header) whose @id@ is @0@.
 Details are deferred again. It will be explained in Chapter 16: Blocks.
 
 
@@ -402,7 +402,7 @@ h3. @ruby_class@
 @ruby_class@ represents the current class to which a method is defined. Since
 @self@ will be that class when it's a normal class definition statement,
 @ruby_class == self@. But, when it is the top level or in the middle of
-particular methods like @eval@ and @instance_eval@ , @self != ruby_class@ is
+particular methods like @eval@ and @instance_eval@, @self != ruby_class@ is
 possible.
 
 
@@ -412,7 +412,7 @@ without the @prev@ pointer, how could these form a stack? The answer is deferred
 to the next section.
 
 
-From now on, I'll call this frame @CLASS@ .
+From now on, I'll call this frame @CLASS@.
 
 
 
@@ -434,8 +434,8 @@ Its struct is ...
 </pre>
 
 
-... surprisingly @NODE@ . This is used just as a "defined struct which can be
-pointed by a @VALUE@ ". The node type is @NODE_CREF@ and the assignments of its
+... surprisingly @NODE@. This is used just as a "defined struct which can be
+pointed by a @VALUE@". The node type is @NODE_CREF@ and the assignments of its
 members are shown below:
 
 
@@ -445,8 +445,8 @@ members are shown below:
 | u3.node | nd_next | preserve the previous @CREF@ |
 
 
-Even though the member name is @nd_next@ , the value it actually has is the
-"previous (prev)" @CREF@ . Taking the following program as an example, I'll
+Even though the member name is @nd_next@, the value it actually has is the
+"previous (prev)" @CREF@. Taking the following program as an example, I'll
 explain the actual appearance.
 
 
@@ -483,7 +483,7 @@ A ← B ← C
 h3. @PUSH@ / @POP@ Macros
 
 For each stack frame struct, the macros to push and pop are available.
-For instance, @PUSH_FRAME@ and @POP_FRAME@ for @FRAME@ .
+For instance, @PUSH_FRAME@ and @POP_FRAME@ for @FRAME@.
 Because these will appear in a moment,
 I'll then explain the usage and content.
 
@@ -569,7 +569,7 @@ nd_body:
 
 @nd_cname@ seems the module name. @cname@ is probably either Const NAME or Class
 NAME. I dumped several things and found that there's always @NODE_SCOPE@ in
-@nd_body@ . Since its member @nd_tbl@ holds a local variable table and its name
+@nd_body@. Since its member @nd_tbl@ holds a local variable table and its name
 is similar to @struct SCOPE@, it appears certain that this @NODE_SCOPE@
 plays an important role to create a local variable scope.
 
@@ -579,7 +579,7 @@ plays an important role to create a local variable scope.
 h3. @NODE_MODULE@
 
 
-Let's examine the handler of @NODE_MODULE@ of @rb_eval()@ . The parts that are
+Let's examine the handler of @NODE_MODULE@ of @rb_eval()@. The parts that are
 not close to the main line, such as @ruby_raise()@ and error handling were cut
 drastically. So far, there have been a lot of cutting works for 200 pages,
 it has already became unnecessary to show the original code.
@@ -609,9 +609,9 @@ case NODE_MODULE:
 </pre>
 
 
-First, we'd like to make sure the module is nested and defined above (the module holded by) @ruby_class@ .
-We can understand it from the fact that it calls @ruby_const_xxxx()@ on @ruby_class@ .
-Just once @ruby_cbase@ appears, but it is usually identical to @ruby_class@ ,
+First, we'd like to make sure the module is nested and defined above (the module holded by) @ruby_class@.
+We can understand it from the fact that it calls @ruby_const_xxxx()@ on @ruby_class@.
+Just once @ruby_cbase@ appears, but it is usually identical to @ruby_class@,
 so we can ignore it. Even if they are different, it rarely causes a problem.
 
 
@@ -634,7 +634,7 @@ end
 </pre>
 
 
-In this program, the two methods, @a@ and @b@ , will be defined on the module @M@ .
+In this program, the two methods, @a@ and @b@, will be defined on the module @M@.
 
 
 In this case, on the second definition of @M@ the module @M@ was already set to
@@ -645,7 +645,7 @@ the constant, just obtaining and using it would be sufficient. If the constant
 
 Lastly, @module_setup()@ is the function executing the body of a module
 statement. Not only the module statements but the class statements and the
-singleton class statements are executed by @module_setup()@ .
+singleton class statements are executed by @module_setup()@.
 This is the reason why I said "all of these three type of statements are
 similar things".
 For now, I'd like you to note that @node->nd_body@ ( @NODE_SCOPE@ ) is passed as
@@ -741,7 +741,7 @@ the Ruby's ensure.
 
 
 Immediately after the start of the function, the argument n is purposefully
-assigned to the local variable @node@ , but @volatile@ is attached to @node@ and
+assigned to the local variable @node@, but @volatile@ is attached to @node@ and
 it would never be assigned after that, thus this is to prevent from being
 garbage collected. If we assume that the argument was @node@ from the beginning,
 it would not change the meaning.
@@ -750,11 +750,11 @@ it would not change the meaning.
 In the first half of the function, there's the part manipulating @ruby_frame@
 complicatedly. It is obviously paired up with the part @ruby_frame = frame.tmp@
 in the last half. We'll focus on this part later, but for the time being this
-can be considered as @push pop@ of @ruby_frame@ .
+can be considered as @push pop@ of @ruby_frame@.
 
 
 Plus, it seems that the code (A) can be, as commented, summarized as the
-initialization of @ruby_scope->local_vars@ . This will be discussed later.
+initialization of @ruby_scope->local_vars@. This will be discussed later.
 
 
 Consequently, it could be summarized as follows:
@@ -794,7 +794,7 @@ module_setup(module, node)
 </pre>
 
 
-It does @rb_eval()@ with @node->nd_next@ ,
+It does @rb_eval()@ with @node->nd_next@,
 so it's certain that this is the code of the module body.
 The problems are about the others. There are 5 points to see.
 
@@ -911,7 +911,7 @@ put it shortly, it is "@alloca@ that is assured to allocate on the stack
 
 @node->nd_tbl@ holds in fact the local variable name table that has appeared
 in Chapter 12: Syntax tree construction. It means that @nd_tbl[0]@ contains the table size and the rest is
-an array of @ID@ . This table is directly preserved to @local_tbl@ of @SCOPE@
+an array of @ID@. This table is directly preserved to @local_tbl@ of @SCOPE@
 and @local_vars@ is allocated to store the local variable values.
 Because they are confusing, it's a good thing writing some comments such as
 "This is the variable name", "this is the value".
@@ -926,8 +926,8 @@ Fig.6. @ruby_scope->local_vars@
 
 Where is this @node@ used?
 I examined the all @local_vars@ members but could not find the access to index
-@-1@ in @eval.c@ . Expanding the range of files to investigate, I found the
-access in @gc.c@ .
+@-1@ in @eval.c@. Expanding the range of files to investigate, I found the
+access in @gc.c@.
 
 
 <p class="caption">▼ @rb_gc_mark_children()@ — @T_SCOPE@ </p>
@@ -953,7 +953,7 @@ access in @gc.c@ .
 Apparently, this is a mechanism to protect @node@ from GC.
 But why is it necessary to to mark it here?
 @node@ is purposefully store into the @volatile@ local variable, so
-it would not be garbage-collected during the execution of @module_setup()@ .
+it would not be garbage-collected during the execution of @module_setup()@.
 
 
 Honestly speaking, I was thinking it might merely be a mistake for a while but
@@ -978,27 +978,27 @@ assigned on this line will disappear completely. Then, when is that?
 
 @SCOPE@ sometimes persists longer than the statement that causes the creation
 of it. As it will be discussed at Chapter 16: Blocks,
-if a @Proc@ object is created, it refers @SCOPE@ .
+if a @Proc@ object is created, it refers @SCOPE@.
 Thus, If @module_setup()@ has finished, the @SCOPE@ created there is not
 necessarily be what is no longer used. That's why it's not sufficient that
-@node@ is only referred from (the stack frame of) @module_setup()@ .
-It must be referred "directly" from @SCOPE@ .
+@node@ is only referred from (the stack frame of) @module_setup()@.
+It must be referred "directly" from @SCOPE@.
 
 
 On the other hand, the @volatile node@ of the local variable cannot be removed.
-Without it, @node@ is floating on air until it will be assigned to @local_vars@ .
+Without it, @node@ is floating on air until it will be assigned to @local_vars@.
 
 
 However then, @local_vars@ of @SCOPE@ is not safe, isn't it?
 @TMP_ALLOC()@ is, as I mentioned, the allocation on the stack, it becomes
 invalid at the time @module_setup()@ ends. This is in fact, at the moment when
-@Proc@ is created, the allocation method is abruptly switched to @malloc()@ .
+@Proc@ is created, the allocation method is abruptly switched to @malloc()@.
 Details will be described in Chapter 16: Blocks.
 
 
 Lastly, @rb_mem_clear()@ seems zero-filling but actually it is @Qnil@ -filling to
 an array of @VALUE@ ( @array.c@ ). By this, all defined local variables are
-initialized as @nil@ .
+initialized as @nil@.
 
 
 
@@ -1008,7 +1008,7 @@ h3. @TMP_ALLOC@
 
 Next, let's read @TMP_ALLOC@ that allocates the local variable space.
 This macro is actually paired with @TMP_PROTECT@ existing silently at the
-beginning of @module_setup()@ . Its typical usage is this:
+beginning of @module_setup()@. Its typical usage is this:
 
 
 
@@ -1046,10 +1046,10 @@ is that ... Let's see its definition.
 
 
 As described in Chapter 5: Garbage collection, in the environment of @#ifdef C_ALLOCA@ (that is,
-the native @alloca()@ does not exist) @malloca()@ is used to emulate @alloca()@ .
+the native @alloca()@ does not exist) @malloca()@ is used to emulate @alloca()@.
 However, the arguments of a method are obviously @VALUE@ s and
 the GC could not find a @VALUE@ if it is stored in the heap.
-Therefore, it is enforced that GC can find it through @NODE@ .
+Therefore, it is enforced that GC can find it through @NODE@.
 
 
 <p class="image">
@@ -1058,15 +1058,15 @@ Fig.7. anchor the space to the stack through @NODE@
 </p>
 
 
-On the contrary, in the environment with the true @alloca()@ , we can naturally
-use @alloca()@ and there's no need to use @TMP_PROTECT@ . Thus, a harmless
+On the contrary, in the environment with the true @alloca()@, we can naturally
+use @alloca()@ and there's no need to use @TMP_PROTECT@. Thus, a harmless
 statement is arbitrarily written.
 
 
 By the way, why do they want to use @alloca()@ very much by all means.
-It's merely because " @alloca()@ is faster than @malloc()@ ", they said.
+It's merely because " @alloca()@ is faster than @malloc()@", they said.
 One can think that it's not so worth to care about such tiny difference,
-but because the core of the evaluator is the biggest bottleneck of @ruby@ ,
+but because the core of the evaluator is the biggest bottleneck of @ruby@,
 ... the same as above.
 
 
@@ -1076,9 +1076,9 @@ h3. Changing the place to define methods on.
 
 
 The value of the stack @ruby_class@ is the place to define a method on at the
-time. Conversely, if one push a value to @ruby_class@ , it changes the class to
+time. Conversely, if one push a value to @ruby_class@, it changes the class to
 define a method on. This is exactly what is necessary for a class statement.
-Therefore, It's also necessary to do @PUSH_CLASS()@ in @module_setup()@ .
+Therefore, It's also necessary to do @PUSH_CLASS()@ in @module_setup()@.
 Here is the code for it:
 
 
@@ -1092,7 +1092,7 @@ POP_CLASS();
 </pre>
 
 
-Why is there the assignment to @ruby_class@ after doing @PUSH_CLASS()@ .
+Why is there the assignment to @ruby_class@ after doing @PUSH_CLASS()@.
 We can understand it unexpectedly easily by looking at the definition.
 
 
@@ -1126,7 +1126,7 @@ h3. Nesting Classes
 @ruby_cref@ represents the class nesting information at runtime. Therefore, it's
 naturally predicted that @ruby_cref@ will be pushed on the module statements or
 on the class statements.
-In @module_setup()@ , it is pushed as follows:
+In @module_setup()@, it is pushed as follows:
 
 
 
@@ -1140,7 +1140,7 @@ POP_CREF();
 
 
 Here, @module@ is the module being defined.
-Let's also see the definitions of @PUSH_CREF()@ and @POP_CREF()@ .
+Let's also see the definitions of @PUSH_CREF()@ and @POP_CREF()@.
 
 
 <p class="caption">▼ @PUSH_CREF() POP_CREF()@ </p>
@@ -1159,8 +1159,8 @@ it's very easy to deal with.
 It's also not good if there's completely not any such thing.
 
 
-The problem remains unsolved is what is the meaning of @ruby_frame->cbase@ .
-It is the information to refer a class variable or a constant from the current @FRAME@ .
+The problem remains unsolved is what is the meaning of @ruby_frame->cbase@.
+It is the information to refer a class variable or a constant from the current @FRAME@.
 Details will be discussed in the last section of this chapter.
 
 
@@ -1169,7 +1169,7 @@ Details will be discussed in the last section of this chapter.
 h3. Replacing frames
 
 
-Lastly, let's focus on the manipulation of @ruby_frame@ . The first thing is its
+Lastly, let's focus on the manipulation of @ruby_frame@. The first thing is its
 definition:
 
 
@@ -1186,7 +1186,7 @@ on the stack. The extreme consumption of the machine stack by @ruby@ is the
 fruit of these "small techniques" piling up.
 
 
-Then next, let's look at where doing several things with @frame@ .
+Then next, let's look at where doing several things with @frame@.
 
 
 
@@ -1211,7 +1211,7 @@ You can infer it from, for instance, @ruby_frame->cbase@ which appeared previous
 
 
 Then, why is @FRAME@ not straightforwardly pushed?
-It is because this is the place where it is not allowed to push @FRAME@ .
+It is because this is the place where it is not allowed to push @FRAME@.
 @FRAME@ is wanted to be pushed, but if @FRAME@ is pushed,
 it will appear in the backtraces of the program when an exception occurs.
 The backtraces are things displayed like followings:
@@ -1273,7 +1273,7 @@ nd_defn:
 </pre>
 
 
-I dumped several things and found that there's always @NODE_SCOPE@ in @nd_defn@ .
+I dumped several things and found that there's always @NODE_SCOPE@ in @nd_defn@.
 @NODE_SCOPE@ is, as we've seen at the module statements,
 the node to store the information to push a local variable scope.
 
@@ -1283,7 +1283,7 @@ the node to store the information to push a local variable scope.
 h3. @NODE_DEFN@
 
 
-Subsequently, we will examine the corresponding code of @rb_eval()@ . This part
+Subsequently, we will examine the corresponding code of @rb_eval()@. This part
 contains a lot of error handlings and tedious, they are all omitted again.
 The way of omitting is as usual, deleting the every parts to directly or
 indirectly call @rb_raise() rb_warn() rb_warning()@.
@@ -1314,16 +1314,16 @@ result = Qnil;
 </pre>
 
 
-In the first half, there are the words like @private@ or @protected@ , so it is
-probably related to visibility. @noex@ , which is used as the names of flags,
+In the first half, there are the words like @private@ or @protected@, so it is
+probably related to visibility. @noex@, which is used as the names of flags,
 seems @NOde EXposure@. Let's examine the @if@ statements in order.
 
 
 (A) @SCOPE_TEST()@ is a macro to check if there's an argument flag in
-@scope_vmode@ . Therefore, the first half of this conditional statement means
+@scope_vmode@. Therefore, the first half of this conditional statement means
 "is it a @private@ scope?".
-The last half means "it's @private@ if this is defining @initialize@ ".
-The method @initialize@ to initialize an object will unquestionably become @private@ .
+The last half means "it's @private@ if this is defining @initialize@".
+The method @initialize@ to initialize an object will unquestionably become @private@.
 
 
 (B) It is @protected@ if the scope is @protected@ (not surprisingly).
@@ -1333,10 +1333,10 @@ My feeling is that there're few cases @protected@ is required in Ruby.
 ==(C)== This is a bug. I found this just before the submission of this book,
 so I couldn't fix this beforehand.
 In the latest code this part is probably already removed.
-The original intention is to enforce the methods defined at top level to be @private@ .
+The original intention is to enforce the methods defined at top level to be @private@.
 
 
-(D) If it is not any of the above conditions, it is @public@ .
+(D) If it is not any of the above conditions, it is @public@.
 
 
 Actually, there's not a thing to worth to care about until here. The important
@@ -1355,8 +1355,8 @@ top of the method body. It is important that @ruby_cref@ is passed ...
 but details will be described soon.
 
 
-After copying, the definition is finished by adding it by @rb_add_method()@ .
-The place to define on is of course @ruby_class@ .
+After copying, the definition is finished by adding it by @rb_add_method()@.
+The place to define on is of course @ruby_class@.
 
 
 
@@ -1365,7 +1365,7 @@ h3. @copy_node_scope()@
 
 
 @copy_node_scope()@ is called only from the two places: the method definition
-( @NODE_DEFN@ ) and the singleton method definition ( @NODE_DEFS@ ) in @rb_eval()@ .
+( @NODE_DEFN@ ) and the singleton method definition ( @NODE_DEFS@ ) in @rb_eval()@.
 Therefore,  looking at these two is sufficient to detect how it is used. Plus,
 the usages at these two places are almost the same.
 
@@ -1396,12 +1396,12 @@ the usages at these two places are almost the same.
 
 I mentioned that the argument @rval@ is the information of the class nesting
 ( @ruby_cref@ ) of when the method is defined. Apparently, it is @rval@ because it
-will be set to @nd_rval@ .
+will be set to @nd_rval@.
 
 
-In the main @if@ statement copies @nd_tbl@ of @NODE_SCOPE@ .
+In the main @if@ statement copies @nd_tbl@ of @NODE_SCOPE@.
 It is a local variable name table in other words. The +1 at @ALLOC_N@ is to
-additionally allocate the space for @nd_tbl[0]@ .  As we've seen in Part 2,
+additionally allocate the space for @nd_tbl[0]@.  As we've seen in Part 2,
 @nd_tbl[0]@ holds the local variables count, that was "the actual length of
 @nd_tbl@ - 1".
 
@@ -1447,14 +1447,14 @@ The next thing is @rb_add_method()@ that is the function to register a method en
 </pre>
 
 
-@NEW_METHOD()@ is a macro to create @NODE@ .
+@NEW_METHOD()@ is a macro to create @NODE@.
 @rb_clear_cache_by_id()@ is a function to manipulate the method cache.
 This will be explained in the next chapter "Method".
 
 
 Let's look at the syntax tree which is eventually stored in @m_tbl@ of a class.
 I prepared @nodedump-method@ for this kind of purposes.
-(@nodedump-method@ : comes with @nodedump@ . @nodedump@ is @tools/nodedump.tar.gz@ of the attached CD-ROM)
+(@nodedump-method@ : comes with @nodedump@. @nodedump@ is @tools/nodedump.tar.gz@ of the attached CD-ROM)
 
 
 
@@ -1505,8 +1505,8 @@ I'll omit the explanation about @NODE_ARGS@ here
 because it will be described at the next chapter "Method".
 
 
-Lastly, the @nd_cnt@ of the @NODE_METHOD@ , it's not so necessary to care about
-this time. It is used when having to do with @alias@ .
+Lastly, the @nd_cnt@ of the @NODE_METHOD@, it's not so necessary to care about
+this time. It is used when having to do with @alias@.
 
 
 
@@ -1591,9 +1591,9 @@ end
 </pre>
 
 
-@A.new@ is a singleton method of @A@ , so its class is the singleton class @(A)@ .
+@A.new@ is a singleton method of @A@, so its class is the singleton class @(A)@.
 If it is interpreted by following the rule,
-it cannot obtain the constant @C@ which is belongs to @A@ .
+it cannot obtain the constant @C@ which is belongs to @A@.
 
 
 But because it is written so close, to become to want refer the constant @C@
@@ -1653,8 +1653,8 @@ point another node, but @node->nd_rval@ naturally continues to point to the
 same thing. (Fig.83)
 
 
-Then, when invoking the method @C#m@ , get @node->nd_rval@
-and insert into the just pushed @ruby_frame->cbase@ . (Fig.84)
+Then, when invoking the method @C#m@, get @node->nd_rval@
+and insert into the just pushed @ruby_frame->cbase@  (Fig.84)
 
 
 ... This is the mechanism. Complicated.
@@ -1671,7 +1671,7 @@ Fig 8. CREF Trasfer
 
 h4. @ev_const_get()@
 
-Now, let's go back to the code of @NODE_CONST@ .
+Now, let's go back to the code of @NODE_CONST@.
 Since only @ev_const_get()@ is left, we'll look at it.
 
 
@@ -1714,7 +1714,7 @@ Since only @ev_const_get()@ is left, we'll look at it.
 h3. Class variable
 
 
-What class variables refer to is also @ruby_cref@ . Needless to say,
+What class variables refer to is also @ruby_cref@. Needless to say,
 unlike the constants which search over the outer classes one after another,
 it uses only the first element.
 Let's look at the code of @NODE_CVAR@ which is the node to refer to a class
@@ -1722,7 +1722,7 @@ variable.
 
 
 What is the @cvar_cbase()@ ? As @cbase@ is attached,
-it is probably related to @ruby_frame->cbase@ , but how do they differ?
+it is probably related to @ruby_frame->cbase@, but how do they differ?
 Let's look at it.
 
 
@@ -1775,9 +1775,9 @@ multiple singleton methods, many people choose to write in the left side way
 of using the singleton class definition statement to bundle.
 
 
-However, these two differs in the value of @ruby_cref@ . The one using the
+However, these two differs in the value of @ruby_cref@. The one using the
 singleton class definition is @ruby_cref=(C)@ and the other one defining
-singleton methods separately is @ruby_cref=C@ . This may cause to differ in the
+singleton methods separately is @ruby_cref=C@. This may cause to differ in the
 places where class variables refer to, so this is not convenient.
 
 
@@ -1862,7 +1862,7 @@ nd_value:
 </pre>
 
 
-Both the left-hand and right-hand sides are the lists of @NODE_ARRAY@ ,
+Both the left-hand and right-hand sides are the lists of @NODE_ARRAY@,
 there's additionally @NODE_REXPAND@ in the right side. @REXPAND@ may be "Right
 value EXPAND". We are curious about what this node is doing. Let's see.
 
@@ -1878,8 +1878,8 @@ value EXPAND". We are curious about what this node is doing. Let's see.
 </pre>
 
 
-You can ignore @avalue_to_svalue()@ .
-@NODE_ARRAY@ is evaluated by @rb_eval()@ , (because it is the node of the array
+You can ignore @avalue_to_svalue()@.
+@NODE_ARRAY@ is evaluated by @rb_eval()@, (because it is the node of the array
 literal), it is turned into a Ruby array and returned back.
 So, before the left-hand side is handled, all in the right-hand side are
 evaluated. This enables even the following code:
@@ -1906,7 +1906,7 @@ Let's look at @NODE_MASGN@ in the left-hand side.
 
 
 Here is only the evaluation of the right-hand side, the rests are delegated to
-@massign()@ .
+@massign()@.
 
 
 
@@ -1937,13 +1937,13 @@ assignments, so a flag is received to check.
 Obviously, the value is decided to be either 0 or 1.
 
 
-Then, I'd like you to look at the previous code calling @massign()@ , it was
-@pcall=0@ . Therefore, we probably don't mind if assuming it is @pcall=0@ for the
+Then, I'd like you to look at the previous code calling @massign()@, it was
+@pcall=0@. Therefore, we probably don't mind if assuming it is @pcall=0@ for the
 time being and extracting the variables. That is, when there's an argument like
 @pcall@ which is slightly changing the behavior, we always need to consider the
 two patterns of scenarios, so it is really cumbersome. If there's only one
-actual function @massign()@ , to think as if there were two functions, @pcall=0@
-and @pcall=1@ , is way simpler to read.
+actual function @massign()@, to think as if there were two functions, @pcall=0@
+and @pcall=1@, is way simpler to read.
 
 
 When writing a program we must avoid duplications as much as possible,
@@ -2004,14 +2004,14 @@ massign(self, node, val  /* , pcall=0 */)
 
 
 @val@ is the right-hand side value. And there's the suspicious conversion called
-@svalue_to_mvalue()@ , since @mvalue_to_svalue()@ appeared previously and
+@svalue_to_mvalue()@, since @mvalue_to_svalue()@ appeared previously and
 @svalue_to_mvalue()@ in this time, so you can infer "it must be getting back".
 ((errata: it was @avalue_to_svalue()@ in the previous case.
 Therefore, it's hard to infer "getting back", but you can ignore them anyway.))
-Thus, the both are deleted. In the next line, since it uses @RARRAY()@ ,
+Thus, the both are deleted. In the next line, since it uses @RARRAY()@,
 you can infer that the right-hand side value is an @Array@ of Ruby.
-Meanwhile, the left-hand side is @node->nd_head@ , so it is the value assigned to
-the local variable @list@ . This @list@ is also a node ( @NODE_ARRAY@ ).
+Meanwhile, the left-hand side is @node->nd_head@, so it is the value assigned to
+the local variable @list@. This @list@ is also a node ( @NODE_ARRAY@ ).
 
 
 We'll look at the code by clause.
@@ -2020,7 +2020,7 @@ We'll look at the code by clause.
 (A) @assign@ is, as the name suggests, a function to perform an one-to-one
 assignment. Since the left-hand side is expressed by a node,
 if it is, for instance, @NODE_IASGN@ (an assignment to an instance variable),
-it assigns with @rb_ivar_set()@ .
+it assigns with @rb_ivar_set()@.
 So, what it is doing here is adjusting to either @list@ and @val@ which is
 shorter and doing one-to-one assignments. (Fig.9)
 
@@ -2032,7 +2032,7 @@ Fig.9. assign when corresponded
 
 
 (B) if there are remainders on the right-hand side, turn them into a Ruby
-array and assign it into (the left-hand side expressed by) the @node->nd_args@ .
+array and assign it into (the left-hand side expressed by) the @node->nd_args@.
 
 
 ==(C)== if there are remainders on the left-hand side, assign @nil@ to all of them.
