@@ -143,15 +143,7 @@ the existence of a block does not mean the block is pushed for that method.
 It's possible that the block is pushed for the previous method. (Figure 1)
 
 
-<div class="image">
-<img src="images/ch_iterator_stacks.jpg" alt="(stacks)"><br>
-Figure 1: no one-to-one correspondence between `FRAME` and `BLOCK`
-* 上が先端 the end is above
-* FRAMEに対応するBLOCKがあるか？ Is there any BLOCK that corresponds to FRAME ?
-* ある（けどイテレータではない） Yes. (But, this is not an iterator.)
-* ある（本当にイテレータ） Yes. (this is actually an iterator.)
-* ない No.
-</div>
+!images/ch_iterator_stacks.jpg(no one-to-one correspondence between `FRAME` and `BLOCK`)!
 
 
 So, in order to determine for which method the block is pushed, `ITER` is used.
@@ -289,13 +281,7 @@ At this moment, a method finally "becomes" an iterator.
 Figure 2 shows the state of the stacks.
 
 
-<div class="image">
-<img src="images/ch_iterator_itertrans.jpg" alt="(itertrans)"><br>
-Figure 2: the state of the Ruby stacks on an iterator call.
-* 上が先端 the end is above
-* イテレータか？（FRAMEに対応するITERがITER_CURか？）
-  Is this an iterator? (Is the ITER corresponds to FRAME ITER_CUR ?)
-</div>
+!images/ch_iterator_itertrans.jpg(the state of the Ruby stacks on an iterator call.)!
 
 
 The possible value of `ruby_iter` is not the one of two boolean values
@@ -508,11 +494,7 @@ but a new `FRAME` is created by duplicating.
 This would look like Figure 3.
 
 
-<div class="image">
-<img src="images/ch_iterator_framepush.jpg" alt="(framepush)"><br>
-Figure 3: push a copied frame
-* コピーして作る creating by copying
-</div>
+!images/ch_iterator_framepush.jpg(push a copied frame)!
 
 
 As we've seen the code until here,
@@ -671,14 +653,7 @@ If we focus on there, we can see a link is always pushed in at the "next" to
 `ruby_dyna_vars`. This means, it would look like Figure 4.
 
 
-<div class="image">
-<img src="images/ch_iterator_dynavarseval.jpg" alt="(dynavarseval)"><br>
-Figure 4: the structure of `ruby_dyna_vars`
-* ブロック起動時に(rb_yield_0で)追加 added (by using `rb_yield_0`) when invoking a block
-* ブロック起動直後 immediately after invoking a block
-* ブロック変数を追加 add block variables
-* 追加された変数 added variables
-</div>
+!images/ch_iterator_dynavarseval.jpg(the structure of `ruby_dyna_vars`)!
 
 
 This differs from the case of the parser in one point:
@@ -690,11 +665,7 @@ a single straight link.
 But according to the errata, it was wrong. That part and relevant descriptions
 are removed.))
 
-<div class="image">
-<img src="images/ch_iterator_insert.jpg" alt="(insert)"><br>
-Figure 5: cannot properly insert an entry
-* ここに挿入しないといけない must be inserted here
-</div>
+!images/ch_iterator_insert.jpg(The entry cannot be inserted properly.)!
 
 
 
@@ -804,11 +775,7 @@ Therefore, if `0x10` did not exist, `state` would be the same value as `TAG_xxxx
 (See also Figure 6).
 
 
-<div class="image">
-<img src="images/ch_iterator_dst.jpg" alt="(dst)"><br>
-Fig.6: <tt>block-&gt;tag-&gt;dst</tt>
-* 常に１ always 1
-</div>
+!images/ch_iterator_dst.jpg(`block->tag->dst`)!
 
 
 Now, `tag->dst` became the value which differs from `TAG_xxxx` and is unique for each call.
@@ -1108,10 +1075,7 @@ In this way, one by one, the flag is propagated at the time when it pops.
 (Figure 7)
 
 
-<p class="image">
-<img src="images/ch_iterator_flaginfect.jpg" alt="(flaginfect)"><br>
-Figure 7: flag propagation
-</p>
+!images/ch_iterator_dst.jpg(flag propagation)!
 
 
 Since `VARS` also does not have any `prev` pointer,
