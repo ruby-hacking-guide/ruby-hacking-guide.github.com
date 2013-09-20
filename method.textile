@@ -236,15 +236,7 @@ The point is that "in the `else` side the values of arguments are also stored in
 `args`". If I illustrate, it would look like Figure 1.
 
 
-<div class="image">
-<img src="images/ch_method_anchor.jpg" alt="(anchor)"><br>
-Figure 1: Being in the heap is all right.
-* パターン case
-* 側 side
-* 同じ内容 the same contents
-* GCのルートとなる（主にスタック） will be the roots of GC (mainly in the stack)
-* GCのルートとならない（主にヒープ）will not be the roots of GC (mainly in the heap)
-</div>
+!images/ch_method_anchor.jpg(Being in the heap is all right.)!
 
 
 If at least one `VALUE` is on the stack, others can be successively marked through
@@ -336,12 +328,7 @@ tree step-by-step and caches the result at the same time.
 Figure 2 shows the entire flow of searching.
 
 
-<div class="image">
-<img src="images/ch_method_msearch.jpg" alt="(msearch)"><br>
-Figure 2: Method Search
-* キャッシュ cache
-* クラスツリー the class tree
-</div>
+!images/ch_method_msearch.jpg(Method Search)!
 
 
 
@@ -388,11 +375,7 @@ It is `EXPR1()`. Among its arguments, `c` is the class object and `m` is the
 method name (`ID`). (Figure 3)
 
 
-<div class="image">
-<img src="images/ch_method_mhash.jpg" alt="(mhash)"><br>
-Figure 3: Method Cache
-* クラス、メソッドID class, method ID
-</div>
+!images/ch_method_mhash.jpg(Method Cache)!
 
 
 However, `EXPR1()` is not a perfect hash function or anything, so a different
