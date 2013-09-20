@@ -238,7 +238,7 @@ The point is that "in the `else` side the values of arguments are also stored in
 
 <div class="image">
 <img src="images/ch_method_anchor.jpg" alt="(anchor)"><br>
-Figure 1: All right if it is in the heap
+Figure 1: Being in the heap is all right.
 * パターン case
 * 側 side
 * 同じ内容 the same contents
@@ -628,7 +628,7 @@ The maximum argument count is 15.
 
 
 Note that neither `SCOPE` or `VARS` is pushed when it is `NODE_CFUNC`. It makes
-sense because if a method is defined in C it would not use the Ruby's local
+sense because a method defined in C does not use Ruby's local
 variables. But it simultaneously means that if the "current" local variables are
 accessed by `C`, they are actually the local variables of the previous `FRAME`.
 And in some places, say, `rb_svar` (`eval.c`), it is actually done.
@@ -915,7 +915,7 @@ super
 
 
 This `super` has a behavior to directly pass the parameters of the currently executing method.
-In order to enable to pass at the moment, the arguments are saved in `ruby_frame->argv`.
+To enable to pass at the moment, the arguments are saved in `ruby_frame->argv`.
 
 
 Going back to the previous story here,
