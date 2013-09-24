@@ -449,11 +449,6 @@ can end. The `curr_thread` check is not to lock itself (figure 1).
 <div class="image">
 <img src="images/ch_load_loadwait.jpg" alt="(loadwait)"><br>
 Figure 1: Serialisation of loads
-* スレッド thread
-* ロック lock
-* ロード開始 loading is started
-* ロード完了 loading is completed
-* アンロック unlock
 </div>
 
 h2. Loading of Ruby programs
@@ -813,9 +808,6 @@ it is resolving undefined symbols.
 <div class="image">
 <img src="images/ch_load_link.jpg" alt="(link)"><br>
 Figure 2: object files and linking
-* 提供する名前 the providing names
-* 必要な名前 the necessary names
-* オブジェクトファイル object file
 </div>
 
 Logically this is how it is, but in reality a program can't run only because of
