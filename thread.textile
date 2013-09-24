@@ -821,7 +821,6 @@ and when we want to check  n-th file descriptor, the n-th bit is set (Figure 2).
 <div class="image">
 <img src="images/ch_thread_fdset.jpg" alt="(fdset)"><br>
 Figure 2: fd_set
-* インデックス index
 </div>
 
 
@@ -1253,10 +1252,6 @@ In other words, there's a chain of `setjmp`/`longjmp()` as follows. (Figure 3)
 <div class="image">
 <img src="images/ch_thread_setjmploop.jpg" alt="(setjmploop)"><br>
 Figure 3: the backstitch by chaining of `setjmp`
-* 外側 outside
-* 退避 set aside
-* 復元 restore
-* スレッド thread
 </div>
 
 
@@ -1322,9 +1317,7 @@ possible. (Figure 4)
 
 <div class="image">
 <img src="images/ch_thread_twodirection.jpg" alt="(twodirection)"><br>
-Fig.4: a stack extending higher and a stack extending lower
-* 下にのびるスタック a stack extending lower
-* 上にのびるスタック a stack extending higher
+Fig.4: a stack extending above and a stack extending below 
 </div>
 
 
