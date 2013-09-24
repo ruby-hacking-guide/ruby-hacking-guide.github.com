@@ -503,8 +503,6 @@ from inside of a string to `eval`.
 <div class="image">
 <img src="images/ch_anyeval_dynavars.jpg" alt="(dynavars)"><br>
 Figure 1: `ruby_dyna_vars` inside `eval`
-* パーサで追加 added in the parser
-* 評価機で作成 created in the evaluator
 </div>
 
 
