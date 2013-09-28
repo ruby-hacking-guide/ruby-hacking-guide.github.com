@@ -105,5 +105,5 @@ end
 
 FileUtils.mkdir_p EBOOK_DIR
 sha = `git rev-parse HEAD`[0..5]
-epub.save("#{EBOOK_DIR}/rgh-#{today}_#{sha}.epub")
+epub.save("#{EBOOK_DIR}/rhg-#{today}_#{sha}.epub")
 FileUtils.rm_rf("#{TEMP_DIR}")
