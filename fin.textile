@@ -1,105 +1,126 @@
 ---
 layout: default
 ---
-  
-  
-第20章 Rubyの未来
 
-h1. 第20章 Rubyの未来
-h2. 解決すべき課題
+h1. Final Chapter: Ruby's future
 
-@ruby@は「完成してしまったソフトウェア」ではない。まだまだ発展途上で
-あり、多くの課題を抱えている。まずは現在のインタプリタに内在する
-問題を摘出してみよう。話題の順番はだいたい本書の章の順番に沿っている。
+h2. Issues to be addressed
 
-h3. GCの性能
+@ruby@ isn't 'completely finished software'。It's still being developed,
+there are still a lot of issues. Firstly, we want to try removing
+inherent problems in the current interpreter.
 
-現在のGCの性能は「特に悪くないが、特に良くもない」と言ったところだろう
-か。「特に悪くない」というのは「日常生活で困ることはない」ということで、
-「特に良くもない」というのは「高負荷になると弱点が露呈する」という意味
-である。例えば大量にオブジェクトを作ってそのまま保持し続けるアプリケー
-ションだと速度が急激に低下してしまう。GCのたびに全オブジェクトをマーク
-することになるうえ、オブジェクトが回収できないものでさらにGCの回数まで
-増えてしまうからである。この問題には第5章で触れた世代別GCが効
-果的なはずだ（少なくとも理論的にはそういうことになっている）。
+The order of the topics is mostly in the same order as the chapters of 
+this book.
 
 
-また反応速度の点でも改善の余地がある。現在のGCの実行中はインタプリタ全
-体が停止するので、エディタだとかGUIアプリケーションだと時々「ぐっ」と
-固まって反応が中断することになる。例えそれが0.1秒程度だろうとも、
-文字をタイプしている途中に止まられたりすると非常に印象が悪い。今はそ
-ういうアプリケーションはあまり作られていないか、あってもさほど大きくな
-いためこの点があまり問題にならないのだろう。だがいずれそういうものが出
-てくればインクリメンタルGCの導入を考える必要もあるかもしれない。
+h3. Performance of GC
 
-h3. パーサの実装
+The performance of the current GC might be
+"not notably bad, but not notably good".
+"not notably bad" means "it won't cause troubles in our daily life",
+and "not notably good" means "its downside will be exposed under heavy load".
+For example, if it is an application which creates plenty of objects and keeps
+holding them, its speed would slow down radically.
+Every time doing GC, it needs to mark all of the objects,
+and furthermore it would becomes to need to invoke GC more often
+because it can't collect them.
+To counter this problem, Generational GC, which was mentioned in Chapter 5,
+must be effective. (At least, it is said so in theory.)
 
-第二部で見たように@ruby@のパーサの実装は
-既に@yacc@を限界近くまで酷使しており、これ以上の拡張に耐えるとは思えな
-い。拡張の予定がないのならいいが、この後には「キーワード引数」という
-大物の導入が予定されているし、@yacc@の制限のせいで欲しい文法が表現でき
-ない、なんてことになったら悲しい。
-
-h3. パーサの再利用
-
-Rubyのパーサは非常に複雑だ。特に@lex_state@のあたりを真面目に扱う
-のがとても大変である。そのせいで、Rubyプログラムを埋め込んだり、
-Rubyプログラム自体を扱うプログラムを作るのが非常に難しくなっている。
-
-
-例えば筆者が開発しているツールで@racc@というものがある。@yacc@のRuby版
-なのでRを付けて@racc@だ。その@racc@では文法ファイルの構文などはほとんど
-@yacc@と同じで、
-アクションの部分だけがRubyのコードになっている。そのためにはRubyのコー
-ドをちゃんとパースしないとアクションの終わりを判定できないが、「ちゃん
-と」パースするのがとても難しい。仕方がないので今は「だいたい」パースで
-きるというレベルで妥協している。
+Also regarding its response speed,
+there are still rooms we can improve.
+With the current GC, while it is running, the entire interpretor stops.
+Thus, when the program is an editor or a GUI application,
+sometimes it freezes and stops to react.
+Even if it's just 0.1 second,
+stopping when typing characters would give a very bad impression.
+Currently, there are few such applications created or,
+even if exists, its size might be enough small not to expose this problem.
+However, if such application will actually be created in the future,
+there might be the necessity to consider Incremental GC.
 
 
-他にRubyプログラムの解析が必要になる例としては
-@indent@や@lint@のようなツールが
-挙げられるが、こういうものを作るのにも非常に苦労する。リファクタリング
-ツールのような複雑なものになるともはや絶望的である。
+h3. Implementation of parser
+
+As we saw in Part 2, the implementation of @ruby@ parser has already utilized
+@yacc@'s ability to almost its limit, thus I can't think it can endure further
+expansions. It's all right if there's nothing planned to expand,
+but a big name "keyword argument" is planned next
+and it's sad if we could not express another demanded grammar because of the
+limitation of @yacc@.
 
 
-ではどうしようか。同じものを作り直すのが無理なら、@ruby@のオリジナルの
-パーサを部品として使えるようにすればいいのではないだろうか。つまり処理
-系のパーサ自体をライブラリ化するわけだ。これは是非とも欲しい機能である。
+h3. Reuse of parser
+
+Ruby's parser is very complex. In particular, dealing with around @lex_state@
+seriously is very hard. Due to this, embedding a Ruby program or creating a
+program to deal with a Ruby program itself is quite difficult.
+
+For example, I'm developing a tool named @racc@,
+which is prefixed with R because it is a Ruby-version @yacc@.
+With @racc@, the syntax of grammar files are almost the same as @yacc@
+but we can write actions in Ruby.
+To do so, it could not determine the end of an action without parsing Ruby code
+properly, but "properly" is very difficult. Since there's no other choice,
+currently I've compromised at the level that it can parse "almost all".
+
+As another example which requires analyzing Ruby program,
+I can enumerate some tools like @indent@ and @lint@,
+but creating such tool also requires a lot efforts.
+It would be desperate if it is something complex like a refactoring tool.
+
+Then, what can we do? If we can't recreate the same thing,
+what if @ruby@'s original parser can be used as a component?
+In other words, making the parser itself a library.
+This is a feature we want by all means.
+
+However, what becomes problem here is, as long as @yacc@ is used,
+we cannot make parser reentrant.
+It means, say, we cannot call @yyparse()@ recursively,
+and we cannot call it from multiple threads.
+Therefore, it should be implemented in the way of not returning control to Ruby
+while parsing.
 
 
-ただここで問題なのは、@yacc@を使う限りパーサがリエントラントにできない
-ということだ。つまり@yyparse()@を再帰呼び出ししたり複数のスレッドから
-呼んだりできないのである。だからパース中にRubyに制御が戻らないように実
-装しなければならない。
 
-h3. コード隠蔽
+h3. Hiding Code
 
-現在の@ruby@は動かすプログラムのソースコードがないと動かせない。
-つまりソースコードを他人に読ませたくない人達は困るだろう。
+With current @ruby@, it does not work without the source code of the program to
+run. Thus, people who don't want others to read their source code might have
+trouble.
 
-h3. インタプリタオブジェクト
 
-現在の@ruby@インタプリタはプロセスに一つしか持てない、ということは
-第13章で話した。複数のインタプリタを持つことが現実に可能
-ならそのほうがよさそうではあるが、果たしてそういうことは実装可能なのだ
-ろうか。
+h3. Interpretor Object
 
-h3. 評価器の構造
+Currently each process cannot have multiple @ruby@ interpretors,
+this was discussed in Chapter 13.
+If having multiple interpretors is practically possible, it seems better,
+but is it possible to implement such thing?
 
-いまの@eval.c@はとにかく複雑すぎる。マシンスタックにRubyのスタックフレー
-ムを埋め込むのも何かと厄介の元だし、@setjmp() longjmp()@を使いまくるのも
-わかりやすさと速度を下げている。特にレジスタの多いRISCマシンだと
-@setjmp()@を使いまくると速度が落ちやすい。@setjmp()@ではレジスタを全て
-退避するからである。
 
-h3. 評価器の速度
+h3. The structure of evaluator
 
-@ruby@は普通に使うぶんには既に十分に高速だ。だがそれでもやはり、言語処理
-系は速ければ速いほどいいのは間違いない。速度を上げる、即ち最適化をする
-にはどうしたらいいだろう。そういうときはまずプロファイルを採らねばなら
-ない。というわけで採った。
+Current @eval.c@ is, above all, too complex.
+Embedding Ruby's stack frames to machine stack could occasionally become the
+source of trouble, using @setjmp() longjmp()@ aggressively makes it less easy to
+understand and slows down its speed.
+Particularly with RISC machine, which has many registers, using @setjmp()@
+aggressively can easily cause slowing down because @setjmp()@ set aside all
+things in registers.
 
-p(=emlist). 
+
+h3. The performance of evaluator
+
+@ruby@ is already enough fast for ordinary use.
+But aside from it, regarding a language processor,
+definitely the faster is the better.
+To achieve better performance, in other words to optimize,
+what can we do?
+In such case, the first thing we have to do is profiling.
+So I profiled.
+
+<pre class="emlist">
   %   cumulative   self              self     total
  time   seconds   seconds    calls  ms/call  ms/call  name
  20.25      1.64     1.64  2638359     0.00     0.00  rb_eval
@@ -113,374 +134,402 @@ p(=emlist).
   2.22      5.73     0.18  3819588     0.00     0.00  call_cfunc
 </pre>
 
-これはとあるアプリケーションを動かしたときのプロファイルなのだが、一般
-的なRubyプログラムのプロファイルにもかなり近い。つまりトップに圧倒的割
-合で@rb_eval()@が登場し、そのあとにGCと評価器中枢部、加えて処理に特有
-の関数が混じる。例えばこのアプリケーションの場合は正規表現マッチ
-（@ruby_re_match@）にかなり時間がかかっているようだ。
+This is a profile when running some application but
+this is approximately the profile of a general Ruby program.
+@rb_eval()@ appeared in the overwhelming percentage being at the top,
+after that, in addition to functions of GC, evaluator core,
+functions that are specific to the program are mixed.
+For example, in the case of this application,
+it takes a lot of time for regular expression match (@ruby_re_match@).
+
+However, even if we understood this, the question is how to improve it.
+To think simply, it can be archived by making @rb_eval()@ faster.
+That said, but as for @ruby@ core, there are almost not any room which can be
+easily optimized. For instance, apparently "tail recursive -> @goto@ conversion"
+used in the place of @NODE_IF@ and others has already applied almost all
+possible places it can be applied.
+In other words, without changing the way of thinking fundamentally,
+there's no room to improve.
 
 
-ただそれがわかったとしてどう解決するかが問題だ。単純に考えれば
-@rb_eval()@を速くすればいい、ということになるだろうが、@ruby@のコアに
-関しては小手先の最適化をやる余地はもうほとんどない。@NODE_IF@のところ
-で使われていたような「末尾再帰→@goto@変換」もほとんどやり尽くした感が
-ある。つまり根本的に考えかたを変えない限り向上の余地がないのだ。
+h3. The implementation of thread
 
-h3. スレッドの実装
+This was also discussed in Chapter 19. There are really a lot of issues about
+the implementation of the current ruby's thread. Particularly, it cannot mix
+with native threads so badly. The two great advantages of @ruby@'s thread,
+(1) high portability (2) the same behavior everywhere,
+are definitely incomparable, but probably that implementation is something we
+cannot continue to use eternally, isn't it?
 
-これは第19章でも話した。現在のrubyのスレッドの実装は非常に
-問題が多い。特にネイティブスレッドとの相性の悪さはどうしようもない。
-@ruby@スレッドの（1）移植性が高く（2）どこでも同じ挙動、という二点は確
-かに他に代え難い長所なのだが、さすがにあの実装はずっと使い続けるには無
-理があるのではなかろうか。
 
-h2. @ruby@ 2
 
-続いて今度はこれらの問題点に対するオリジナルの@ruby@の動向を示す。
+
+h2. `ruby` 2
+
+Subsequently, on the other hand, I'll introduce the trend of the original `ruby`,
+how it is trying to counter these issues.
+
 
 h3. Rite
 
-現時点でのrubyの最新バージョンは安定版が1.6.7、開発版が1.7.3だ。
-だがそう遠くないうちに次の安定版1.8が出そうである。そうすると同時に
-開発版の1.9.0がスタートする。そしてその次はちょっと変則的に1.9.1が
-安定版となる。
+At the present time, ruby's edge is 1.6.7 as the stable version and 1.7.3 as the
+development version, but perhaps the next stable version 1.8 will come out in
+the near future. Then at that point, the next development version 1.9.0 will
+start at the same time. And after that, this is a little irregular but 1.9.1
+will be the next stable version.
+
+|_. stable |_. development |_. when to start |
+| 1.6.x | 1.7.x | 1.6.0 was released on 2000-09-19 |
+| 1.8.x | 1.9.x | probably it will come out within 6 months |
+| 1.9.1~ | 2.0.0 | maybe about 2 years later |
 
 
-安定版開発版開始時期
-1.6.x1.7.x2000-09-19に1.6.0リリース
-1.8.x1.9.0半年以内には出るだろう
-1.9.1〜2.0.0二年後くらいか
+And the next-to-next generational development version is `ruby` 2, whose code
+name is Rite. Apparently this name indicates a respect for the inadequacy that
+Japanese cannot distinguish the sounds of L and R.
+
+What will be changed in 2.0 is, in short, almost all the entire core.
+Thread, evaluator, parser, all of them will be changed.
+However, nothing has been written as a code yet, so things written here is
+entirely just a "plan". If you expect so much, it's possible it will turn out
+disappointments. Therefore, for now, let's just expect slightly.
 
 
-そして次々世代の開発版が@ruby@ 2、コードネームRite、である。
-この名前はLとRの区別がつけられない日本人へのオマージュらしい。
+h3. The language to write
 
+Firstly, the language to use. Definitely it will be C. Mr. Matsumoto said to
+`ruby-talk`, which is the English mailing list for Ruby,
 
-一言で2.0はどこが変わるかと言うと、コアほとんど全部だ。スレッド、評価
-器、パーサ、これが全部変わる。もっとも、コードがカケラも出てきていない
-のであくまでここに書くのは全て「予定」である。あまり期待しすぎると失望
-するかもしれない。そういうわけで、軽く期待、ということにしておこう。
-
-h3. 記述言語
-
-まず使う言語。間違いなくCだろう。Rubyの英語メーリングリスト
-@ruby-talk@でのまつもとさんの発言によると
-
-bq. 
+<blockquote>
 I hate C++.
+</blockquote>
 
+So, C++ is most unlikely. Even if all the parts will be recreated,
+it is reasonable that the object system will remain almost the same,
+so not to increase extra efforts around this is necessary.
+However, chances are good that it will be ANSI C next time.
 
-だそうなので、C++を使うというのはまずありえない。いくら全面作り直しと
-言ってもオブジェクトシステムはほぼそのまま残ると考えられるので、そのあ
-たりでの手間が増えないようする必要もある。ただしCはCでも今度はANSI Cに
-なる可能性は高いだろう。
 
 h3. GC
 
-GCの実装では、
-まず@Boehm GC@footnote{Boehm GC @http://www.hpl.hp.com/personal/Hans_Boehm/gc@}から
-試してみるということだ。Boehm GCは
-conservativeかつincrementalかつgenerationalなGCで、しかも
-ネイティブスレッドが動いてい
-ても全スレッドのスタック領域をマークできるというかなりの優れものGCであ
-る。一度導入したとしてそのままBoehm GCをそのまま使い続けるのかどうか
-はわからないが、どちらにしてもなんらかの速度向上が期待できる方向に
-進むだろう。
-
-h3. パーサ
-
-仕様の点では、括弧を省略したメソッド呼び出しのネストが一律禁止になりそ
-うである。見てきたように@command_call@は文法全域にかなりの影響を与えてい
-た。これが簡略化されればパーサもスキャナも随分すっきりするはずだ。
-ただし括弧の省略自体がなくなることはありえない。
+Regarding the implementation of GC,
+the good start point would be
+`Boehm GC`\footnote{Boehm GC `http://www.hpl.hp.com/personal/Hans_Boehm/gc`}.
+Bohem GC is a conservative and incremental and generational GC,
+furthermore, it can mark all stack spaces of all threads even while native
+threads are running. It's really an impressive GC.
+Even if it is introduced once, it's hard to tell whether it will be used
+perpetually, but anyway it will proceed for the direction to which we can expect
+somewhat improvement on speed.
 
 
-また実装面では@yacc@を使い続けるかどうかでまだ思案中ということだ。使わ
-ないとすれば手書きで、ということだが、あれだけ複雑なものを手で実装でき
-るか、不安は残る。どちらを選んでも茨の道には違いない。
+h3. Parser
 
-h3. 評価器
+Regarding the specification, it's very likely that the nested method calls
+without parentheses will be forbidden. As we've seen, `command_call` has a great
+influence on all over the grammar. If this is simplified, both the parser and
+the scanner will also be simplified a lot.
+However, the ability to omit parentheses itself will never be disabled.
 
-評価器は完全に作り直しとなる。目的は主に高速化と実装の簡略化であり、
-主眼は二点だ。
-
-
-@rb_eval()@のような再帰呼び出しをなくす
-バイトコードインタプリタへの移行
-
-
-まず@rb_eval()@の再帰呼び出しをなくす。なくす方法については「末尾再帰
-→@goto@変換」のような感じ、と言うのが一番直感的だろうか。一つの
-@rb_eval()@の中で@goto@を使い、ぐるぐる回るわけだ。するとまず関数呼び
-出しが減るし、@return@や@break@のために使っていた@setjmp()@も不要にな
-る。ただしCで定義されたメソッドの呼び出しが入れば嫌でも関数を呼ばざ
-るを得ないので、その区切りではやはり@setjmp()@が必要だ。
+And regarding its implementation, whether we continue to use `yacc` is still
+under discussion. If we won't use, it would mean hand-writing, but is it
+possible to implement such complex thing by hand? Such anxiety might left.
+Whichever way we choose, the path must be thorny.
 
 
-バイトコード（byte code）というのはようするに機械語のプログラムみたい
-なものである。Smalltalk80の仮想マシンで有名になった用語で、命令がバイ
-ト単位で構成されているのでバイトコードと呼ばれる。上のレベルばかりいじっ
-ている人間からするとバイト単位なんてのはあたりまえに思えてしまうのだが、
-機械語では命令がビット単位になっていることは多い。例えばAlphaだと命令
-コード32ビットのうち先頭6ビットが命令種を表している。
+h3. Evaluator
+
+The evaluator will be completely recreated.
+Its aims are mainly to improve speed and to simplify the implementation.
+There are two main viewpoints:
 
 
-バイトコード型にする利点は主に高速化である。理由は二つで、一つめは構文
-木のようにポインタをたぐる必要がないこと。もう一つは局所的な最適化
-（peephole optimization）がやりやすいことだ。
+* remove recursive calls like `rb_eval()`
+* switch to a bytecode interpretor
+
+First, removing recursive calls of `rb_eval()`. The way to remove is,
+maybe the most intuitive explanation is that it's like the "tail recursive ->
+`goto` conversion". Inside a single `rb_eval()`, circling around by using
+`goto`. That decreases the number of function calls and removes the necessity of
+`setjmp()` that is used for `return` or `break`.
+However, when a function defined in C is called, calling a function is
+inevitable, and at that point `setjmp()` will still be required.
 
 
-またバイトコードを保存しておいて読み込む場合はパースがなくなるのでそ
-こでも多少は速くなると考えられる。しかしパースはプログラムの開始時点に
-一回しか行われない作業だし、元々パースにはあまり時間がかかっていない
-ので、そう大きな影響はない。
+Bytecode is, in short, something like a program written in machine language.
+It became famous because of the virtual machine of Smalltalk90,
+it is called bytecode because each instruction is one-byte.
+For those who are usually working at more abstract level, byte would seem
+so natural basis in size to deal with,
+but in many cases each instruction consists of bits in machine languages.
+For example, in Alpha, among a 32-bit instruction code, the beginning 6-bit
+represents the instruction type.
 
 
-バイトコードの評価器がどんなふうになるか知りたければ@regex.c@を見てみ
-るとよい。あとはPythonがバイトコードインタプリタだ。
-
-h3. スレッド
-
-スレッドはネイティブスレッド対応。Rubyが誕生した1994年当時に比べると
-スレッドを取り巻く環境は格段に良くなっているし、ネイティブスレッドで
-いける、と判断されたのだろう。
+The advantage of bytecode interpretors is mainly for speed. There are two
+reasons: Firstly, unlike syntax trees, there's no need to traverse pointers.
+Secondly, it's easy to do peephole optimization.
 
 
-ネイティブスレッドを使うということはCレベルでもプリエンプティブになる
-わけだからインタプリタ自体をマルチスレッドセーフにしなければならないが、
-その点はとりあえずグローバルロックをかけて解決するようである。
+And in the case when bytecode is saved and read in later,
+because there's no need to parse, we can naturally expect better performance.
+However, parsing is a procedure which is done only once at the beginning of a
+program and even currently it does not take so much time. Therefore, its
+influence will not be so much.
 
 
-それと知る人ぞ知る「継続」だが、どうもなくなりそうな気配だ。@ruby@の
-継続はスレッドの実装に大きく依存しているので、スレッドがネイティブスレッ
-ドになれば継続も自然と消滅する。あれが付いているのは「実装できて
-しまった」からだし、ほとんど使われていないので問題ないだろう。
+If you'd like to know about how the bytecode evaluator could be,
+`regex.c` is worth to look at.
+For another example, Python is a bytecode interpretor.
+
+
+
+
+h3. Thread
+
+Regarding thread, the thing is native thread support.
+The environment around thread has been significantly improved,
+comparing with the situation in 1994, the year of Ruby's birth.
+So it might be judged that
+we can get along with native thread now.
+
+
+Using native thread means being preemptive also at C level,
+thus the interpretor itself must be multi-thread safe,
+but it seems this point is going to be solved by using a global lock
+for the time being.
+
+
+Additionally, that somewhat arcane "continuation", it seems likely to be removed.
+`ruby`'s continuation highly depends on the implementation of thread,
+so naturally it will disappear if thread is switched to native thread.
+The existence of that feature is because "it can be implemented"
+and it is rarely actually used. Therefore there might be no problem.
+
+
 
 h3. M17N
 
-ついでにクラスライブラリについても少しだけ触れておこう。多言語化
-（Multilingualization、略してM17N）についてだ。プログラミングに
-おいてM17Nとは何をすることか有体に言うと、複数の文字コードを扱えるよう
-にすることである。
+In addition, I'd like to mention a few things about class libraries.
+This is about multi-lingualization (M17N for short).
+What it means exactly in the context of programming is
+being able to deal with multiple character encodings.
 
 
-似た話題では他に国際化（Internationalization、略してI18N）と
-いうのもあ
-る。こちらの例を挙げれば、エラーメッセージをユーザの好みの言語で出した
-り、日付の表現を国の慣習に合わせたりすることである。この例えでわかると
-おり、I18Nを実現するためにはM17Nの実現が必須である。しかし逆は成立しな
-い。
+`ruby` with Multi-lingualization support has already implemented and you can
+obtain it from the `ruby_m17m` branch of the CVS repository.
+It is not absorbed yet because it is judged that its specification is immature.
+If good interfaces is designed,
+it will be absorbed at some point in the middle of 1.9.
 
 
-具体的にRubyを多言語化するためには何が必要か。一つにはパーサの対応、も
-う一つは文字列関係のライブラリ、具体的には@String@と@Regexp@の対応、の
-二つが必要である。
 
-
-パーサの対応とは、コメントや文字列リテラル、正規表現リテラルに任意言語
-（正確にはエンコーディング）を許すことだ。これが易しそうで難しい。
-まず、@ruby@のパーサに
-エンコーディングを伝える方法が必要である。これまで見てきたよ
-うにRubyのプログラムは例外なくパーサを抜けたあとに評価される。つまりパー
-サにエンコーディングを伝えるのに通常の構文を使うことはできない。だから
-エンコーディングを指定するためになんらかの構文を追加する必要がある。
-
-
-ライブラリでの対応はわりと簡単だ。現在ある@mbclen()@という仕組みを
-素直に拡張したものになっている。
-
-
-M17N対応@ruby@は既に実装されており、CVSレポジトリの
-@ruby_m17n@ブランチから
-取得可能だ。実装されたのに取り込まれていないのは仕様が成熟していな
-いと判断されたためである。いいインターフェイスさえ設計できれば1.9の途中
-にでも入るのではないだろうか。
 
 h3. IO
 
-現在のRubyの@IO@クラスは単純な@stdio@のラッパーなのだが、
-このアプローチは
+
+The `IO` class in current Ruby is a simple wrapper of `stdio`,
+but in this approach,
+
+* there are too many but slight differences between various platforms.
+* we'd like to have finer control on buffers.
+
+these two points cause complaints.
+Therefore, it seems Rite will have its own `stdio`.
 
 
-プラットフォーム間の微妙な挙動の違いが多すぎる
-バッファリングを細かく制御したい
 
 
-という二点で不満があった。そこでRiteでは@stdio@を自前で持つ
-ことになりそうである。
+
 
 h2. Ruby Hacking Guide
 
-ここまで我々は常に@ruby@を外から観察する者として行動してきた。だがもち
-ろん@ruby@は展示ケースに収められた製品とは違う。即ち我々の行動いかんに
-よってはこちらから影響を与えることができるのである。本書最後の節はコミュ
-ニティから提案された@ruby@に対する働きかけについて話し、現在と未来の
-Ruby Hackerたちに対する餞とする。
 
-h3. 世代別GC
-
-まず、第5章でも触れた、木山真人さんによる世代別GC。
-既に述べた通り現在のパッチだと
+So far, we've always acted as observers who look at `ruby` from outside.
+But, of course, `ruby` is not a product which displayed in in a showcase.
+It means we can influence it if we take an action for it.
+In the last section of this book,
+I'll introduce the suggestions and activities for `ruby` from community,
+as a farewell gift for Ruby Hackers both at present and in the future.
 
 
-思ったより速度が出ない
-最新の@ruby@に合わせてアップデートが必要
+h3. Generational GC
+
+First, as also mentioned in Chapter 5,
+the generational GC made by Mr. Kiyama Masato.
+As described before, with the current patch,
+
+* it is less fast than expected.
+* it needs to be updated to fit the edge `ruby`
+
+these points are problems, but here I'd like to highly value it because,
+more than anything else, it was the first large non-official patch.
 
 
-という点が問題なのだが、この場では初めての大型非公式パッチで
-あるという点を何より高評価したい。
-
-h3. 鬼車
-
-いまのRubyが使っている正規表現エンジンはGNU regexの改造版である。その
-GNU regexはもともとEmacsのために書かれたもので、それをマルチバイト対応
-にしたものをさらにまつもとさんがPerl互換に改造した。という経緯から容易
-に想像できるように、非常に複雑怪奇な構造になってしまっている。またこの
-GNU regexpのライセンスがLGPLであるために@ruby@のライセンスが非常にやや
-こしくなっており、かねてからこのエンジンの置き換えが課題になってきた。
 
 
-そこでいきなり登場したのが小迫清美さんの手による正規表現エンジン「鬼車」
-である。これがかなり出来がよいらしく、すぐにでも本体に取りこまれそうだ。
+h3. Oniguruma
 
+The regular expression engine used by current Ruby is a remodeled version of GNU
+regex. That GNU regex was in the first place written for Emacs. And then it was
+remodeled so that it can support multi-byte characters. And then Mr. Matsumoto
+remodeled so that it is compatible with Perl.
+As we can easily imagine from this history,
+its construction is really intricate and spooky.
+Furthermore, due to the LPGL license of this GNU regex,
+the license of `ruby` is very complicated,
+so replacing this engine has been an issue from a long time ago.
 
-鬼車は@ruby@のCVSレポジトリから以下のようにして入手できる。
+What suddenly emerged here is the regular expression engine "Oniguruma" by
+Mr. K. Kosako. I heard this is written really well, it is likely being
+absorbed as soon as possible.
 
-p(=screen). 
+You can obtain Oniguruma from the `ruby`'s CVS repository in the following way.
+
+<pre class="screen">
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src co oniguruma
 </pre>
+
+
+
 h3. ripper
 
-続いて拙作のripper。@parse.y@を改造して拡張ライブラリにしたものだ。
-@ruby@本体に対する変更というわけではないが、パーサのコンポーネント化の
-一つの方向性としてここで紹介しておく。
+Next, ripper is my product. It is an extension library made by remodeling
+`parse.y`. It is not a change applied to the `ruby`'s main body, but I
+introduced it here as one possible direction to make the parser a component.
+
+It is implemented with kind of streaming interface and
+it can pick up things such as token scan or parser's reduction as events.
+It is put in the attached CD-ROM
+\footnote{ripper：`archives/ripper-0.0.5.tar.gz` of the attached CD-ROM},
+so I'd like you to give it a try.
+Note that the supported grammar is a little different from the current one
+because this version is based on `ruby` 1.7 almost half-year ago.
+
+I created this just because "I happened to come up with this idea",
+if this is accounted, I think it is constructed well.
+It took only three days or so to implement, really just a piece of cake.
 
 
-ストリーム系のインターフェイスで実装しており、トークンのスキャンだの
-パーサでの還元だのをイベント形式で拾うことができる。添付CD-ROMに入れて
-おいたfootnote{ripper：添付CD-ROMの@archives/ripper-0.0.5.tar.gz@}ので
-使ってみてほしい。なお、このバージョンは半年ほど前の@ruby@ 1.7ベース
-なので今の文法とは少し違う。
+h3. A parser alternative
 
+This product has not yet appeared in a clear form,
+there's a person who write a Ruby parser in C++ which can be used totally
+independent of `ruby`. (`[ruby-talk:50497]`).
 
-これを作ったのはただ「アイデアを思い付いてしまった」というのが理由だっ
-たりするだが、そのわりにはうまくいったと思う。実装時間も三日くらいで実
-にお手軽であった。
-
-h3. 代替パーサ
-
-まだ影も形もないプロダクトではあるが、@ruby@とは全く独立に使える
-RubyのパーサをC++で書いている人もいるようだ（@[ruby-talk:50497]@）。
 
 h3. JRuby
 
-さらに過激に、インタプリタ全体を書き直してしまえー、
-という動きもある。例えばJavaで書いたRuby
-「JRubyfootnote{JRuby @http://jruby.sourceforge.net@}」
-というものが登場している。Jan Arne Petersenさん以下、
-かなりの大所帯で実装しているようだ。
+More aggressively, there's an attempt to rewrite entire the interpretor.
+For example, a Ruby written in Java,
+Ruby\footnote{JRuby `http://jruby.sourceforge.net`},
+has appeared.
+It seems it is being implemented by a large group of people,
+Mr. Jan Arne Petersen and many others.
 
 
-ちょっといじってみた感想としては
+I tried it a little and as my reviews,
+
+* the parser is written really well. It does precisely handle even finer
+  behaviors such as spaces or here document.
+* `instance_eval` seems not in effect (probably it couldn't be helped).
+* it has just a few built-in libraries yet (couldn't be helped as well).
+* we can't use extension libraries with it (naturally).
+* because Ruby's UNIX centric is all cut out,
+  there's little possibility that we can run already-existing scripts without
+  any change.
+* slow
+
+perhaps I could say at least these things.
+Regarding the last one "slow", its degree is,
+the execution time it takes is 20 times longer than the one of the original
+`ruby`. Going this far is too slow.
+It is not expected running fast because that Ruby VM runs on Java VM.
+Waiting for the machine to become 20 times faster seems only way.
 
 
-パーサはかなりちゃんとできている。ヒアドキュメントや空白の微妙な挙動まで正確に再現されている。
-@instance_eval@が効かないようだ（これは仕方ないか）
-組み込みライブラリはまだ少ない（これも仕方ない）
-拡張ライブラリは使えない（あたりまえ）
-RubyのUNIX centricなところが全部削られているので既存のスクリプトがそのまま動く可能性は低いと思われる
-遅い
+However, the overall impression I got was, it's way better than I imagined.
 
 
-ということは言えそうだ。ちなみに最後の「遅い」がどのくらいかと言うと、
-オリジナルの@ruby@の20倍くらい（実行時間が）である。ここまで遅いとさす
-がに苦しい。やはりJava VMの上でRuby VMが動いているわけだから、遅くない
-はずがないのだ。マシンが20倍速になってくれるのを待つしかあるまい。
-
-
-しかし全体としては想像よりずっとよくできている、という印象を受けた。
 
 h3. NETRuby
 
-Javaで動くならC#でも動くだろう。というわけでC#で書いたRuby、
-「NETRubyfootnote{NETRuby @http://sourceforge.jp/projects/netruby/@}」
-というのが登場した。作者はartonさんである。
+If it can run with Java, it should also with C#.
+Therefore, a Ruby written in C# appeared,
+"NETRuby\footnote{NETRuby `http://sourceforge.jp/projects/netruby/`}".
+The author is Mr. arton.
+
+Because I don't have any .NET environment at hand,
+I checked only the source code,
+but according to the author,
+
+* more than anything, it's slow
+* it has a few class libraries
+* the compatibility of exception handling is not good
+
+such things are the problems.
+But `instance_eval` is in effect (astounding!).
 
 
-筆者の手元には.NET環境がないのでソースコードしか見ていないのだが、
-本人の弁によると
+h3. How to join `ruby` development
+
+`ruby`'s developer is really Mr. Matsumoto as an individual,
+regarding the final decision about the direction `ruby` will take,
+he has the definitive authority.
+But at the same time, `ruby` is an open source software,
+anyone can join the development.
+Joining means, you can suggest your opinions or send patches.
+The below is to concretely tell you how to join.
+
+In `ruby`'s case, the mailing list is at the center of the development,
+so it's good to join the mailing list.
+The mailing lists currently at the center of the community are three:
+`ruby-list`, `ruby-dev`, `ruby-talk`.
+`ruby-list` is a mailing list for "anything relating to Ruby" in Japanese.
+`ruby-dev` is for the development version `ruby`, this is also in Japanese.
+`ruby-talk` is an English mailing list.
+The way to join is shown on the page "mailing lists" at Ruby's official site
+\footnote{Ruby's official site: `http://www.ruby-lang.org/ja/`}.
+For these mailing lists, read-only people are also welcome,
+so I recommend just joining first and watching discussions
+to grasp how it is.
+
+Though Ruby's activity started in Japan,
+recently sometimes it is said "the main authority now belongs to `ruby-talk`".
+But the center of the development is still `ruby-dev`.
+Because people who has the commit right to `ruby` (e.g. core members) are mostly
+Japanese, the difficulty and reluctance of using English
+naturally lead them to `ruby-dev`.
+If there will be more core members who prefer to use English,
+the situation could be changed,
+but meanwhile the core of `ruby`'s development might remain `ruby-dev`.
+
+However, it's bad if people who cannot speak Japanese cannot join the
+development, so currently the summary of `ruby-dev` is translated once a week
+and posted to `ruby-talk`.
+I also help that summarising, but only three people do it in turn now,
+so the situation is really harsh.
+The members to help summarize is always in demand.
+If you think you're the person who can help,
+I'd like you to state it at `ruby-list`.
+
+And as the last note,
+only its source code is not enough for a software.
+It's necessary to prepare various documents and maintain web sites.
+And people who take care of these kind of things are always in short.
+There's also a mailing list for the document-related activities,
+but as the first step you just have to propose "I'd like to do something" to `ruby-list`.
+I'll answer it as much as possible,
+and other people would respond to it, too.
 
 
-何より遅い
-クラスライブラリがあまりない
-例外処理の互換性がいまいち
+h3. Finale
 
-
-というあたりが問題らしい。しかし@instance_eval@は動くらしい（驚愕）。
-
-h3. @ruby@の開発に参加するには
-
-@ruby@の開発者はあくまでまつもとゆきひろさん個人であり、最終的な
-@ruby@の方向については絶対的な権限がある。だが同時に@ruby@は
-オープンソースソフトウェアであり、誰でも開発に参加できる。参加できる、
-というのは、意見を提案したりパッチを出したりできるということだ。
-以下、具体的な参加方法について話す。
-
-
-@ruby@の場合はメーリングリストを中心に開発が進んでいるので、各メーリン
-グリストに参加するのがよい。現在コミュニティの中心となっているメーリ
-ングリストは
-@ruby-list@、@ruby-dev@、@ruby-talk@の三つである。@ruby-list@は
-「Rubyに関係することならなんでもOK」のメーリングリストで、日本語である。
-@ruby-dev@は開発版@ruby@の話をするメーリングリストで、これも日本語であ
-る。@ruby-talk@は英語のメーリングリストだ。参加方法はRubyの
-公式サイトfootnote{Rubyの公式サイト：@http://www.ruby-lang.org/ja/@}
-の「メーリングリスト」のページに載っている。これらのメーリングリストは
-どれも読むだけのメンバーも歓迎なので、とりあえずしばらく参加してみて
-議論を眺め、雰囲気を捕むといいのではないだろうか。
-
-
-日本から活動が始まったRubyだが、最近は「主導権は@ruby-talk@に移った」
-と言われてしまったりすることもある。
-だが開発の中心が相変わらず@ruby-dev@であることに変わりはない。なにしろ
-@ruby@のコミット権を持っている人間（即ちコアメンバー）はほとんど日本語
-ユーザなのでわざわざ英語で話すのも面倒だし、自然と@ruby-dev@に足が向い
-てしまう。将来英語を使うコアメンバーが増えてくれば状況も変わるかもしれ
-ないが、当分の間は@ruby@開発のコアは@ruby-dev@だろう。
-
-
-ただ日本語が使えないと開発に参加できないというのも困るので、今は
-@ruby-dev@の要約を一週間に一度英訳して@ruby-talk@に流すようになってい
-る。筆者もその要約に参加しているのだが、現在は三人の持ち回りで
-やっているため非常に厳しい。要約を手伝ってくれるメンバーは常時
-募集中である。我こそはと思うかたは是非@ruby-list@で参加表明して
-いただきたい。
-
-
-そして最後に、ソフトウェアはソースコードがあればいいというものでもない。
-各種ドキュメントやウェブサイトの整備も必要である。そしてそういうことを
-してくれる人は常に不足ぎみだ。
-ドキュメント関連の活動にもいちおう専用メーリングリストがあるが、とりあえ
-ずは@ruby-list@で「何かやりたい」と言ってくれればいい。筆者もできるだ
-け答えるようにするし、他のメンバーも反応してくれるだろう。
-
-h3. 最後に
-
-さて、長かった本書もこれで終わりだ。ページ数との兼ね合いもあるのであら
-ゆる部分を懇切丁寧にというわけにはいかなかったが、@ruby@の根幹について
-は全て語り尽くした。これ以上ウダウダと付け加えるのはよそう。まだわから
-ないことがあれば納得するまで自分でソースコードを読んで確かめてほしい。
-
-
-
-御意見・御感想・誤殖の指摘などは
-"青木峰郎 <aamine@loveruby.net>":mailto:aamine@loveruby.net
-までお願いします。
-
-
-"『Rubyソースコード完全解説』
-はインプレスダイレクトで御予約・御購入いただけます (書籍紹介ページへ飛びます)。":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
-
-Copyright (c) 2002-2004 Minero Aoki, All rights reserved.
-
-
+The long journey of this book is going to end now.
+As there was the limitation of the number of pages,
+explaining all of the parts comprehensively was impossible,
+however I told everything I could tell about the `ruby`'s core.
+I won't add extra things any more here.
+If you still have things you didn't understand,
+I'd like you to investigate it by reading the source code by yourself as much as
+you want.
