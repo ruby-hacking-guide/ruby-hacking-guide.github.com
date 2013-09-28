@@ -804,9 +804,9 @@ There's probably no problem if it is version 6 or .NET.
 
 MinGW or Minimalist GNU for Windows,
 it is what the GNU compiling environment (Namely, @gcc@ and @binutils@)
-is transplanted on Windows.
-Cygwin transplants the whole UNIX environment.
-On the contrary, MinGW transplants only the tools to compile.
+is ported on Windows.
+Cygwin ports the whole UNIX environment.
+On the contrary, MinGW ports only the tools to compile.
 Moreover, a program compiled with MinGW does not require any special DLL at
 runtime. It means, the @ruby@ compiled with MinGW can be treated completely the
 same as the Visual C++ version.
