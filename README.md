@@ -40,6 +40,19 @@ $ jekyll serve # this compiles files and starts a server on localhost:4000.
 [Jekyll usage](https://github.com/mojombo/jekyll/wiki/usage)
 
 
+Reading in EPUB
+=========
+
+Thanks to @avsej, we can read this book in EPUB.
+
+To genearte an EPUB file, you need to install eeepub additionally.
+
+```sh
+$ gem install eeepub
+$ ruby script/publish
+```
+
+
 About the version of ruby explained
 ==========
 
