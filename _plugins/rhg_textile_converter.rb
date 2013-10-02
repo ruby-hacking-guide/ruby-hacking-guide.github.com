@@ -1,3 +1,4 @@
+# encoding: utf-8
 require "jekyll/converters/textile"
 module Jekyll::Converters
   class RhgTextile < Textile
