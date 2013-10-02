@@ -45,7 +45,7 @@ Reading in EPUB
 
 Thanks to @avsej, we can read this book in EPUB.
 
-To genearte an EPUB file, you need to install eeepub additionally.
+To generate an EPUB file, you need to install eeepub additionally.
 
 ```sh
 $ gem install eeepub
