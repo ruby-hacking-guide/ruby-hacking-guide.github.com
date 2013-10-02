@@ -38,3 +38,4 @@ PLATFORMS
 DEPENDENCIES
   RedCloth
   jekyll
+  rubyzip (~> 0.9.9)
