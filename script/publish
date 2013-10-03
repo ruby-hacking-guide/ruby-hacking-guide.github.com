@@ -2,7 +2,9 @@
 # Simple script to generate EPUB book (which could be also converted
 # to MOBI then) from site sources
 #
-# It depends on on 'eeepub' ruby gem
+# It depends on on 'eeepub' ruby gem and also you should have
+# ebook-convert executable somewhere in path (or use --path argument
+# for that)
 #
 # Usage is simple:
 #
@@ -12,6 +14,30 @@
 require 'eeepub'
 require 'date'
 require 'fileutils'
+require 'optparse'
+
+calibre_path = '/Applications/calibre.app/Contents/MacOS'
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{ARGV[0]} [options]"
+  opts.on("-p", "--calibre-path PATH", "The path to ebook-convert binary, it also look in PATH env (default: #{calibre_path})") do |v|
+    calibre_path = v
+  end
+  opts.on_tail("-?", "--help", "Show this message") do
+    puts opts
+    exit
+  end
+end.parse!
+
+ENV["PATH"] = "#{ENV["PATH"]}:#{calibre_path}"
+def executable?(bin)
+  ENV["PATH"].split(":").any? do |path|
+    File.executable?(File.join(path, bin))
+  end
+end
+
+unless executable?("ebook-convert")
+  abort("ebook-convert not found in PATH. Use --calibre-path option to specify custom path")
+end
 
 today = Date.today
 system("jekyll build")
@@ -37,9 +63,6 @@ end
 Dir["#{ORIGINAL_DIR}/*.html"].each do |f|
   old = File.read(f)
   new = old.gsub(%r("/css/styles.css"), %q("css/styles.css"))
-           .gsub(%r(<br>), %q(<br/>))
-           .gsub(%r(<hr>), %q(<hr/>))
-           .gsub(%r(<img([^>]*?)>), %q(<img\1/>))
   File.write("#{TEMP_DIR}/#{File.basename(f)}", new)
 end
 
@@ -105,7 +128,30 @@ epub = EeePub.make do
 end
 
 
+# because the source files are using HTML5 and epub prefer XML, we
+# call initial output as dirty and rely on calibre to sanitize and
+# build well-formed outputs
+STDERR.print("write dirty EPUB ...")
 FileUtils.mkdir_p EBOOK_DIR
 sha = `git rev-parse HEAD`[0..5]
-epub.save("#{EBOOK_DIR}/rhg-#{today}_#{sha}.epub")
+base_path = "#{EBOOK_DIR}/rhg-#{today}_#{sha}"
+epub.save("#{base_path}-dirty.epub")
 FileUtils.rm_rf("#{TEMP_DIR}")
+STDERR.puts(" ok")
+
+# now pass dirty file to calibre to produce PDF, MOBI and EPUB
+STDERR.puts("RECONVERT EPUB ...")
+system("ebook-convert #{base_path}-dirty.epub #{base_path}.epub")
+STDERR.puts("RECONVERT EPUB ... ok")
+
+STDERR.print("CONVERT TO MOBI ...")
+system("ebook-convert #{base_path}-dirty.epub #{base_path}.pdf")
+STDERR.puts("CONVERT TO MOBI ... ok")
+
+STDERR.print("CONVERT TO PDF ...")
+system("ebook-convert #{base_path}-dirty.epub #{base_path}.mobi")
+STDERR.puts("CONVERT TO PDF ... ok")
+
+STDERR.print("remove dirty EPUB ...")
+FileUtils.rm_rf("#{base_path}-dirty.epub")
+STDERR.puts(" ok")
