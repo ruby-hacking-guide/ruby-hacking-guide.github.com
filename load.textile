@@ -4,7 +4,7 @@ title: Loading
 ---
 Translated by Vincent ISAMBART
 
-h1. Chapter 18: Loading
+h1(#chapter). Chapter 18: Loading
 
 h2. Outline
 
