@@ -48,9 +48,18 @@ Thanks to @avsej, we can read this book in EPUB.
 To generate an EPUB file, you need to install eeepub additionally.
 
 ```sh
+$ gem install rubyzip -v 0.9.9
 $ gem install eeepub
 $ ruby script/publish
 ```
+
+You can convert a generated EPUB file into other formats by using Calibre.
+
+The generated files in various formats are also available:
+
+* http://files.avsej.net/rhg-2013-10-03_e5203a.epub
+* http://files.avsej.net/rhg-2013-10-03_e5203a.mobi
+* http://files.avsej.net/rhg-2013-10-03_e5203a.pdf
 
 
 About the version of ruby explained
