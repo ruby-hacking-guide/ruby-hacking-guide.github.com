@@ -1026,7 +1026,7 @@ else {
 
 
 The question is
-"between the two `ifs`, inside one or outside oue,
+"between the two `ifs`, inside one or outside one,
 which is the one to which the `else` should be attached?".
 
 
@@ -1146,7 +1146,7 @@ the result would be this.
 
 
 They conflict aggressively. Thinking for 5 minutes is enough to see that
-this rule causes a problem in the following and simialr cases:
+this rule causes a problem in the following and similar cases:
 
 
 <pre class="emlist">
