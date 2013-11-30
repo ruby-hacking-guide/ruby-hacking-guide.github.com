@@ -130,7 +130,7 @@ The output is quite long - over 450 lines of grammar rules - and as such I have
 only included the most important parts in this chapter.
 
 Which symbols, then, are the most important? The names such as `program`, `expr`,
-`stmt`,`primary`, `arg` etc. are always very important. It's because they
+`stmt`, `primary`, `arg` etc. are always very important. It's because they
 represent the general parts of the grammatical elements of a programming
 language. The following table outlines the elements we should generally focus on
 in the syntax of a program.
@@ -170,7 +170,7 @@ For example, in C a function call is an expression but it can solely be put.
 It means it is an expression but it can also be a statement.
 
 Conversely, when surrounded in parentheses, expressions become primaries.
-It is because the lower the level of a element the higher the precedence it has.
+It is because the lower the level of an element the higher the precedence it has.
 
 The range of statements differ considerably between programming languages.
 Let's consider assignment as an example.
@@ -253,7 +253,7 @@ The name `tLPAREN_ARG` comes from `t` for terminal symbol, `L` for left and
 `PAREN` for parentheses - it is the open parenthesis. Why this isn't `'('`
 is covered in the next section "Context-dependent scanner". Anyway, the purpose
 of this rule is demote an `expr` to a `primary`. This creates
-a cycle which can the seen in Figure 2, and the arrow shows how this rule is
+a cycle which can be seen in Figure 2, and the arrow shows how this rule is
 reduced during parsing.
 
 !images/ch_parser_exprloop.jpg(`expr` demotion)!
@@ -1183,7 +1183,7 @@ I searched the place where setting `lex_gets` and this is what I found:
 
 
 
-`rb_io_gets()` is not a exclusive function for the parser
+`rb_io_gets()` is not an exclusive function for the parser
 but one of the general-purpose library of Ruby.
 It is the function to read a line from an `IO` object.
 
