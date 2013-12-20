@@ -18,7 +18,7 @@ Hereafter capital "Ruby" refers to Ruby as a language specification, and lowerca
 
 h4. Development style
 
-Ruby is a language that is being developped by the hand of Yukihiro Matsumoto as
+Ruby is a language that is being developed by the hand of Yukihiro Matsumoto as
 an individual. Unlike C or Java or Scheme, it does not have any standard.
 The specification is merely
 shown as an implementation as @ruby@, and its varying continuously.
@@ -31,7 +31,7 @@ The source code is open in public and distributed free of charge.
 Thanks to such condition, an attempt like this book can be approved.
 
 
-If you'd like to know the exact lisence, you can read @README@ and @LEGAL@.
+If you'd like to know the exact licence, you can read @README@ and @LEGAL@.
 For the time being, I'd like you to remember that you can do at least the
 following things:
 
@@ -45,7 +45,7 @@ There is no need for special permission and payment in all these cases.
 
 
 By the way, the purpose of this book is to read the original @ruby@,
-thus the target source is the one not modified unless it is particulary
+thus the target source is the one not modified unless it is particularly
 specified. However, white spaces, new lines and comments were added or removed
 without asking.
 
@@ -123,7 +123,7 @@ the difference between an interpreter and a compiler. If the matter is to
 attempt a theoretical comparison in the process how a program is executed,
 there's no difference between an interpreter language and a compile language.
 Because it works by letting CPU interpret the code compiled to the machine
-language, it may be possible to say it works as an interpretor.
+language, it may be possible to say it works as an interpreter.
 Then where is the place that actually makes a difference?
 It is a more practical place, in the process of development.
 
@@ -142,7 +142,7 @@ Well, why people perceive an interpreter and compiler so much different like
 this? I think that it is because the language developers so far have chosen
 either implementation based on the trait of each language. In other words,
 if it is a language for a comparatively small purpose such as a daily routine,
-it would be an interpretor.
+it would be an interpreter.
 If it is for a large project where a number of people are involved in the
 development and accuracy is required,
 it would be a compiler.
@@ -319,7 +319,7 @@ thus there's the high possibility that the ordinary people can read it.
 (Whether it is truly so, I'd like you confirm it by yourself.)
 
 Well, I just said it's in C-language, but the actual language version which ruby is
-targetting is basically K&R C.  Until a little while ago, there were a decent number
+targeting is basically K&R C.  Until a little while ago, there were a decent number
 of - not plenty though - K&R-only-environment.
 But recently, there are a few environments which do not accept programs
 written in ANSI C, technically there's no problem to move on to ANSI C.
@@ -1307,7 +1307,7 @@ can be used from extension libraries. |
 | @env.h@   | the definitions of the structs to express the context of the evaluator |
 
 
-The parts to compose the core of the @ruby@ interpretor.
+The parts to compose the core of the @ruby@ interpreter.
 The most of the files which will be explained in this book are contained here.
 If you consider the number of the files of the entire @ruby@,
 it is really only a few. But if you think based on the byte size,  
@@ -1435,7 +1435,7 @@ h4. Parser
 The second one is parser. Probably some preliminary explanations are necessary
 for this.
 
-@ruby@ command is the interpretor of Ruby language.
+@ruby@ command is the interpreter of Ruby language.
 It means that it analyzes the input which is a text on invocation
 and executes it by following it.
 Therefore, @ruby@ needs to be able to interpret the meaning of the program
