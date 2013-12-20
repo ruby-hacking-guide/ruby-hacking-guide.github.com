@@ -410,7 +410,7 @@ An important key to reading the source code is to set a concrete goal.
 
 
 This is a word by the author of Ruby, Matsumoto. Indeed, his word is very convincing for me.
-When the motivation is a spontaneous idea "May be I should read a kernel, at least...",
+When the motivation is a spontaneous idea "Maybe I should read a kernel, at least...",
 you would get source code expanded or explanatory books ready on the desk. But not knowing
 what to do, the studies are to be left untouched. Haven't you? On the other hand, when you
 have in mind "I'm sure there is a bug somewhere in this tool. I need to quickly fix it and
