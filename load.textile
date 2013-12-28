@@ -887,7 +887,7 @@ Whichever platform you are on,
 # take the pointers to the functions contained in the library
 # unmap the library
 
-it consists of these there steps.
+it consists of these three steps.
 For example, if it is `dlopen`-based API,
 
 # `dlopen`
