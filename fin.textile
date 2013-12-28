@@ -6,7 +6,7 @@ h1. Final Chapter: Ruby's future
 
 h2. Issues to be addressed
 
-@ruby@ isn't 'completely finished software'。It's still being developed,
+@ruby@ isn't 'completely finished software. It's still being developed,
 there are still a lot of issues. Firstly, we want to try removing
 inherent problems in the current interpreter.
 
