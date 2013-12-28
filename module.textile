@@ -172,7 +172,7 @@ superclass.
 Thus, (the local variable space for) the parameter variables must be reserved.
 
 
-Additionally, the difference between @last_func@ and @orig_func@ will be come
+Additionally, the difference between @last_func@ and @orig_func@ will come
 out in the cases like when the method is @alias@ ed.
 For instance,
 
