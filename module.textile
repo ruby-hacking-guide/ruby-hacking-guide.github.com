@@ -532,7 +532,7 @@ the module @statement@ ? Let's try to list up several features:
 * if you write a @def@ statement, a method should be defined on the module
 
 
-What is the way to achive these things? ... is the point of this section.
+What is the way to achieve these things? ... is the point of this section.
 Now, let's start to look at the codes.
 
 
