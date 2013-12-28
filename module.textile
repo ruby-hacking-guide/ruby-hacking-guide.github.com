@@ -362,7 +362,7 @@ h3. @ruby_dyna_vars@
 
 
 The block local variable space. The frame struct is @struct RVarmap@ that has
-already seen in Part 2. Form now on, I'll call it just @VARS@.
+already seen in Part 2. From now on, I'll call it just @VARS@.
 
 
 <p class="caption">▼ @struct RVarmap@</p>
@@ -532,7 +532,7 @@ the module @statement@ ? Let's try to list up several features:
 * if you write a @def@ statement, a method should be defined on the module
 
 
-What is the way to archive these things? ... is the point of this section.
+What is the way to achive these things? ... is the point of this section.
 Now, let's start to look at the codes.
 
 
