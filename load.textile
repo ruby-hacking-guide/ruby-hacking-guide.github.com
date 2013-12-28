@@ -180,7 +180,7 @@ h3. Highlights of this chapter
 
 With the above knowledge in our mind, we are going to read.
 But because this time its specification is defined very particularly,
-if we simply read it, it could be just a enumeration of the codes.
+if we simply read it, it could be just an enumeration of the codes.
 Therefore, in this chapter,
 we are going to reduce the target to the following 3 points:
 
