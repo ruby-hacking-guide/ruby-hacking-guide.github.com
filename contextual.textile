@@ -977,7 +977,7 @@ h2. `tLPAREN_ARG`(1)
 
 h3. The problem
 
-This one is very complicated. It only became workable in in Ruby 1.7 and only
+This one is very complicated. It only became workable in Ruby 1.7 and only
 fairly recently. The core of the issue is interpreting this:
 
 <pre class="emlist">
