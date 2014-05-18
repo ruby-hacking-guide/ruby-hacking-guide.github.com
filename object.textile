@@ -301,7 +301,7 @@ This `ID` is a number having a one-to-one association with a string. However,
 it's not possible to have an association between all strings in this world and
 numerical values. It is limited to the one to one relationships
 inside one `ruby` process. I'll speak of the method to find an `ID` in the
-next chapter "Names and name tables".
+next chapter "Names and name tables."
 
 In language processor, there are a lot of names to handle. Method names
 or variable names, constant names, file names, class names... It's
@@ -388,7 +388,7 @@ For `Qnil`, there is a macro dedicated to check if a `VALUE` is `Qnil` or not,
 
 The name ending with `p` is a notation coming from Lisp denoting that it is a
 function returning a boolean value. In other words, `NIL_P` means "is the
-argument `nil`?". It seems the "`p`" character comes from "predicate." This
+argument `nil`?" It seems the "`p`" character comes from "predicate." This
 naming rule is used at many different places in `ruby`.
 
 Also, in Ruby, `false` and `nil` are false (in conditional statements)
@@ -476,7 +476,7 @@ module, `Object` just includes it. As modules are functionally similar to
 multiple inheritance, it may seem having just `super` is problematic, but
 in `ruby` some clever conversions are made to make it look like single
 inheritance. The details of this process will be explained in the fourth
-chapter "Classes and modules".
+chapter "Classes and modules."
 
 Because of this conversion, `super` of the struct of `Object` points to `struct RClass`
 which is the entity of `Kernel` object and the `super` of Kernel is `NULL`.
@@ -533,7 +533,7 @@ puts the found value at the address given in third parameter (`&body`).
 Nevertheless, doing this search each time whatever the circumstances would be
 too slow. That's why in reality, once called, a method is cached. So starting
 from the second time it will be found without following `super` one by one.
-This cache and its search will be seen in the 15th chapter "Methods".
+This cache and its search will be seen in the 15th chapter "Methods."
 
 h2. Instance variables
 
@@ -731,7 +731,7 @@ Let's see this in practice.
 `rb_special_const_p()` is true when its parameter is not a pointer. However,
 as this `if` part requires knowledge of the garbage collector, we'll skip it
 for now. I'd like you to check it again after reading the chapter 5 "Garbage
-collection".
+collection."
 
 `st_init_numtable()` already appeared some time ago. It creates a new hash
 table.
@@ -740,7 +740,7 @@ table.
 searches for what's attached to `obj`. If an attached value can be found, the
 whole function returns true and stores the value at the address (`&tbl`) given
 as third parameter. In short, `!st_lookup(...)` can be read "if a value can't
-be found".
+be found."
 
 `st_insert()` was also already explained. It stores a new association in a
 table.
@@ -798,7 +798,7 @@ Furthermore, if the size of `RString` was as much as 4 pointers,
 `Robject` would use less than the half size of the union,
 and this is too wasteful.
 
-So the received merit for `iv_tbl` is more or less saving memory and speeding
+So the benefit of `iv_tbl` is more or less saving memory and speeding
 up. Furthermore we do not know if it is used often or not. In fact,
 `generic_iv_tbl` was not introduced before `ruby` 1.2, so it was not possible
 to use instance variables in `String` or `Array` at that time. Nevertheless, it
@@ -852,7 +852,7 @@ The structure is completely the same.
 (A) For `struct RObject` or `RClass`, we search the variable in `iv_tbl`. As
 `iv_tbl` can also be `NULL`, we must check it before using it. Then if
 `st_lookup()` finds the relation, it returns true, so the whole `if` can be
-read as "If the instance variable has been set, return its value".
+read as "If the instance variable has been set, return its value."
 
 &#40;C) If no correspondence could be found, in other words if we read an
 instance variable that has not been set, we first leave the `if` then the
@@ -1096,7 +1096,7 @@ which is Ruby's hash table.
 </pre>
 
 It's a wrapper for `struct st_table`. `st_table` will be detailed in the next
-chapter "Names and name tables".
+chapter "Names and name tables."
 
 `ifnone` is the value when a key does not have an associated value, its default
 is `nil`. `iter_lev` is to make the hashtable reentrant (multithread safe).
@@ -1168,6 +1168,6 @@ for managing a pointer to a user defined struct" has been created on
 Because explaining `struct RData` is still too complicated, for
 the time being let's just look at its representation (figure 8).
 The detailed explanation of its members will be introduced
-after we'll finish chapter 5 "Garbage collection".
+after we'll finish chapter 5 "Garbage collection."
 
 !images/ch_object_rdata.png(Representation of `struct RData`)!
