@@ -346,7 +346,7 @@ h2. Ruby Hacking Guide
 
 
 So far, we've always acted as observers who look at `ruby` from outside.
-But, of course, `ruby` is not a product which displayed in in a showcase.
+But, of course, `ruby` is not a product which displayed in a showcase.
 It means we can influence it if we take an action for it.
 In the last section of this book,
 I'll introduce the suggestions and activities for `ruby` from community,
