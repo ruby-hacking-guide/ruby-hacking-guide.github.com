@@ -49,9 +49,11 @@ module Jekyll::Converters
       super content
     end
 
-    # simulate Jekyll::Converter.inherited
-    Jekyll::Converter.subclasses << self
-    Jekyll::Converter.subclasses.sort!
+    unless Jekyll::Converter.respond_to? :descendants
+      # simulate Jekyll::Converter.inherited
+      Jekyll::Converter.subclasses << self
+      Jekyll::Converter.subclasses.sort!
+    end
   end
 end
 
