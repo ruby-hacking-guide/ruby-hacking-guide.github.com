@@ -70,31 +70,6 @@ Minero AOKI for letting us translate his work.
 You can get further information about this project from
 "the archives of rhg-discussion mailing list":http://rubyforge.org/pipermail/rhg-discussion/
 
-
-h2. Help us!
-
-People who are good at Ruby, C and Japanese or English are
-needed. Those good at Japanese (native Japanese speakers are of course
-welcome) can help translate and those good at English (preferably
-native speakers) can help correct mistakes, and rewrite badly written
-parts... Knowing Ruby and C well is really a requirement because it
-helps avoiding many mistranslations and misinterpretations.
-
-People good at making diagrams would also be helpful because there is
-quite a lot to redo and translators would rather spend their time
-translating instead of making diagrams.
-
-There have been multiple efforts to translate this book, and we want to see if
-we can renew efforts by creating an organisation on github. Interested parties
-can join in by starting a pull request on this repo
-https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com
-There is a mostly derelict mailing list at
-"rhg-discussion mailing list":http://rubyforge.org/mailman/listinfo/rhg-discussion
-feel free to introduce yourself (who you are, your skills, how much free time you
-have), but we think the best way to propose or send corrections/improvements
-is to send a pull request. If you start a feature branch along with a pull
-request at the start of your work then people can comment as you work.
-
 There is an old SVN repo, that is hosted at
 The RubyForge project page is http://rubyforge.org/projects/rhg.
 It has been imported here, and I will attempt to give credit and re-write the
