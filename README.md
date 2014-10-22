@@ -2,9 +2,9 @@ Ruby Hacking Guide Translation
 ==============================
 [Read the translated guide here](http://ruby-hacking-guide.github.io/)
 
+[Contributors](https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com/graphs/contributors)
 
-
-Contributors not included on [GitHub](https://github.com/ruby-hacking-guide/ruby-hacking-guide.github.com/graphs/contributors)
+Previous contributors to SVN repo
 ============
 
 * Vincent Isambart
