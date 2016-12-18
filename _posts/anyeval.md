@@ -2,96 +2,77 @@
 layout: default
 title: "Chapter 17: Dynamic evaluation"
 ---
-h1. Chapter 17: Dynamic evaluation
 
-h2. Overview
+Chapter 17: Dynamic evaluation
+==============================
+
+Overview
+--------
 
 I have already finished to describe about the mechanism of the evaluator by the
 previous chapter.
 In this chapter, by including the parser in addition to it,
 let's examine the big picture as "the evaluator in a broad sense".
-There are three targets: `eval`, `Module#module_eval` and
-`Object#instance_eval`.
+There are three targets: \`eval\`, \`Module\#module\_eval\` and
+\`Object\#instance\_eval\`.
 
+### \`eval\`
 
-h3. `eval`
-
-
-I've already described about `eval`,
+I've already described about \`eval\`,
 but I'll introduce more tiny things about it here.
 
-
-By using `eval`, you can compile and evaluate a string at runtime in the place.
+By using \`eval\`, you can compile and evaluate a string at runtime in the place.
 Its return value is the value of the last expression of the program.
 
-
-
-<pre class="emlist">
+``` emlist
 p eval("1 + 1")   # 2
-</pre>
+```
 
+You can also refer to a variable in its scope from inside of a string to \`eval\`.
 
-You can also refer to a variable in its scope from inside of a string to `eval`.
-
-
-
-<pre class="emlist">
+``` emlist
 lvar = 5
 @ivar = 6
 p eval("lvar + @ivar")   # 11
-</pre>
-
+```
 
 Readers who have been reading until here cannot simply read and pass over the
 word "its scope". For instance, you are curious about how is its "scope" of
 constants, aren't you? I am. To put the bottom line first, basically you
-can think it directly inherits the environment of outside of `eval`.
-
+can think it directly inherits the environment of outside of \`eval\`.
 
 And you can also define methods and define classes.
 
-
-
-<pre class="emlist">
+``` emlist
 def a
   eval('class C;  def test() puts("ok") end   end')
 end
 
 a()          # define class C and C#test
 C.new.test   # shows ok
-</pre>
-
+```
 
 Moreover, as mentioned a little in the previous chapter,
-when you pass a `Proc` as the second argument, the string can be evaluated in
+when you pass a \`Proc\` as the second argument, the string can be evaluated in
 its environment.
 
-
-
-<pre class="emlist">
+``` emlist
 def new_env
   n = 5
   Proc.new { nil }   # turn the environment of this method into an object and return it
 end
 
 p eval('n * 3', new_env())   # 15
-</pre>
+```
 
+### \`module\_eval\` and \`instance\_eval\`
 
-
-
-
-h3. `module_eval` and `instance_eval`
-
-
-When a `Proc` is passed as the second argument of `eval`, the evaluations can be
-done in its environment. `module_eval` and `instance_eval` is its limited (or
-shortcut) version. With `module_eval`, you can evaluate in an environment that
+When a \`Proc\` is passed as the second argument of \`eval\`, the evaluations can be
+done in its environment. \`module\_eval\` and \`instance\_eval\` is its limited (or
+shortcut) version. With \`module\_eval\`, you can evaluate in an environment that
 is as if in a module statement or a class statement.
 
-
-
-<pre class="emlist">
+``` emlist
 lvar = "toplevel lvar"   # a local variable to confirm this scope
 
 module M
@@ -103,94 +84,78 @@ M.module_eval(<<'EOS')   # a suitable situation to use here-document
       puts 'ok'
     end
 EOS
-</pre>
+```
 
-
-With `instance_eval`, you can evaluate in an environment whose `self` of the
+With \`instance\_eval\`, you can evaluate in an environment whose \`self\` of the
 singleton class statement is the object.
 
-
-
-<pre class="emlist">
+``` emlist
 lvar = "toplevel lvar"   # a local variable to confirm this scope
 
 obj = Object.new
 obj.instance_eval(<<'EOS')
     p lvar   # referable
-    p self   # shows #<Object:0x40274f5c>
+    p self   # shows #
     def ok   # define obj.ok
       puts 'ok'
     end
 EOS
-</pre>
+```
 
-
-Additionally, these `module_eval` and `instance_eval` can also be used as
+Additionally, these \`module\_eval\` and \`instance\_eval\` can also be used as
 iterators, a block is evaluated in each environment in that case.
 For instance,
 
-
-
-<pre class="emlist">
+``` emlist
 obj = Object.new
-p obj                 # #<Object:0x40274fac>
+p obj                 # #
 obj.instance_eval {
-    p self            # #<Object:0x40274fac>
+    p self            # #
 }
-</pre>
-
+```
 
 Like this.
 
-
 However, between the case when using a string and the case when using a block,
 the behavior around local variables is different each other.
-For example, when creating a block in the `a` method then doing `instance_eval`
-it in the `b` method, the block would refer to the local variables of `a`.
-When creating a string in the `a` method then doing `instance_eval` it in the
-`b` method, from inside of the string, it would refer to the local variables of `b`.
+For example, when creating a block in the \`a\` method then doing \`instance\_eval\`
+it in the \`b\` method, the block would refer to the local variables of \`a\`.
+When creating a string in the \`a\` method then doing \`instance\_eval\` it in the
+\`b\` method, from inside of the string, it would refer to the local variables of \`b\`.
 The scope of local variables is decided "at compile time",
 the consequence differs because a string is compiled every time but a block is
 compiled when loading files.
 
+\`eval\`
+--------
 
+### \`eval()\`
 
-h2. `eval`
-
-
-h3. `eval()`
-
-
-The `eval` of Ruby branches many times based on the presence and absence of the
+The \`eval\` of Ruby branches many times based on the presence and absence of the
 parameters. Let's assume the form of call is limited to the below:
 
-
-
-<pre class="emlist">
+``` emlist
 eval(prog_string, some_block)
-</pre>
+```
 
+Then, since this makes the actual interface function \`rb\_f\_eval()\` almost
+meaningless, we'll start with the function \`eval()\` which is one step lower.
+The function prototype of \`eval()\` is:
 
-Then, since this makes the actual interface function `rb_f_eval()` almost
-meaningless, we'll start with the function `eval()` which is one step lower.
-The function prototype of `eval()` is:
-
-
-
-<pre class="emlist">
+``` emlist
 static VALUE
 eval(VALUE self, VALUE src, VALUE scope, char *file, int line);
-</pre>
+```
 
-
-`scope` is the `Proc` of the second parameter.
-`file` and `line` is the file name and line number of where a string to `eval`
+\`scope\` is the \`Proc\` of the second parameter.
+\`file\` and \`line\` is the file name and line number of where a string to \`eval\`
 is supposed to be located. Then, let's see the content:
 
+<p class="caption">
+▼ \`eval()\` (simplified)
 
-<p class="caption">▼ `eval()` (simplified)</p>
-
-<pre class="longlist">
+</p>
+``` longlist
 4984  static VALUE
 4985  eval(self, src, scope, file, line)
 4986      VALUE self, src, scope;
@@ -281,33 +246,30 @@ is supposed to be located. Then, let's see the content:
 5127  }
 
 (eval.c)
-</pre>
-
+```
 
 If this function is shown without any preamble, you probably feel "oww!".
-But we've defeated many functions of `eval.c` until here,
+But we've defeated many functions of \`eval.c\` until here,
 so this is not enough to be an enemy of us.
 This function is just continuously saving/restoring the stacks.
 The points we need to care about are only the below three:
 
+-   unusually \`FRAME\` is also replaced (not copied and pushed)
+-   \`ruby\_cref\` is substituted (?) by \`ruby\_frame-&gt;cbase\`
+-   only \`scope\_vmode\` is not simply restored but influences \`data\`.
 
-* unusually `FRAME` is also replaced (not copied and pushed)
-* `ruby_cref` is substituted (?) by `ruby_frame->cbase`
-* only `scope_vmode` is not simply restored but influences `data`.
+And the main parts are the \`compile()\` and \`eval\_node()\` located around the
+middle. Though it's possible that \`eval\_node()\` has already been forgotten,
+it is the function to start the evaluation of the parameter \`node\`.
+It was also used in \`ruby\_run()\`.
 
+Here is \`compile()\`.
 
-And the main parts are the `compile()` and `eval_node()` located around the
-middle. Though it's possible that `eval_node()` has already been forgotten,
-it is the function to start the evaluation of the parameter `node`.
-It was also used in `ruby_run()`.
+<p class="caption">
+▼ \`compile()\`
 
-
-Here is `compile()`.
-
-
-<p class="caption">▼ `compile()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 4968  static NODE*
 4969  compile(src, file, line)
 4970      VALUE src;
@@ -325,55 +287,50 @@ Here is `compile()`.
 4982  }
 
 (eval.c)
-</pre>
+```
 
-
-`ruby_nerrs` is the variable incremented in `yyerror()`.
+\`ruby\_nerrs\` is the variable incremented in \`yyerror()\`.
 In other words, if this variable is non-zero, it indicates more than one parse
-error happened. And, `rb_compile_string()` was already discussed in Part 2.
+error happened. And, \`rb\_compile\_string()\` was already discussed in Part 2.
 It was a function to compile a Ruby string into a syntax tree.
-
 
 One thing becomes a problem here is local variable.
 As we've seen in Chapter 12: Syntax tree construction,
-local variables are managed by using `lvtbl`.
-However, since a `SCOPE` (and possibly also `VARS`) already exists,
+local variables are managed by using \`lvtbl\`.
+However, since a \`SCOPE\` (and possibly also \`VARS\`) already exists,
 we need to parse in the way of writing over and adding to it.
-This is in fact the heart of `eval()`,
+This is in fact the heart of \`eval()\`,
 and is the worst difficult part.
-Let's go back to `parse.y` again and complete this investigation.
+Let's go back to \`parse.y\` again and complete this investigation.
 
+### \`top\_local\`
 
-
-
-h3. `top_local`
-
-
-I've mentioned that the functions named `local_push() local_pop()` are used
-when pushing `struct local_vars`, which is the management table of local
+I've mentioned that the functions named \`local\_push() local\_pop()\` are used
+when pushing \`struct local\_vars\`, which is the management table of local
 variables,
 but actually there's one more pair of functions to push the management table.
-It is the pair of `top_local_init()` and `top_local_setup()`.
+It is the pair of \`top\_local\_init()\` and \`top\_local\_setup()\`.
 They are called in this sort of way.
 
+<p class="caption">
+▼ How \`top\_local\_init()\` is called
 
-<p class="caption">▼ How  `top_local_init()`  is called </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 program :   { top_local_init(); }
           compstmt
             { top_local_setup(); }
-</pre>
-
+```
 
 Of course, in actuality various other things are also done,
 but all of them are cut here because it's not important.
 And this is the content of it:
 
+<p class="caption">
+▼ \`top\_local\_init()\`
 
-<p class="caption">▼ `top_local_init()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 5273  static void
 5274  top_local_init()
 5275  {
@@ -393,18 +350,18 @@ And this is the content of it:
 5289  }
 
 (parse.y)
-</pre>
+```
 
-
-This means that `local_tbl` is copied from `ruby_scope` to `lvtbl`.
+This means that \`local\_tbl\` is copied from \`ruby\_scope\` to \`lvtbl\`.
 As for block local variables, since it's better to see them all at once later,
 we'll focus on ordinary local variables for the time being.
-Next, here is `top_local_setup()`.
+Next, here is \`top\_local\_setup()\`.
 
+<p class="caption">
+▼ \`top\_local\_setup()\`
 
-<p class="caption">▼ `top_local_setup()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 5291  static void
 5292  top_local_setup()
 5293  {
@@ -447,28 +404,25 @@ Next, here is `top_local_setup()`.
 5329  }
 
 (parse.y)
-</pre>
+```
 
+Since \`local\_vars\` can be either in the stack or in the heap, it makes the code
+complex to some extent. However, this is just updating \`local\_tbl\` and
+\`local\_vars\` of \`ruby\_scope\`. (When \`SCOPE\_MALLOC\` was set, \`local\_vars\` was
+allocated by \`malloc()\`). And here, because there's no meaning of using \`alloca()\`,
+it is forced to change its allocation method to \`malloc\`.
 
-Since `local_vars` can be either in the stack or in the heap, it makes the code
-complex to some extent. However, this is just updating `local_tbl` and
-`local_vars` of `ruby_scope`. (When `SCOPE_MALLOC` was set, `local_vars` was
-allocated by `malloc()`). And here, because there's no meaning of using `alloca()`,
-it is forced to change its allocation method to `malloc`.
-
-
-
-h3. Block Local Variable
-
+### Block Local Variable
 
 By the way, how about block local variables?
 To think about this, we have to go back to the entry point of the parser first,
-it is `yycompile()`.
+it is \`yycompile()\`.
 
+<p class="caption">
+▼ setting \`ruby\_dyna\_vars\` aside
 
-<p class="caption">▼ setting  `ruby_dyna_vars`  aside</p>
-
-<pre class="longlist">
+</p>
+``` longlist
 static NODE*
 yycompile(f, line)
 {
@@ -478,44 +432,40 @@ yycompile(f, line)
          :
     ruby_dyna_vars = vars;
 }
-</pre>
-
+```
 
 This looks like a mere save-restore, but the point is that this does not clear
-the `ruby_dyna_vars`. This means that also in the parser it directly adds
-elements to the link of `RVarmap` created in the evaluator.
-
+the \`ruby\_dyna\_vars\`. This means that also in the parser it directly adds
+elements to the link of \`RVarmap\` created in the evaluator.
 
 However, according to the previous description, the structure of
-`ruby_dyna_vars` differs between the parser and the evalutor.
+\`ruby\_dyna\_vars\` differs between the parser and the evalutor.
 How does it deal with the difference in the way of attaching the header
-(`RVarmap` whose `id=0`)?
+(\`RVarmap\` whose \`id=0\`)?
 
-
-What is helpful here is the "1" of `local_push(1)` in `top_local_init()`.
-When the argument of `local_push()` becomes true,
-it does not attach the first header of `ruby_dyna_vars`.
+What is helpful here is the "1" of \`local\_push(1)\` in \`top\_local\_init()\`.
+When the argument of \`local\_push()\` becomes true,
+it does not attach the first header of \`ruby\_dyna\_vars\`.
 It means, it would look like Figure 1. Now, it is assured that
 we can refer to the block local variables of the outside scope
-from inside of a string to `eval`.
-
+from inside of a string to \`eval\`.
 
 <div class="image">
 <img src="images/ch_anyeval_dynavars.jpg" alt="(dynavars)"><br>
-Figure 1: `ruby_dyna_vars` inside `eval`
+Figure 1: \`ruby\_dyna\_vars\` inside \`eval\`
+
 </div>
-
-
 Well, it's sure we can refer to,
-but didn't you say that `ruby_dyna_vars` is entirely freed in the parser?
+but didn't you say that \`ruby\_dyna\_vars\` is entirely freed in the parser?
 What can we do if the link created at the evaluator will be freed?
 ...
 I'd like the readers who noticed this to be relieved by reading the next part.
 
+<p class="caption">
+▼ \`yycompile()\` − freeing \`ruby\_dyna\_vars\`
 
-<p class="caption">▼ `yycompile()` − freeing  `ruby_dyna_vars` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 2386      vp = ruby_dyna_vars;
 2387      ruby_dyna_vars = vars;
 2388      lex_strterm = 0;
@@ -526,29 +476,24 @@ I'd like the readers who noticed this to be relieved by reading the next part.
 2393      }
 
 (parse.y)
-</pre>
-
+```
 
 It is designed so that the loop would stop
-when it reaches the link created at the evaluator (`vars`).
+when it reaches the link created at the evaluator (\`vars\`).
 
+\`instance\_eval\`
+------------------
 
+### The Whole Picture
 
+The substance of \`Module\#module\_eval\` is \`rb\_mod\_module\_eval()\`,
+and the substance of \`Object\#instance\_eval\` is \`rb\_obj\_instance\_eval()\`.
 
+<p class="caption">
+▼ \`rb\_mod\_module\_eval() rb\_obj\_instance\_eval()\`
 
-h2. `instance_eval`
-
-
-h3. The Whole Picture
-
-
-The substance of `Module#module_eval` is `rb_mod_module_eval()`,
-and the substance of `Object#instance_eval` is `rb_obj_instance_eval()`.
-
-
-<p class="caption">▼ `rb_mod_module_eval() rb_obj_instance_eval()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 5316  VALUE
 5317  rb_mod_module_eval(argc, argv, mod)
 5318      int argc;
@@ -577,52 +522,44 @@ and the substance of `Object#instance_eval` is `rb_obj_instance_eval()`.
 5314  }
 
 (eval.c)
-</pre>
+```
 
-
-These two methods have a common part as "a method to replace `self` with `class`",
-that part is defined as `specific_eval()`.
+These two methods have a common part as "a method to replace \`self\` with \`class\`",
+that part is defined as \`specific\_eval()\`.
 Figure 2 shows it and also what will be described.
 What with parentheses are calls by function pointers.
-
 
 <p class="image">
 <img src="images/ch_anyeval_speceval.jpg" alt="(speceval)"><br>
 Figure 2: Call Graph
+
 </p>
-
-
-Whichever `instance_eval` or `module_eval`,
+Whichever \`instance\_eval\` or \`module\_eval\`,
 it can accept both a block and a string,
-thus it branches for each particular process to `yield` and `eval` respectively.
+thus it branches for each particular process to \`yield\` and \`eval\` respectively.
 However, most of them are also common again,
-this part is extracted as `exec_under()`.
-
+this part is extracted as \`exec\_under()\`.
 
 But for those who reading, one have to simultaneously face at 2 times 2 = 4 ways,
 it is not a good plan. Therefore, here we assume only the case when
 
+\#1 it is an \`instance\_eval\`
+\#2 which takes a string as its argument
 
-#1 it is an `instance_eval`
-#2 which takes a string as its argument
-
-
-. And extracting all functions under `rb_obj_instance_eval()` in-line,
+. And extracting all functions under \`rb\_obj\_instance\_eval()\` in-line,
 folding constants, we'll read the result.
 
-
-
-h3. After Absorbed
-
+### After Absorbed
 
 After all,
 it becomes very comprehensible in comparison to the one before being absorbed.
 
-
 <p
-class="caption">▼<tt>specific_eval()</tt>−<tt>instance_eval</tt>, <tt>eval</tt>, string</p>
+class="caption">
+▼`specific_eval()`−`instance_eval`, `eval`, string
 
-<pre class="longlist">
+</p>
+``` longlist
 static VALUE
 instance_eval_string(self, src, file, line)
     VALUE self, src;
@@ -666,34 +603,29 @@ instance_eval_string(self, src, file, line)
 
     return result;
 }
-</pre>
+```
 
-
-It seems that this pushes the singleton class of the object to `CLASS` and
-`CREF` and `ruby_frame->cbase`.
-The main process is one-shot of `eval()`.
-It is unusual that things such as initializing `FRAME` by a struct-copy are
+It seems that this pushes the singleton class of the object to \`CLASS\` and
+\`CREF\` and \`ruby\_frame-&gt;cbase\`.
+The main process is one-shot of \`eval()\`.
+It is unusual that things such as initializing \`FRAME\` by a struct-copy are
 missing, but this is also not create so much difference.
 
-
-
-
-h3. Before being absorbed
-
+### Before being absorbed
 
 Though the author said it becomes more friendly to read,
 it's possible it has been already simple since it was not absorbed,
 let's check where is simplified in comparison to the before-absorbed one.
 
-
-The first one is `specific_eval()`. Since this function is to share the code of
+The first one is \`specific\_eval()\`. Since this function is to share the code of
 the interface to Ruby, almost all parts of it is to parse the parameters.
 Here is the result of cutting them all.
 
+<p class="caption">
+▼ \`specific\_eval()\` (simplified)
 
-<p class="caption">▼ `specific_eval()` (simplified)</p>
-
-<pre class="longlist">
+</p>
+``` longlist
 5258  static VALUE
 5259  specific_eval(argc, argv, klass, self)
 5260      int argc;
@@ -711,27 +643,25 @@ Here is the result of cutting them all.
 5296  }
 
 (eval.c)
-</pre>
-
+```
 
 As you can see, this is perfectly branches in two ways based on whether there's
 a block or not, and each route would never influence the other.
 Therefore, when reading, we should read one by one.
 To begin with, the absorbed version is enhanced in this point.
 
-
-And `file` and `line` are irrelevant when reading `yield_under()`,
-thus in the case when the route of `yield` is absorbed by the main body,
+And \`file\` and \`line\` are irrelevant when reading \`yield\_under()\`,
+thus in the case when the route of \`yield\` is absorbed by the main body,
 it might become obvious that we don't have to think about the parse of these
 parameters at all.
 
+Next, we'll look at \`eval\_under()\` and \`eval\_under\_i()\`.
 
-Next, we'll look at `eval_under()` and `eval_under_i()`.
+<p class="caption">
+▼ \`eval\_under()\`
 
-
-<p class="caption">▼ `eval_under()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 5222  static VALUE
 5223  eval_under(under, self, src, file, line)
 5224      VALUE under, self, src;
@@ -761,69 +691,59 @@ Next, we'll look at `eval_under()` and `eval_under_i()`.
 5219  }
 
 (eval.c)
-</pre>
-
+```
 
 In this function, in order to make its arguments single,
-it stores them into the `args` array and passes it.
-We can imagine that this `args` exists as a temporary container to pass from
-`eval_under()` to `eval_under_i()`,
+it stores them into the \`args\` array and passes it.
+We can imagine that this \`args\` exists as a temporary container to pass from
+\`eval\_under()\` to \`eval\_under\_i()\`,
 but not sure that it is truly so.
-It's possible that `args` is modified inside `evec_under()`.
-
+It's possible that \`args\` is modified inside \`evec\_under()\`.
 
 As a way to share a code, this is a very right way to do.
 But for those who read it, this kind of indirect passing is incomprehensible.
-Particularly, because there are extra castings for `file` and `line` to fool
+Particularly, because there are extra castings for \`file\` and \`line\` to fool
 the compiler, it is hard to imagine what were their actual types.
 The parts around this entirely disappeared in the absorbed version,
 so you don't have to worry about getting lost.
 
-
 However, it's too much to say that absorbing and extracting always makes things
 easier to understand.
-For example, when calling `exec_under()`, `under` is passed as both the second
-and third arguments, but is it all right if the `exec_under()` side extracts
-the both parameter variables into `under`?
-That is to say, the second and third arguments of `exec_under()` are, in fact,
-indicating `CLASS` and `CREF` that should be pushed.
-`CLASS` and `CREF` are "different things",
+For example, when calling \`exec\_under()\`, \`under\` is passed as both the second
+and third arguments, but is it all right if the \`exec\_under()\` side extracts
+the both parameter variables into \`under\`?
+That is to say, the second and third arguments of \`exec\_under()\` are, in fact,
+indicating \`CLASS\` and \`CREF\` that should be pushed.
+\`CLASS\` and \`CREF\` are "different things",
 it might be better to use different variables.
 Also in the previous absorbed version, for only this point,
 
-
-
-<pre class="emlist">
+``` emlist
 VALUE sclass = .....;
 VALUE cbase = sclass;
-</pre>
-
+```
 
 I thought that I would write this way,
 but also thought it could give the strange impression
 if abruptly only these variables are left,
-thus it was extracted as `sclass`.
+thus it was extracted as \`sclass\`.
 It means that this is only because of the flow of the texts.
-
 
 By now, so many times, I've extracted arguments and functions,
 and for each time I repeatedly explained the reason to extract.
 They are
 
-
-* there are only a few possible patterns
-* the behavior can slightly change
-
+-   there are only a few possible patterns
+-   the behavior can slightly change
 
 Definitely, I'm not saying
 "In whatever ways extracting various things always makes things simpler".
-
 
 In whatever case, what of the first priority is the comprehensibility for
 ourself and not keep complying the methodology.
 When extracting makes things simpler, extract it.
 When we feel that not extracting or conversely bundling as a procedure makes
 things easier to understand, let us do it.
-As for `ruby`, I often extracted them because the original is written properly,
+As for \`ruby\`, I often extracted them because the original is written properly,
 but if a source code was written by a poor programmer,
 aggressively bundling to functions should often become a good choice.

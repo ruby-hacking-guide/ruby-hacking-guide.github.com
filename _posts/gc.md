@@ -2,11 +2,14 @@
 layout: default
 title: Garbage Collection
 ---
+
 Translated by Sebastian Krause & ocha-
 
-h1. Chapter 5: Garbage Collection
+Chapter 5: Garbage Collection
+=============================
 
-h2. A conception of an executing program
+A conception of an executing program
+------------------------------------
 
 It's all of a sudden but at the beginning of this chapter, we'll
 learn about the memory space of an executing program. In this chapter
@@ -15,93 +18,89 @@ preliminary knowledge it'll be hard to follow. And it'll be also necessary
 for the following chapters.
 Once we finish this here, the rest will be easier.
 
-h3. Memory Segments
+### Memory Segments
 
 A general C program has the following parts in the memory space:
 
-# the text area
-# a place for static and global variables
-# the machine stack
-# the heap
+1.  the text area
+2.  a place for static and global variables
+3.  the machine stack
+4.  the heap
 
 The text area is where the code lies. Obviously the second area holds static and global variables.
 Arguments and local variables of functions are piling up in the machine stack.
-The heap is the place where allocated by `malloc()`.
+The heap is the place where allocated by \`malloc()\`.
 
 Let's talk a bit more about number three, the machine stack.
 Since it is called the machine "stack",
 obviously it has a stack structure.
 In other words, new stuff is piled on top of it one after another.
 When we actually pushes values on the stack, each value would be a tiny piece
-such as `int`. But logically, there are a little larger pieces.
+such as \`int\`. But logically, there are a little larger pieces.
 They are called stack frames.
 
 One stack frame corresponds to one function call. Or in other words when there
 is a function call, one stack frame is pushed.
-When doing `return`, one stack frame will be popped.
+When doing \`return\`, one stack frame will be popped.
 Figure 1 shows the really simplified appearance of the machine stack.
 
-!images/ch_gc_macstack.jpg(Machine Stack)!
+![Machine Stack](images/ch_gc_macstack.jpg "Machine Stack")
 
 In this picture, "above" is written above the top of the stack,
 but this it is not necessarily always the case that the machine stack goes
 from low addresses to high addresses. For instance, on the x86
 machine the stack goes from high to low addresses.
 
-h3. `alloca()`
+### \`alloca()\`
 
-By using `malloc()`, we can get an arbitrarily large memory
-area of the heap. `alloca()` is the machine stack version of it.
-But unlike `malloc()` it's not necessary to free the memory allocated
-with `alloca()`. Or one should say:
-it is freed automatically at the same moment of `return` of each function.
+By using \`malloc()\`, we can get an arbitrarily large memory
+area of the heap. \`alloca()\` is the machine stack version of it.
+But unlike \`malloc()\` it's not necessary to free the memory allocated
+with \`alloca()\`. Or one should say:
+it is freed automatically at the same moment of \`return\` of each function.
 That's why it's not possible to use an allocated value as the return
 value. It's the same as "You must not return the pointer to
 a local variable."
 
-
 There's been not any difficulty. We can consider it something to locally
 allocate an array whose size can be changed at runtime.
 
-
-However there exist environments where there is no native `alloca()`.
-There are still many who would like to use `alloca()` even if in such
+However there exist environments where there is no native \`alloca()\`.
+There are still many who would like to use \`alloca()\` even if in such
 environment, sometimes a function to do the same thing is written in C.
 But in that case, only the feature that we don't have to free it by ourselves
 is implemented and it does not necessarily allocate the memory on the machine
 stack. In fact, it often does not.
 If it were possible, a native
-@alloca()@ could have been implemented in the first place.
+`alloca()` could have been implemented in the first place.
 
-How can one implement @alloca()@ in C? The simplest implementation is:
-first allocate memory normally with @malloc()@. Then remember the pair of the function
-which called @alloca()@ and the assigned addresses in a global list.
-After that, check this list whenever @alloca()@ is called,
+How can one implement `alloca()` in C? The simplest implementation is:
+first allocate memory normally with `malloc()`. Then remember the pair of the function
+which called `alloca()` and the assigned addresses in a global list.
+After that, check this list whenever `alloca()` is called,
 if there are the memories allocated for the functions already finished,
-free them by using `free()`.
+free them by using \`free()\`.
 
+!images/ch\_gc\_calloca.jpg(The behavior of an \`alloca()\` implemented in C)!
 
-!images/ch_gc_calloca.jpg(The behavior of an `alloca()` implemented in C)!
+The `missing/alloca.c` of `ruby` is an example of an emulated `alloca()` .
 
-
-The @missing/alloca.c@ of @ruby@ is an example of an emulated @alloca()@ .
-
-
-h2. Overview
+Overview
+--------
 
 From here on we can at last talk about the main subject of this chapter:
 garbage collection.
 
-h3. What is GC?
+### What is GC?
 
 Objects are normally on top of the memory. Naturally, if a lot of objects are created, a lot of memory is used. If memory
 were infinite there would be no problem, but in reality there is always a memory
 limit. That's why the memory which is not
-used anymore must be collected and recycled. More concretely the memory received through @malloc()@ must be returned with
-@free()@.
+used anymore must be collected and recycled. More concretely the memory received through `malloc()` must be returned with
+`free()`.
 
-However, it would require a lot of efforts if the management of `malloc()` and
-`free()` were entirely left to programmers.
+However, it would require a lot of efforts if the management of \`malloc()\` and
+\`free()\` were entirely left to programmers.
 Especially in object oriented programs, because objects are referring each other,
 it is difficult to tell when to release memory.
 
@@ -109,7 +108,7 @@ There garbage collection comes in.
 Garbage Collection (GC) is a feature to automatically detect and free the memory
 which has become unnecessary.
 With garbage collection,
-the worry "When should I have to `free()` ??" has become unnecessary.
+the worry "When should I have to \`free()\` ??" has become unnecessary.
 Between when it exists and when it does not exist,
 the ease of writing programs differs considerably.
 
@@ -122,20 +121,18 @@ it has effects for speed-up to some extent,
 but it is not the main purpose of GC.
 The purpose of GC is to collect memory. There are many GCs which collect
 memories but don't do compaction.
-The GC of `ruby` also does not do compaction.
-
+The GC of \`ruby\` also does not do compaction.
 
 Then, in what kind of system is GC available?
 In C and C++, there's
-Boehm GC\footnote{Boehm GC `http://www.hpl.hp.com/personal/Hans_Boehm/gc`}
+Boehm GC\\footnote{Boehm GC \`http://www.hpl.hp.com/personal/Hans\_Boehm/gc\`}
 which can be used as an add-on.
-And, for the recent languages such as Java and Perl, Python, C#, Eiffel,
+And, for the recent languages such as Java and Perl, Python, C\#, Eiffel,
 GC is a standard equipment. And of course, Ruby has its GC.
-Let's follow the details of `ruby`'s GC in this chapter.
-The target file is `gc.c`.
+Let's follow the details of \`ruby\`'s GC in this chapter.
+The target file is \`gc.c\`.
 
-
-h3. What does GC do?
+### What does GC do?
 
 Before explaining the GC algorithm, I should explain "what garbage collection
 is".
@@ -145,14 +142,12 @@ To make descriptions more concrete,
 let's simplify the structure by assuming that there are only objects and links.
 This would look as shown in Figure 3.
 
-!images/ch_gc_objects.jpg(Objects)!
-
+![Objects](images/ch_gc_objects.jpg "Objects")
 
 The objects pointed to by global variables and the objects on the stack of a
 language are surely necessary. And objects pointed to by instance variables of
 these objects are also necessary. Furthermore, the objects that are reachable by
 following links from these objects are also necessary.
-
 
 To put it more logically, the necessary objects are all objects which
 can be reached recursively via links from the "surely necessary objects" as
@@ -162,22 +157,19 @@ and the objects which can be reached from them are colored black.
 These objects colored black are the
 necessary objects. The rest of the objects can be released.
 
-
-!images/ch_gc_gcimage.jpg(necessary objects and unnecessary objects)!
-
+![necessary objects and unnecessary objects](images/ch_gc_gcimage.jpg "necessary objects and unnecessary objects")
 
 In technical terms, "the surely necessary objects" are called "the roots of GC".
 That's because they are the roots of tree structures that emerges as a
 consequence of tracing necessary objects.
 
-
-h3. Mark and Sweep
+### Mark and Sweep
 
 GC was first implemented in Lisp.
 The GC implemented in Lisp at first,
 it means the world's first GC,
 is called mark&sweep GC.
-The GC of `ruby` is one type of it.
+The GC of \`ruby\` is one type of it.
 
 The image of Mark-and-Sweep GC is pretty close to our definition of "necessary
 object". First, put "marks" on the root objects. Setting them as the start
@@ -190,58 +182,52 @@ check all objects in the object pool, release (sweep) all objects that have not 
 
 There are two advantages.
 
-* There does not need to be any (or almost any) concern for garbage collection
-outside the implementation of GC.
-* Cycles can also be released. (As for cycles, see also the section of "Reference Count")
+-   There does not need to be any (or almost any) concern for garbage collection
+    outside the implementation of GC.
+-   Cycles can also be released. (As for cycles, see also the section of "Reference Count")
 
 There are also two disadvantages.
 
-* In order to sweep every object must be touched at least once.
-* The load of the GC is concentrated at one point.
+-   In order to sweep every object must be touched at least once.
+-   The load of the GC is concentrated at one point.
 
-When using the emacs editor, there sometimes appears " @Garbage collecting...@ "
+When using the emacs editor, there sometimes appears " `Garbage collecting...` "
 and it completely stops reacting. That is an example of the second disadvantage.
 But this point can be alleviated by modifying the algorithm (it is called incremental GC).
 
-
-
-h3. Stop and Copy
+### Stop and Copy
 
 Stop and Copy is a variation of Mark and Sweep. First, prepare several object
-areas. To simplify this description, assume there are two areas @A@ and @B@ here.
+areas. To simplify this description, assume there are two areas `A` and `B` here.
 And put an "active" mark on the one of the areas.
 When creating an object, create it only in the "active" one. (Figure 5)
 
-!images/ch_gc_stop2.jpg(Stop and Copy (1))!
-
+!images/ch\_gc\_stop2.jpg(Stop and Copy (1))!
 
 When the GC starts, follow links from the roots in the same manner as
 mark-and-sweep. However, move objects to another area instead of marking them
 (Figure 6). When all the links have been followed, discard the all elements
-which remain in @A@, and make @B@ active next.
+which remain in `A`, and make `B` active next.
 
-!images/ch_gc_stop3.jpg(Stop and Copy (2))!
-
+!images/ch\_gc\_stop3.jpg(Stop and Copy (2))!
 
 Stop and Copy also has two advantages:
 
-* Compaction happens at the same time as collecting the memory
-* Since objects that reference each other move closer together,
-  there's more possibility of hitting the cache.
+-   Compaction happens at the same time as collecting the memory
+-   Since objects that reference each other move closer together,
+    there's more possibility of hitting the cache.
 
 And also two disadvantages:
 
-* The object area needs to be more than twice as big
-* The positions of objects will be changed
+-   The object area needs to be more than twice as big
+-   The positions of objects will be changed
 
 It seems what exist in this world are not only positive things.
 
-
-h3. Reference counting
+### Reference counting
 
 Reference counting differs a bit from the aforementioned GCs,
 the reach-check code is distributed in several places.
-
 
 First, attach an integer count to each element.
 When referring via variables or arrays, the counter of the referenced object is
@@ -249,76 +235,67 @@ increased. When quitting to refer, decrease the counter.
 When the counter of an object becomes zero, release the object.
 This is the method called reference counting (Figure 7).
 
-!images/ch_gc_refcnt.jpg(Reference counting)!
-
+![Reference counting](images/ch_gc_refcnt.jpg "Reference counting")
 
 This method also has two advantages:
 
-* The load of GC is distributed over the entire program.
-* The object that becomes unnecessary is immediately freed.
+-   The load of GC is distributed over the entire program.
+-   The object that becomes unnecessary is immediately freed.
 
 And also two disadvantages.
 
-* The counter handling tends to be forgotten.
-* When doing it naively cycles are not released.
+-   The counter handling tends to be forgotten.
+-   When doing it naively cycles are not released.
 
 I'll explain about the second point just in case. A cycle is
 a cycle of references as shown in Figure 8.
 If this is the case the counters will never decrease
 and the objects will never be released.
 
-!images/ch_gc_cycle.jpg(Cycle)!
-
+![Cycle](images/ch_gc_cycle.jpg "Cycle")
 
 By the way, latest Python(2.2) uses reference counting GC but it can free cycles.
 However, it is not because of the reference counting itself,
 but because it sometimes invokes mark and sweep GC to check.
 
-
-
-
-
-h2. Object Management
+Object Management
+-----------------
 
 Ruby's garbage collection is only concerned with ruby objects.
-Moreover, it only concerned with the objects created and managed by `ruby`.
+Moreover, it only concerned with the objects created and managed by \`ruby\`.
 Conversely speaking,
 if the memory is allocated without following a certain procedure,
 it won't be taken care of.
 For instance, the following function will cause a memory leak
-even if `ruby` is running.
+even if \`ruby\` is running.
 
-
-<pre class="emlist">
+``` emlist
 void not_ok()
 {
     malloc(1024);  /* receive memory and discard it */
 }
-</pre>
+```
 
 However, the following function does not cause a memory leak.
 
-
-<pre class="emlist">
+``` emlist
 void this_is_ok()
 {
     rb_ary_new();  /* create a ruby array and discard it */
 }
-</pre>
+```
 
-Since @rb_ary_new()@ uses Ruby's proper interface to allocate memory,
-the created object is under the management of the GC of `ruby`,
-thus `ruby` will take care of it.
+Since `rb_ary_new()` uses Ruby's proper interface to allocate memory,
+the created object is under the management of the GC of \`ruby\`,
+thus \`ruby\` will take care of it.
 
-
-h3. `struct RVALUE`
+### \`struct RVALUE\`
 
 Since the substance of an object is a struct,
 managing objects means managing that structs.
-Of course the non-pointer objects like @Fixnum Symbol nil true false@ are
+Of course the non-pointer objects like `Fixnum Symbol nil true false` are
 exceptions, but I won't always describe about it to prevent descriptions
 from being redundant.
-
 
 Each struct type has its different size,
 but probably in order to keep management simpler,
@@ -326,9 +303,9 @@ a union of all the structs of built-in classes is declared and
 the union is always used when dealing with memory.
 The declaration of that union is as follows.
 
-▼ `RVALUE`
+▼ \`RVALUE\`
 
-<pre class="longlist">
+``` longlist
  211  typedef struct RVALUE {
  212      union {
  213          struct {
@@ -355,36 +332,33 @@ The declaration of that union is as follows.
  234  } RVALUE;
 
 (gc.c)
-</pre>
+```
 
-`struct RVALUE` is a struct that has only one element.
-I've heard that the reason why `union` is not directly used is to enable to
+\`struct RVALUE\` is a struct that has only one element.
+I've heard that the reason why \`union\` is not directly used is to enable to
 easily increase its members when debugging or when extending in the future.
 
+First, let's focus on the first element of the union \`free.flags\`. The comment
+says "\`0\` if not used", but is it true?
+Is there not any possibility for \`free.flags\` to be \`0\` by chance?
 
-First, let's focus on the first element of the union `free.flags`. The comment
-says "`0` if not used", but is it true?
-Is there not any possibility for `free.flags` to be `0` by chance?
-
-
-As we've seen in Chapter 2: Objects, all object structs have `struct RBasic` as its first
+As we've seen in Chapter 2: Objects, all object structs have \`struct RBasic\` as its first
 element. Therefore, by whichever element of the union we access,
-`obj->as.free.flags` means the same as it is written as `obj->as.basic.flags`.
-And objects always have the struct-type flag (such as `T_STRING`),
-and the flag is always not `0`. Therefore, the flag of an "alive" object will
-never coincidentally be `0`.
-Hence, we can confirm that setting their flags to `0`
+\`obj-&gt;as.free.flags\` means the same as it is written as \`obj-&gt;as.basic.flags\`.
+And objects always have the struct-type flag (such as \`T\_STRING\`),
+and the flag is always not \`0\`. Therefore, the flag of an "alive" object will
+never coincidentally be \`0\`.
+Hence, we can confirm that setting their flags to \`0\`
 is necessity and sufficiency to represent "dead" objects.
 
+### Object heap
 
-h3. Object heap
-
-The memory for all the object structs has been brought together in global variable `heaps`.
+The memory for all the object structs has been brought together in global variable \`heaps\`.
 Hereafter, let's call this an object heap.
 
 ▼ Object heap
 
-<pre class="longlist">
+``` longlist
  239  #define HEAPS_INCREMENT 10
  240  static RVALUE **heaps;
  241  static int heaps_length = 0;
@@ -395,84 +369,72 @@ Hereafter, let's call this an object heap.
  246  static int heap_slots = HEAP_MIN_SLOTS;
 
 (gc.c)
-</pre>
+```
 
-@heaps@ is an array of arrays of @struct RVALUE@. Since it is `heapS`,
-the each contained array is probably each @heap@.
-Each element of @heap@ is each @slot@ (Figure 9).
+`heaps` is an array of arrays of `struct RVALUE`. Since it is \`heapS\`,
+the each contained array is probably each `heap`.
+Each element of `heap` is each `slot` (Figure 9).
 
-!images/ch_gc_heapitems.jpg(`heaps`, `heap`, `slot`)!
+![\`heaps\`, \`heap\`, \`slot\`](images/ch_gc_heapitems.jpg "`heaps`, `heap`, `slot`")
 
-The length of @heaps@ is @heap_length@ and it can be changed. The number of
-the slots actually in use is @heaps_used@. The length of each heap
-is in the corresponding @heaps_limits[index]@.
+The length of `heaps` is `heap_length` and it can be changed. The number of
+the slots actually in use is `heaps_used`. The length of each heap
+is in the corresponding `heaps_limits[index]`.
 Figure 10 shows the structure of the object heap.
 
-!images/ch_gc_heaps.jpg(conceptual diagram of `heaps` in memory)!
+![conceptual diagram of \`heaps\` in memory](images/ch_gc_heaps.jpg "conceptual diagram of `heaps` in memory")
 
 This structure has a necessity to be this way.
 For instance, if all structs are stored in an array,
 the memory space would be the most compact,
-but we cannot do `realloc()` because it could change the addresses.
-This is because `VALUE`s are mere pointers.
-
+but we cannot do \`realloc()\` because it could change the addresses.
+This is because \`VALUE\`s are mere pointers.
 
 In the case of an implementation of Java,
-the counterpart of `VALUE`s are not addresses but the indexes of objects.
+the counterpart of \`VALUE\`s are not addresses but the indexes of objects.
 Since they are handled through a pointer table, objects are movable.
 However in this case, indexing of the array comes in every time
 an object access occurs and it lowers the performance in some degree.
 
 On the other hand, what happens if it is an one-dimensional array of pointers
-to `RVALUE`s (it means `VALUE`s)?
+to \`RVALUE\`s (it means \`VALUE\`s)?
 This seems to be able to go well at the first glance, but it does not when GC.
-That is, as I'll describe in detail, the GC of `ruby` needs to know the
-integers "which seems `VALUE` (the pointers to `RVALUE`).
-If all `RVALUE` are allocated in addresses which are far from each other,
-it needs to compare all address of `RVALUE` with all integers "which could be
+That is, as I'll describe in detail, the GC of \`ruby\` needs to know the
+integers "which seems \`VALUE\` (the pointers to \`RVALUE\`).
+If all \`RVALUE\` are allocated in addresses which are far from each other,
+it needs to compare all address of \`RVALUE\` with all integers "which could be
 pointers".
-This means the time for GC becomes the order more than O(n^2),
+This means the time for GC becomes the order more than O (n^2),
 and not acceptable.
-
 
 According to these requirements, it is good that the object heap form a
 structure that the addresses are cohesive to some extent
 and whose position and total amount are not restricted at the same time.
 
+### \`freelist\`
 
+Unused \`RVALUE\`s are managed by being linked as a single line which is a linked
+list that starts with \`freelist\`.
+The \`as.free.next\` of \`RVALUE\` is the link used for this purpose.
 
+▼ \`freelist\`
 
-h3. `freelist`
-
-
-Unused `RVALUE`s are managed by being linked as a single line which is a linked
-list that starts with `freelist`.
-The `as.free.next` of `RVALUE` is the link used for this purpose.
-
-
-▼ `freelist`
-
-<pre class="longlist">
+``` longlist
  236  static RVALUE *freelist = 0;
 
 (gc.c)
-</pre>
+```
 
-
-
-
-h3. `add_heap()`
-
+### \`add\_heap()\`
 
 As we understood the data structure,
-let's read the function `add_heap()` to add a heap.
+let's read the function \`add\_heap()\` to add a heap.
 Because this function contains a lot of lines not part of the main line,
 I'll show the one simplified by omitting error handlings and castings.
 
+▼ \`add\_heap()\` (simplified)
 
-▼ `add_heap()` (simplified)
-
-<pre class="longlist">
+``` longlist
 static void
 add_heap()
 {
@@ -502,37 +464,31 @@ add_heap()
         p++;
     }
 }
-</pre>
-
+```
 
 Please check the following points.
 
-* the length of `heap` is `heap_slots`
-* the `heap_slots` becomes 1.8 times larger every time  when a `heap` is added
-* the length of `heaps[i]` (the value of `heap_slots` when creating a heap) is
-  stored in `heaps_limits[i]`.
+-   the length of \`heap\` is \`heap\_slots\`
+-   the \`heap\_slots\` becomes 1.8 times larger every time when a \`heap\` is added
+-   the length of \`heaps\[i\]\` (the value of \`heap\_slots\` when creating a heap) is
+    stored in \`heaps\_limits\[i\]\`.
 
-Plus, since `lomem` and `himem` are modified only by this function,
+Plus, since \`lomem\` and \`himem\` are modified only by this function,
 only by this function you can understand the mechanism.
 These variables hold the lowest and the highest addresses of the object heap.
-These values are used later when determining the integers "which seems `VALUE`".
+These values are used later when determining the integers "which seems \`VALUE\`".
 
-
-
-
-h3. `rb_newobj()`
-
+### \`rb\_newobj()\`
 
 Considering all of the above points, we can tell the way to create an object
 in a second.
-If there is at least a `RVALUE` linked from `freelist`, we can use it.
+If there is at least a \`RVALUE\` linked from \`freelist\`, we can use it.
 Otherwise, do GC or increase the heaps.
-Let's confirm this by reading the `rb_newobj()` function to create an object.
+Let's confirm this by reading the \`rb\_newobj()\` function to create an object.
 
+▼ \`rb\_newobj()\`
 
-▼ `rb_newobj()`
-
-<pre class="longlist">
+``` longlist
  297  VALUE
  298  rb_newobj()
  299  {
@@ -547,37 +503,30 @@ Let's confirm this by reading the `rb_newobj()` function to create an object.
  308  }
 
 (gc.c)
-</pre>
+```
 
-
-If `freelest` is 0, in other words, if there's not any unused structs,
+If \`freelest\` is 0, in other words, if there's not any unused structs,
 invoke GC and create spaces.
 Even if we could not collect not any object,
-there's no problem because in this case a new space is allocated in `rb_gc()`.
-And take a struct from `freelist`, zerofill it by `MEMZERO()`, and return it.
+there's no problem because in this case a new space is allocated in \`rb\_gc()\`.
+And take a struct from \`freelist\`, zerofill it by \`MEMZERO()\`, and return it.
 
+Mark
+----
 
-h2. Mark
-
-
-As described, `ruby`'s GC is Mark & Sweep.
-Its "mark" is, concretely speaking, to set a `FL_MARK` flag:
-look for unused `VALUE`, set `FL_MARK` flags to found ones,
+As described, \`ruby\`'s GC is Mark & Sweep.
+Its "mark" is, concretely speaking, to set a \`FL\_MARK\` flag:
+look for unused \`VALUE\`, set \`FL\_MARK\` flags to found ones,
 then look at the object heap after investigating all
-and free objects that `FL_MARK` has not been set.
+and free objects that \`FL\_MARK\` has not been set.
 
+### \`rb\_gc\_mark()\`
 
+\`rb\_gc\_mark()\` is the function to mark objects recursively.
 
+▼ \`rb\_gc\_mark()\`
 
-h3. `rb_gc_mark()`
-
-
-`rb_gc_mark()` is the function to mark objects recursively.
-
-
-▼ `rb_gc_mark()`
-
-<pre class="longlist">
+``` longlist
  573  void
  574  rb_gc_mark(ptr)
  575      VALUE ptr;
@@ -609,37 +558,32 @@ h3. `rb_gc_mark()`
  601  }
 
 (gc.c)
-</pre>
+```
 
+The definition of `RANY()` is as follows. It is not particularly important.
 
-The definition of @RANY()@ is as follows. It is not particularly important.
+▼ \`RANY()\`
 
-▼ `RANY()`
-
-<pre class="longlist">
+``` longlist
  295  #define RANY(o) ((RVALUE*)(o))
 
 (gc.c)
-</pre>
-
+```
 
 There are the checks for non-pointers or already freed objects and the recursive
 checks for marked objects at the beginning,
 
-
-
-<pre class="emlist">
+``` emlist
 obj->as.basic.flags |= FL_MARK;
-</pre>
+```
 
-and `obj` (this is the `ptr` parameter of this function) is marked.
-Then next, it's the turn to follow the references from `obj` and mark.
-`rb_gc_mark_children()` does it.
+and \`obj\` (this is the \`ptr\` parameter of this function) is marked.
+Then next, it's the turn to follow the references from \`obj\` and mark.
+\`rb\_gc\_mark\_children()\` does it.
 
-
-The others, what starts with `CHECK_STACK()` and is written a lot is a device
+The others, what starts with \`CHECK\_STACK()\` and is written a lot is a device
 to prevent the machine stack overflow.
-Since `rb_gc_mark()` uses recursive calls to mark objects,
+Since \`rb\_gc\_mark()\` uses recursive calls to mark objects,
 if there is a big object cluster,
 it is possible to run short of the length of the machine stack.
 To counter that, if the machine stack is nearly overflow,
@@ -647,21 +591,16 @@ it stops the recursive calls, piles up the objects on a global list,
 and later it marks them once again.
 This code is omitted because it is not part of the main line.
 
+### \`rb\_gc\_mark\_children()\`
 
-
-
-h3. `rb_gc_mark_children()`
-
-
-Now, as for `rb_gc_mark_children()`,
+Now, as for \`rb\_gc\_mark\_children()\`,
 it just lists up the internal types and marks one by one,
 thus it is not just long but also not interesting.
 Here, it is shown but the simple enumerations are omitted:
 
+▼ \`rb\_gc\_mark\_children()\`
 
-▼ `rb_gc_mark_children()`
-
-<pre class="longlist">
+``` longlist
  603  void
  604  rb_gc_mark_children(ptr)
  605      VALUE ptr;
@@ -724,52 +663,43 @@ Here, it is shown but the simple enumerations are omitted:
  842  }
 
 (gc.c)
-</pre>
+```
 
+It calls \`rb\_gc\_mark()\` recursively, is only what I'd like you to confirm.
+In the omitted part, \`NODE\` and \`T\_xxxx\` are enumerated respectively.
+\`NODE\` will be introduced in Part 2.
 
-It calls `rb_gc_mark()` recursively, is only what I'd like you to confirm.
-In the omitted part, `NODE` and `T_xxxx` are enumerated respectively.
-`NODE` will be introduced in Part 2.
-
-
-Additionally, let's see the part to mark `T_DATA` (the struct used for extension
+Additionally, let's see the part to mark \`T\_DATA\` (the struct used for extension
 libraries) because there's something we'd like to check.
-This code is extracted from the second `switch` statement.
+This code is extracted from the second \`switch\` statement.
 
+▼ \`rb\_gc\_mark\_children()\` - \`T\_DATA\`
 
-▼ `rb_gc_mark_children()` - `T_DATA`
-
-<pre class="longlist">
+``` longlist
  789        case T_DATA:
  790          if (obj->as.data.dmark) (*obj->as.data.dmark)(DATA_PTR(obj));
  791          break;
 
 (gc.c)
-</pre>
+```
 
-
-Here, it does not use `rb_gc_mark()` or similar functions,
-but the `dmark` which is given from users.
-Inside it, of course, it might use `rb_gc_mark()` or something, but not using
+Here, it does not use \`rb\_gc\_mark()\` or similar functions,
+but the \`dmark\` which is given from users.
+Inside it, of course, it might use \`rb\_gc\_mark()\` or something, but not using
 is also possible.
 For example, in an extreme situation, if a user defined object does not
-contain `VALUE`, there's no need to mark.
+contain \`VALUE\`, there's no need to mark.
 
-
-
-
-h3. `rb_gc()`
-
+### \`rb\_gc()\`
 
 By now, we've finished to talk about each object.
-From now on, let's see the function `rb_gc()` that presides the whole.
+From now on, let's see the function \`rb\_gc()\` that presides the whole.
 The objects marked here are "objects which are obviously necessary".
 In other words, "the roots of GC".
 
+▼ \`rb\_gc()\`
 
-▼ `rb_gc()`
-
-<pre class="longlist">
+``` longlist
 1110  void
 1111  rb_gc()
 1112  {
@@ -791,18 +721,16 @@ In other words, "the roots of GC".
 1184  }
 
 (gc.c)
-</pre>
-
+```
 
 The roots which should be marked will be shown one by one after this,
 but I'd like to mention just one point here.
 
-In `ruby` the CPU registers and the machine stack are also the roots.
+In \`ruby\` the CPU registers and the machine stack are also the roots.
 It means that the local variables and arguments of C are automatically marked.
 For example,
 
-
-<pre class="emlist">
+``` emlist
 static int
 f(void)
 {
@@ -810,32 +738,25 @@ f(void)
 
     /* …… do various things …… */
 }
-</pre>
-
+```
 
 like this way, we can protect an object just by putting it into a variable.
-This is a very significant trait of the GC of `ruby`.
-Because of this feature, `ruby`'s extension libraries are insanely easy to write.
+This is a very significant trait of the GC of \`ruby\`.
+Because of this feature, \`ruby\`'s extension libraries are insanely easy to write.
 
-
-However, what is on the stack is not only `VALUE`.
+However, what is on the stack is not only \`VALUE\`.
 There are a lot of totally unrelated values.
 How to resolve this is the key when reading the implementation of GC.
 
+### The Ruby Stack
 
-
-
-h3. The Ruby Stack
-
-
-First, it marks the (`ruby`'s) stack frames used by the interpretor.
+First, it marks the (\`ruby\`'s) stack frames used by the interpretor.
 Since you will be able to find out who it is after reaching Part 3,
 you don't have to think so much about it for now.
 
-
 ▼ Marking the Ruby Stack
 
-<pre class="longlist">
+``` longlist
 1130      /* mark frame stack */
 1131      for (frame = ruby_frame; frame; frame = frame->prev) {
 1132          rb_gc_mark_frame(frame);
@@ -852,21 +773,20 @@ you don't have to think so much about it for now.
 1143      rb_gc_mark((VALUE)ruby_dyna_vars);
 
 (gc.c)
-</pre>
+```
 
-`ruby_frame ruby_class ruby_scope ruby_dyna_vars` are the variables to point to
+\`ruby\_frame ruby\_class ruby\_scope ruby\_dyna\_vars\` are the variables to point to
 each top of the stacks of the evaluator. These hold the frame, the class scope,
 the local variable scope, and the block local variables at that time
 respectively.
 
-
-h3. Register
+### Register
 
 Next, it marks the CPU registers.
 
 ▼ marking the registers
 
-<pre class="longlist">
+``` longlist
 1148      FLUSH_REGISTER_WINDOWS;
 1149      /* Here, all registers must be saved into jmp_buf. */
 1150      setjmp(save_regs_gc_mark);
@@ -874,29 +794,28 @@ Next, it marks the CPU registers.
                                sizeof(save_regs_gc_mark) / sizeof(VALUE *));
 
 (gc.c)
-</pre>
+```
 
-`FLUSH_REGISTER_WINDOWS` is special. We will see it later.
+\`FLUSH\_REGISTER\_WINDOWS\` is special. We will see it later.
 
-
-`setjmp()` is essentially a function to remotely jump,
+\`setjmp()\` is essentially a function to remotely jump,
 but the content of the registers are saved into the argument (which is a
-variable of type `jmp_buf`) as its side effect.
+variable of type \`jmp\_buf\`) as its side effect.
 Making use of this, it attempts to mark the content of the registers.
 Things around here really look like secret techniques.
 
-
-However only `djgpp` and `Human68k` are specially treated.
-djgpp is a `gcc` environment for DOS.
+However only \`djgpp\` and \`Human68k\` are specially treated.
+djgpp is a \`gcc\` environment for DOS.
 Human68k is an OS of SHARP X680x0 Series.
 In these two environments, the whole registers seem to be not saved only by the
-ordinary `setjmp()`, `setjmp()` is redefined as follows as an inline-assembler
+ordinary \`setjmp()\`, \`setjmp()\` is redefined as follows as an inline-assembler
 to explicitly write out the registers.
 
+<p class="caption">
+▼ the original version of \`setjmp\`
 
-<p class="caption">▼ the original version of  `setjmp` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 1072  #ifdef __GNUC__
 1073  #if defined(__human68k__) || defined(DJGPP)
 1074  #if defined(__human68k__)
@@ -936,11 +855,10 @@ to explicitly write out the registers.
 1108  #endif /* __GNUC__ */
 
 (gc.c)
-</pre>
-
+```
 
 Alignment is the constraint when putting variables on memories.
-For example, in 32-bit machine `int` is usually 32 bits,
+For example, in 32-bit machine \`int\` is usually 32 bits,
 but we cannot always take 32 bits from anywhere of memories.
 Particularly, RISC machine has strict constraints,
 it is decided like "from a multiple of 4 byte" or "from even byte".
@@ -948,43 +866,39 @@ When there are such constraints, memory access unit can be more simplified
 (thus, it can be faster). When there's the constraint of "from a multiple of 4 byte",
 it is called "4-byte alignment".
 
-
-Plus, in `cc` of djgpp or Human68k, there's a rule that the compiler put the
+Plus, in \`cc\` of djgpp or Human68k, there's a rule that the compiler put the
 underline to the head of each function name.
 Therefore, when writing a C function in Assembler, we need to put the underline
-(`_`) to its head by ourselves.
+(\`\_\`) to its head by ourselves.
 This type of constraints are techniques in order to avoid the conflicts in
 names with library functions.
 Also in UNIX, it is said that the underline had been attached by some time ago,
 but it almost disappears now.
 
-
-Now, the content of the registers has been able to be written out into `jmp_buf`,
+Now, the content of the registers has been able to be written out into \`jmp\_buf\`,
 it will be marked in the next code:
 
+<p class="caption">
+▼ mark the registers (shown again)
 
-<p class="caption">▼ mark the registers (shown again)</p>
-
-<pre class="longlist">
+</p>
+``` longlist
 1151      mark_locations_array((VALUE*)save_regs_gc_mark,
                                sizeof(save_regs_gc_mark) / sizeof(VALUE *));
 
 (gc.c)
-</pre>
+```
 
-
-This is the first time that `mark_locations_array()` appears.
+This is the first time that \`mark\_locations\_array()\` appears.
 I'll describe it in the next section.
 
+#### \`mark\_locations\_array()\`
 
+<p class="caption">
+▼ \`mark\_locations\_array()\`
 
-
-h4. `mark_locations_array()`
-
-
-<p class="caption">▼ `mark_locations_array()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  500  static void
  501  mark_locations_array(x, n)
  502      register VALUE *x;
@@ -999,33 +913,29 @@ h4. `mark_locations_array()`
  511  }
 
 (gc.c)
-</pre>
-
+```
 
 This function is to mark the all elements of an array,
 but it slightly differs from the previous mark functions.
-Until now, each place to be marked is where we know it surely holds a `VALUE`
+Until now, each place to be marked is where we know it surely holds a \`VALUE\`
 (a pointer to an object).
 However this time, where it attempts to mark is the register space,
-it is enough to expect that there're also what are not `VALUE`.
-To counter that, it tries to detect whether or not the value is a `VALUE` (a
+it is enough to expect that there're also what are not \`VALUE\`.
+To counter that, it tries to detect whether or not the value is a \`VALUE\` (a
 pointer), then if it seems, the value will be handled as a pointer.
 This kind of methods are called "conservative GC".
 It seems that it is conservative because it "tentatively inclines things to the safe side"
 
+Next, we'll look at the function to check if "it looks like a \`VALUE\`",
+it is \`is\_pointer\_to\_heap()\`.
 
-Next, we'll look at the function to check if "it looks like a `VALUE`",
-it is `is_pointer_to_heap()`.
+#### \`is\_pointer\_to\_heap()\`
 
+<p class="caption">
+▼ \`is\_pointer\_to\_heap()\`
 
-
-
-h4. `is_pointer_to_heap()`
-
-
-<p class="caption">▼ `is_pointer_to_heap()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  480  static inline int
  481  is_pointer_to_heap(ptr)
  482      void *ptr;
@@ -1047,49 +957,40 @@ h4. `is_pointer_to_heap()`
  498  }
 
 (gc.c)
-</pre>
-
-
+```
 
 If I briefly explain it, it would look like the followings:
 
+-   check if it is in between the top and the bottom of the addresses where \`RVALUE\`s reside.
+-   check if it is in the range of a heap
+-   make sure the value points to the head of a \`RVALUE\`.
 
-* check if it is in between the top and the bottom of the addresses where `RVALUE`s reside.
-* check if it is in the range of a heap
-* make sure the value points to the head of a `RVALUE`.
-
-
-Since the mechanism is like this, it's obviously possible that a non-`VALUE`
-value is mistakenly handled as a `VALUE`.
-But at least, it will never fail to find out the used `VALUE`s.
-And, with this amount of tests, it may rarely pick up a non-`VALUE` value
+Since the mechanism is like this, it's obviously possible that a non-\`VALUE\`
+value is mistakenly handled as a \`VALUE\`.
+But at least, it will never fail to find out the used \`VALUE\`s.
+And, with this amount of tests, it may rarely pick up a non-\`VALUE\` value
 unless it intentionally does.
 Therefore, considering about the benefits we can obtain by GC, it's sufficient
 to compromise.
 
+#### Register Window
 
-
-
-h4. Register Window
-
-
-This section is about `FLUSH_REGISTER_WINDOWS()` which has been deferred.
-
+This section is about \`FLUSH\_REGISTER\_WINDOWS()\` which has been deferred.
 
 Register windows are the mechanism to enable to put a part of the machine stack
 into inside the CPU.
 In short, it is a cache whose purpose of use is narrowed down.
 Recently, it exists only in Sparc architecture.
-It's possible that there are also `VALUE`s in register windows,
+It's possible that there are also \`VALUE\`s in register windows,
 and it's also necessary to get down them into memory.
-
 
 The content of the macro is like this:
 
+<p class="caption">
+▼ \`FLUSH\_REGISTER\_WINDOWS\`
 
-<p class="caption">▼ `FLUSH_REGISTER_WINDOWS` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  125  #if defined(sparc) || defined(__sparc__)
  126  # if defined(linux) || defined(__linux__)
  127  #define FLUSH_REGISTER_WINDOWS  asm("ta  0x83")
@@ -1101,36 +1002,31 @@ The content of the macro is like this:
  133  #endif
 
 (defines.h)
-</pre>
+```
 
-
-`asm(...)` is a built-in assembler.
-However, even though I call it assembler, this instruction named `ta` is the
+\`asm(...)\` is a built-in assembler.
+However, even though I call it assembler, this instruction named \`ta\` is the
 call of a privileged instruction.
 In other words, the call is not of the CPU but of the OS.
 That's why the instruction is different for each OS.
 The comments describe only about Linux and Solaris,
 but actually FreeBSD and NetBSD are also works on Sparc, so this comment is wrong.
 
-
 Plus, if it is not Sparc, it is unnecessary to flush,
-thus `FLUSH_REGISTER_WINDOWS` is defined as nothing.
+thus \`FLUSH\_REGISTER\_WINDOWS\` is defined as nothing.
 Like this, the method to get a macro back to nothing is very famous technique
 that is also convenient when debugging.
 
+### Machine Stack
 
+Then, let's go back to the rest of \`rb\_gc()\`.
+This time, it marks \`VALUES\`s in the machine stack.
 
+<p class="caption">
+▼ mark the machine stack
 
-h3. Machine Stack
-
-
-Then, let's go back to the rest of `rb_gc()`.
-This time, it marks `VALUES`s in the machine stack.
-
-
-<p class="caption">▼ mark the machine stack</p>
-
-<pre class="longlist">
+</p>
+``` longlist
 1152      rb_gc_mark_locations(rb_gc_stack_start, (VALUE*)STACK_END);
 1153  #if defined(__human68k__)
 1154      rb_gc_mark_locations((VALUE*)((char*)rb_gc_stack_start + 2),
@@ -1138,39 +1034,33 @@ This time, it marks `VALUES`s in the machine stack.
 1156  #endif
 
 (gc.c)
-</pre>
+```
 
+\`rb\_gc\_stack\_start\` seems the start address (the end of the stack) and
+\`STACK\_END\` seems the end address (the top).
+And, \`rb\_gc\_mark\_locations()\` practically marks the stack space.
 
-`rb_gc_stack_start` seems the start address (the end of the stack) and
-`STACK_END` seems the end address (the top).
-And, `rb_gc_mark_locations()` practically marks the stack space.
-
-
-There are `rb_gc_mark_locations()` two times in order to deal with the
+There are \`rb\_gc\_mark\_locations()\` two times in order to deal with the
 architectures which are not 4-byte alignment.
-`rb_gc_mark_locations()` tries to mark for each portion of `sizeof(VALUE)`, so
+\`rb\_gc\_mark\_locations()\` tries to mark for each portion of \`sizeof(VALUE)\`, so
 if it is in 2-byte alignment environment, sometimes not be able to properly mark.
 In this case, it moves the range 2 bytes then marks again.
 
-
-Now, `rb_gc_stack_start`, `STACK_END`, `rb_gc_mark_locations()`,
+Now, \`rb\_gc\_stack\_start\`, \`STACK\_END\`, \`rb\_gc\_mark\_locations()\`,
 let's examine these three in this order.
 
+#### \`Init\_stack()\`
 
+The first thing is \`rb\_gc\_starck\_start\`.
+This variable is set only during \`Init\_stack()\`.
+As the name \`Init\_\` might suggest, this function is called at the time when
+initializing the \`ruby\` interpretor.
 
+<p class="caption">
+▼ \`Init\_stack()\`
 
-h4. `Init_stack()`
-
-
-The first thing is `rb_gc_starck_start`.
-This variable is set only during `Init_stack()`.
-As the name `Init_` might suggest, this function is called at the time when
-initializing the `ruby` interpretor.
-
-
-<p class="caption">▼ `Init_stack()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
 1193  void
 1194  Init_stack(addr)
 1195      VALUE *addr;
@@ -1199,35 +1089,30 @@ initializing the `ruby` interpretor.
 1218  }
 
 (gc.c)
-</pre>
-
+```
 
 What is important is only the part in the middle.
 It defines an arbitrary local variable (it is allocated on the stack) and
-it sets its address to `rb_gc_stack_start`.
-The `_SEND` inside the code for `__human68k__` is probably the variable defined
+it sets its address to \`rb\_gc\_stack\_start\`.
+The \`\_SEND\` inside the code for \`\_*human68k*\_\` is probably the variable defined
 by a library of compiler or system.
-Naturally, you can presume that it is the contraction of `Stack END`.
+Naturally, you can presume that it is the contraction of \`Stack END\`.
 
-
-Meanwhile, the code after that bundled by `HAVE_GETRLIMIT` appears to check the
+Meanwhile, the code after that bundled by \`HAVE\_GETRLIMIT\` appears to check the
 length of the stack and do mysterious things.
-This is also in the same context of what is done at `rb_gc_mark_children()` to
+This is also in the same context of what is done at \`rb\_gc\_mark\_children()\` to
 prevent the stack overflow.
 We can ignore this.
 
+#### \`STACK\_END\`
 
+Next, we'll look at the \`STACK\_END\` which is the macro to detect the end of the stack.
 
+<p class="caption">
+▼ \`STACK\_END\`
 
-h4. `STACK_END`
-
-
-Next, we'll look at the `STACK_END` which is the macro to detect the end of the stack.
-
-
-<p class="caption">▼ `STACK_END` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  345  #ifdef C_ALLOCA
  346  # define SET_STACK_END VALUE stack_end; alloca(0);
  347  # define STACK_END (&stack_end)
@@ -1241,52 +1126,46 @@ Next, we'll look at the `STACK_END` which is the macro to detect the end of the 
  355  #endif
 
 (gc.c)
-</pre>
+```
 
-
-As there are three variations of `SET_STACK_END`, let's start with the bottom one.
-`alloca()` allocates a space at the end of the stack and returns it,
+As there are three variations of \`SET\_STACK\_END\`, let's start with the bottom one.
+\`alloca()\` allocates a space at the end of the stack and returns it,
 so the return value and the end address of the stack should be very close.
-Hence, it considers the return value of `alloca()` as an approximate value of
+Hence, it considers the return value of \`alloca()\` as an approximate value of
 the end of the stack.
 
-
-Let's go back and look at the one at the top. When the macro `C_ALLOCA` is
-defined, `alloca()` is not natively defined, ... in other words, it indicates a
-compatible function is defined in C. I mentioned that in this case `alloca()`
-internally allocates memory by using `malloc()`.
+Let's go back and look at the one at the top. When the macro \`C\_ALLOCA\` is
+defined, \`alloca()\` is not natively defined, ... in other words, it indicates a
+compatible function is defined in C. I mentioned that in this case \`alloca()\`
+internally allocates memory by using \`malloc()\`.
 However, it does not help to get the position of the stack at all.
-To deal with this situation, it determines that the local variable `stack_end`
+To deal with this situation, it determines that the local variable \`stack\_end\`
 of the currently executing function is close to the end of the stack and uses
-its address (`&stack_end`).
+its address (\`&stack\_end\`).
 
-Plus, this code contains `alloca(0)` whose purpose is not easy to see.
-This has been a feature of the `alloca()` defined in C since early times,
+Plus, this code contains \`alloca(0)\` whose purpose is not easy to see.
+This has been a feature of the \`alloca()\` defined in C since early times,
 and it means "please check and free the unused space".
 Since this is used when doing GC,
-it attempts to free the memory allocated with `alloca()` at the same time.
+it attempts to free the memory allocated with \`alloca()\` at the same time.
 But I think it's better to put it in another macro instead of mixing into such
 place ...
 
+And at last, in the middle case, it is about \`\_\_builtin\_frame\_address()\`.
+\`\_*GNUC*\_\` is a symbol defined in \`gcc\` (the compiler of GNU C).
+Since this is used to limit, it is a built-in instruction of \`gcc\`.
+You can get the address of the n-times previous stack frame with \`\_\_builtin\_frame\_address(n)\`.
+As for \`\_\_builtin\_frame\_adress(0)\`, it provides the address of the current frame.
 
-And at last, in the middle case, it is about `__builtin_frame_address()`.
-`__GNUC__` is a symbol defined in `gcc` (the compiler of GNU C).
-Since this is used to limit, it is a built-in instruction of `gcc`.
-You can get the address of the n-times previous stack frame with `__builtin_frame_address(n)`.
-As for `__builtin_frame_adress(0)`, it provides the address of the current frame.
+#### \`rb\_gc\_mark\_locations()\`
 
+The last one is the \`rb\_gc\_mark\_locations()\` function that actually marks the stack.
 
+<p class="caption">
+▼ \`rb\_gc\_mark\_locations()\`
 
-
-h4. `rb_gc_mark_locations()`
-
-
-The last one is the `rb_gc_mark_locations()` function that actually marks the stack.
-
-
-<p class="caption">▼ `rb_gc_mark_locations()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  513  void
  514  rb_gc_mark_locations(start, end)
  515      VALUE *start, *end;
@@ -1304,29 +1183,26 @@ The last one is the `rb_gc_mark_locations()` function that actually marks the st
  527  }
 
 (gc.c)
-</pre>
+```
 
-
-Basically, delegating to the function `mark_locations_array()` which marks a
+Basically, delegating to the function \`mark\_locations\_array()\` which marks a
 space is sufficient.
 What this function does is properly adjusting the arguments.
 Such adjustment is required because in which direction the machine stack
 extends is undecided.
-If the machine stack extends to lower addresses, `end` is smaller,
-if it extends to higher addresses, `start` is smaller.
-Therefore, so that the smaller one becomes `start`, they are adjusted here.
+If the machine stack extends to lower addresses, \`end\` is smaller,
+if it extends to higher addresses, \`start\` is smaller.
+Therefore, so that the smaller one becomes \`start\`, they are adjusted here.
 
+### The other root objects
 
+Finally, it marks the built-in \`VALUE\` containers of the interpretor.
 
-h3. The other root objects
+<p class="caption">
+▼ The other roots
 
-
-Finally, it marks the built-in `VALUE` containers of the interpretor.
-
-
-<p class="caption">▼ The other roots</p>
-
-<pre class="longlist">
+</p>
+``` longlist
 1159      /* mark the registered global variables */
 1160      for (list = global_List; list; list = list->next) {
 1161          rb_gc_mark(*list->varptr);
@@ -1344,61 +1220,48 @@ Finally, it marks the built-in `VALUE` containers of the interpretor.
 1172      rb_gc_mark_parser();
 
 (gc.c)
-</pre>
+```
 
+When putting a \`VALUE\` into a global variable of C,
+it is required to register its address by user via \`rb\_gc\_register\_address()\`.
+As these objects are saved in \`global\_List\`, all of them are marked.
 
-When putting a `VALUE` into a global variable of C,
-it is required to register its address by user via `rb_gc_register_address()`.
-As these objects are saved in `global_List`, all of them are marked.
-
-
-`rb_mark_end_proc()` is to mark the procedural objects which are registered via
-kind of `END` statement of Ruby and executed when a program finishes. (`END`
+\`rb\_mark\_end\_proc()\` is to mark the procedural objects which are registered via
+kind of \`END\` statement of Ruby and executed when a program finishes. (\`END\`
 statements will not be described in this book).
 
-
-`rb_gc_mark_global_tbl()` is to mark the global variable table `rb_global_tbl`.
+\`rb\_gc\_mark\_global\_tbl()\` is to mark the global variable table \`rb\_global\_tbl\`.
 (See also the next chapter "Variables and Constants")
 
-
-`rb_mark_tbl(rb_class_tbl)` is to mark `rb_class_tbl` which was discussed in the
+\`rb\_mark\_tbl(rb\_class\_tbl)\` is to mark \`rb\_class\_tbl\` which was discussed in the
 previous chapter.
 
-
-`rb_gc_mark_trap_list()` is to mark the procedural objects which are registered
-via the Ruby's function-like method `trap`.
+\`rb\_gc\_mark\_trap\_list()\` is to mark the procedural objects which are registered
+via the Ruby's function-like method \`trap\`.
 (This is related to signals and will also not be described in this book.)
 
+\`rb\_mark\_generic\_ivar\_tbl()\` is to mark the instance variable table prepared
+for non-pointer \`VALUE\` such as \`true\`.
 
-`rb_mark_generic_ivar_tbl()` is to mark the instance variable table prepared
-for non-pointer `VALUE` such as `true`.
-
-
-`rb_gc_mark_parser()` is to mark the semantic stack of the parser.
+\`rb\_gc\_mark\_parser()\` is to mark the semantic stack of the parser.
 (The semantic stack will be described in Part 2.)
-
 
 Until here, the mark phase has been finished.
 
+Sweep
+-----
 
-
-
-
-
-h2. Sweep
-
-
-h3. The special treatment for `NODE`
-
+### The special treatment for \`NODE\`
 
 The sweep phase is the procedures to find out and free the not-marked objects.
-But, for some reason, the objects of type `T_NODE` are specially treated.
+But, for some reason, the objects of type \`T\_NODE\` are specially treated.
 Take a look at the next part:
 
+<p class="caption">
+▼ at the beggining of \`gc\_sweep()\`
 
-<p class="caption">▼ at the beggining of `gc_sweep()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  846  static void
  847  gc_sweep()
  848  {
@@ -1421,33 +1284,29 @@ Take a look at the next part:
  864      }
 
 (gc.c)
-</pre>
+```
 
-
-`NODE` is a object to express a program in the parser.
-`NODE` is put on the stack prepared by a tool named `yacc` while compiling,
+\`NODE\` is a object to express a program in the parser.
+\`NODE\` is put on the stack prepared by a tool named \`yacc\` while compiling,
 but that stack is not always on the machine stack.
-Concretely speaking, when `ruby_parser_stack_on_heap()` is false, it indicates
+Concretely speaking, when \`ruby\_parser\_stack\_on\_heap()\` is false, it indicates
 it is not on the machine stack.
-In this case, a `NODE` could be accidentally collected in the middle of its
-creation, thus the objects of type `T_NODE` are unconditionally marked and
-protected from being collected while compiling (`ruby_in_compile`) .
+In this case, a \`NODE\` could be accidentally collected in the middle of its
+creation, thus the objects of type \`T\_NODE\` are unconditionally marked and
+protected from being collected while compiling (\`ruby\_in\_compile\`) .
 
-
-
-
-h3. Finalizer
-
+### Finalizer
 
 After it has reached here, all not-marked objects can be freed.
 However, there's one thing to do before freeing.
 In Ruby the freeing of objects can be hooked, and it is necessary to call them.
 This hook is called "finalizer".
 
+<p class="caption">
+▼ \`gc\_sweep()\` Middle
 
-<p class="caption">▼ `gc_sweep()` Middle</p>
-
-<pre class="longlist">
+</p>
+``` longlist
  869      freelist = 0;
  870      final_list = deferred_final_list;
  871      deferred_final_list = 0;
@@ -1489,36 +1348,34 @@ This hook is called "finalizer".
  907      during_gc = 0;
 
 (gc.c)
-</pre>
-
+```
 
 This checks all over the object heap from the edge,
-and frees the object on which `FL_MARK` flag is not set by using `obj_free()` (A).
-`obj_free()` frees, for instance, only `char[]` used by String objects or
-`VALUE[]` used by Array objects,
-but it does not free the `RVALUE` struct and does not touch `basic.flags` at all.
-Therefore, if a struct is manipulated after `obj_free()` is called,
+and frees the object on which \`FL\_MARK\` flag is not set by using \`obj\_free()\` (A).
+\`obj\_free()\` frees, for instance, only \`char\[\]\` used by String objects or
+\`VALUE\[\]\` used by Array objects,
+but it does not free the \`RVALUE\` struct and does not touch \`basic.flags\` at all.
+Therefore, if a struct is manipulated after \`obj\_free()\` is called,
 there's no worry about going down.
 
-
-After it frees the objects, it branches based on `FL_FINALIZE` flag (B).
-If `FL_FINALIZE` is set on an object,
+After it frees the objects, it branches based on \`FL\_FINALIZE\` flag (B).
+If \`FL\_FINALIZE\` is set on an object,
 since it means at least a finalizer is defined on the object,
-the object is added to `final_list`.
-Otherwise, the object is immediately added to `freelist`.
-When finalizing, `basic.flags` becomes `FL_MARK`.
-The struct-type flag (such as `T_STRING`) is cleared because of this, and
+the object is added to \`final\_list\`.
+Otherwise, the object is immediately added to \`freelist\`.
+When finalizing, \`basic.flags\` becomes \`FL\_MARK\`.
+The struct-type flag (such as \`T\_STRING\`) is cleared because of this, and
 the object can be distinguished from alive objects.
-
 
 Then, this phase completes by executing the all finalizers.
 Notice that the hooked objects have already died when calling the finalizers.
 It means that while executing the finalizers, one cannot use the hooked objects.
 
+<p class="caption">
+▼ \`gc\_sweep()\` the rest
 
-<p class="caption">▼ `gc_sweep()` the rest</p>
-
-<pre class="longlist">
+</p>
+``` longlist
  910      if (final_list) {
  911          RVALUE *tmp;
  912
@@ -1538,30 +1395,26 @@ It means that while executing the finalizers, one cannot use the hooked objects.
  926  }
 
 (gc.c)
-</pre>
+```
 
-
-The `for` in the last half is the main finalizing procedure.
-The `if` in the first half is the case when the execution could not be moved to
+The \`for\` in the last half is the main finalizing procedure.
+The \`if\` in the first half is the case when the execution could not be moved to
 the Ruby program for various reasons.
-The objects whose finalization is deferred will be appear in the route ==(C)== of
+The objects whose finalization is deferred will be appear in the route (C) of
 the previous list.
 
-
-
-
-h3. `rb_gc_force_recycle()`
-
+### \`rb\_gc\_force\_recycle()\`
 
 I'll talk about a little different thing at the end.
-Until now, the `ruby`'s garbage collector decides whether or not it collects each object,
+Until now, the \`ruby\`'s garbage collector decides whether or not it collects each object,
 but there's also a way that users explicitly let it collect a particular object.
-It's `rb_gc_force_recycle()`.
+It's \`rb\_gc\_force\_recycle()\`.
 
+<p class="caption">
+▼ \`rb\_gc\_force\_recycle()\`
 
-<p class="caption">▼ `rb_gc_force_recycle()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  928  void
  929  rb_gc_force_recycle(p)
  930      VALUE p;
@@ -1572,28 +1425,21 @@ It's `rb_gc_force_recycle()`.
  935  }
 
 (gc.c)
-</pre>
-
+```
 
 Its mechanism is not so special, but I introduced this because you'll see it
 several times in Part 2 and Part 3.
 
+Discussions
+-----------
 
+### To free spaces
 
-
-
-h2. Discussions
-
-
-h3. To free spaces
-
-
-The space allocated by an individual object, say, `char[]` of `String`, is
+The space allocated by an individual object, say, \`char\[\]\` of \`String\`, is
 freed during the sweep phase,
-but the code to free the `RVALUE` struct itself has not appeared yet.
+but the code to free the \`RVALUE\` struct itself has not appeared yet.
 And, the object heap also does not manage the number of structs in use and such.
-This means that if the `ruby`'s object space is once allocated it would never be freed.
-
+This means that if the \`ruby\`'s object space is once allocated it would never be freed.
 
 For example, the mailer what I'm creating now temporarily uses the space almost
 40M bytes when constructing the threads for 500 mails, but if most of the space
@@ -1603,34 +1449,26 @@ it does not matter if just the 40M bytes are used.
 But, if this occurs in a server which keeps running, there's the possibility of
 becoming a problem.
 
-
-However, one also need to consider that `free()` does not always mean the
+However, one also need to consider that \`free()\` does not always mean the
 decrease of the amount of memory in use.
 If it does not return memory to OS, the amount of memory in use of the process
-never decrease. And, depending on the implementation of `malloc()`,
-although doing `free()` it often does not cause returning memory to OS.
+never decrease. And, depending on the implementation of \`malloc()\`,
+although doing \`free()\` it often does not cause returning memory to OS.
 
-
-... I had written so, but just before the deadline of this book, `RVALUE` became to be freed.
-The attached CD-ROM also contains the edge `ruby`, so please check by `diff`.
+... I had written so, but just before the deadline of this book, \`RVALUE\` became to be freed.
+The attached CD-ROM also contains the edge \`ruby\`, so please check by \`diff\`.
 ... what a sad ending.
 
-
-
-
-h3. Generational GC
-
+### Generational GC
 
 Mark & Sweep has an weak point, it is "it needs to touch the entire object space
 at least once". There's the possibility that using the idea of Generational GC
 can make up for the weak point.
 
-
 The fundamental of Generational GC is the experiential rule that
 "Most objects are lasting for either very long or very short time".
 You may be convinced about this point by thinking for seconds about the
 programs you write.
-
 
 Then, thinking based on this rule, one may come up with the idea that
 "long-lived objects do not need to be marked or swept each and every time".
@@ -1641,203 +1479,155 @@ of target objects.
 For example, if half of the objects are long-lived at a particular GC time,
 the number of the target objects is half.
 
-
 There's a problem, though. Generational GC is very difficult to do if objects can't be moved.
 It is because the long-lived objects are, as I just wrote, needed to "be treated specially".
 Since generational GC decreases the number of the objects dealt with and reduces the cost,
 if which generation a object belongs to is not clearly categorized,
 as a consequence it is equivalent to dealing with both generations.
-Furthermore, the `ruby`'s GC is also a conservative GC,
-so it also has to be created so that `is_pointer_to_heap()` work.
+Furthermore, the \`ruby\`'s GC is also a conservative GC,
+so it also has to be created so that \`is\_pointer\_to\_heap()\` work.
 This is particularly difficult.
 
-
 How to solve this problem is ... By the hand of Mr. Kiyama Masato,
-the implementation of Generational GC for `ruby` has been published.
+the implementation of Generational GC for \`ruby\` has been published.
 I'll briefly describe how this patch deals with each problem.
 And this time, by courtesy of Mr. Kiyama, this Generational GC patch and its
 paper are contained in attached CD-ROM.
-(See also `doc/generational-gc.html`)
-
+(See also \`doc/generational-gc.html\`)
 
 Then, I shall start the explanation.
 In order to ease explaining, from now on,
 the long-lived objects are called as "old-generation objects",
 the short-lived objects are called as "new-generation objects",
 
-
 First, about the biggest problem which is the special treatment for the old-generation objects.
-This point is resolved by linking only the new-generation objects into a list named `newlist`.
-This list is substantialized by increasing `RVALUE`'s elements.
-
+This point is resolved by linking only the new-generation objects into a list named \`newlist\`.
+This list is substantialized by increasing \`RVALUE\`'s elements.
 
 Second, about the way to detect the old-generation objects. It is very simply
-done by just removing the `newlist` objects which were not garbage collected
-from the `newlist`.
+done by just removing the \`newlist\` objects which were not garbage collected
+from the \`newlist\`.
 In other words, once an object survives through GC, it will be treated as an
 old-generation object.
-
 
 Third, about the way to detect the references from old-generation objects to new-generation objects.
 In Generational GC, it's sort of, the old-generation objects keep being in the marked state.
 However, when there are links from old-generation to new-generation,
 the new-generation objects will not be marked. (Figure 11)
 
-
-!images/ch_gc_gengc.jpg(reference over generations)!
-
+![reference over generations](images/ch_gc_gengc.jpg "reference over generations")
 
 This is not good, so at the moment when an old-generational object refers to a new-generational object,
 the new-generational object must be turned into old-generational.
 The patch modifies the libraries and
 adds checks to where there's possibility that this kind of references happens.
 
-
-This is the outline of its mechanism. It was scheduled that this patch is included `ruby` 1.7,
+This is the outline of its mechanism. It was scheduled that this patch is included \`ruby\` 1.7,
 but it has not been included yet. It is said that the reason is its speed,
 There's an inference that the cost of the third point "check all references" matters,
 but the precise cause has not figured out.
 
+### Compaction
 
-
-
-h3. Compaction
-
-
-Could the `ruby`'s GC do compaction?
-Since `VALUE` of `ruby` is a direct pointer to a struct,
+Could the \`ruby\`'s GC do compaction?
+Since \`VALUE\` of \`ruby\` is a direct pointer to a struct,
 if the address of the struct are changed because of compaction,
-it is necessary to change the all `VALUE`s that point to the moved structs.
+it is necessary to change the all \`VALUE\`s that point to the moved structs.
 
-
-However, since the `ruby`'s GC is a conservative GC, "the case when it is
-impossible to determine whether or not it is really a `VALUE`" is possible.
+However, since the \`ruby\`'s GC is a conservative GC, "the case when it is
+impossible to determine whether or not it is really a \`VALUE\`" is possible.
 Changing the value even though in this situation,
-if it was not `VALUE` something awful will happen.
+if it was not \`VALUE\` something awful will happen.
 Compaction and conservative GC are really incompatible.
 
-
 But, let's contrive countermeasures in one way or another.
-The first way is to let `VALUE` be an object ID instead of a pointer. (Figure 12)
-It means sandwiching a indirect layer between `VALUE` and a struct.
-In this way, as it's not necessary to rewrite `VALUE`, structs can be safely moved.
+The first way is to let \`VALUE\` be an object ID instead of a pointer. (Figure 12)
+It means sandwiching a indirect layer between \`VALUE\` and a struct.
+In this way, as it's not necessary to rewrite \`VALUE\`, structs can be safely moved.
 But as trade-offs, accessing speed slows down and the compatibility of
 extension libraries is lost.
 
-
-!images/ch_gc_objid.jpg(reference through the object ID)!
-
+![reference through the object ID](images/ch_gc_objid.jpg "reference through the object ID")
 
 Then, the next way is to allow moving the struct only when they are pointed
-from only the pointers that "is surely `VALUE`" (Figure 13).
+from only the pointers that "is surely \`VALUE\`" (Figure 13).
 This method is called Mostly-copying garbage collection.
 In the ordinary programs, there are not so many objects that
-`is_pointer_to_heap()` is true, so the probability of being able to move the
+\`is\_pointer\_to\_heap()\` is true, so the probability of being able to move the
 object structs is quite high.
 
-
-!images/ch_gc_mostcopy.jpg(Mostly-copying garbage collection)!
-
+![Mostly-copying garbage collection](images/ch_gc_mostcopy.jpg "Mostly-copying garbage collection")
 
 Moreover and moreover, by enabling to move the struct,
 the implementation of Generational GC becomes simple at the same time.
 It seems to be worth to challenge.
 
+### \`volatile\` to protect from GC
 
-
-
-h3. `volatile` to protect from GC
-
-
-I wrote that GC takes care of `VALUE` on the stack,
-therefore if a `VALUE` is located as a local variable the `VALUE` should certainly be marked.
+I wrote that GC takes care of \`VALUE\` on the stack,
+therefore if a \`VALUE\` is located as a local variable the \`VALUE\` should certainly be marked.
 But in reality due to the effects of optimization, it's possible that the
 variables disappear.
 For example, there's a possibility of disappearing in the following case:
 
-
-
-<pre class="emlist">
+``` emlist
 VALUE str;
 str = rb_str_new2("...");
 printf("%s\n", RSTRING(str)->ptr);
-</pre>
+```
 
-
-Because this code does not access the `str` itself,
-some compilers only keeps `str->ptr` in memory and deletes the `str`.
-If this happened, the `str` would be collected and the process would be down.
+Because this code does not access the \`str\` itself,
+some compilers only keeps \`str-&gt;ptr\` in memory and deletes the \`str\`.
+If this happened, the \`str\` would be collected and the process would be down.
 There's no choice in this case
 
-
-
-<pre class="emlist">
+``` emlist
 volatile VALUE str;
-</pre>
+```
 
-
-we need to write this way. `volatile` is a reserved word of C,
+we need to write this way. \`volatile\` is a reserved word of C,
 and it has an effect of forbidding optimizations that have to do with this variable.
-If `volatile` was attached in the code relates to Ruby,
+If \`volatile\` was attached in the code relates to Ruby,
 you could assume almost certainly that its exists for GC.
 When I read K & R, I thought "what is the use of this?",
-and totally didn't expect to see the plenty of them in `ruby`.
-
+and totally didn't expect to see the plenty of them in \`ruby\`.
 
 Considering these aspects, the promise of the conservative GC "users don't have
-to care about GC" seems  not always true. There was once a discussion that "the
-Scheme's GC named KSM does not need `volatile`",
-but it seems it could not be applied to `ruby` because its algorithm has a hole.
+to care about GC" seems not always true. There was once a discussion that "the
+Scheme's GC named KSM does not need \`volatile\`",
+but it seems it could not be applied to \`ruby\` because its algorithm has a hole.
 
+When to invoke
+--------------
 
-
-
-
-h2. When to invoke
-
-
-h3. Inside `gc.c`
-
+### Inside \`gc.c\`
 
 When to invoke GC?
-Inside `gc.c`, there are three places calling `rb_gc()`
-inside of `gc.c`,
+Inside \`gc.c\`, there are three places calling \`rb\_gc()\`
+inside of \`gc.c\`,
 
-* `ruby_xmalloc()`
-* `ruby_xrealloc()`
-* `rb_newobj()`
+-   \`ruby\_xmalloc()\`
+-   \`ruby\_xrealloc()\`
+-   \`rb\_newobj()\`
 
-
-As for `ruby_xmalloc()` and `ruby_xrealloc()`, it is when failing to allocate memory.
+As for \`ruby\_xmalloc()\` and \`ruby\_xrealloc()\`, it is when failing to allocate memory.
 Doing GC may free memories and it's possible that a space becomes available again.
-`rb_newobj()` has a similar situation, it invokes when `freelist` becomes empty.
+\`rb\_newobj()\` has a similar situation, it invokes when \`freelist\` becomes empty.
 
+### Inside the interpritor
 
+There's several places except for \`gc.c\` where calling \`rb\_gc()\` in the interpretor.
 
-
-h3. Inside the interpritor
-
-
-There's several places except for `gc.c` where calling `rb_gc()` in the interpretor.
-
-
-First, in `io.c` and `dir.c`, when it runs out of file descriptors and could not open,
-it invokes GC. If `IO` objects are garbage collected, it's possible that the
+First, in \`io.c\` and \`dir.c\`, when it runs out of file descriptors and could not open,
+it invokes GC. If \`IO\` objects are garbage collected, it's possible that the
 files are closed and file descriptors become available.
 
-
-In `ruby.c`, `rb_gc()` is sometimes done after loading a file.
+In \`ruby.c\`, \`rb\_gc()\` is sometimes done after loading a file.
 As I mentioned in the previous Sweep section, it is to compensate for the fact
-that `NODE` cannot be garbage collected while compiling.
+that \`NODE\` cannot be garbage collected while compiling.
 
-
-
-
-
-
-
-h2. Object Creation
-
+Object Creation
+---------------
 
 We've finished about GC and come to be able to deal with the Ruby objects from
 its creation to its freeing.
@@ -1845,30 +1635,25 @@ So I'd like to describe about object creations here.
 This is not so related to GC, rather, it is related a little to the discussion
 about classes in the previous chapter.
 
-
-h3. Allocation Framework
-
+### Allocation Framework
 
 We've created objects many times. For example, in this way:
 
-
-
-<pre class="emlist">
+``` emlist
 class C
 end
 C.new()
-</pre>
+```
 
+At this time, how does \`C.new\` create a object?
 
-At this time, how does `C.new` create a object?
+First, \`C.new\` is actually \`Class\#new\`. Its actual body is this:
 
+<p class="caption">
+▼ \`rb\_class\_new\_instance()\`
 
-First, `C.new` is actually `Class#new`. Its actual body is this:
-
-
-<p class="caption">▼ `rb_class_new_instance()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  725  VALUE
  726  rb_class_new_instance(argc, argv, klass)
  727      int argc;
@@ -1884,17 +1669,17 @@ First, `C.new` is actually `Class#new`. Its actual body is this:
  737  }
 
 (object.c)
-</pre>
+```
 
+\`rb\_obj\_alloc()\` calls the \`allocate\` method against the \`klass\`.
+In other words, it calls \`C.allocate\` in this example currently explained.
+It is \`Class\#allocate\` by default and its actual body is \`rb\_class\_allocate\_instance()\`.
 
-`rb_obj_alloc()` calls the `allocate` method against the `klass`.
-In other words, it calls `C.allocate` in this example currently explained.
-It is `Class#allocate` by default and its actual body is `rb_class_allocate_instance()`.
+<p class="caption">
+▼ \`rb\_class\_allocate\_instance()\`
 
-
-<p class="caption">▼ `rb_class_allocate_instance()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  708  static VALUE
  709  rb_class_allocate_instance(klass)
  710      VALUE klass;
@@ -1914,91 +1699,75 @@ It is `Class#allocate` by default and its actual body is `rb_class_allocate_inst
  723  }
 
 (object.c)
-</pre>
+```
 
+\`rb\_newobj()\` is a function that returns a \`RVALUE\` by taking from the \`freelist\`.
+\`NEWOBJ()\` is just a \`rb\_newobj()\` with type-casting.
+The \`OBJSETUP()\` is a macro to initialize the \`struct RBasic\` part,
+you can think that this exists only in order not to forget to set the \`FL\_TAINT\` flag.
 
-`rb_newobj()` is a function that returns a `RVALUE` by taking from the `freelist`.
-`NEWOBJ()` is just a `rb_newobj()` with type-casting.
-The `OBJSETUP()` is a macro to initialize the `struct RBasic` part,
-you can think that this exists only in order not to forget to set the `FL_TAINT` flag.
-
-
-The rest is going back to `rb_class_new_instance()`, then it calls `rb_obj_call_init()`.
-This function calls `initialize` on the just created object,
+The rest is going back to \`rb\_class\_new\_instance()\`, then it calls \`rb\_obj\_call\_init()\`.
+This function calls \`initialize\` on the just created object,
 and the initialization completes.
-
 
 This is summarized as follows:
 
-
-
-<pre class="emlist">
+``` emlist
 SomeClass.new            = Class#new (rb_class_new_instance)
     SomeClass.allocate       = Class#allocate (rb_class_allocate_instance)
     SomeClass#initialize     = Object#initialize (rb_obj_dummy)
-</pre>
+```
 
-
-I could say that the `allocate` class method is to physically initialize,
-the `initialize` is to logically initialize.
+I could say that the \`allocate\` class method is to physically initialize,
+the \`initialize\` is to logically initialize.
 The mechanism like this, in other words the mechanism that an object creation
-is divided into `allocate` / `initialize` and `new` presides them, is called
+is divided into \`allocate\` / \`initialize\` and \`new\` presides them, is called
 the "allocation framework".
 
-
-
-
-h3. Creating User Defined Objects
-
+### Creating User Defined Objects
 
 Next, we'll examine about the instance creations of the classes defined in
 extension libraries.
 As it is called user-defined, its struct is not decided, without telling
-how to allocate it, `ruby` don't understand how to create its object.
+how to allocate it, \`ruby\` don't understand how to create its object.
 Let's look at how to tell it.
 
-
-h4. `Data_Wrap_Struct()`
-
+#### \`Data\_Wrap\_Struct()\`
 
 Whichever it is user-defined or not, its creation mechanism itself can follow
 the allocation framework.
-It means that when defining a new `SomeClass` class in C,
-we overwrite both `SomeClass.allocate` and `SomeClass#initialize`.
+It means that when defining a new \`SomeClass\` class in C,
+we overwrite both \`SomeClass.allocate\` and \`SomeClass\#initialize\`.
 
-
-Let's look at the `allocate` side first. Here, it does the physical initialization.
+Let's look at the \`allocate\` side first. Here, it does the physical initialization.
 What is necessary to allocate?
 I mentioned that the instance of the user-defined class is a pair of
-`struct RData` and a user-prepared struct.
-We'll assume that the struct is of type `struct my`.
-In order to create a `VALUE` based on the `struct my`, you can use `Data_Wrap_Struct()`.
+\`struct RData\` and a user-prepared struct.
+We'll assume that the struct is of type \`struct my\`.
+In order to create a \`VALUE\` based on the \`struct my\`, you can use \`Data\_Wrap\_Struct()\`.
 This is how to use:
 
-
-
-<pre class="emlist">
+``` emlist
 struct my *ptr = malloc(sizeof(struct my));  /* arbitrarily allocate in the heap */
 VALUE val = Data_Wrap_Struct(data_class, mark_f, free_f, ptr);
-</pre>
+```
 
-
-`data_class` is the class that `val` belongs to, `ptr` is the pointer to be wrapped.
-`mark_f` is (the pointer to) the function to mark this struct.
-However, this does not mark the `ptr` itself and is used when the struct
-pointed by `ptr` contains `VALUE`.
-On the other hand, `free_f` is the function to free the `ptr` itself.
-The argument of the both functions is `ptr`.
+\`data\_class\` is the class that \`val\` belongs to, \`ptr\` is the pointer to be wrapped.
+\`mark\_f\` is (the pointer to) the function to mark this struct.
+However, this does not mark the \`ptr\` itself and is used when the struct
+pointed by \`ptr\` contains \`VALUE\`.
+On the other hand, \`free\_f\` is the function to free the \`ptr\` itself.
+The argument of the both functions is \`ptr\`.
 Going back a little and reading the code to mark may help you to understand
 things around here in one shot.
 
+Let's also look at the content of \`Data\_Wrap\_Struct()\`.
 
-Let's also look at the content of `Data_Wrap_Struct()`.
+<p class="caption">
+▼ \`Data\_Wrap\_Struct()\`
 
-
-<p class="caption">▼ `Data_Wrap_Struct()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  369  #define Data_Wrap_Struct(klass, mark, free, sval) \
  370      rb_data_object_alloc(klass, sval,             \
                                (RUBY_DATA_FUNC)mark,    \
@@ -2007,15 +1776,15 @@ Let's also look at the content of `Data_Wrap_Struct()`.
  365  typedef void (*RUBY_DATA_FUNC) _((void*));
 
 (ruby.h)
-</pre>
+```
 
+Most of it is delegated to \`rb\_object\_alloc()\`.
 
-Most of it is delegated to `rb_object_alloc()`.
+<p class="caption">
+▼ \`rb\_data\_object\_alloc()\`
 
-
-<p class="caption">▼ `rb_data_object_alloc()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  310  VALUE
  311  rb_data_object_alloc(klass, datap, dmark, dfree)
  312      VALUE klass;
@@ -2033,33 +1802,28 @@ Most of it is delegated to `rb_object_alloc()`.
  324  }
 
 (gc.c)
-</pre>
-
+```
 
 This is not complicated. As the same as the ordinary objects, it prepares a
-`RVALUE` by using `NEWOBJ() OBJSETUP()`,
+\`RVALUE\` by using \`NEWOBJ() OBJSETUP()\`,
 and sets the members.
 
-
-Here, let's go back to `allocate`.
-We've succeeded to create a `VALUE` by now,
+Here, let's go back to \`allocate\`.
+We've succeeded to create a \`VALUE\` by now,
 so the rest is putting it in an arbitrary function
-and defining the function on a class by `rb_define_singleton_method()`.
+and defining the function on a class by \`rb\_define\_singleton\_method()\`.
 
+#### \`Data\_Get\_Struct()\`
 
+The next thing is \`initialize\`. Not only for \`initialize\`, the methods need a
+way to pull out the \`struct my\*\` from the previously created \`VALUE\`. In order
+to do it, you can use the \`Data\_Get\_Struct()\` macro.
 
+<p class="caption">
+▼ \`Data\_Get\_Struct()\`
 
-h4. `Data_Get_Struct()`
-
-
-The next thing is `initialize`. Not only for `initialize`, the methods need a
-way to pull out the `struct my*` from the previously created `VALUE`. In order
-to do it, you can use the `Data_Get_Struct()` macro.
-
-
-<p class="caption">▼ `Data_Get_Struct()` </p>
-
-<pre class="longlist">
+</p>
+``` longlist
  378  #define Data_Get_Struct(obj,type,sval) do {\
  379      Check_Type(obj, T_DATA); \
  380      sval = (type*)DATA_PTR(obj);\
@@ -2068,61 +1832,50 @@ to do it, you can use the `Data_Get_Struct()` macro.
  360  #define DATA_PTR(dta) (RDATA(dta)->data)
 
 (ruby.h)
-</pre>
+```
 
+As you see, it just takes the pointer (to \`struct my\`) from a member of \`RData\`.
+This is simple. \`Check\_Type()\` just checks the struct type.
 
-As you see, it just takes the pointer (to `struct my`) from a member of `RData`.
-This is simple. `Check_Type()` just checks the struct type.
-
-
-
-
-h3. The Issues of the Allocation Framework
-
+### The Issues of the Allocation Framework
 
 So, I've explained innocently until now, but actually the current allocation
 framework has a fatal issue.
-I just described that the object created with `allocate` appears to the
-`initialize` or the other methods, but if the passed object that was created
-with `allocate` is not of the same class, it must be a very serious problem.
-For example, if the object created with the default `Objct.allocate`
-(`Class#allocate`) is passed to the method of `String`, this cause a serious problem.
-That is because even though the methods of `String` are written
-based on the assumption that a struct of type `struct RString` is given,
-the given object is actually a `struct RObject`.
+I just described that the object created with \`allocate\` appears to the
+\`initialize\` or the other methods, but if the passed object that was created
+with \`allocate\` is not of the same class, it must be a very serious problem.
+For example, if the object created with the default \`Objct.allocate\`
+(\`Class\#allocate\`) is passed to the method of \`String\`, this cause a serious problem.
+That is because even though the methods of \`String\` are written
+based on the assumption that a struct of type \`struct RString\` is given,
+the given object is actually a \`struct RObject\`.
 In order to avoid such situation,
-the object created with `C.allocate` must be passed only to the methods of `C`
+the object created with \`C.allocate\` must be passed only to the methods of \`C\`
 or its subclasses.
 
-
 Of course, this is always true when things are ordinarily done.
-As `C.allocate` creates the instance of the class `C`,
+As \`C.allocate\` creates the instance of the class \`C\`,
 it is not passed to the methods of the other classes.
-As an exception, it is possible that it is passed to the method of `Object`,
-but the methods of `Object` does not depend on the struct type.
-
+As an exception, it is possible that it is passed to the method of \`Object\`,
+but the methods of \`Object\` does not depend on the struct type.
 
 However, what if it is not ordinarily done?
-Since `C.allocate` is exposed at the Ruby level,
+Since \`C.allocate\` is exposed at the Ruby level,
 though I've not described about them yet,
-by making use of `alias` or `super` or something,
-the definition of `allocate` can be moved to another class.
-In this way, you can create an object whose class is `String` but whose actual
-struct type is `struct RObject`.
-It means that you can freely let `ruby` down from the Ruby level.
+by making use of \`alias\` or \`super\` or something,
+the definition of \`allocate\` can be moved to another class.
+In this way, you can create an object whose class is \`String\` but whose actual
+struct type is \`struct RObject\`.
+It means that you can freely let \`ruby\` down from the Ruby level.
 This is a problem.
 
-
-The source of the issue is that `allocate` is exposed to the Ruby level as a method.
-Conversely speaking, a solution is to define the content of `allocate` on the
+The source of the issue is that \`allocate\` is exposed to the Ruby level as a method.
+Conversely speaking, a solution is to define the content of \`allocate\` on the
 class by using a way that is anything but a method.
 So,
 
-
-
-<pre class="emlist">
+``` emlist
 rb_define_allocator(rb_cMy, my_allocate);
-</pre>
-
+```
 
 an alternative like this is currently in discussion.

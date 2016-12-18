@@ -5,85 +5,87 @@ title: Variables and constants
 
 Translated by Vincent ISAMBART
 
-h1. Chapter 6: Variables and constants
+Chapter 6: Variables and constants
+==================================
 
-h2. Outline of this chapter
+Outline of this chapter
+-----------------------
 
-h3. Ruby variables
+### Ruby variables
 
 In Ruby there are quite a lot of different types of variables and
 constants. Let's line them up, starting from the largest scope.
 
-* Global variables
-* Constants
-* Class variables
-* Instance variables
-* Local variables
+-   Global variables
+-   Constants
+-   Class variables
+-   Instance variables
+-   Local variables
 
 Instance variables were already explained in chapter 2 "Objects". In
 this chapter we'll talk about:
 
-* Global variables
-* Class variables
-* Constants
+-   Global variables
+-   Class variables
+-   Constants
 
 We will talk about local variables in the third part of the book.
 
-h3. API for variables
+### API for variables
 
-The object of this chapter's analysis is `variable.c`. Let me first
+The object of this chapter's analysis is \`variable.c\`. Let me first
 introduce the APIs which would be the entry points.
 
-<pre class="emlist">
+``` emlist
 VALUE rb_iv_get(VALUE obj, char *name)
 VALUE rb_ivar_get(VALUE obj, ID name)
 VALUE rb_iv_set(VALUE obj, char *name, VALUE val)
 VALUE rb_ivar_set(VALUE obj, ID name, VALUE val)
-</pre>
+```
 
 These are the APIs to access instance variables which have already been
 described. They are shown here again because their definitions are in
-`variable.c`.
+\`variable.c\`.
 
-<pre class="emlist">
+``` emlist
 VALUE rb_cv_get(VALUE klass, char *name)
 VALUE rb_cvar_get(VALUE klass, ID name)
 VALUE rb_cv_set(VALUE klass, char *name, VALUE val)
 VALUE rb_cvar_set(VALUE klass, ID name, VALUE val)
-</pre>
+```
 
 These functions are the API for accessing class variables. Class
 variables belong directly to classes so the functions take a class as
 parameter. There are in two groups, depending if their name starts
-with `rb_Xv` or `rb_Xvar`. The difference lies in the type of the
+with \`rb\_Xv\` or \`rb\_Xvar\`. The difference lies in the type of the
 variable "name". The ones with a shorter name are generally easier to
-use because they take a `char*`. The ones with a longer name are more
-for internal use as they take a `ID`.
+use because they take a \`char\*\`. The ones with a longer name are more
+for internal use as they take a \`ID\`.
 
-<pre class="emlist">
+``` emlist
 VALUE rb_const_get(VALUE klass, ID name)
 VALUE rb_const_get_at(VALUE klass, ID name)
 VALUE rb_const_set(VALUE klass, ID name, VALUE val)
-</pre>
+```
 
 These functions are for accessing constants. Constants also belong to
-classes so they take classes as parameter. `rb_const_get()` follows
-the superclass chain, whereas `rb_const_get_at()` does not (it just
-looks in `klass`).
+classes so they take classes as parameter. \`rb\_const\_get()\` follows
+the superclass chain, whereas \`rb\_const\_get\_at()\` does not (it just
+looks in \`klass\`).
 
-<pre class="emlist">
+``` emlist
 struct global_entry *rb_global_entry(ID name)
 VALUE rb_gv_get(char *name)
 VALUE rb_gvar_get(struct global_entry *ent)
 VALUE rb_gv_set(char *name, VALUE val)
 VALUE rb_gvar_set(struct global_entry *ent, VALUE val)
-</pre>
+```
 
-These last functions are for accessing global variables.  They are a
-little different from the others due to the use of `struct global_entry`.
+These last functions are for accessing global variables. They are a
+little different from the others due to the use of \`struct global\_entry\`.
 We'll explain this while describing the implementation.
 
-h3. Points of this chapter
+### Points of this chapter
 
 The most important point when talking about variables is "Where and how are variables
 stored?", in other words: data structures.
@@ -96,7 +98,8 @@ should think by comparing the implementation with the specification,
 like "It behaves like this in this situation so its implementation
 couldn't be other then this!"
 
-h2. Class variables
+Class variables
+---------------
 
 Class variables are variables that belong to classes. In Java or C++
 they are called static variables. They can be accessed from both the
@@ -105,15 +108,16 @@ information only available in the evaluator, and we do not have one
 for the moment. So from the C level it's like having no access
 range. We'll just focus on the way these variables are stored.
 
-h3. Reading
+### Reading
 
-The functions to get a class variable are `rb_cvar_get()` and
-`rb_cv_get()`. The function with the longer name takes `ID` as
-parameter and the one with the shorter one takes `char*`. Because the
-one taking an `ID` seems closer to the internals, we'll look at it.
+The functions to get a class variable are \`rb\_cvar\_get()\` and
+\`rb\_cv\_get()\`. The function with the longer name takes \`ID\` as
+parameter and the one with the shorter one takes \`char\*\`. Because the
+one taking an \`ID\` seems closer to the internals, we'll look at it.
 
-▼ `rb_cvar_get()`
-<pre class="longlist">
+▼ \`rb\_cvar\_get()\`
+
+``` longlist
 1508  VALUE
 1509  rb_cvar_get(klass, id)
 1510      VALUE klass;
@@ -141,54 +145,56 @@ one taking an `ID` seems closer to the internals, we'll look at it.
 1532  }
 
 (variable.c)
-</pre>
+```
 
-This function reads a class variable in `klass`.
+This function reads a class variable in \`klass\`.
 
-Error management functions like `rb_raise()` can be simply ignored
-like I said before. The `rb_name_error()` that appears this time is a
+Error management functions like \`rb\_raise()\` can be simply ignored
+like I said before. The \`rb\_name\_error()\` that appears this time is a
 function for raising an exception, so it can be ignored for the same
-reasons. In `ruby`, you can assume that all functions ending with
-`_error` raise an exception.
+reasons. In \`ruby\`, you can assume that all functions ending with
+\`\_error\` raise an exception.
 
-After removing all this, we can see that it is just following the `klass`'s
-superclass chain one by one and searching in each `iv_tbl`.
+After removing all this, we can see that it is just following the \`klass\`'s
+superclass chain one by one and searching in each \`iv\_tbl\`.
 ... At this point, I'd like you to
-say "What? `iv_tbl` is the instance variables table, isn't it?" As a
+say "What? \`iv\_tbl\` is the instance variables table, isn't it?" As a
 matter of fact, class variables are stored in the instance variable
 table.
 
-We can do this because when creating `ID`s, the whole name of the
-variables is taken into account, including the prefix: `rb_intern()`
-will return different `ID`s for "`@var`" and "`@@var`". At the Ruby
+We can do this because when creating \`ID\`s, the whole name of the
+variables is taken into account, including the prefix: \`rb\_intern()\`
+will return different \`ID\`s for "\`@var\`" and "\``` @var`". At the Ruby
 level, the variable type is determined only by the prefix so there's
-no way to access a class variable called `@var` from Ruby.
+no way to access a class variable called ` ``var\` from Ruby.
 
-h2. Constants
+Constants
+---------
 
 It's a little abrupt but I'd like you to remember the members of
-`struct RClass`. If we exclude the `basic` member, `struct RClass`
+\`struct RClass\`. If we exclude the \`basic\` member, \`struct RClass\`
 contains:
 
-* `VALUE super`
-* `struct st_table *iv_tbl`
-* `struct st_table *m_tbl`
+-   \`VALUE super\`
+-   \`struct st\_table \*iv\_tbl\`
+-   \`struct st\_table \*m\_tbl\`
 
 Then, considering that:
 
-# constants belong to a class
-# we can't see any table dedicated to constants in `struct RClass`
-# class variables and instance variables are both in `iv_tbl`
+1.  constants belong to a class
+2.  we can't see any table dedicated to constants in \`struct RClass\`
+3.  class variables and instance variables are both in \`iv\_tbl\`
 
 Could it mean that the constants are also...
 
-h3. Assignment
+### Assignment
 
-`rb_const_set()` is a function to set the value of constants: it sets
-the constant `id` in the class `klass` to the value `val`.
+\`rb\_const\_set()\` is a function to set the value of constants: it sets
+the constant \`id\` in the class \`klass\` to the value \`val\`.
 
-▼ `rb_const_set()`
-<pre class="longlist">
+▼ \`rb\_const\_set()\`
+
+``` longlist
 1377  void
 1378  rb_const_set(klass, id, val)
 1379      VALUE klass;
@@ -199,12 +205,13 @@ the constant `id` in the class `klass` to the value `val`.
 1384  }
 
 (variable.c)
-</pre>
+```
 
-`mod_av_set()` does all the hard work:
+\`mod\_av\_set()\` does all the hard work:
 
-▼ `mod_av_set()`
-<pre class="longlist">
+▼ \`mod\_av\_set()\`
+
+``` longlist
 1352  static void
 1353  mod_av_set(klass, id, val, isconst)
 1354      VALUE klass;
@@ -231,39 +238,41 @@ the constant `id` in the class `klass` to the value `val`.
 1375  }
 
 (variable.c)
-</pre>
+```
 
-You can this time again ignore the warning checks (`rb_raise()`,
-`rb_error_frozen()` and `rb_warn()`). Here's what's left:
+You can this time again ignore the warning checks (\`rb\_raise()\`,
+\`rb\_error\_frozen()\` and \`rb\_warn()\`). Here's what's left:
 
-▼ `mod_av_set()` (only the important part)
-<pre class="longlist">
+▼ \`mod\_av\_set()\` (only the important part)
+
+``` longlist
     if (!RCLASS(klass)->iv_tbl) {
         RCLASS(klass)->iv_tbl = st_init_numtable();
     }
     st_insert(RCLASS(klass)->iv_tbl, id, val);
-</pre>
+```
 
 We're now sure constants also reside in the instance table. It means
-in the `iv_tbl` of `struct RClass`, the following are mixed together:
+in the \`iv\_tbl\` of \`struct RClass\`, the following are mixed together:
 
-# the class's own instance variables
-# class variables
-# constants
+1.  the class's own instance variables
+2.  class variables
+3.  constants
 
-h3. Reading
+### Reading
 
 We now know how the constants are stored. We'll now check how they
 really work.
 
-h4. `rb_const_get()`
+#### \`rb\_const\_get()\`
 
-We'll now look at `rb_const_get()`, the function to read a
-constant. This function returns the constant referred to by `id` from the class
-`klass`.
+We'll now look at \`rb\_const\_get()\`, the function to read a
+constant. This function returns the constant referred to by \`id\` from the class
+\`klass\`.
 
-▼ `rb_const_get()`
-<pre class="longlist">
+▼ \`rb\_const\_get()\`
+
+``` longlist
 1156  VALUE
 1157  rb_const_get(klass, id)
 1158      VALUE klass;
@@ -302,15 +311,16 @@ constant. This function returns the constant referred to by `id` from the class
 1189  }
 
 (variable.c)
-</pre>
+```
 
 There's a lot of code in the way. First, we should at least remove the
-`rb_name_error()` in the second half. In the middle, what's around
-`mod_entry` seems to be a special handling for modules. Let's also
+\`rb\_name\_error()\` in the second half. In the middle, what's around
+\`mod\_entry\` seems to be a special handling for modules. Let's also
 remove that for the time being. The function gets reduced to this:
 
-▼ `rb_const_get` (simplified)
-<pre class="longlist">
+▼ \`rb\_const\_get\` (simplified)
+
+``` longlist
 VALUE
 rb_const_get(klass, id)
     VALUE klass;
@@ -327,28 +337,28 @@ rb_const_get(klass, id)
         tmp = RCLASS(tmp)->super;
     }
 }
-</pre>
+```
 
 Now it should be pretty easy to understand. The function searches for the
-constant in `iv_tbl` while climbing `klass`'s superclass chain. That
+constant in \`iv\_tbl\` while climbing \`klass\`'s superclass chain. That
 means:
 
-<pre class="emlist">
+``` emlist
 class A
   Const = "ok"
 end
 class B < A
   p(Const)    # can be accessed
 end
-</pre>
+```
 
-The only problem remaining is `top_const_get()`. This function is only
-called for `rb_cObject` so `top` must mean "top-level". If you don't
-remember, at the top-level, the class is `Object`. This means the same
-as "in the class statement defining `C`, the class becomes `C`",
-meaning that "the top-level's class is `Object`".
+The only problem remaining is \`top\_const\_get()\`. This function is only
+called for \`rb\_cObject\` so \`top\` must mean "top-level". If you don't
+remember, at the top-level, the class is \`Object\`. This means the same
+as "in the class statement defining \`C\`, the class becomes \`C\`",
+meaning that "the top-level's class is \`Object\`".
 
-<pre class="emlist">
+``` emlist
 # the class of the top-level is Object
 class A
   # the class is A
@@ -356,18 +366,19 @@ class A
     # the class is B
   end
 end
-</pre>
+```
 
-So `top_const_get()` probably does something specific to the top
+So \`top\_const\_get()\` probably does something specific to the top
 level.
 
-h4. `top_const_get()`
+#### \`top\_const\_get()\`
 
-Let's look at this `top_const_get` function. It looks up the `id`
-constant writes the value in `klassp` and returns.
+Let's look at this \`top\_const\_get\` function. It looks up the \`id\`
+constant writes the value in \`klassp\` and returns.
 
-▼ `top_const_get()`
-<pre class="longlist">
+▼ \`top\_const\_get()\`
+
+``` longlist
 1102  static int
 1103  top_const_get(id, klassp)
 1104      ID id;
@@ -386,11 +397,11 @@ constant writes the value in `klassp` and returns.
 1117  }
 
 (variable.c)
-</pre>
+```
 
-`rb_class_tbl` was already mentioned in chapter 4 "Classes and
+\`rb\_class\_tbl\` was already mentioned in chapter 4 "Classes and
 modules". It's the table for storing the classes defined at the
-top-level. Built-in classes like `String` or `Array` have for example
+top-level. Built-in classes like \`String\` or \`Array\` have for example
 an entry in it. That's why we should not forget to search in this
 table when looking for top-level constants.
 
@@ -399,24 +410,24 @@ It is designed to be able to register a library that is loaded automatically
 when accessing a particular top-level constant for the first
 time. This can be used like this:
 
-<pre class="emlist">
+``` emlist
 autoload(:VeryBigClass, "verybigclass")   # VeryBigClass is defined in it
-</pre>
+```
 
-After this, when `VeryBigClass` is accessed for the first time, the
-`verybigclass` library is loaded (with `require`). As long as
-`VeryBigClass` is defined in the library, execution can continue smoothly. It's
+After this, when \`VeryBigClass\` is accessed for the first time, the
+\`verybigclass\` library is loaded (with \`require\`). As long as
+\`VeryBigClass\` is defined in the library, execution can continue smoothly. It's
 an efficient approach, when a library is too big and a lot of time is spent on loading.
 
-This autoload is processed by `rb_autoload_xxxx()`. We won't discuss
+This autoload is processed by \`rb\_autoload\_xxxx()\`. We won't discuss
 autoload further in this chapter because there will probably be a big
 change in how it works soon.
 
-(translator's note: The way autoload works _did_ change in
+(translator's note: The way autoload works *did* change in
 1.8: autoloaded constants do not need to be defined at top-level
 anymore).
 
-h4. Other classes?
+#### Other classes?
 
 But where did the code for looking up constants in other classes end up?
 After all, constants are first looked up in the outside classes, then
@@ -427,12 +438,13 @@ outside classes change depending on the location in the program. In
 other words it depends of the program context. So we need first to
 understand how the internal state of the
 evaluator is handled. Specifically, this search in other classes is done in the
-`ev_const_get()` function of `eval.c`. We'll look at it and finish
+\`ev\_const\_get()\` function of \`eval.c\`. We'll look at it and finish
 with the constants in the third part of the book.
 
-h2. Global variables
+Global variables
+----------------
 
-h3. General remarks
+### General remarks
 
 Global variables can be accessed from anywhere. Or put the other way
 around, there is no need to restrict access to them. Because they are
@@ -445,22 +457,22 @@ variables of Ruby are equipped with some gimmicks which make it hard to regard
 them as mere variables. Functions like
 the following are only available for global variables:
 
-* you can "hook" access of global variables
-* you can alias them with `alias`
+-   you can "hook" access of global variables
+-   you can alias them with \`alias\`
 
 Let's explain this simply.
 
-h4. Aliases of variables
+#### Aliases of variables
 
-<pre class="emlist">
+``` emlist
 alias $newname $oldname
-</pre>
+```
 
-After this, you can use `$newname` instead of `$oldname`. `alias` for
+After this, you can use \`$newname\` instead of \`$oldname\`. \`alias\` for
 variables is mainly a counter-measure for "symbol variables". "symbol
-variables" are variables inherited from Perl like `$=` or `$0`. `$=`
+variables" are variables inherited from Perl like \`$=\` or \`$0\`. \`$=\`
 decides if during string comparison upper and lower case letters
-should be differentiated. `$0` shows the name of the main Ruby
+should be differentiated. \`$0\` shows the name of the main Ruby
 program. There are some other symbol variables but anyway as their
 name is only one character long, they are difficult to remember for
 people who don't know Perl. So, aliases were created to make them a little
@@ -468,48 +480,49 @@ easier to understand.
 
 That said, currently symbol variables are not recommended, and are
 moved one by one in singleton methods of suitable modules. The current
-school of thought is that `$=` and others will be abolished in 2.0.
+school of thought is that \`$=\` and others will be abolished in 2.0.
 
-h4. Hooks
+#### Hooks
 
 You can "hook" read and write of global variables.
 
 Although hooks can be also be set at the Ruby level,
 I think the purpose of it seems rather to prepare the special variables
-for system use like `$KCODE` at C level.
-`$KCODE` is the variable containing the encoding the
+for system use like \`$KCODE\` at C level.
+\`$KCODE\` is the variable containing the encoding the
 interpreter currently uses to handle strings.
-Essentially only special strings like `"EUC"` or `"UTF8"` can be assigned to
-it, but this is too bothersome so it is designed so that `"e"` or `"u"` can
+Essentially only special strings like \`"EUC"\` or \`"UTF8"\` can be assigned to
+it, but this is too bothersome so it is designed so that \`"e"\` or \`"u"\` can
 also be used.
 
-<pre class="emlist">
+``` emlist
 p($KCODE)      # "NONE" (default)
 $KCODE = "e"
 p($KCODE)      # "EUC"
 $KCODE = "u"
 p($KCODE)      # "UTF8"
-</pre>
+```
 
 Knowing that you can hook assignment of global variables, you should
-understand easily how this can be done. By the way, `$KCODE`'s K comes
+understand easily how this can be done. By the way, \`$KCODE\`'s K comes
 from "kanji" (the name of Chinese characters in Japanese).
 
-You might say that even with `alias` or hooks,
+You might say that even with \`alias\` or hooks,
 global variables just aren't used much, so it's functionality that doesn't
 really mater. It's adequate not to talk much about unused
 functions, and I'd like to use more pages for the analysis of the parser and
 evaluator. That's why I'll proceed with the explanation below
 whose degree of half-hearted is 85%.
 
-h3. Data structure
+### Data structure
 
 I said that the point when looking at how variables work is the way they
 are stored. First, I'd like you to firmly grasp the
 structure used by global variables.
 
 ▼ Data structure for global variables
-<pre class="longlist">
+
+``` longlist
   21  static st_table *rb_global_tbl;
 
  334  struct global_entry {
@@ -528,40 +541,41 @@ structure used by global variables.
  332  };
 
 (variable.c)
-</pre>
+```
 
-`rb_global_tbl` is the main table. All global variables are stored in
+\`rb\_global\_tbl\` is the main table. All global variables are stored in
 this table. The keys of this table are of course variable names
-(`ID`). A value is expressed by a `struct global_entry` and
-a `struct global_variable` (figure 1).
+(\`ID\`). A value is expressed by a \`struct global\_entry\` and
+a \`struct global\_variable\` (figure 1).
 
-!images/ch_variable_gvar.png(Global variables table at execution time)!
+![Global variables table at execution time](images/ch_variable_gvar.png "Global variables table at execution time")
 
 The structure representing the variables is split in two to be able to
-create `alias`es. When an `alias` is established, two `global_entry`s
-point to the same `struct global_variable`.
+create \`alias\`es. When an \`alias\` is established, two \`global\_entry\`s
+point to the same \`struct global\_variable\`.
 
-It's at this time that the reference counter (the `counter` member of
-`struct global_variable`) is necessary. I explained the general idea of
+It's at this time that the reference counter (the \`counter\` member of
+\`struct global\_variable\`) is necessary. I explained the general idea of
 a reference counter in the previous section "Garbage
 collection". Reviewing it briefly, when a new reference to the
 structure is made, the counter in incremented by 1. When the reference
 is not used anymore, the counter is decreased by 1. When the counter
-reaches 0, the structure is no longer useful so `free()` can be
+reaches 0, the structure is no longer useful so \`free()\` can be
 called.
 
-When hooks are set at the Ruby level, a list of `struct trace_var`s is
-stored in the `trace` member of `struct global_variable`, but I won't
-talk about it, and omit `struct trace_var`.
+When hooks are set at the Ruby level, a list of \`struct trace\_var\`s is
+stored in the \`trace\` member of \`struct global\_variable\`, but I won't
+talk about it, and omit \`struct trace\_var\`.
 
-h3. Reading
+### Reading
 
 You can have a general understanding of global variables just by looking at how
-they are read. The functions for reading them are `rb_gv_get()` and
-`rb_gvar_get()`.
+they are read. The functions for reading them are \`rb\_gv\_get()\` and
+\`rb\_gvar\_get()\`.
 
-▼ `rb_gv_get() rb_gvar_get()`
-<pre class="longlist">
+▼ \`rb\_gv\_get() rb\_gvar\_get()\`
+
+``` longlist
  716  VALUE
  717  rb_gv_get(name)
  718      const char *name;
@@ -581,20 +595,21 @@ they are read. The functions for reading them are `rb_gv_get()` and
  655  }
 
 (variable.c)
-</pre>
+```
 
 A substantial part of the content seems to turn around the
-`rb_global_entry()` function, but that does not prevent us
-understanding what's going on. `global_id` is a function that converts a
-`char*` to `ID` and checks if it's the `ID` of a global
-variable. `(*var->getter)(...)` is of course a function call using the
-function pointer `var->getter`. If `p` is a function pointer,
-`(*p)(arg)` calls the function.
+\`rb\_global\_entry()\` function, but that does not prevent us
+understanding what's going on. \`global\_id\` is a function that converts a
+\`char\*\` to \`ID\` and checks if it's the \`ID\` of a global
+variable. \`(\*var-&gt;getter)(...)\` is of course a function call using the
+function pointer \`var-&gt;getter\`. If \`p\` is a function pointer,
+\`(\*p)(arg)\` calls the function.
 
-But the main part is still `rb_global_entry()`.
+But the main part is still \`rb\_global\_entry()\`.
 
-▼ `rb_global_entry()`
-<pre class="longlist">
+▼ \`rb\_global\_entry()\`
+
+``` longlist
  351  struct global_entry*
  352  rb_global_entry(id)
  353      ID id;
@@ -621,28 +636,29 @@ But the main part is still `rb_global_entry()`.
  374  }
 
 (variable.c)
-</pre>
+```
 
-The main treatment is only done by the `st_lookup()` at the beginning.
+The main treatment is only done by the \`st\_lookup()\` at the beginning.
 What's done afterwards is just creating (and storing) a new entry. As, when
 accessing a non existing global variable, an entry is automatically
-created, `rb_global_entry()` will never return NULL.
+created, \`rb\_global\_entry()\` will never return NULL.
 
 This was mainly done for speed. When the parser finds a global
-variable, it gets the corresponding `struct global_entry`. When
+variable, it gets the corresponding \`struct global\_entry\`. When
 reading the value of the variable, the value is just obtained from the entry
-(using `rb_gv_get()`).
+(using \`rb\_gv\_get()\`).
 
-Let's now continue a little with the code that follows. `var->getter`
-and others are set to `undef_xxxx`. `undef` probably means that they are
-the `setter/getter/marker` for a global variable whose state is undefined.
+Let's now continue a little with the code that follows. \`var-&gt;getter\`
+and others are set to \`undef\_xxxx\`. \`undef\` probably means that they are
+the \`setter/getter/marker\` for a global variable whose state is undefined.
 
-`undef_getter()` just shows a warning and returns `nil`, as even
-undefined global variables can be read. `undef_setter()` is a little bit
+\`undef\_getter()\` just shows a warning and returns \`nil\`, as even
+undefined global variables can be read. \`undef\_setter()\` is a little bit
 interesting so let's look at it.
 
-▼ `undef_setter()`
-<pre class="longlist">
+▼ \`undef\_setter()\`
+
+``` longlist
  385  static void
  386  undef_setter(val, id, data, var)
  387      VALUE val;
@@ -658,11 +674,11 @@ interesting so let's look at it.
  397  }
 
 (variable.c)
-</pre>
+```
 
-`val_getter()` takes the value from `entry->data` and returns
-it. `val_getter()` just puts a value in `entry->data`. Setting
+\`val\_getter()\` takes the value from \`entry-&gt;data\` and returns
+it. \`val\_getter()\` just puts a value in \`entry-&gt;data\`. Setting
 handlers this way allows us not to need special handling for undefined
 variables (figure 2). Skillfully done, isn't it?
 
-!images/ch_variable_gaccess.png(Setting and consultation of global variables)!
+![Setting and consultation of global variables](images/ch_variable_gaccess.png "Setting and consultation of global variables")
