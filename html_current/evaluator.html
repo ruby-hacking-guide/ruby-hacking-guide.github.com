@@ -18,168 +18,213 @@
       </ul>
     </nav>
 
-    <h1 id="chapter">Chapter 13: Structure of the evaluator</h1>
-<h2>Outline</h2>
-<h3>Interface</h3>
-<p>We are not familiar with the word &#8220;Hyo-ka-ki&#8221; (evaluator). Literally, it must
-be a &#8220;-ki&#8221; (device) to &#8220;hyo-ka&#8221; (evaluating). Then, what is &#8220;hyo-ka&#8221;?</p>
-<p>&#8220;Hyo-ka&#8221; is the definitive translation of &#8220;evaluate&#8221;. However, if the premise
+    <h1 id="chapter-13-structure-of-the-evaluator">Chapter 13: Structure of the evaluator</h1>
+
+<h2 id="outline">Outline</h2>
+
+<h3 id="interface">Interface</h3>
+
+<p>We are not familiar with the word “Hyo-ka-ki” (evaluator). Literally, it must
+be a “-ki” (device) to “hyo-ka” (evaluating). Then, what is “hyo-ka”?</p>
+
+<p>“Hyo-ka” is the definitive translation of “evaluate”. However, if the premise
 is describing about programing languages, it can be considered as an error in
-translation. It&#8217;s hard to avoid that the word &#8220;hyo-ka&#8221; gives the impression
-of &#8220;whether it is good or bad&#8221;.</p>
-<p>&#8220;Evaluate&#8221; in the context of programing languages has nothing to do with
-&#8220;good or bad&#8221;, and its meaning is more close to &#8220;speculating&#8221; or &#8220;executing&#8221;.
-The origin of &#8220;evaluate&#8221; is a Latin word &#8220;ex+value+ate&#8221;.
+translation. It’s hard to avoid that the word “hyo-ka” gives the impression
+of “whether it is good or bad”.</p>
+
+<p>“Evaluate” in the context of programing languages has nothing to do with
+“good or bad”, and its meaning is more close to “speculating” or “executing”.
+The origin of “evaluate” is a Latin word “ex+value+ate”.
 If I translate it directly,
-it is &#8220;turn it into a value&#8221;. This may be the simplest way to understand:
+it is “turn it into a value”. This may be the simplest way to understand:
 to determine the value from an expression expressed in text.</p>
+
 <p>Very frankly speaking, the bottom line is that evaluating is executing a
 written expression and getting the result of it. Then why is it not called just
-&#8220;execute&#8221;? It&#8217;s because evaluating is not only executing.</p>
-<p>For example, in an ordinary programming language, when we write &#8220;3&#8221;,
+“execute”? It’s because evaluating is not only executing.</p>
+
+<p>For example, in an ordinary programming language, when we write “3”,
 it will be dealt with as an integer 3.
-This situation is sometimes described as &#8220;the result of evaluating
-<code>&#8221;3&quot;</code> is 3&quot;. It&#8217;s hard to say an expression of a constant is executed,
+This situation is sometimes described as “the result of evaluating
+<code>"3"</code> is 3”. It’s hard to say an expression of a constant is executed,
 but it is certainly an evaluation.
-It&#8217;s all right if there exist a programming language in which the letter &#8220;3&#8221;,
+It’s all right if there exist a programming language in which the letter “3”,
 when it is evaluated, will be dealt with (evaluated) as an integer 6.</p>
-<p>I&#8217;ll introduce another example.
+
+<p>I’ll introduce another example.
 When an expression consists of multiple constants,
 sometimes the constants are calculated during the compiling process (constant folding).
- We usually don&#8217;t call it &#8220;executing&#8221; because executing indicates the process
+We usually don’t call it “executing” because executing indicates the process
 that the created binary is working. However, no matter when it is calculated
-you&#8217;ll get the same result from the same program.</p>
-<p>In other words, &#8220;evaluating&#8221; is usually equals to &#8220;executing&#8221;, but essentially
-&#8220;evaluating&#8221; is different from &#8220;executing&#8221;. For now, only this point is what
-I&#8217;d like you to remember.</p>
-<h3>The characteristics of <code>ruby's</code> evaluator.</h3>
-<p>The biggest characteristic of `ruby`&#8216;s evaluator is that, as this is also of
-the whole `ruby`&#8217;s interpretor, the difference in expressions between
+you’ll get the same result from the same program.</p>
+
+<p>In other words, “evaluating” is usually equals to “executing”, but essentially
+“evaluating” is different from “executing”. For now, only this point is what
+I’d like you to remember.</p>
+
+<h3 id="the-characteristics-of-rubys-evaluator">The characteristics of <code class="highlighter-rouge">ruby's</code> evaluator.</h3>
+
+<p>The biggest characteristic of `ruby`’s evaluator is that, as this is also of
+the whole `ruby`’s interpretor, the difference in expressions between
 the C-level code (extension libraries) and the Ruby-level code is small.
 In ordinary programming languages,
 the amount of the features of its interpretor we can use from extension
-libraries is usually very limited, but there are awfully few limits in <code>ruby</code>.
+libraries is usually very limited, but there are awfully few limits in <code class="highlighter-rouge">ruby</code>.
 Defining classes, defining methods and calling a method without limitation,
 these can be taken for granted. We can also use exception handling, iterators.
 Furthermore, threads.</p>
+
 <p>But we have to compensate for the conveniences somewhere.
 Some codes are weirdly hard to implement, some codes have a lot overhead,
 and there are a lot of places implementing the almost same thing twice both for
 C and Ruby.</p>
-<p>Additionally, <code>ruby</code> is a dynamic language,
+
+<p>Additionally, <code class="highlighter-rouge">ruby</code> is a dynamic language,
 it means that you can construct and evaluate a string at runtime.
-That is <code>eval</code> which is a function-like method. As you expected,
-it is named after &#8220;evaluate&#8221;. By using it, you can even do something like this:</p>
-<pre class="emlist">
-lvar = 1
+That is <code class="highlighter-rouge">eval</code> which is a function-like method. As you expected,
+it is named after “evaluate”. By using it, you can even do something like this:</p>
+
+<pre><code class="language-emlist">lvar = 1
 answer = eval("lvar + lvar")    # the answer is 2
-</pre>
-<p>There are also <code>Module#module_eval</code> and <code>Object#instance_eval</code>, each method
-behaves slightly differently. I&#8217;ll describe about them in detail in Chapter 17: Dynamic evaluation.</p>
-<h3><code>eval.c</code></h3>
-<p>The evaluator is implemented in <code>eval.c</code>. However, this <code>eval.c</code> is a
+</code></pre>
+
+<p>There are also <code class="highlighter-rouge">Module#module_eval</code> and <code class="highlighter-rouge">Object#instance_eval</code>, each method
+behaves slightly differently. I’ll describe about them in detail in Chapter 17: Dynamic evaluation.</p>
+
+<h3 id="evalc"><code class="highlighter-rouge">eval.c</code></h3>
+
+<p>The evaluator is implemented in <code class="highlighter-rouge">eval.c</code>. However, this <code class="highlighter-rouge">eval.c</code> is a
 really huge file: it has 9000 lines, its size is 200K bytes,
 and the number of the functions in it is 309. It is hard to fight against.
 When the size becomes this amount,
-it&#8217;s impossible to figure out its structure by just looking over it.</p>
+it’s impossible to figure out its structure by just looking over it.</p>
+
 <p>So how can we do?
 First, the bigger the file, the less possibility of its content not separated at all.
 In other words, the inside of it must be modularized into small portions.
 Then, how can we find the modules?
-I&#8217;ll list up some ways.</p>
+I’ll list up some ways.</p>
+
 <p>The first way is to print the list of the defined functions and look at the
-prefixes of them. <code>rb_dvar_</code>, <code>rb_mod_</code>, <code>rb_thread</code> &#8212; there are plenty of
+prefixes of them. <code class="highlighter-rouge">rb_dvar_</code>, <code class="highlighter-rouge">rb_mod_</code>, <code class="highlighter-rouge">rb_thread</code> – there are plenty of
 functions with these prefixes.
 Each prefix clearly indicate a group of the same type of functions.</p>
+
 <p>Alternatively, as we can tell when looking at the code of the class libraries,
-<code>Init_xxxx()</code> is always put at the end of a block in <code>ruby</code>.
-Therefore, <code>Init_xxxx()</code> also indicates a break between modules.</p>
+<code class="highlighter-rouge">Init_xxxx()</code> is always put at the end of a block in <code class="highlighter-rouge">ruby</code>.
+Therefore, <code class="highlighter-rouge">Init_xxxx()</code> also indicates a break between modules.</p>
+
 <p>Additionally, the names are obviously important, too.
-Since <code>eval()</code> and <code>rb_eval()</code> and <code>eval_node()</code> appear close to each other,
+Since <code class="highlighter-rouge">eval()</code> and <code class="highlighter-rouge">rb_eval()</code> and <code class="highlighter-rouge">eval_node()</code> appear close to each other,
 we naturally think there should be a deep relationship among them.</p>
-<p>Finally, in the source code of <code>ruby</code>, the definitions of types or variables
+
+<p>Finally, in the source code of <code class="highlighter-rouge">ruby</code>, the definitions of types or variables
 and the declarations of prototypes often indicate a break between modules.</p>
+
 <p>Being aware of these points when looking,
-it seems that <code>eval.c</code> can be mainly divided into these modules listed below:</p>
+it seems that <code class="highlighter-rouge">eval.c</code> can be mainly divided into these modules listed below:</p>
+
 <table>
-	<tr>
-		<td> Safe Level </td>
-		<td> already explained in Chapter 7: Security </td>
-	</tr>
-	<tr>
-		<td> Method Entry Manipulations </td>
-		<td> finding or deleting syntax trees which are actual method bodies </td>
-	</tr>
-	<tr>
-		<td> Evaluator Core </td>
-		<td> the heart of the evaluator that <code>rb_eval()</code> is at its center. </td>
-	</tr>
-	<tr>
-		<td> Exception </td>
-		<td> generations of exceptions and creations of backtraces </td>
-	</tr>
-	<tr>
-		<td> Method </td>
-		<td> the implementation of method call </td>
-	</tr>
-	<tr>
-		<td> Iterator </td>
-		<td> the implementation of functions that are related to blocks  </td>
-	</tr>
-	<tr>
-		<td> Load </td>
-		<td> loading and evaluating external files </td>
-	</tr>
-	<tr>
-		<td> <code>Proc</code> </td>
-		<td> the implementation of <code>Proc</code> </td>
-	</tr>
-	<tr>
-		<td> Thread </td>
-		<td> the implementation of Ruby threads </td>
-	</tr>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Safe Level</td>
+      <td>already explained in Chapter 7: Security</td>
+    </tr>
+    <tr>
+      <td>Method Entry Manipulations</td>
+      <td>finding or deleting syntax trees which are actual method bodies</td>
+    </tr>
+    <tr>
+      <td>Evaluator Core</td>
+      <td>the heart of the evaluator that <code class="highlighter-rouge">rb_eval()</code> is at its center.</td>
+    </tr>
+    <tr>
+      <td>Exception</td>
+      <td>generations of exceptions and creations of backtraces</td>
+    </tr>
+    <tr>
+      <td>Method</td>
+      <td>the implementation of method call</td>
+    </tr>
+    <tr>
+      <td>Iterator</td>
+      <td>the implementation of functions that are related to blocks</td>
+    </tr>
+    <tr>
+      <td>Load</td>
+      <td>loading and evaluating external files</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">Proc</code></td>
+      <td>the implementation of <code class="highlighter-rouge">Proc</code></td>
+    </tr>
+    <tr>
+      <td>Thread</td>
+      <td>the implementation of Ruby threads</td>
+    </tr>
+  </tbody>
 </table>
-<p>Among them, &#8220;Load&#8221; and &#8220;Thread&#8221; are the parts that essentially should not be in <code>eval.c</code>.
-They are in <code>eval.c</code> merely because of the restrictions of C language.
-To put it more precisely, they need the macros such as <code>PUSH_TAG</code> defined in <code>eval.c</code>.
+
+<p>Among them, “Load” and “Thread” are the parts that essentially should not be in <code class="highlighter-rouge">eval.c</code>.
+They are in <code class="highlighter-rouge">eval.c</code> merely because of the restrictions of C language.
+To put it more precisely, they need the macros such as <code class="highlighter-rouge">PUSH_TAG</code> defined in <code class="highlighter-rouge">eval.c</code>.
 So, I decided to exclude the two topics from Part 3 and deal with them
-at Part 4. And, it&#8217;s probably all right if I don&#8217;t explain the safe level here
-because I&#8217;ve already done in Part 1.</p>
+at Part 4. And, it’s probably all right if I don’t explain the safe level here
+because I’ve already done in Part 1.</p>
+
 <p>Excluding the above three, the six items are left to be described.
 The below table shows the corresponding chapter of each of them:</p>
+
 <table>
-	<tr>
-		<td> Method Entry Manipulations </td>
-		<td> the next chapter: Context </td>
-	</tr>
-	<tr>
-		<td> Evaluator Core </td>
-		<td> the entire part of Part 3 </td>
-	</tr>
-	<tr>
-		<td> Exception </td>
-		<td> this chapter </td>
-	</tr>
-	<tr>
-		<td> Method </td>
-		<td> Chapter 15: Methods </td>
-	</tr>
-	<tr>
-		<td> Iterator </td>
-		<td> Chapter 16: Blocks </td>
-	</tr>
-	<tr>
-		<td> Proc </td>
-		<td> Chapter 16: Blocks </td>
-	</tr>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Method Entry Manipulations</td>
+      <td>the next chapter: Context</td>
+    </tr>
+    <tr>
+      <td>Evaluator Core</td>
+      <td>the entire part of Part 3</td>
+    </tr>
+    <tr>
+      <td>Exception</td>
+      <td>this chapter</td>
+    </tr>
+    <tr>
+      <td>Method</td>
+      <td>Chapter 15: Methods</td>
+    </tr>
+    <tr>
+      <td>Iterator</td>
+      <td>Chapter 16: Blocks</td>
+    </tr>
+    <tr>
+      <td>Proc</td>
+      <td>Chapter 16: Blocks</td>
+    </tr>
+  </tbody>
 </table>
-<h3>From <code>main</code> by way of <code>ruby_run</code> to <code>rb_eval</code></h3>
-<h3>Call Graph</h3>
-<p>The true core of the evaluator is a function called <code>rb_eval()</code>.
-In this chapter, we will follow the path from <code>main()</code> to that <code>rb_eval()</code>.
-First of all, here is a rough call graph around <code>rb_eval</code> :</p>
-<pre class="emlist">
-main                     ....main.c
+
+<h3 id="from-main-by-way-of-rubyrun-to-rbeval">From <code class="highlighter-rouge">main</code> by way of <code class="highlighter-rouge">ruby_run</code> to <code class="highlighter-rouge">rb_eval</code></h3>
+
+<h3 id="call-graph">Call Graph</h3>
+
+<p>The true core of the evaluator is a function called <code class="highlighter-rouge">rb_eval()</code>.
+In this chapter, we will follow the path from <code class="highlighter-rouge">main()</code> to that <code class="highlighter-rouge">rb_eval()</code>.
+First of all, here is a rough call graph around <code class="highlighter-rouge">rb_eval</code> :</p>
+
+<pre><code class="language-emlist">main                     ....main.c
     ruby_init                ....eval.c
         ruby_prog_init           ....ruby.c
     ruby_options             ....eval.c
@@ -189,60 +234,74 @@ main                     ....main.c
             rb_eval
                 *
         ruby_stop
-</pre>
+</code></pre>
+
 <p>I put the file names on the right side when moving to another file.
-Gazing this carefully, the first thing we&#8217;ll notice is that the functions of
-<code>eval.c</code> call the functions of <code>ruby.c</code> back.</p>
-<p>I wrote it as &#8220;calling back&#8221; because <code>main.c</code> and <code>ruby.c</code> are relatively for
-the implementation of <code>ruby</code> command. <code>eval.c</code> is the implementation of the
-evaluator itself which keeps a little distance from <code>ruby</code> command.
-In other words, <code>eval.c</code> is supposed to be used by <code>ruby.c</code> and calling the
-functions of <code>ruby.c</code> from <code>eval.c</code> makes <code>eval.c</code> less independent.</p>
-<p>Then, why is this in this way? It&#8217;s mainly because of the restrictions of C language.
-Because the functions such as <code>ruby_prog_init()</code> and <code>ruby_process_options()</code>
-start to use the <span class="caps">API</span> of the ruby world, it&#8217;s possible an exception occurs.
-However, in order to stop an exception of Ruby, it&#8217;s necessary to use the macro
-named <code>PUSH_TAG()</code> which can only be used in <code>eval.c</code>. In other words, essentially,
-<code>ruby_init()</code> and <code>ruby_run()</code> should have been defined in <code>ruby.c</code>.</p>
-<p>Then, why isn&#8217;t <code>PUSH_TAG</code> an <code>extern</code> function or something which is available
+Gazing this carefully, the first thing we’ll notice is that the functions of
+<code class="highlighter-rouge">eval.c</code> call the functions of <code class="highlighter-rouge">ruby.c</code> back.</p>
+
+<p>I wrote it as “calling back” because <code class="highlighter-rouge">main.c</code> and <code class="highlighter-rouge">ruby.c</code> are relatively for
+the implementation of <code class="highlighter-rouge">ruby</code> command. <code class="highlighter-rouge">eval.c</code> is the implementation of the
+evaluator itself which keeps a little distance from <code class="highlighter-rouge">ruby</code> command.
+In other words, <code class="highlighter-rouge">eval.c</code> is supposed to be used by <code class="highlighter-rouge">ruby.c</code> and calling the
+functions of <code class="highlighter-rouge">ruby.c</code> from <code class="highlighter-rouge">eval.c</code> makes <code class="highlighter-rouge">eval.c</code> less independent.</p>
+
+<p>Then, why is this in this way? It’s mainly because of the restrictions of C language.
+Because the functions such as <code class="highlighter-rouge">ruby_prog_init()</code> and <code class="highlighter-rouge">ruby_process_options()</code>
+start to use the API of the ruby world, it’s possible an exception occurs.
+However, in order to stop an exception of Ruby, it’s necessary to use the macro
+named <code class="highlighter-rouge">PUSH_TAG()</code> which can only be used in <code class="highlighter-rouge">eval.c</code>. In other words, essentially,
+<code class="highlighter-rouge">ruby_init()</code> and <code class="highlighter-rouge">ruby_run()</code> should have been defined in <code class="highlighter-rouge">ruby.c</code>.</p>
+
+<p>Then, why isn’t <code class="highlighter-rouge">PUSH_TAG</code> an <code class="highlighter-rouge">extern</code> function or something which is available
 to other files?
-Actually, <code>PUSH_TAG</code> can only be used as a pair with <code>POP_TAG</code> as follows:</p>
-<pre class="emlist">
-PUSH_TAG();
+Actually, <code class="highlighter-rouge">PUSH_TAG</code> can only be used as a pair with <code class="highlighter-rouge">POP_TAG</code> as follows:</p>
+
+<pre><code class="language-emlist">PUSH_TAG();
 /* do lots of things */
 POP_TAG();
-</pre>
-<p>Because of its implementation, the two macros should be put into the same function.
-It&#8217;s possible to implement in a way to be able to divide them into different functions,
-but not in such way because it&#8217;s slower.</p>
-<p>The next thing we notice is, the fact that it sequentially calls the functions
-named <code>ruby_xxxx</code> from <code>main()</code> seems very meaningful.
-Since they are really obviously symmetric, it&#8217;s odd if there&#8217;s not any relationship.</p>
-<p>Actually, these three functions have deep relationships. Simply speaking, all of
-these three are &#8220;built-in Ruby interfaces&#8221;. That is, they are used only when
-creating a command with built-in <code>ruby</code> interpretor and not when writing
-extension libraries. Since <code>ruby</code> command itself can be considered as one of
-programs with built-in Ruby in theory, to use these interfaces is natural.</p>
-<p>What is the <code>ruby_</code> prefix ? So far, the all of <code>ruby</code> &#8217;s functions are prefixed
-with <code>rb_</code>. Why are there the two types: <code>rb_</code> and <code>ruby_</code>? I investigated but
-could not understand the difference, so I asked directly. The answer was,
-&#8220;<code>ruby_</code> is for the auxiliary functions of <code>ruby</code> command and <code>rb_</code> is for the
-official interfaces&#8221;</p>
-<p>&#8220;Then, why are the variables like <code>ruby_scope</code> are <code>ruby_</code>?&#8221;, I asked further.
-It seems this is just a coincidence. The variables like <code>ruby_scope</code>
-are originally named as <code>the_xxxx</code>, but in the middle of the version 1.3 there&#8217;s
-a change to add prefixes to all interfaces. At that time <code>ruby_</code> was added to
-the &#8220;may-be-internals-for-some-reasons&#8221; variables.</p>
-<p>The bottom line is that <code>ruby_</code> is attached to things that support
-<code>ruby</code> command or the internal variables and <code>rb_</code> is attached to
-the official interfaces of <code>ruby</code> interpretor.</p>
-<h3><code>main()</code></h3>
-<p>First, straightforwardly, I&#8217;ll start with <code>main()</code>.
-It is nice that this is very short.</p>
-<p class="caption">▼ <code>main()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-  36  int
+<p>Because of its implementation, the two macros should be put into the same function.
+It’s possible to implement in a way to be able to divide them into different functions,
+but not in such way because it’s slower.</p>
+
+<p>The next thing we notice is, the fact that it sequentially calls the functions
+named <code class="highlighter-rouge">ruby_xxxx</code> from <code class="highlighter-rouge">main()</code> seems very meaningful.
+Since they are really obviously symmetric, it’s odd if there’s not any relationship.</p>
+
+<p>Actually, these three functions have deep relationships. Simply speaking, all of
+these three are “built-in Ruby interfaces”. That is, they are used only when
+creating a command with built-in <code class="highlighter-rouge">ruby</code> interpretor and not when writing
+extension libraries. Since <code class="highlighter-rouge">ruby</code> command itself can be considered as one of
+programs with built-in Ruby in theory, to use these interfaces is natural.</p>
+
+<p>What is the <code class="highlighter-rouge">ruby_</code> prefix ? So far, the all of <code class="highlighter-rouge">ruby</code> ‘s functions are prefixed
+with <code class="highlighter-rouge">rb_</code>. Why are there the two types: <code class="highlighter-rouge">rb_</code> and <code class="highlighter-rouge">ruby_</code>? I investigated but
+could not understand the difference, so I asked directly. The answer was,
+“<code class="highlighter-rouge">ruby_</code> is for the auxiliary functions of <code class="highlighter-rouge">ruby</code> command and <code class="highlighter-rouge">rb_</code> is for the
+official interfaces”</p>
+
+<p>“Then, why are the variables like <code class="highlighter-rouge">ruby_scope</code> are <code class="highlighter-rouge">ruby_</code>?”, I asked further.
+It seems this is just a coincidence. The variables like <code class="highlighter-rouge">ruby_scope</code>
+are originally named as <code class="highlighter-rouge">the_xxxx</code>, but in the middle of the version 1.3 there’s
+a change to add prefixes to all interfaces. At that time <code class="highlighter-rouge">ruby_</code> was added to
+the “may-be-internals-for-some-reasons” variables.</p>
+
+<p>The bottom line is that <code class="highlighter-rouge">ruby_</code> is attached to things that support
+<code class="highlighter-rouge">ruby</code> command or the internal variables and <code class="highlighter-rouge">rb_</code> is attached to
+the official interfaces of <code class="highlighter-rouge">ruby</code> interpretor.</p>
+
+<h3 id="main"><code class="highlighter-rouge">main()</code></h3>
+
+<p>First, straightforwardly, I’ll start with <code class="highlighter-rouge">main()</code>.
+It is nice that this is very short.</p>
+
+<p class="caption">
+▼ `main()`
+
+</p>
+<pre><code class="language-longlist">  36  int
   37  main(argc, argv, envp)
   38      int argc;
   39      char **argv, **envp;
@@ -261,63 +320,82 @@ It is nice that this is very short.</p>
   52  }
 
 (main.c)
-</pre>
-<p><code>#if def NT</code> is obviously the NT of Windows NT. But somehow NT is also
+</code></pre>
+
+<p><code class="highlighter-rouge">#if def NT</code> is obviously the NT of Windows NT. But somehow NT is also
 defined in Win9x. So, it means Win32 environment.
-<code>NtInitialize()</code> initializes <code>argc argv</code> and the socket system (WinSock) for
-Win32. Because this function is only doing the initialization, it&#8217;s not
+<code class="highlighter-rouge">NtInitialize()</code> initializes <code class="highlighter-rouge">argc argv</code> and the socket system (WinSock) for
+Win32. Because this function is only doing the initialization, it’s not
 interesting and not related to the main topic. Thus, I omit this.</p>
-<p>And, <code>__MACOS__</code> is not &#8220;Ma-Ko-Su&#8221; but Mac OS. In this case, it means
+
+<p>And, <code class="highlighter-rouge">__MACOS__</code> is not “Ma-Ko-Su” but Mac OS. In this case, it means
 Mac OS 9 and before, and it does not include Mac OS X. Even though such
-<code>#ifdef</code> remains, as I wrote at the beginning of this book, the current version
-can not run on Mac OS 9 and before. It&#8217;s just a legacy from when ruby was
+<code class="highlighter-rouge">#ifdef</code> remains, as I wrote at the beginning of this book, the current version
+can not run on Mac OS 9 and before. It’s just a legacy from when ruby was
 able to run on it. Therefore, I also omit this code.</p>
+
 <p>By the way, as it is probably known by the readers who are familiar with C language,
 the identifiers starting with an under bar are reserved for the system libraries or OS.
-However, although they are called &#8220;reserved&#8221;, using it is almost never result in an error,
-but if using a little weird <code>cc</code> it could result in an error.
-For example, it is the <code>cc</code> of HP-US. HP-US is an <span class="caps">UNIX</span> which <code>HP</code> is creating.
-If there&#8217;s any opinion such as HP-UX is not weird, I would deny it out loud.</p>
-<p>Anyway, conventionally, we don&#8217;t define such identifiers in user applications.</p>
-<p>Now, I&#8217;ll start to briefly explain about the built-in Ruby interfaces.</p>
-<h3><code>ruby_init()</code></h3>
-<p><code>ruby_init()</code> initializes the Ruby interpretor.
+However, although they are called “reserved”, using it is almost never result in an error,
+but if using a little weird <code class="highlighter-rouge">cc</code> it could result in an error.
+For example, it is the <code class="highlighter-rouge">cc</code> of HP-US. HP-US is an UNIX which <code class="highlighter-rouge">HP</code> is creating.
+If there’s any opinion such as HP-UX is not weird, I would deny it out loud.</p>
+
+<p>Anyway, conventionally, we don’t define such identifiers in user applications.</p>
+
+<p>Now, I’ll start to briefly explain about the built-in Ruby interfaces.</p>
+
+<h3 id="rubyinit"><code class="highlighter-rouge">ruby_init()</code></h3>
+
+<p><code class="highlighter-rouge">ruby_init()</code> initializes the Ruby interpretor.
 Since only a single interpretor of the current Ruby can exist in a process,
 it does not need neither arguments or a return value.
-This point is generally considered as &#8220;lack of features&#8221;.</p>
-<p>When there&#8217;s only a single interpretor,
+This point is generally considered as “lack of features”.</p>
+
+<p>When there’s only a single interpretor,
 more than anything,
 things around the development environment should be especially troublesome.
-Namely, the applications such as <code>irb</code>, RubyWin, and <span class="caps">RDE</span>.
+Namely, the applications such as <code class="highlighter-rouge">irb</code>, RubyWin, and RDE.
 Although loading a rewritten program, the classes which are supposed to be
-deleted would remain. To counter this with the reflection <span class="caps">API</span> is not impossible
+deleted would remain. To counter this with the reflection API is not impossible
 but requires a lot of efforts.</p>
+
 <p>However, it seems that Mr. Matsumoto (Matz) purposefully limits the number of
-interpretors to one. &#8220;it&#8217;s impossible to initialize completely&#8221; seems
-its reason. For instance, &#8220;the loaded extension libraries could not be removed&#8221;
+interpretors to one. “it’s impossible to initialize completely” seems
+its reason. For instance, “the loaded extension libraries could not be removed”
 is taken as an example.</p>
-<p>The code of <code>ruby_init()</code> is omitted because it&#8217;s unnecessary to read.</p>
-<h3><code>ruby_options()</code></h3>
-<p>What to parse command-line options for the Ruby interpreter is <code>ruby_options()</code>.
+
+<p>The code of <code class="highlighter-rouge">ruby_init()</code> is omitted because it’s unnecessary to read.</p>
+
+<h3 id="rubyoptions"><code class="highlighter-rouge">ruby_options()</code></h3>
+
+<p>What to parse command-line options for the Ruby interpreter is <code class="highlighter-rouge">ruby_options()</code>.
 Of course, depending on the command, we do not have to use this.</p>
-<p>Inside this function, <code>-r</code> (load a library) and
-<code>-e</code> (pass a program from command-line) are processed.
+
+<p>Inside this function, <code class="highlighter-rouge">-r</code> (load a library) and
+<code class="highlighter-rouge">-e</code> (pass a program from command-line) are processed.
 This is also where the file passed as a command-line argument is parsed as
 a Ruby program.</p>
-<p><code>ruby</code> command reads the main program from a file if it was given, otherwise from <code>stdin</code>.
-After that, using <code>rb_compile_string()</code> or <code>rb_compile_file()</code> introduced at Part 2,
-it compiles the text into a syntax tree.
-The result will be set into the global variable <code>ruby_eval_tree</code>.</p>
-<p>I also omit the code of <code>ruby_options()</code> because it&#8217;s just doing necessary
-things one by one and not interesting.</p>
-<h3><code>ruby_run()</code></h3>
-<p>Finally, <code>ruby_run()</code> starts to evaluate the syntax tree which was set to <code>ruby_eval_tree</code>.
-We also don&#8217;t always need to call this function. Other than <code>ruby_run()</code>,
-for instance, we can evaluate a string by using a function named <code>rb_eval_string()</code>.</p>
-<p class="caption">▼ <code>ruby_run()</code> </p>
 
-<pre class="longlist">
-1257  void
+<p><code class="highlighter-rouge">ruby</code> command reads the main program from a file if it was given, otherwise from <code class="highlighter-rouge">stdin</code>.
+After that, using <code class="highlighter-rouge">rb_compile_string()</code> or <code class="highlighter-rouge">rb_compile_file()</code> introduced at Part 2,
+it compiles the text into a syntax tree.
+The result will be set into the global variable <code class="highlighter-rouge">ruby_eval_tree</code>.</p>
+
+<p>I also omit the code of <code class="highlighter-rouge">ruby_options()</code> because it’s just doing necessary
+things one by one and not interesting.</p>
+
+<h3 id="rubyrun"><code class="highlighter-rouge">ruby_run()</code></h3>
+
+<p>Finally, <code class="highlighter-rouge">ruby_run()</code> starts to evaluate the syntax tree which was set to <code class="highlighter-rouge">ruby_eval_tree</code>.
+We also don’t always need to call this function. Other than <code class="highlighter-rouge">ruby_run()</code>,
+for instance, we can evaluate a string by using a function named <code class="highlighter-rouge">rb_eval_string()</code>.</p>
+
+<p class="caption">
+▼ `ruby_run()`
+
+</p>
+<pre><code class="language-longlist">1257  void
 1258  ruby_run()
 1259  {
 1260      int state;
@@ -340,14 +418,17 @@ for instance, we can evaluate a string by using a function named <code>rb_eval_s
 1277  }
 
 (eval.c)
-</pre>
-<p>We can see the macros <code>PUSH_xxxx()</code>, but we can ignore them for now. I&#8217;ll
-explain about around them later when the time comes. The important thing here
-is only <code>eval_node()</code>. Its content is:</p>
-<p class="caption">▼ <code>eval_node()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-1112  static VALUE
+<p>We can see the macros <code class="highlighter-rouge">PUSH_xxxx()</code>, but we can ignore them for now. I’ll
+explain about around them later when the time comes. The important thing here
+is only <code class="highlighter-rouge">eval_node()</code>. Its content is:</p>
+
+<p class="caption">
+▼ `eval_node()`
+
+</p>
+<pre><code class="language-longlist">1112  static VALUE
 1113  eval_node(self, node)
 1114      VALUE self;
 1115      NODE *node;
@@ -364,27 +445,36 @@ is only <code>eval_node()</code>. Its content is:</p>
 1126  }
 
 (eval.c)
-</pre>
-<p>This calls <code>rb_eval()</code> on <code>ruby_eval_tree</code>. The <code>ruby_eval_tree_begin</code> is
-storing the statements registered by <code>BEGIN</code>. But, this is also not important.</p>
-<p>And, <code>ruby_stop()</code> inside of <code>ruby_run()</code> terminates all threads and
-finalizes all objects and checks exceptions and, in the end, calls <code>exit()</code>.
-This is also not important, so we won&#8217;t see this.</p>
-<h2><code>rb_eval()</code></h2>
-<h3>Outline</h3>
-<p>Now, <code>rb_eval()</code>. This function is exactly the real core of <code>ruby</code>.
-One <code>rb_eval()</code> call processes a single <code>NODE</code>, and the whole syntax tree will
-be processed by calling recursively. (Fig.1)</p>
-<p class="image">
-<p><img src="images/ch_evaluator_rbeval.jpg" alt="(rbeval)"><br>
-Fig.1: <code>rb_eval</code></p>
-</p>
-<p><code>rb_eval</code> is, as the same as <code>yylex()</code>, made of a huge switch statement and
-branching by each type of the nodes. First, let&#8217;s look at the outline.</p>
-<p class="caption">▼ <code>rb_eval()</code> Outline</p>
+</code></pre>
 
-<pre class="longlist">
-2221  static VALUE
+<p>This calls <code class="highlighter-rouge">rb_eval()</code> on <code class="highlighter-rouge">ruby_eval_tree</code>. The <code class="highlighter-rouge">ruby_eval_tree_begin</code> is
+storing the statements registered by <code class="highlighter-rouge">BEGIN</code>. But, this is also not important.</p>
+
+<p>And, <code class="highlighter-rouge">ruby_stop()</code> inside of <code class="highlighter-rouge">ruby_run()</code> terminates all threads and
+finalizes all objects and checks exceptions and, in the end, calls <code class="highlighter-rouge">exit()</code>.
+This is also not important, so we won’t see this.</p>
+
+<h2 id="rbeval"><code class="highlighter-rouge">rb_eval()</code></h2>
+
+<h3 id="outline-1">Outline</h3>
+
+<p>Now, <code class="highlighter-rouge">rb_eval()</code>. This function is exactly the real core of <code class="highlighter-rouge">ruby</code>.
+One <code class="highlighter-rouge">rb_eval()</code> call processes a single <code class="highlighter-rouge">NODE</code>, and the whole syntax tree will
+be processed by calling recursively. (Fig.1)</p>
+
+<p class="image">
+<img src="images/ch_evaluator_rbeval.jpg" alt="(rbeval)" /><br />
+Fig.1: `rb_eval`
+
+</p>
+<p><code class="highlighter-rouge">rb_eval</code> is, as the same as <code class="highlighter-rouge">yylex()</code>, made of a huge switch statement and
+branching by each type of the nodes. First, let’s look at the outline.</p>
+
+<p class="caption">
+▼ `rb_eval()` Outline
+
+</p>
+<pre><code class="language-longlist">2221  static VALUE
 2222  rb_eval(self, n)
 2223      VALUE self;
 2224      NODE *n;
@@ -422,38 +512,49 @@ branching by each type of the nodes. First, let&#8217;s look at the outline.</p>
 3422  }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>In the omitted part, plenty of the codes to process all nodes are listed.
 By branching like this, it processes each node. When the code is only a few,
-it will be processed in <code>rb_eval()</code>. But when it becoming many, it will be a
-separated function. Most of functions in <code>eval.c</code> are created in this way.</p>
-<p>When returning a value from <code>rb_eval()</code>, it uses the macro <code>RETURN()</code> instead
-of <code>return</code>, in order to always pass through <code>CHECK_INTS</code>. Since this macro is
-related to threads, you can ignore this until the chapter about it.</p>
-<p>And finally, the local variables <code>result</code> and <code>node</code> are <code>volatile</code> for GC.</p>
-<h3><code>NODE_IF</code></h3>
-<p>Now, taking the <code>if</code> statement as an example, let&#8217;s look at the process of
-the <code>rb_eval()</code> evaluation concretely.
-From here, in the description of  <code>rb_eval()</code>,</p>
-<ul>
-	<li>The source code (a Ruby program)</li>
-	<li>Its corresponding syntax tree</li>
-	<li>The partial code of <code>rb_eval()</code> to process the node.</li>
-</ul>
-<p>these three will be listed at the beginning.</p>
-<p class="caption">▼source program</p>
+it will be processed in <code class="highlighter-rouge">rb_eval()</code>. But when it becoming many, it will be a
+separated function. Most of functions in <code class="highlighter-rouge">eval.c</code> are created in this way.</p>
 
-<pre class="longlist">
-if true
+<p>When returning a value from <code class="highlighter-rouge">rb_eval()</code>, it uses the macro <code class="highlighter-rouge">RETURN()</code> instead
+of <code class="highlighter-rouge">return</code>, in order to always pass through <code class="highlighter-rouge">CHECK_INTS</code>. Since this macro is
+related to threads, you can ignore this until the chapter about it.</p>
+
+<p>And finally, the local variables <code class="highlighter-rouge">result</code> and <code class="highlighter-rouge">node</code> are <code class="highlighter-rouge">volatile</code> for GC.</p>
+
+<h3 id="nodeif"><code class="highlighter-rouge">NODE_IF</code></h3>
+
+<p>Now, taking the <code class="highlighter-rouge">if</code> statement as an example, let’s look at the process of
+the <code class="highlighter-rouge">rb_eval()</code> evaluation concretely.
+From here, in the description of <code class="highlighter-rouge">rb_eval()</code>,</p>
+
+<ul>
+  <li>The source code (a Ruby program)</li>
+  <li>Its corresponding syntax tree</li>
+  <li>The partial code of <code class="highlighter-rouge">rb_eval()</code> to process the node.</li>
+</ul>
+
+<p>these three will be listed at the beginning.</p>
+
+<p class="caption">
+▼source program
+
+</p>
+<pre><code class="language-longlist">if true
   'true expr'
 else
   'false expr'
 end
-</pre>
-<p class="caption">▼ its corresponding syntax tree ( <code>nodedump</code> ) </p>
+</code></pre>
 
-<pre class="longlist">
-NODE_NEWLINE
+<p class="caption">
+▼ its corresponding syntax tree ( `nodedump` )
+
+</p>
+<pre><code class="language-longlist">NODE_NEWLINE
 nd_file = "if"
 nd_nth  = 1
 nd_next:
@@ -474,13 +575,16 @@ nd_next:
         nd_next:
             NODE_STR
             nd_lit = "false expr":String
-</pre>
-<p>As we&#8217;ve seen in Part 2, <code>elsif</code> and <code>unless</code> can be, by contriving the ways to assemble,
-bundled to a single <code>NODE_IF</code> type, so we don&#8217;t have to treat them specially.</p>
-<p class="caption">▼ <code>rb_eval()</code> − <code>NODE_IF</code> </p>
+</code></pre>
 
-<pre class="longlist">
-2324  case NODE_IF:
+<p>As we’ve seen in Part 2, <code class="highlighter-rouge">elsif</code> and <code class="highlighter-rouge">unless</code> can be, by contriving the ways to assemble,
+bundled to a single <code class="highlighter-rouge">NODE_IF</code> type, so we don’t have to treat them specially.</p>
+
+<p class="caption">
+▼ `rb_eval()` − `NODE_IF`
+
+</p>
+<pre><code class="language-longlist">2324  case NODE_IF:
 2325    if (trace_func) {
 2326        call_trace_func("line", node, self,
 2327                        ruby_frame-&gt;last_func,
@@ -495,37 +599,45 @@ bundled to a single <code>NODE_IF</code> type, so we don&#8217;t have to treat t
 2336    goto again;
 
 (eval.c)
-</pre>
-<p>Only the last <code>if</code> statement is important.
+</code></pre>
+
+<p>Only the last <code class="highlighter-rouge">if</code> statement is important.
 If rewriting it without any change in its meaning, it becomes this:</p>
-<pre class="emlist">
-if (RTEST(rb_eval(self, node-&gt;nd_cond))) {     (A)
+
+<pre><code class="language-emlist">if (RTEST(rb_eval(self, node-&gt;nd_cond))) {     (A)
     RETURN(rb_eval(self, node-&gt;nd_body));      (B)
 }
 else {
     RETURN(rb_eval(self, node-&gt;nd_else));      (C)
 }
-</pre>
-<p>First, at (A), evaluating (the node of) the Ruby&#8217;s condition statement and
-testing its value with <code>RTEST()</code>.
-I&#8217;ve mentioned that <code>RTEST()</code> is a macro to test whether or not
-a <code>VALUE</code> is true of Ruby.
-If that was true, evaluating the <code>then</code> side clause at (B).
-If false, evaluating the <code>else</code> side clause at (C).</p>
-<p>In addition, I&#8217;ve mentioned that <code>if</code> statement of Ruby also has its own value,
-so it&#8217;s necessary to return a value.
-Since the value of an <code>if</code> is the value of either the <code>then</code> side or the <code>else</code>
-side which is the one executed, returning it by using the macro <code>RETURN()</code>.</p>
-<p>In the original list, it does not call <code>rb_eval()</code> recursively but just does <code>goto</code>.
-This is the &quot;conversion from tail recursion to <code>goto</code> &quot; which has also appeared
-in the previous chapter &#8220;Syntax tree construction&#8221;.</p>
-<h3><code>NODE_NEW_LINE</code></h3>
-<p>Since there was <code>NODE_NEWLINE</code> at the node for a <code>if</code> statement,
-let&#8217;s look at the code for it.</p>
-<p class="caption">▼ <code>rb_eval()</code> &#8211; <code>NODE_NEWLINE</code> </p>
+</code></pre>
 
-<pre class="longlist">
-3404  case NODE_NEWLINE:
+<p>First, at (A), evaluating (the node of) the Ruby’s condition statement and
+testing its value with <code class="highlighter-rouge">RTEST()</code>.
+I’ve mentioned that <code class="highlighter-rouge">RTEST()</code> is a macro to test whether or not
+a <code class="highlighter-rouge">VALUE</code> is true of Ruby.
+If that was true, evaluating the <code class="highlighter-rouge">then</code> side clause at (B).
+If false, evaluating the <code class="highlighter-rouge">else</code> side clause at (C).</p>
+
+<p>In addition, I’ve mentioned that <code class="highlighter-rouge">if</code> statement of Ruby also has its own value,
+so it’s necessary to return a value.
+Since the value of an <code class="highlighter-rouge">if</code> is the value of either the <code class="highlighter-rouge">then</code> side or the <code class="highlighter-rouge">else</code>
+side which is the one executed, returning it by using the macro <code class="highlighter-rouge">RETURN()</code>.</p>
+
+<p>In the original list, it does not call <code class="highlighter-rouge">rb_eval()</code> recursively but just does <code class="highlighter-rouge">goto</code>.
+This is the “conversion from tail recursion to <code class="highlighter-rouge">goto</code> “ which has also appeared
+in the previous chapter “Syntax tree construction”.</p>
+
+<h3 id="nodenewline"><code class="highlighter-rouge">NODE_NEW_LINE</code></h3>
+
+<p>Since there was <code class="highlighter-rouge">NODE_NEWLINE</code> at the node for a <code class="highlighter-rouge">if</code> statement,
+let’s look at the code for it.</p>
+
+<p class="caption">
+▼ `rb_eval()` - `NODE_NEWLINE`
+
+</p>
+<pre><code class="language-longlist">3404  case NODE_NEWLINE:
 3405    ruby_sourcefile = node-&gt;nd_file;
 3406    ruby_sourceline = node-&gt;nd_nth;
 3407    if (trace_func) {
@@ -537,28 +649,36 @@ let&#8217;s look at the code for it.</p>
 3413    goto again;
 
 (eval.c)
-</pre>
-<p>There&#8217;s nothing particularly difficult.</p>
-<p><code>call_trace_func()</code> has already appeared at <code>NODE_IF</code>. Here is a simple
-explanation of what kind of thing it is. This is a feature to trace a Ruby
-program from Ruby level. The debugger ( <code>debug.rb</code> ) and the tracer ( <code>tracer.rb</code> )
-and the profiler ( <code>profile.rb</code> ) and <code>irb</code> (interactive <code>ruby</code> command) and more
-are using this feature.</p>
-<p>By using the function-like method <code>set_trace_func</code> you can register a <code>Proc</code>
-object to trace, and that <code>Proc</code> object is stored into <code>trace_func</code>. If
-<code>trace_func</code> is not 0, it means not <code>QFalse</code>, it will be considered as a <code>Proc</code>
-object and executed (at <code>call_trace_func()</code> ).</p>
-<p>This <code>call_trace_func()</code> has nothing to do with the main topic and not so
-interesting as well. Therefore in this book, from now on,
-I&#8217;ll completely ignore it. If you are interested in it, I&#8217;d like you to
-challenge after finishing the Chapter 16: Blocks.</p>
-<h3>Pseudo-local Variables</h3>
-<p><code>NODE_IF</code> and such are interior nodes in a syntax tree.
-Let&#8217;s look at the leaves, too.</p>
-<p class="caption">▼ <code>rb_eval()</code> Ppseudo-Local Variable Nodes</p>
+</code></pre>
 
-<pre class="longlist">
-2312  case NODE_SELF:
+<p>There’s nothing particularly difficult.</p>
+
+<p><code class="highlighter-rouge">call_trace_func()</code> has already appeared at <code class="highlighter-rouge">NODE_IF</code>. Here is a simple
+explanation of what kind of thing it is. This is a feature to trace a Ruby
+program from Ruby level. The debugger ( <code class="highlighter-rouge">debug.rb</code> ) and the tracer ( <code class="highlighter-rouge">tracer.rb</code> )
+and the profiler ( <code class="highlighter-rouge">profile.rb</code> ) and <code class="highlighter-rouge">irb</code> (interactive <code class="highlighter-rouge">ruby</code> command) and more
+are using this feature.</p>
+
+<p>By using the function-like method <code class="highlighter-rouge">set_trace_func</code> you can register a <code class="highlighter-rouge">Proc</code>
+object to trace, and that <code class="highlighter-rouge">Proc</code> object is stored into <code class="highlighter-rouge">trace_func</code>. If
+<code class="highlighter-rouge">trace_func</code> is not 0, it means not <code class="highlighter-rouge">QFalse</code>, it will be considered as a <code class="highlighter-rouge">Proc</code>
+object and executed (at <code class="highlighter-rouge">call_trace_func()</code> ).</p>
+
+<p>This <code class="highlighter-rouge">call_trace_func()</code> has nothing to do with the main topic and not so
+interesting as well. Therefore in this book, from now on,
+I’ll completely ignore it. If you are interested in it, I’d like you to
+challenge after finishing the Chapter 16: Blocks.</p>
+
+<h3 id="pseudo-local-variables">Pseudo-local Variables</h3>
+
+<p><code class="highlighter-rouge">NODE_IF</code> and such are interior nodes in a syntax tree.
+Let’s look at the leaves, too.</p>
+
+<p class="caption">
+▼ `rb_eval()` Ppseudo-Local Variable Nodes
+
+</p>
+<pre><code class="language-longlist">2312  case NODE_SELF:
 2313    RETURN(self);
 2314
 2315  case NODE_NIL:
@@ -571,26 +691,32 @@ Let&#8217;s look at the leaves, too.</p>
 2322    RETURN(Qfalse);
 
 (eval.c)
-</pre>
-<p>We&#8217;ve seen <code>self</code> as the argument of <code>rb_eval()</code>. I&#8217;d like you to make sure it
+</code></pre>
+
+<p>We’ve seen <code class="highlighter-rouge">self</code> as the argument of <code class="highlighter-rouge">rb_eval()</code>. I’d like you to make sure it
 by going back a little.
 The others are probably not needed to be explained.</p>
-<h3>Jump Tag</h3>
-<p>Next, I&#8217;d like to explain <code>NODE_WHILE</code> which is corresponding to <code>while</code>,
-but to implement <code>break</code> or <code>next</code> only with recursive calls of a function is difficult.
-Since <code>ruby</code> enables these syntaxes by using what named &#8220;jump tag&#8221;,
-I&#8217;ll start with describing it first.</p>
-<p>Simply put, &#8220;jump tag&#8221; is a wrapper of <code>setjmp()</code> and <code>longjump()</code> which are
-library functions of C language. Do you know about <code>setjmp()</code>?
-This function has already appeared at <code>gc.c</code>,
-but it is used in very abnormal way there.
-<code>setjmp()</code> is usually used to jump over functions.
-I&#8217;ll explain by taking the below code as an example.
-The entry point is <code>parent()</code>.</p>
-<p class="caption">▼ <code>setjmp()</code> and <code>longjmp()</code> </p>
 
-<pre class="longlist">
-jmp_buf buf;
+<h3 id="jump-tag">Jump Tag</h3>
+
+<p>Next, I’d like to explain <code class="highlighter-rouge">NODE_WHILE</code> which is corresponding to <code class="highlighter-rouge">while</code>,
+but to implement <code class="highlighter-rouge">break</code> or <code class="highlighter-rouge">next</code> only with recursive calls of a function is difficult.
+Since <code class="highlighter-rouge">ruby</code> enables these syntaxes by using what named “jump tag”,
+I’ll start with describing it first.</p>
+
+<p>Simply put, “jump tag” is a wrapper of <code class="highlighter-rouge">setjmp()</code> and <code class="highlighter-rouge">longjump()</code> which are
+library functions of C language. Do you know about <code class="highlighter-rouge">setjmp()</code>?
+This function has already appeared at <code class="highlighter-rouge">gc.c</code>,
+but it is used in very abnormal way there.
+<code class="highlighter-rouge">setjmp()</code> is usually used to jump over functions.
+I’ll explain by taking the below code as an example.
+The entry point is <code class="highlighter-rouge">parent()</code>.</p>
+
+<p class="caption">
+▼ `setjmp()` and `longjmp()`
+
+</p>
+<pre><code class="language-longlist">jmp_buf buf;
 
 void child2(void) {
     longjmp(buf, 34);   /* go back straight to parent
@@ -613,44 +739,53 @@ void parent(void) {
         printf("%d\n", result);   /* shows 34 */
     }
 }
-</pre>
-<p>First, when <code>setjmp()</code> is called at <code>parent()</code>,
-the executing state at the time is saved to the argument <code>buf</code>.
+</code></pre>
+
+<p>First, when <code class="highlighter-rouge">setjmp()</code> is called at <code class="highlighter-rouge">parent()</code>,
+the executing state at the time is saved to the argument <code class="highlighter-rouge">buf</code>.
 To put it a little more directly, the address of the top of the machine
-stack and the <span class="caps">CPU</span> registers are saved.
-If the return value of <code>setjmp()</code> was 0, it means it normally returned from <code>setjmp()</code>,
+stack and the CPU registers are saved.
+If the return value of <code class="highlighter-rouge">setjmp()</code> was 0, it means it normally returned from <code class="highlighter-rouge">setjmp()</code>,
 thus you can write the subsequent code as usual.
-This is the <code>if</code> side. Here, it calls <code>child1()</code>.</p>
-<p>Next, the control moves to <code>child2()</code> and calls <code>longjump</code>,
-then it can go back straight to the place where the argument <code>buf</code> was <code>setjmp</code> ed.
-So in this case, it goes back to the <code>setjmp</code> at <code>parent()</code>.
-When coming back via <code>longjmp</code>, the return value of <code>setjmp</code> becomes
-the value of the second argument of <code>longjmp</code>, so the <code>else</code> side is executed.
-And, even if we pass 0 to <code>longjmp</code>,
-it will be forced to be another value. Thus it&#8217;s fruitless.</p>
+This is the <code class="highlighter-rouge">if</code> side. Here, it calls <code class="highlighter-rouge">child1()</code>.</p>
+
+<p>Next, the control moves to <code class="highlighter-rouge">child2()</code> and calls <code class="highlighter-rouge">longjump</code>,
+then it can go back straight to the place where the argument <code class="highlighter-rouge">buf</code> was <code class="highlighter-rouge">setjmp</code> ed.
+So in this case, it goes back to the <code class="highlighter-rouge">setjmp</code> at <code class="highlighter-rouge">parent()</code>.
+When coming back via <code class="highlighter-rouge">longjmp</code>, the return value of <code class="highlighter-rouge">setjmp</code> becomes
+the value of the second argument of <code class="highlighter-rouge">longjmp</code>, so the <code class="highlighter-rouge">else</code> side is executed.
+And, even if we pass 0 to <code class="highlighter-rouge">longjmp</code>,
+it will be forced to be another value. Thus it’s fruitless.</p>
+
 <p>Fig.2 shows the state of the machine stack.
 The ordinary functions return only once for each call.
-However, it&#8217;s possible <code>setjmp()</code> returns twice.
-Is it helpful to grasp the concept if I say that it is something like <code>fork()</code>?</p>
-<p class="image">
-<p><img src="images/ch_evaluator_setjmp.jpg" alt="(setjmp)"><br>
-Fig.2: <code>setjmp()</code> <code>longjmp()</code> Image</p>
-</p>
-<p>Now, we&#8217;ve learned about <code>setjmp()</code> as a preparation.
-In <code>eval.c</code>, <code>EXEC_TAG</code> corresponds to <code>setjmp()</code> and <code>JUMP_TAG()</code> corresponds
-to <code>longjmp()</code> respectively. (Fig.3)</p>
-<p class="image">
-<p><img src="images/ch_evaluator_jumptag.jpg" alt="(jumptag)"><br>
-Fig.3: &#8220;tag jump&#8221; image</p>
-</p>
-<p>Take a look at this image, it seems that <code>EXEC_TAG()</code> does not have any arguments.
-Where has <code>jmp_buf</code> gone?
-Actually, in <code>ruby</code>, <code>jmp_buf</code> is wrapped by the struct <code>struct tag</code>.
-Let&#8217;s look at it.</p>
-<p class="caption">▼ <code>struct tag</code></p>
+However, it’s possible <code class="highlighter-rouge">setjmp()</code> returns twice.
+Is it helpful to grasp the concept if I say that it is something like <code class="highlighter-rouge">fork()</code>?</p>
 
-<pre class="longlist">
- 783  struct tag {
+<p class="image">
+<img src="images/ch_evaluator_setjmp.jpg" alt="(setjmp)" /><br />
+Fig.2: `setjmp()` `longjmp()` Image
+
+</p>
+<p>Now, we’ve learned about <code class="highlighter-rouge">setjmp()</code> as a preparation.
+In <code class="highlighter-rouge">eval.c</code>, <code class="highlighter-rouge">EXEC_TAG</code> corresponds to <code class="highlighter-rouge">setjmp()</code> and <code class="highlighter-rouge">JUMP_TAG()</code> corresponds
+to <code class="highlighter-rouge">longjmp()</code> respectively. (Fig.3)</p>
+
+<p class="image">
+<img src="images/ch_evaluator_jumptag.jpg" alt="(jumptag)" /><br />
+Fig.3: "tag jump" image
+
+</p>
+<p>Take a look at this image, it seems that <code class="highlighter-rouge">EXEC_TAG()</code> does not have any arguments.
+Where has <code class="highlighter-rouge">jmp_buf</code> gone?
+Actually, in <code class="highlighter-rouge">ruby</code>, <code class="highlighter-rouge">jmp_buf</code> is wrapped by the struct <code class="highlighter-rouge">struct tag</code>.
+Let’s look at it.</p>
+
+<p class="caption">
+▼ `struct tag`
+
+</p>
+<pre><code class="language-longlist"> 783  struct tag {
  784      jmp_buf buf;
  785      struct FRAME *frame;   /* FRAME when PUSH_TAG */
  786      struct iter *iter;     /* ITER  when PUSH_TAG */
@@ -662,14 +797,17 @@ Let&#8217;s look at it.</p>
  792  };
 
 (eval.c)
-</pre>
-<p>Because there&#8217;s the member <code>prev</code>, we can infer that <code>struct tag</code> is probably
-a stack structure using a linked list. Moreover, by looking around it, we can
-find the macros <code>PUSH_TAG()</code> and <code>POP_TAG</code>, thus it definitely seems a stack.</p>
-<p class="caption">▼ <code>PUSH_TAG() POP_TAG()</code></p>
+</code></pre>
 
-<pre class="longlist">
- 793  static struct tag *prot_tag;   /* the pointer to the head of the machine stack */
+<p>Because there’s the member <code class="highlighter-rouge">prev</code>, we can infer that <code class="highlighter-rouge">struct tag</code> is probably
+a stack structure using a linked list. Moreover, by looking around it, we can
+find the macros <code class="highlighter-rouge">PUSH_TAG()</code> and <code class="highlighter-rouge">POP_TAG</code>, thus it definitely seems a stack.</p>
+
+<p class="caption">
+▼ `PUSH_TAG() POP_TAG()`
+
+</p>
+<pre><code class="language-longlist"> 793  static struct tag *prot_tag;   /* the pointer to the head of the machine stack */
 
  795  #define PUSH_TAG(ptag) do {             \
  796      struct tag _tag;                    \
@@ -689,38 +827,45 @@ find the macros <code>PUSH_TAG()</code> and <code>POP_TAG</code>, thus it defini
  822  } while (0)
 
 (eval.c)
-</pre>
-<p>I&#8217;d like you to be flabbergasted here because the actual tag is fully allocated
-at the machine stack as a local variable. (Fig.4). Moreover, <code>do</code> ~ <code>while</code> is
+</code></pre>
+
+<p>I’d like you to be flabbergasted here because the actual tag is fully allocated
+at the machine stack as a local variable. (Fig.4). Moreover, <code class="highlighter-rouge">do</code> ~ <code class="highlighter-rouge">while</code> is
 divided between the two macros.
 This might be one of the most awful usages of the C preprocessor.
-Here is the macros <code>PUSH</code> / <code>POP</code> coupled and extracted to make it easy to read.</p>
-<pre class="emlist">
-do {
+Here is the macros <code class="highlighter-rouge">PUSH</code> / <code class="highlighter-rouge">POP</code> coupled and extracted to make it easy to read.</p>
+
+<pre><code class="language-emlist">do {
     struct tag _tag;
     _tag.prev = prot_tag;   /* save the previous tag */
     prot_tag = &amp;_tag;       /* push a new tag on the stack */
     /* do several things */
     prot_tag = _tag.prev;   /* restore the previous tag */
 } while (0);
-</pre>
+</code></pre>
+
 <p>This method does not have any overhead of function calls,
 and its cost of the memory allocation is next to nothing.
-This technique is only possible because the <code>ruby</code> evaluator is made of
-recursive calls of <code>rb_eval()</code>.</p>
-<p class="image">
-<p><img src="images/ch_evaluator_tagstack.jpg" alt="(tagstack)"><br>
-Fig.4: the tag stack is embedded in the machine stack</p>
-</p>
-<p>Because of this implementation, it&#8217;s necessary that <code>PUSH_TAG</code> and <code>POP_TAG</code>
-are in the same one function as a pair. Plus, since it&#8217;s not supposed to be
-carelessly used at the outside of the evaluator,
-we can&#8217;t make them available to other files.</p>
-<p>Additionally, let&#8217;s also take a look at <code>EXEC_TAG()</code> and <code>JUMP_TAG()</code>.</p>
-<p class="caption">▼ <code>EXEC_TAG() JUMP_TAG()</code></p>
+This technique is only possible because the <code class="highlighter-rouge">ruby</code> evaluator is made of
+recursive calls of <code class="highlighter-rouge">rb_eval()</code>.</p>
 
-<pre class="longlist">
- 810  #define EXEC_TAG()    setjmp(prot_tag-&gt;buf)
+<p class="image">
+<img src="images/ch_evaluator_tagstack.jpg" alt="(tagstack)" /><br />
+Fig.4: the tag stack is embedded in the machine stack
+
+</p>
+<p>Because of this implementation, it’s necessary that <code class="highlighter-rouge">PUSH_TAG</code> and <code class="highlighter-rouge">POP_TAG</code>
+are in the same one function as a pair. Plus, since it’s not supposed to be
+carelessly used at the outside of the evaluator,
+we can’t make them available to other files.</p>
+
+<p>Additionally, let’s also take a look at <code class="highlighter-rouge">EXEC_TAG()</code> and <code class="highlighter-rouge">JUMP_TAG()</code>.</p>
+
+<p class="caption">
+▼ `EXEC_TAG() JUMP_TAG()`
+
+</p>
+<pre><code class="language-longlist"> 810  #define EXEC_TAG()    setjmp(prot_tag-&gt;buf)
 
  812  #define JUMP_TAG(st) do {               \
  813      ruby_frame = prot_tag-&gt;frame;       \
@@ -729,34 +874,41 @@ we can&#8217;t make them available to other files.</p>
  816  } while (0)
 
 (eval.c)
-</pre>
-<p>In this way, <code>setjmp</code> and <code>longjmp</code> are wrapped by <code>EXEC_TAG()</code> and <code>JUMP_TAG()</code> respectively.
-The name <code>EXEC_TAG()</code> can look like a wrapper of <code>longjmp()</code> at first sight,
-but this one is to execute <code>setjmp()</code>.</p>
-<p>Based on all of the above, I&#8217;ll explain the mechanism of <code>while</code>.
-First, when starting <code>while</code> it does <code>EXEC_TAG()</code> ( <code>setjmp</code> ).
-After that, it executes the main body by calling <code>rb_eval()</code>
-recursively. If there&#8217;s <code>break</code> or <code>next</code>, it does <code>JUMP_TAG()</code> ( <code>longjmp</code> ).
-Then, it can go back to the start point of the <code>while</code> loop. (Fig.5)</p>
-<p class="image">
-<p><img src="images/ch_evaluator_whilejmp.jpg" alt="(whilejmp)"><br>
-Fig.5: the implementation of <code>while</code> by using &#8220;tag jump&#8221;</p>
-</p>
-<p>Though <code>break</code> was taken as an example here, what cannot be implemented without
-jumping is not only <code>break</code>. Even if we limit the case to <code>while</code>,
-there are <code>next</code> and <code>redo</code>.
-Additionally, <code>return</code> from a method and exceptions also should have to
-climb over the wall of <code>rb_eval()</code>.
-And since it&#8217;s cumbersome to use a different tag stack for each case,
-we want for only one stack to handle all cases in one way or another.</p>
-<p>What we need to make it possible is just attaching information about
-&#8220;what the purpose of this jump is&#8221;.
-Conveniently, the return value of <code>setjmp()</code> could be specified as the argument
-of <code>longjmp()</code>, thus we can use this. The types are expressed by the following flags:</p>
-<p class="caption">▼tag type</p>
+</code></pre>
 
-<pre class="longlist">
- 828  #define TAG_RETURN      0x1    /* return */
+<p>In this way, <code class="highlighter-rouge">setjmp</code> and <code class="highlighter-rouge">longjmp</code> are wrapped by <code class="highlighter-rouge">EXEC_TAG()</code> and <code class="highlighter-rouge">JUMP_TAG()</code> respectively.
+The name <code class="highlighter-rouge">EXEC_TAG()</code> can look like a wrapper of <code class="highlighter-rouge">longjmp()</code> at first sight,
+but this one is to execute <code class="highlighter-rouge">setjmp()</code>.</p>
+
+<p>Based on all of the above, I’ll explain the mechanism of <code class="highlighter-rouge">while</code>.
+First, when starting <code class="highlighter-rouge">while</code> it does <code class="highlighter-rouge">EXEC_TAG()</code> ( <code class="highlighter-rouge">setjmp</code> ).
+After that, it executes the main body by calling <code class="highlighter-rouge">rb_eval()</code>
+recursively. If there’s <code class="highlighter-rouge">break</code> or <code class="highlighter-rouge">next</code>, it does <code class="highlighter-rouge">JUMP_TAG()</code> ( <code class="highlighter-rouge">longjmp</code> ).
+Then, it can go back to the start point of the <code class="highlighter-rouge">while</code> loop. (Fig.5)</p>
+
+<p class="image">
+<img src="images/ch_evaluator_whilejmp.jpg" alt="(whilejmp)" /><br />
+Fig.5: the implementation of `while` by using "tag jump"
+
+</p>
+<p>Though <code class="highlighter-rouge">break</code> was taken as an example here, what cannot be implemented without
+jumping is not only <code class="highlighter-rouge">break</code>. Even if we limit the case to <code class="highlighter-rouge">while</code>,
+there are <code class="highlighter-rouge">next</code> and <code class="highlighter-rouge">redo</code>.
+Additionally, <code class="highlighter-rouge">return</code> from a method and exceptions also should have to
+climb over the wall of <code class="highlighter-rouge">rb_eval()</code>.
+And since it’s cumbersome to use a different tag stack for each case,
+we want for only one stack to handle all cases in one way or another.</p>
+
+<p>What we need to make it possible is just attaching information about
+“what the purpose of this jump is”.
+Conveniently, the return value of <code class="highlighter-rouge">setjmp()</code> could be specified as the argument
+of <code class="highlighter-rouge">longjmp()</code>, thus we can use this. The types are expressed by the following flags:</p>
+
+<p class="caption">
+▼tag type
+
+</p>
+<pre><code class="language-longlist"> 828  #define TAG_RETURN      0x1    /* return */
  829  #define TAG_BREAK       0x2    /* break */
  830  #define TAG_NEXT        0x3    /* next */
  831  #define TAG_RETRY       0x4    /* retry */
@@ -767,35 +919,44 @@ of <code>longjmp()</code>, thus we can use this. The types are expressed by the 
  836  #define TAG_MASK        0xf
 
 (eval.c)
-</pre>
-<p>The meanings are written as each comment. The last <code>TAG_MASK</code> is the bitmask to
-take out these flags from a return value of <code>setjmp()</code>. This is because the
-return value of <code>setjmp()</code> can also include information which is not about a
-&#8220;type of jump&#8221;.</p>
-<h3><code>NODE_WHILE</code></h3>
-<p>Now, by examining the code of <code>NODE_WHILE</code>, let&#8217;s check the actual usage of tags.</p>
-<p class="caption">▼ The Source Program</p>
+</code></pre>
 
-<pre class="longlist">
-while true
+<p>The meanings are written as each comment. The last <code class="highlighter-rouge">TAG_MASK</code> is the bitmask to
+take out these flags from a return value of <code class="highlighter-rouge">setjmp()</code>. This is because the
+return value of <code class="highlighter-rouge">setjmp()</code> can also include information which is not about a
+“type of jump”.</p>
+
+<h3 id="nodewhile"><code class="highlighter-rouge">NODE_WHILE</code></h3>
+
+<p>Now, by examining the code of <code class="highlighter-rouge">NODE_WHILE</code>, let’s check the actual usage of tags.</p>
+
+<p class="caption">
+▼ The Source Program
+
+</p>
+<pre><code class="language-longlist">while true
   'true_expr'
 end
-</pre>
-<p class="caption">▼ Its corresponding syntax tree（ <code>nodedump-short</code> ）</p>
+</code></pre>
 
-<pre class="longlist">
-NODE_WHILE
+<p class="caption">
+▼ Its corresponding syntax tree（ `nodedump-short` ）
+
+</p>
+<pre><code class="language-longlist">NODE_WHILE
 nd_state = 1 (while)
 nd_cond:
     NODE_TRUE
 nd_body:
     NODE_STR
     nd_lit = "true_expr":String
-</pre>
-<p class="caption">▼ <code>rb_eval</code> &#8211; <code>NODE_WHILE</code> </p>
+</code></pre>
 
-<pre class="longlist">
-2418  case NODE_WHILE:
+<p class="caption">
+▼ `rb_eval` - `NODE_WHILE`
+
+</p>
+<pre><code class="language-longlist">2418  case NODE_WHILE:
 2419    PUSH_TAG(PROT_NONE);
 2420    result = Qnil;
 2421    switch (state = EXEC_TAG()) {
@@ -828,10 +989,11 @@ nd_body:
 2448    RETURN(result);
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>The idiom which will appear over and over again appeared in the above code.</p>
-<pre class="emlist">
-PUSH_TAG(PROT_NONE);
+
+<pre><code class="language-emlist">PUSH_TAG(PROT_NONE);
 switch (state = EXEC_TAG()) {
   case 0:
     /* process normally */
@@ -849,68 +1011,79 @@ switch (state = EXEC_TAG()) {
 }
 POP_TAG();
 if (state) JUMP_TAG(state);   /* .. jump again here */
-</pre>
-<p>First, as <code>PUSH_TAG()</code> and <code>POP_TAG()</code> are the previously described mechanism,
-it&#8217;s necessary to be used always as a pair. Also, they need to be written
-outside of <code>EXEC_TAG()</code>. And, apply <code>EXEC_TAG()</code> to the just pushed <code>jmp_buf</code>.
-This means doing <code>setjmp()</code>.
-If the return value is 0, since it means immediately returning from <code>setjmp()</code>,
-it does the normal processing (this usually contains <code>rb_eval()</code> ).
-If the return value of <code>EXEC_TAG()</code> is not 0, since it means returning via <code>longjmp()</code>,
-it filters only the own necessary jumps by using <code>case</code> and
-lets the rest ( <code>default</code> ) pass.</p>
-<p>It might be helpful to see also the code of the jumping side.
-The below code is the handler of the node of <code>redo</code>.</p>
-<p class="caption">▼ <code>rb_eval()</code> &#8211; <code>NODE_REDO</code> </p>
+</code></pre>
 
-<pre class="longlist">
-2560  case NODE_REDO:
+<p>First, as <code class="highlighter-rouge">PUSH_TAG()</code> and <code class="highlighter-rouge">POP_TAG()</code> are the previously described mechanism,
+it’s necessary to be used always as a pair. Also, they need to be written
+outside of <code class="highlighter-rouge">EXEC_TAG()</code>. And, apply <code class="highlighter-rouge">EXEC_TAG()</code> to the just pushed <code class="highlighter-rouge">jmp_buf</code>.
+This means doing <code class="highlighter-rouge">setjmp()</code>.
+If the return value is 0, since it means immediately returning from <code class="highlighter-rouge">setjmp()</code>,
+it does the normal processing (this usually contains <code class="highlighter-rouge">rb_eval()</code> ).
+If the return value of <code class="highlighter-rouge">EXEC_TAG()</code> is not 0, since it means returning via <code class="highlighter-rouge">longjmp()</code>,
+it filters only the own necessary jumps by using <code class="highlighter-rouge">case</code> and
+lets the rest ( <code class="highlighter-rouge">default</code> ) pass.</p>
+
+<p>It might be helpful to see also the code of the jumping side.
+The below code is the handler of the node of <code class="highlighter-rouge">redo</code>.</p>
+
+<p class="caption">
+▼ `rb_eval()` - `NODE_REDO`
+
+</p>
+<pre><code class="language-longlist">2560  case NODE_REDO:
 2561    CHECK_INTS;
 2562    JUMP_TAG(TAG_REDO);
 2563    break;
 
 (eval.c)
-</pre>
-<p>As a result of jumping via <code>JUMP_TAG()</code>, it goes back to the last <code>EXEC_TAG()</code>.
-The return value at the time is the argument <code>TAG_REDO</code>. Being aware of this,
-I&#8217;d like you to look at the code of <code>NODE_WHILE</code> and check what route is taken.</p>
-<p>The idiom has enough explained, now I&#8217;ll explain about the code of <code>NODE_WHILE</code>
-a little more in detail. As mentioned, since the inside of <code>case 0:</code> is the main
+</code></pre>
+
+<p>As a result of jumping via <code class="highlighter-rouge">JUMP_TAG()</code>, it goes back to the last <code class="highlighter-rouge">EXEC_TAG()</code>.
+The return value at the time is the argument <code class="highlighter-rouge">TAG_REDO</code>. Being aware of this,
+I’d like you to look at the code of <code class="highlighter-rouge">NODE_WHILE</code> and check what route is taken.</p>
+
+<p>The idiom has enough explained, now I’ll explain about the code of <code class="highlighter-rouge">NODE_WHILE</code>
+a little more in detail. As mentioned, since the inside of <code class="highlighter-rouge">case 0:</code> is the main
 process, I extracted only that part.
 Additionally, I moved some labels to enhance readability.</p>
-<pre class="emlist">
-  if (node-&gt;nd_state &amp;&amp; !RTEST(rb_eval(self, node-&gt;nd_cond)))
+
+<pre><code class="language-emlist">  if (node-&gt;nd_state &amp;&amp; !RTEST(rb_eval(self, node-&gt;nd_cond)))
       goto while_out;
   do {
       rb_eval(self, node-&gt;nd_body);
   } while (RTEST(rb_eval(self, node-&gt;nd_cond)));
 while_out:
-</pre>
-<p>There are the two places calling <code>rb_eval()</code> on <code>node-&gt;nd_state</code> which
+</code></pre>
+
+<p>There are the two places calling <code class="highlighter-rouge">rb_eval()</code> on <code class="highlighter-rouge">node-&gt;nd_state</code> which
 corresponds to the conditional statement. It seems that only the first test of
-the condition is separated. This is to deal with both <code>do</code> ~ <code>while</code> and <code>while</code>
-at once. When <code>node-&gt;nd_state</code> is 0 it is a <code>do</code> ~ <code>while</code>, when 1 it is an
-ordinary <code>while</code>. The rest might be understood by following step-by-step,
-I won&#8217;t particularly explain.</p>
-<p>By the way, I feel like it easily becomes an infinite loop if there is <code>next</code>
-or <code>redo</code> in the condition statement. Since it is of course exactly what the
-code means, it&#8217;s the fault of who wrote it, but I&#8217;m a little curious about it.
-So, I&#8217;ve actually tried it.</p>
-<pre class="screen">
-% ruby -e 'while next do nil end'
+the condition is separated. This is to deal with both <code class="highlighter-rouge">do</code> ~ <code class="highlighter-rouge">while</code> and <code class="highlighter-rouge">while</code>
+at once. When <code class="highlighter-rouge">node-&gt;nd_state</code> is 0 it is a <code class="highlighter-rouge">do</code> ~ <code class="highlighter-rouge">while</code>, when 1 it is an
+ordinary <code class="highlighter-rouge">while</code>. The rest might be understood by following step-by-step,
+I won’t particularly explain.</p>
+
+<p>By the way, I feel like it easily becomes an infinite loop if there is <code class="highlighter-rouge">next</code>
+or <code class="highlighter-rouge">redo</code> in the condition statement. Since it is of course exactly what the
+code means, it’s the fault of who wrote it, but I’m a little curious about it.
+So, I’ve actually tried it.</p>
+
+<pre><code class="language-screen">% ruby -e 'while next do nil end'
 -e:1: void value expression
-</pre>
-<p>It&#8217;s simply rejected at the time of parsing.
-It&#8217;s safe but not an interesting result.
-What produces this error is <code>value_expr()</code> of <code>parse.y</code>.</p>
-<h3>The value of an evaluation of <code>while</code></h3>
-<p><code>while</code> had not had its value for a long time, but it has been able to return
-a value by using <code>break</code> since <code>ruby</code> 1.7.
-This time, let&#8217;s focus on the flow of the value of an evaluation.
-Keeping in mind that the value of the local variable <code>result</code> becomes the
-return value of <code>rb_eval()</code>, I&#8217;d like you to look at the following code:</p>
-<pre class="emlist">
-        result = Qnil;
+</code></pre>
+
+<p>It’s simply rejected at the time of parsing.
+It’s safe but not an interesting result.
+What produces this error is <code class="highlighter-rouge">value_expr()</code> of <code class="highlighter-rouge">parse.y</code>.</p>
+
+<h3 id="the-value-of-an-evaluation-of-while">The value of an evaluation of <code class="highlighter-rouge">while</code></h3>
+
+<p><code class="highlighter-rouge">while</code> had not had its value for a long time, but it has been able to return
+a value by using <code class="highlighter-rouge">break</code> since <code class="highlighter-rouge">ruby</code> 1.7.
+This time, let’s focus on the flow of the value of an evaluation.
+Keeping in mind that the value of the local variable <code class="highlighter-rouge">result</code> becomes the
+return value of <code class="highlighter-rouge">rb_eval()</code>, I’d like you to look at the following code:</p>
+
+<pre><code class="language-emlist">        result = Qnil;
         switch (state = EXEC_TAG()) {
           case 0:
             /* the main process */
@@ -925,14 +1098,17 @@ return value of <code>rb_eval()</code>, I&#8217;d like you to look at the follow
             break;
         }
         RETURN(result);
-</pre>
-<p>What we should focus on is only (A). The return value of the jump seems to be
-passed via <code>prot_tag-&gt;retval</code> which is a <code>struct tag</code>.
-Here is the passing side:</p>
-<p class="caption">▼ <code>rb_eval()</code> &#8211; <code>NODE_BREAK</code> </p>
+</code></pre>
 
-<pre class="longlist">
-2219  #define return_value(v) prot_tag-&gt;retval = (v)
+<p>What we should focus on is only (A). The return value of the jump seems to be
+passed via <code class="highlighter-rouge">prot_tag-&gt;retval</code> which is a <code class="highlighter-rouge">struct tag</code>.
+Here is the passing side:</p>
+
+<p class="caption">
+▼ `rb_eval()` - `NODE_BREAK`
+
+</p>
+<pre><code class="language-longlist">2219  #define return_value(v) prot_tag-&gt;retval = (v)
 
 2539  case NODE_BREAK:
 2540    if (node-&gt;nd_stts) {
@@ -945,51 +1121,65 @@ Here is the passing side:</p>
 2547    break;
 
 (eval.c)
-</pre>
-<p>In this way, by using the macro <code>return_value()</code>, it assigns the value to the
+</code></pre>
+
+<p>In this way, by using the macro <code class="highlighter-rouge">return_value()</code>, it assigns the value to the
 struct of the top of the tag stack.</p>
-<p>The basic flow is this, but in practice there could be another <code>EXEC_TAG</code>
-between <code>EXEC_TAG()</code> of <code>NODE_WHILE</code> and <code>JUMP_TAG()</code> of <code>NODE_BREAK</code>.
-For example, <code>rescue</code> of an exception handling can exist between them.</p>
-<pre class="emlist">
-while cond       # EXEC_TAG() for NODE_WHILE
+
+<p>The basic flow is this, but in practice there could be another <code class="highlighter-rouge">EXEC_TAG</code>
+between <code class="highlighter-rouge">EXEC_TAG()</code> of <code class="highlighter-rouge">NODE_WHILE</code> and <code class="highlighter-rouge">JUMP_TAG()</code> of <code class="highlighter-rouge">NODE_BREAK</code>.
+For example, <code class="highlighter-rouge">rescue</code> of an exception handling can exist between them.</p>
+
+<pre><code class="language-emlist">while cond       # EXEC_TAG() for NODE_WHILE
   begin          # EXEC_TAG() again for rescue
     break 1
   rescue
   end
 end
-</pre>
-<p>Therefore, it&#8217;s hard to determine whether or not the <code>strict tag</code> of when doing
-<code>JUMP_TAG()</code> at <code>NODE_BREAK</code> is the one which was pushed at <code>NODE_WHILE</code>.
-In this case, because <code>retval</code> is propagated in <code>POP_TAG()</code> as shown below,
-the return value can be passed to the next tag without particular thought.</p>
-<p class="caption">▼ <code>POP_TAG()</code> </p>
+</code></pre>
 
-<pre class="longlist">
- 818  #define POP_TAG()                       \
+<p>Therefore, it’s hard to determine whether or not the <code class="highlighter-rouge">strict tag</code> of when doing
+<code class="highlighter-rouge">JUMP_TAG()</code> at <code class="highlighter-rouge">NODE_BREAK</code> is the one which was pushed at <code class="highlighter-rouge">NODE_WHILE</code>.
+In this case, because <code class="highlighter-rouge">retval</code> is propagated in <code class="highlighter-rouge">POP_TAG()</code> as shown below,
+the return value can be passed to the next tag without particular thought.</p>
+
+<p class="caption">
+▼ `POP_TAG()`
+
+</p>
+<pre><code class="language-longlist"> 818  #define POP_TAG()                       \
  819      if (_tag.prev)                      \
  820          _tag.prev-&gt;retval = _tag.retval;\
  821      prot_tag = _tag.prev;               \
  822  } while (0)
 
 (eval.c)
-</pre>
-<p>This can probably be depicted as Fig.6.</p>
-<p class="image">
-<p><img src="images/ch_evaluator_usetag.jpg" alt="(usetag)"><br>
-Fig.6: Transferring the return value</p>
-</p>
-<h2>Exception</h2>
-<p>As the second example of the usage of &#8220;tag jump&#8221;, we&#8217;ll look at how exceptions
-are dealt with.</p>
-<h3><code>raise</code></h3>
-<p>When I explained <code>while</code>, we looked at the <code>setjmp()</code> side first. This time,
-we&#8217;ll look at the <code>longjmp()</code> side first for a change. It&#8217;s <code>rb_exc_raise()</code>
-which is the substance of <code>raise</code>.</p>
-<p class="caption">▼ <code>rb_exc_raise()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-3645  void
+<p>This can probably be depicted as Fig.6.</p>
+
+<p class="image">
+<img src="images/ch_evaluator_usetag.jpg" alt="(usetag)" /><br />
+Fig.6: Transferring the return value
+
+</p>
+<p>Exception
+———</p>
+
+<p>As the second example of the usage of “tag jump”, we’ll look at how exceptions
+are dealt with.</p>
+
+<h3 id="raise"><code class="highlighter-rouge">raise</code></h3>
+
+<p>When I explained <code class="highlighter-rouge">while</code>, we looked at the <code class="highlighter-rouge">setjmp()</code> side first. This time,
+we’ll look at the <code class="highlighter-rouge">longjmp()</code> side first for a change. It’s <code class="highlighter-rouge">rb_exc_raise()</code>
+which is the substance of <code class="highlighter-rouge">raise</code>.</p>
+
+<p class="caption">
+▼ `rb_exc_raise()`
+
+</p>
+<pre><code class="language-longlist">3645  void
 3646  rb_exc_raise(mesg)
 3647      VALUE mesg;
 3648  {
@@ -997,14 +1187,17 @@ which is the substance of <code>raise</code>.</p>
 3650  }
 
 (eval.c)
-</pre>
-<p><code>mesg</code> is an exception object (an instance of <code>Exception</code> or one of its subclass).
-Notice that It seems to jump with <code>TAG_RAISE</code> this time.
-And the below code is very simplified <code>rb_longjmp()</code>.</p>
-<p class="caption">▼ <code>rb_longjmp()</code> (simplified)</p>
+</code></pre>
 
-<pre class="longlist">
-static void
+<p><code class="highlighter-rouge">mesg</code> is an exception object (an instance of <code class="highlighter-rouge">Exception</code> or one of its subclass).
+Notice that It seems to jump with <code class="highlighter-rouge">TAG_RAISE</code> this time.
+And the below code is very simplified <code class="highlighter-rouge">rb_longjmp()</code>.</p>
+
+<p class="caption">
+▼ `rb_longjmp()` (simplified)
+
+</p>
+<pre><code class="language-longlist">static void
 rb_longjmp(tag, mesg)
     int tag;
     VALUE mesg;
@@ -1015,29 +1208,36 @@ rb_longjmp(tag, mesg)
     ruby_errinfo = mesg;
     JUMP_TAG(tag);
 }
-</pre>
-<p>Well, though this can be considered as a matter of course, this is just to jump
-as usual by using <code>JUMP_TAG()</code>.</p>
-<p>What is <code>ruby_errinfo</code>? By doing <code>grep</code> a few times, I figured out that this
-variable is the substance of the global variable <code>$!</code> of Ruby.
-Since this variable indicates the exception which is currently occurring,
-naturally its substance <code>ruby_errinfo</code> should have the same meaning as well.</p>
-<h3>The Big Picture</h3>
-<p class="caption">▼the source program</p>
+</code></pre>
 
-<pre class="longlist">
-begin
+<p>Well, though this can be considered as a matter of course, this is just to jump
+as usual by using <code class="highlighter-rouge">JUMP_TAG()</code>.</p>
+
+<p>What is <code class="highlighter-rouge">ruby_errinfo</code>? By doing <code class="highlighter-rouge">grep</code> a few times, I figured out that this
+variable is the substance of the global variable <code class="highlighter-rouge">$!</code> of Ruby.
+Since this variable indicates the exception which is currently occurring,
+naturally its substance <code class="highlighter-rouge">ruby_errinfo</code> should have the same meaning as well.</p>
+
+<h3 id="the-big-picture">The Big Picture</h3>
+
+<p class="caption">
+▼the source program
+
+</p>
+<pre><code class="language-longlist">begin
   raise('exception raised')
 rescue
   'rescue clause'
 ensure
   'ensure clause'
 end
-</pre>
-<p class="caption">▼the syntax tree（ <code>nodedump-short</code> ）</p>
+</code></pre>
 
-<pre class="longlist">
-NODE_BEGIN
+<p class="caption">
+▼the syntax tree（ `nodedump-short` ）
+
+</p>
+<pre><code class="language-longlist">NODE_BEGIN
 nd_body:
     NODE_ENSURE
     nd_head:
@@ -1062,23 +1262,29 @@ nd_body:
     nd_ensr:
         NODE_STR
         nd_lit = "ensure clause":String
-</pre>
-<p>As the right order of <code>rescue</code> and <code>ensure</code> is decided at parser level,
+</code></pre>
+
+<p>As the right order of <code class="highlighter-rouge">rescue</code> and <code class="highlighter-rouge">ensure</code> is decided at parser level,
 the right order is
-strictly decided at syntax tree as well. <code>NODE_ENSURE</code> is always at the &#8220;top&#8221;,
-<code>NODE_RESCUE</code> comes next, the main body (where <code>raise</code> exist) is the last.
-Since <code>NODE_BEGIN</code> is a node to do nothing, you can consider <code>NODE_ENSURE</code> is
+strictly decided at syntax tree as well. <code class="highlighter-rouge">NODE_ENSURE</code> is always at the “top”,
+<code class="highlighter-rouge">NODE_RESCUE</code> comes next, the main body (where <code class="highlighter-rouge">raise</code> exist) is the last.
+Since <code class="highlighter-rouge">NODE_BEGIN</code> is a node to do nothing, you can consider <code class="highlighter-rouge">NODE_ENSURE</code> is
 virtually on the top.</p>
-<p>This means, since <code>NODE_ENSURE</code> and <code>NODE_RESCUE</code> are above the main body which
-we want to protect, we can stop <code>raise</code> by merely doing <code>EXEC_TAG()</code>. Or rather,
+
+<p>This means, since <code class="highlighter-rouge">NODE_ENSURE</code> and <code class="highlighter-rouge">NODE_RESCUE</code> are above the main body which
+we want to protect, we can stop <code class="highlighter-rouge">raise</code> by merely doing <code class="highlighter-rouge">EXEC_TAG()</code>. Or rather,
 the two nodes are put above in syntax tree for this purpose, is probably more
 accurate to say.</p>
-<h3><code>ensure</code></h3>
-<p>We are going to look at the handler of <code>NODE_ENSURE</code> which is the node of <code>ensure</code>.</p>
-<p class="caption">▼ <code>rb_eval()</code> &#8211; <code>NODE_ENSURE</code> </p>
 
-<pre class="longlist">
-2634  case NODE_ENSURE:
+<h3 id="ensure"><code class="highlighter-rouge">ensure</code></h3>
+
+<p>We are going to look at the handler of <code class="highlighter-rouge">NODE_ENSURE</code> which is the node of <code class="highlighter-rouge">ensure</code>.</p>
+
+<p class="caption">
+▼ `rb_eval()` - `NODE_ENSURE`
+
+</p>
+<pre><code class="language-longlist">2634  case NODE_ENSURE:
 2635    PUSH_TAG(PROT_NONE);
 2636    if ((state = EXEC_TAG()) == 0) {
 2637        result = rb_eval(self, node-&gt;nd_head);   （A-1）
@@ -1096,46 +1302,56 @@ accurate to say.</p>
 2649    break;
 
 (eval.c)
-</pre>
-<p>This branch using <code>if</code> is another idiom to deal with tag.
-It interrupts a jump by doing <code>EXEC_TAG()</code> then evaluates the <code>ensure</code> clause (
-( <code>node-&gt;nd_ensr</code> ). As for the flow of the process, it&#8217;s probably straightforward.</p>
-<p>Again, we&#8217;ll try to think about the value of an evaluation.
+</code></pre>
+
+<p>This branch using <code class="highlighter-rouge">if</code> is another idiom to deal with tag.
+It interrupts a jump by doing <code class="highlighter-rouge">EXEC_TAG()</code> then evaluates the <code class="highlighter-rouge">ensure</code> clause (
+( <code class="highlighter-rouge">node-&gt;nd_ensr</code> ). As for the flow of the process, it’s probably straightforward.</p>
+
+<p>Again, we’ll try to think about the value of an evaluation.
 To check the specification first,</p>
-<pre class="emlist">
-begin
+
+<pre><code class="language-emlist">begin
   expr0
 ensure
   expr1
 end
-</pre>
-<p>for the above statement, the value of the whole <code>begin</code> will be the value of
-<code>expr0</code> regardless of whether or not <code>ensure</code> exists.
-This behavior is reflected to the code (A-1,2),
-so the value of the evaluation of an <code>ensure</code> clause is completely discarded.</p>
-<p>At (B-1,3), it deals with the evaluated value of when a jump occurred at the main body.
-I mentioned that the value of this case is stored in <code>prot_tag-&gt;retval</code>,
-so it saves the value to a local variable to prevent from being carelessly
-overwritten during the execution of the <code>ensure</code> clause (B-1).
-After the evaluation of the <code>ensure</code> clause, it restores the value by using
-<code>return_value()</code> (B-2).
-When any jump has not occurred, <code>state==0</code> in this case,
-<code>prot_tag-&gt;retval</code> is not used in the first place.</p>
-<h3><code>rescue</code></h3>
-<p>It&#8217;s been a little while, I&#8217;ll show the syntax tree of <code>rescue</code> again just in case.</p>
-<p class="caption">▼Source Program</p>
+</code></pre>
 
-<pre class="longlist">
-begin
+<p>for the above statement, the value of the whole <code class="highlighter-rouge">begin</code> will be the value of
+<code class="highlighter-rouge">expr0</code> regardless of whether or not <code class="highlighter-rouge">ensure</code> exists.
+This behavior is reflected to the code (A-1,2),
+so the value of the evaluation of an <code class="highlighter-rouge">ensure</code> clause is completely discarded.</p>
+
+<p>At (B-1,3), it deals with the evaluated value of when a jump occurred at the main body.
+I mentioned that the value of this case is stored in <code class="highlighter-rouge">prot_tag-&gt;retval</code>,
+so it saves the value to a local variable to prevent from being carelessly
+overwritten during the execution of the <code class="highlighter-rouge">ensure</code> clause (B-1).
+After the evaluation of the <code class="highlighter-rouge">ensure</code> clause, it restores the value by using
+<code class="highlighter-rouge">return_value()</code> (B-2).
+When any jump has not occurred, <code class="highlighter-rouge">state==0</code> in this case,
+<code class="highlighter-rouge">prot_tag-&gt;retval</code> is not used in the first place.</p>
+
+<h3 id="rescue"><code class="highlighter-rouge">rescue</code></h3>
+
+<p>It’s been a little while, I’ll show the syntax tree of <code class="highlighter-rouge">rescue</code> again just in case.</p>
+
+<p class="caption">
+▼Source Program
+
+</p>
+<pre><code class="language-longlist">begin
   raise()
 rescue ArgumentError, TypeError
   'error raised'
 end
-</pre>
-<p class="caption">▼ Its Syntax Tree ( <code>nodedump-short</code> )</p>
+</code></pre>
 
-<pre class="longlist">
-NODE_BEGIN
+<p class="caption">
+▼ Its Syntax Tree ( `nodedump-short` )
+
+</p>
+<pre><code class="language-longlist">NODE_BEGIN
 nd_body:
     NODE_RESCUE
     nd_head:
@@ -1158,13 +1374,16 @@ nd_body:
             nd_lit = "error raised":String
         nd_head = (null)
     nd_else = (null)
-</pre>
-<p>I&#8217;d like you to make sure that (the syntax tree of) the statement to be
-<code>rescue</code> ed is &#8220;under&#8221; <code>NODE_RESCUE</code>.</p>
-<p class="caption">▼ <code>rb_eval()</code> &#8211; <code>NODE_RESCUE</code> </p>
+</code></pre>
 
-<pre class="longlist">
-2590  case NODE_RESCUE:
+<p>I’d like you to make sure that (the syntax tree of) the statement to be
+<code class="highlighter-rouge">rescue</code> ed is “under” <code class="highlighter-rouge">NODE_RESCUE</code>.</p>
+
+<p class="caption">
+▼ `rb_eval()` - `NODE_RESCUE`
+
+</p>
+<pre><code class="language-longlist">2590  case NODE_RESCUE:
 2591  retry_entry:
 2592    {
 2593        volatile VALUE e_info = ruby_errinfo;
@@ -1209,19 +1428,22 @@ nd_body:
 2632    break;
 
 (eval.c)
-</pre>
-<p>Even though the size is not small, it&#8217;s not difficult because it only simply
+</code></pre>
+
+<p>Even though the size is not small, it’s not difficult because it only simply
 deal with the nodes one by one.
-This is the first time <code>handle_rescue()</code> appeared,
+This is the first time <code class="highlighter-rouge">handle_rescue()</code> appeared,
 but for some reasons we cannot look at this function now.
-I&#8217;ll explain only its effects here. Its prototype is this,</p>
-<pre class="emlist">
-static int handle_rescue(VALUE self, NODE *resq)
-</pre>
-<p>and it determines whether the currently occurring exception (<code>ruby_errinfo</code>) is
-a subclass of the class that is expressed by <code>resq</code> (<code>TypeError</code>, for instance).
-The reason why passing <code>self</code> is that it&#8217;s necessary to call <code>rb_eval()</code> inside
-this function in order to evaluate <code>resq</code>.</p>
+I’ll explain only its effects here. Its prototype is this,</p>
+
+<pre><code class="language-emlist">static int handle_rescue(VALUE self, NODE *resq)
+</code></pre>
+
+<p>and it determines whether the currently occurring exception (<code class="highlighter-rouge">ruby_errinfo</code>) is
+a subclass of the class that is expressed by <code class="highlighter-rouge">resq</code> (<code class="highlighter-rouge">TypeError</code>, for instance).
+The reason why passing <code class="highlighter-rouge">self</code> is that it’s necessary to call <code class="highlighter-rouge">rb_eval()</code> inside
+this function in order to evaluate <code class="highlighter-rouge">resq</code>.</p>
+
 
     <footer>
       The original work is Copyright © 2002 - 2004 Minero AOKI.

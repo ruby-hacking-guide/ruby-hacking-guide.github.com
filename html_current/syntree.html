@@ -18,16 +18,21 @@
       </ul>
     </nav>
 
-    <h1 id="chapter">Chapter 12: Syntax tree construction</h1>
-<h2>Node</h2>
-<h3><code>NODE</code></h3>
-<p>As I&#8217;ve already described, a Ruby program is first converted to a syntax tree.
-To be more precise, a syntax tree is a tree structure made of structs called &#8220;nodes&#8221;.
-In <code>ruby</code>, all nodes are of type <code>NODE</code>.</p>
-<p class="caption">▼ <code>NODE</code> </p>
+    <h1 id="chapter-12-syntax-tree-construction">Chapter 12: Syntax tree construction</h1>
 
-<pre class="longlist">
- 128  typedef struct RNode {
+<h2 id="node">Node</h2>
+
+<h3 id="node-1"><code class="highlighter-rouge">NODE</code></h3>
+
+<p>As I’ve already described, a Ruby program is first converted to a syntax tree.
+To be more precise, a syntax tree is a tree structure made of structs called “nodes”.
+In <code class="highlighter-rouge">ruby</code>, all nodes are of type <code class="highlighter-rouge">NODE</code>.</p>
+
+<p class="caption">
+▼ `NODE`
+
+</p>
+<pre><code class="language-longlist"> 128  typedef struct RNode {
  129      unsigned long flags;
  130      char *nd_file;
  131      union {
@@ -54,44 +59,55 @@ In <code>ruby</code>, all nodes are of type <code>NODE</code>.</p>
  152  } NODE;
 
 (node.h)
-</pre>
-<p>Although you might be able to infer from the struct name <code>RNode</code>, nodes are Ruby objects.
-This means the creation and release of nodes are taken care of by the `ruby`&#8217;s garbage collector.</p>
-<p>Therefore, <code>flags</code> naturally has the same role as <code>basic.flags</code> of the object struct.
-It means that <code>T_NODE</code> which is the type of a struct and flags such as <code>FL_FREEZE</code> are stored in it.
-As for <code>NODE</code>, in addition to these, its node type is stored in <code>flags</code>.</p>
+</code></pre>
+
+<p>Although you might be able to infer from the struct name <code class="highlighter-rouge">RNode</code>, nodes are Ruby objects.
+This means the creation and release of nodes are taken care of by the `ruby`’s garbage collector.</p>
+
+<p>Therefore, <code class="highlighter-rouge">flags</code> naturally has the same role as <code class="highlighter-rouge">basic.flags</code> of the object struct.
+It means that <code class="highlighter-rouge">T_NODE</code> which is the type of a struct and flags such as <code class="highlighter-rouge">FL_FREEZE</code> are stored in it.
+As for <code class="highlighter-rouge">NODE</code>, in addition to these, its node type is stored in <code class="highlighter-rouge">flags</code>.</p>
+
 <p>What does it mean? Since a program could contain various elements
-such as <code>if</code> and <code>while</code> and <code>def</code> and so on, there are also various corresponding node types.
+such as <code class="highlighter-rouge">if</code> and <code class="highlighter-rouge">while</code> and <code class="highlighter-rouge">def</code> and so on, there are also various corresponding node types.
 The three available union are complicated,
 but how these unions are used is decided to only one specific way for each node.
-For example, the below table shows the case when it is <code>NODE_IF</code> that is the node of <code>if</code>.</p>
-<table>
-	<tr>
-		<th>member </th>
-		<th>union member </th>
-		<th>role </th>
-	</tr>
-	<tr>
-		<td> <code>u1</code> </td>
-		<td> <code>u1.node</code> </td>
-		<td> the condition expression </td>
-	</tr>
-	<tr>
-		<td> <code>u2</code> </td>
-		<td> <code>u2.node</code> </td>
-		<td> the body of true </td>
-	</tr>
-	<tr>
-		<td> <code>u3</code> </td>
-		<td> <code>u3.node</code> </td>
-		<td> the body of false </td>
-	</tr>
-</table>
-<p>And, in <code>node.h</code>, the macros to access each union member are available.</p>
-<p class="caption">▼ the macros to access <code>NODE</code> </p>
+For example, the below table shows the case when it is <code class="highlighter-rouge">NODE_IF</code> that is the node of <code class="highlighter-rouge">if</code>.</p>
 
-<pre class="longlist">
- 166  #define nd_head  u1.node
+<table>
+  <thead>
+    <tr>
+      <th>member</th>
+      <th>union member</th>
+      <th>role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="highlighter-rouge">u1</code></td>
+      <td><code class="highlighter-rouge">u1.node</code></td>
+      <td>the condition expression</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">u2</code></td>
+      <td><code class="highlighter-rouge">u2.node</code></td>
+      <td>the body of true</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">u3</code></td>
+      <td><code class="highlighter-rouge">u3.node</code></td>
+      <td>the body of false</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>And, in <code class="highlighter-rouge">node.h</code>, the macros to access each union member are available.</p>
+
+<p class="caption">
+▼ the macros to access `NODE`
+
+</p>
+<pre><code class="language-longlist"> 166  #define nd_head  u1.node
  167  #define nd_alen  u2.argc
  168  #define nd_next  u3.node
  169
@@ -104,60 +120,70 @@ For example, the below table shows the case when it is <code>NODE_IF</code> that
                  ：
 
 (node.h)
-</pre>
+</code></pre>
+
 <p>For example, these are used as follows:</p>
-<pre class="emlist">
-NODE *head, *tail;
+
+<pre><code class="language-emlist">NODE *head, *tail;
 head-&gt;nd_next = tail;    /* head-&gt;u3.node = tail */
-</pre>
-<p>In the source code, it&#8217;s almost certain that these macros are used.
-A very few exceptions are only the two places where creating <code>NODE</code> in <code>parse.y</code>
-and where marking <code>NODE</code> in <code>gc.c</code>.</p>
+</code></pre>
+
+<p>In the source code, it’s almost certain that these macros are used.
+A very few exceptions are only the two places where creating <code class="highlighter-rouge">NODE</code> in <code class="highlighter-rouge">parse.y</code>
+and where marking <code class="highlighter-rouge">NODE</code> in <code class="highlighter-rouge">gc.c</code>.</p>
+
 <p>By the way, what is the reason why such macros are used?
-For one thing, it might be because it&#8217;s cumbersome to remember numbers like <code>u1</code>
+For one thing, it might be because it’s cumbersome to remember numbers like <code class="highlighter-rouge">u1</code>
 that are not meaningful by just themselves.
 But what is more important than that is, there should be no problem if the
-corresponding number is changed and it&#8217;s possible that it will actually be changed.
-For example, since a condition clause of <code>if</code> does not have to be stored in <code>u1</code>,
-someone might want to change it to <code>u2</code> for some reason. But if <code>u1</code> is directly used,
+corresponding number is changed and it’s possible that it will actually be changed.
+For example, since a condition clause of <code class="highlighter-rouge">if</code> does not have to be stored in <code class="highlighter-rouge">u1</code>,
+someone might want to change it to <code class="highlighter-rouge">u2</code> for some reason. But if <code class="highlighter-rouge">u1</code> is directly used,
 he needs to modify a lot of places all over the source codes, it is inconvenient.
-Since nodes are all declared as <code>NODE</code>, it&#8217;s hard to find nodes that represent <code>if</code>.
+Since nodes are all declared as <code class="highlighter-rouge">NODE</code>, it’s hard to find nodes that represent <code class="highlighter-rouge">if</code>.
 By preparing the macros to access, this kind of trouble can be avoided
 and conversely we can determine the node types from the macros.</p>
-<h3>Node Type</h3>
-<p>I said that in the <code>flags</code> of a <code>NODE</code> struct its node type is stored.
-We&#8217;ll look at in what form this information is stored.
-A node type can be set by <code>nd_set_type()</code> and obtained by <code>nd_type()</code>.</p>
-<p class="caption">▼ <code>nd_type nd_set_type</code> </p>
 
-<pre class="longlist">
- 156  #define nd_type(n) (((RNODE(n))-&gt;flags&gt;&gt;FL_USHIFT)&amp;0xff)
+<h3 id="node-type">Node Type</h3>
+
+<p>I said that in the <code class="highlighter-rouge">flags</code> of a <code class="highlighter-rouge">NODE</code> struct its node type is stored.
+We’ll look at in what form this information is stored.
+A node type can be set by <code class="highlighter-rouge">nd_set_type()</code> and obtained by <code class="highlighter-rouge">nd_type()</code>.</p>
+
+<p class="caption">
+▼ `nd_type nd_set_type`
+
+</p>
+<pre><code class="language-longlist"> 156  #define nd_type(n) (((RNODE(n))-&gt;flags&gt;&gt;FL_USHIFT)&amp;0xff)
  157  #define nd_set_type(n,t) \
  158      RNODE(n)-&gt;flags = ((RNODE(n)-&gt;flags &amp; ~FL_UMASK) \
-                             | (((t)&lt;&lt;FL_USHIFT) &amp; FL_UMASK))
+                             | (((t)&lt;
+</code></pre>
 
-(node.h)
-</pre>
-<p class="caption">▼ <code>FL_USHIFT FL_UMASK</code> </p>
+<p class="caption">
+▼ `FL_USHIFT FL_UMASK`
 
-<pre class="longlist">
- 418  #define FL_USHIFT    11
- 429  #define FL_UMASK  (0xff&lt;&lt;FL_USHIFT)
+</p>
+<pre><code class="language-longlist"> 418  #define FL_USHIFT    11
+ 429  #define FL_UMASK  (0xff&lt;
+</code></pre>
 
-(ruby.h)
-</pre>
-<p>It won&#8217;t be so much trouble if we&#8217;ll keep focus on around <code>nd_type</code>.
+<p>It won’t be so much trouble if we’ll keep focus on around <code class="highlighter-rouge">nd_type</code>.
 Fig.1 shows how it seems like.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_flagUsage.jpg" alt="(flagUsage)"><br>
-Fig.1: The usage of RNode.flags</p>
+<img src="images/ch_syntree_flagUsage.jpg" alt="(flagUsage)" /><br />
+Fig.1: The usage of RNode.flags
+
 </p>
 <p>And, since macros cannot be used from debuggers,
-the <code>nodetype()</code> function is also available.</p>
-<p class="caption">▼ <code>nodetype</code> </p>
+the <code class="highlighter-rouge">nodetype()</code> function is also available.</p>
 
-<pre class="longlist">
-4247  static enum node_type
+<p class="caption">
+▼ `nodetype`
+
+</p>
+<pre><code class="language-longlist">4247  static enum node_type
 4248  nodetype(node)                  /* for debug */
 4249      NODE *node;
 4250  {
@@ -165,17 +191,21 @@ the <code>nodetype()</code> function is also available.</p>
 4252  }
 
 (parse.y)
-</pre>
-<h3>File Name and Line Number</h3>
-<p>The <code>nd_file</code> of a <code>NODE</code> holds (the pointer to) the name of the file where the
-text that corresponds to this node exists. Since there&#8217;s the file name, we
-naturally expect that there&#8217;s also the line number, but the corresponding member
-could not be found around here. Actually, the line number is being embedded to
-<code>flags</code> by the following macro:</p>
-<p class="caption">▼ <code>nd_line nd_set_line</code> </p>
+</code></pre>
 
-<pre class="longlist">
- 160  #define NODE_LSHIFT (FL_USHIFT+8)
+<h3 id="file-name-and-line-number">File Name and Line Number</h3>
+
+<p>The <code class="highlighter-rouge">nd_file</code> of a <code class="highlighter-rouge">NODE</code> holds (the pointer to) the name of the file where the
+text that corresponds to this node exists. Since there’s the file name, we
+naturally expect that there’s also the line number, but the corresponding member
+could not be found around here. Actually, the line number is being embedded to
+<code class="highlighter-rouge">flags</code> by the following macro:</p>
+
+<p class="caption">
+▼ `nd_line nd_set_line`
+
+</p>
+<pre><code class="language-longlist"> 160  #define NODE_LSHIFT (FL_USHIFT+8)
  161  #define NODE_LMASK  (((long)1&lt;&lt;(sizeof(NODE*)*CHAR_BIT-NODE_LSHIFT))-1)
  162  #define nd_line(n) \
           ((unsigned int)((RNODE(n)-&gt;flags &gt;&gt; NODE_LSHIFT) &amp; NODE_LMASK))
@@ -184,60 +214,75 @@ could not be found around here. Actually, the line number is being embedded to
                              | (((l)&amp;NODE_LMASK) &lt;&lt; NODE_LSHIFT))
 
 (node.h)
-</pre>
-<p><code>nd_set_line()</code> is fairly spectacular.
-However, as the names suggest, it is certain that <code>nd_set_line()</code> and <code>nd_line</code>
-works symmetrically. Thus, if we first examine the simpler <code>nd_line()</code> and grasp
-the relationship between the parameters, there&#8217;s no need to analyze <code>nd_set_line()</code>
+</code></pre>
+
+<p><code class="highlighter-rouge">nd_set_line()</code> is fairly spectacular.
+However, as the names suggest, it is certain that <code class="highlighter-rouge">nd_set_line()</code> and <code class="highlighter-rouge">nd_line</code>
+works symmetrically. Thus, if we first examine the simpler <code class="highlighter-rouge">nd_line()</code> and grasp
+the relationship between the parameters, there’s no need to analyze <code class="highlighter-rouge">nd_set_line()</code>
 in the first place.</p>
-<p>The first thing is <code>NODE_LSHIFT</code>, as you can guess from the description of the
-node types of the previous section, it is the number of used bits in <code>flags</code>.
-<code>FL_USHIFT</code> is reserved by system of <code>ruby</code> (11 bits, <code>ruby.h</code>), 8 bits are for
+
+<p>The first thing is <code class="highlighter-rouge">NODE_LSHIFT</code>, as you can guess from the description of the
+node types of the previous section, it is the number of used bits in <code class="highlighter-rouge">flags</code>.
+<code class="highlighter-rouge">FL_USHIFT</code> is reserved by system of <code class="highlighter-rouge">ruby</code> (11 bits, <code class="highlighter-rouge">ruby.h</code>), 8 bits are for
 its node type.</p>
-<p>The next thing is <code>NODE_LMASK</code>.</p>
-<pre class="emlist">
-sizeof(NODE*) * CHAR_BIT - NODE_LSHIFT
-</pre>
+
+<p>The next thing is <code class="highlighter-rouge">NODE_LMASK</code>.</p>
+
+<pre><code class="language-emlist">sizeof(NODE*) * CHAR_BIT - NODE_LSHIFT
+</code></pre>
+
 <p>This is the number of the rest of the bits.
-Let&#8217;s assume it is  <code>restbits</code>. This makes the code a lot simpler.</p>
-<pre class="emlist">
-#define NODE_LMASK  (((long)1 &lt;&lt; restbits) - 1)
-</pre>
+Let’s assume it is <code class="highlighter-rouge">restbits</code>. This makes the code a lot simpler.</p>
+
+<pre><code class="language-emlist">#define NODE_LMASK  (((long)1 &lt;&lt; restbits) - 1)
+</code></pre>
+
 <p>Fig.2 shows what the above code seems to be doing. Note that a borrow occurs
-when subtracting 1. We can eventually understand that <code>NODE_LMASK</code> is a sequence
+when subtracting 1. We can eventually understand that <code class="highlighter-rouge">NODE_LMASK</code> is a sequence
 filled with 1 whose size is the number of the bits that are still available.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_lmask.jpg" alt="(lmask)"><br>
-Fig.2: <code>NODE_LMASK</code></p>
+<img src="images/ch_syntree_lmask.jpg" alt="(lmask)" /><br />
+Fig.2: `NODE_LMASK`
+
 </p>
-<p>Now, let&#8217;s look at <code>nd_line()</code> again.</p>
-<pre class="emlist">
-(RNODE(n)-&gt;flags &gt;&gt; NODE_LSHIFT) &amp; NODE_LMASK
-</pre>
-<p>By the right shift, the unused space is shifted to the <span class="caps">LSB</span>. The bitwise <span class="caps">AND</span>
-leaves only the unused space. Fig.3 shows how <code>flags</code> is used. Since <code>FL_USHIFT</code>
+<p>Now, let’s look at <code class="highlighter-rouge">nd_line()</code> again.</p>
+
+<pre><code class="language-emlist">(RNODE(n)-&gt;flags &gt;&gt; NODE_LSHIFT) &amp; NODE_LMASK
+</code></pre>
+
+<p>By the right shift, the unused space is shifted to the LSB. The bitwise AND
+leaves only the unused space. Fig.3 shows how <code class="highlighter-rouge">flags</code> is used. Since <code class="highlighter-rouge">FL_USHIFT</code>
 is 11, in 32-bit machine 32-(11+8)=13 bits are available for the line number.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_flags.jpg" alt="(flags)"><br>
-Fig.3: How <code>flags</code> are used at <code>NODE</code></p>
+<img src="images/ch_syntree_flags.jpg" alt="(flags)" /><br />
+Fig.3: How `flags` are used at `NODE`
+
 </p>
-<p>&#8230; This means, if the line numbers becomes beyond 2^13=8192,
-the line numbers should wrongly be displayed. Let&#8217;s try.</p>
-<pre class="emlist">
-File.open('overflow.rb', 'w') {|f|
+<p>… This means, if the line numbers becomes beyond 2^13=8192,
+the line numbers should wrongly be displayed. Let’s try.</p>
+
+<pre><code class="language-emlist">File.open('overflow.rb', 'w') {|f|
     10000.times { f.puts }
     f.puts 'raise'
 }
-</pre>
-<p>With my 686 machine, <code>ruby overflow.rb</code> properly displayed 1809 as a line number.
-I&#8217;ve succeeded. However, if you use 64-bit machine, you need to create a little
-bigger file in order to successfully fail.</p>
-<h3><code>rb_node_newnode()</code></h3>
-<p>Lastly let&#8217;s look at the function <code>rb_node_newnode()</code> that creates a node.</p>
-<p class="caption">▼ <code>rb_node_newnode()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-4228  NODE*
+<p>With my 686 machine, <code class="highlighter-rouge">ruby overflow.rb</code> properly displayed 1809 as a line number.
+I’ve succeeded. However, if you use 64-bit machine, you need to create a little
+bigger file in order to successfully fail.</p>
+
+<h3 id="rbnodenewnode"><code class="highlighter-rouge">rb_node_newnode()</code></h3>
+
+<p>Lastly let’s look at the function <code class="highlighter-rouge">rb_node_newnode()</code> that creates a node.</p>
+
+<p class="caption">
+▼ `rb_node_newnode()`
+
+</p>
+<pre><code class="language-longlist">4228  NODE*
 4229  rb_node_newnode(type, a0, a1, a2)
 4230      enum node_type type;
 4231      NODE *a0, *a1, *a2;
@@ -257,39 +302,49 @@ bigger file in order to successfully fail.</p>
 4245  }
 
 (parse.y)
-</pre>
-<p>We&#8217;ve seen <code>rb_newobj()</code> in the Chapter 5: Garbage collection. It is the function to get a
-vacant <code>RVALUE</code>. By attaching the <code>T_NODE</code> struct-type flag to it,
-the initialization as a <code>VALUE</code> will complete.
-Of course, it&#8217;s possible that some values that are not of type <code>NODE*</code> are
-passed for <code>u1 u2 u3</code>, but received as <code>NODE*</code> for the time being.
-Since the syntax trees of <code>ruby</code> does not contain <code>double</code> and such,
+</code></pre>
+
+<p>We’ve seen <code class="highlighter-rouge">rb_newobj()</code> in the Chapter 5: Garbage collection. It is the function to get a
+vacant <code class="highlighter-rouge">RVALUE</code>. By attaching the <code class="highlighter-rouge">T_NODE</code> struct-type flag to it,
+the initialization as a <code class="highlighter-rouge">VALUE</code> will complete.
+Of course, it’s possible that some values that are not of type <code class="highlighter-rouge">NODE*</code> are
+passed for <code class="highlighter-rouge">u1 u2 u3</code>, but received as <code class="highlighter-rouge">NODE*</code> for the time being.
+Since the syntax trees of <code class="highlighter-rouge">ruby</code> does not contain <code class="highlighter-rouge">double</code> and such,
 if the values are received as pointers, it will never be too small in size.</p>
-<p>For the rest part, you can forget about the details you&#8217;ve learned so far,
-and assume <code>NODE</code> is</p>
+
+<p>For the rest part, you can forget about the details you’ve learned so far,
+and assume <code class="highlighter-rouge">NODE</code> is</p>
+
 <ul>
-	<li><code>flags</code></li>
-	<li><code>nodetype</code></li>
-	<li><code>nd_line</code></li>
-	<li><code>nd_file</code></li>
-	<li><code>u1</code></li>
-	<li><code>u2</code></li>
-	<li><code>u3</code></li>
+  <li><code class="highlighter-rouge">flags</code></li>
+  <li><code class="highlighter-rouge">nodetype</code></li>
+  <li><code class="highlighter-rouge">nd_line</code></li>
+  <li><code class="highlighter-rouge">nd_file</code></li>
+  <li><code class="highlighter-rouge">u1</code></li>
+  <li><code class="highlighter-rouge">u2</code></li>
+  <li><code class="highlighter-rouge">u3</code></li>
 </ul>
+
 <p>a struct type that has the above seven members.</p>
-<h2>Syntax Tree Construction</h2>
+
+<h2 id="syntax-tree-construction">Syntax Tree Construction</h2>
+
 <p>The role of the parser is to convert the source code that is a byte sequence to a
 syntax tree. Although the grammar passed, it does not finish even half of the task,
 so we have to assemble nodes and create a tree.
-In this section, we&#8217;ll look at the construction process of that syntax tree.</p>
-<h3><code>YYSTYPE</code></h3>
-<p>Essentially this chapter is about actions,
-thus <code>YYSTYPE</code> which is the type of <code>$$</code> or <code>$1</code> becomes important.
-Let&#8217;s look at the <code>%union</code> of <code>ruby</code> first.</p>
-<p class="caption">▼ <code>%union</code>  declaration</p>
+In this section, we’ll look at the construction process of that syntax tree.</p>
 
-<pre class="longlist">
- 170  %union {
+<h3 id="yystype"><code class="highlighter-rouge">YYSTYPE</code></h3>
+
+<p>Essentially this chapter is about actions,
+thus <code class="highlighter-rouge">YYSTYPE</code> which is the type of <code class="highlighter-rouge">$$</code> or <code class="highlighter-rouge">$1</code> becomes important.
+Let’s look at the <code class="highlighter-rouge">%union</code> of <code class="highlighter-rouge">ruby</code> first.</p>
+
+<p class="caption">
+▼ `%union` declaration
+
+</p>
+<pre><code class="language-longlist"> 170  %union {
  171      NODE *node;
  172      ID id;
  173      int num;
@@ -297,24 +352,29 @@ Let&#8217;s look at the <code>%union</code> of <code>ruby</code> first.</p>
  175  }
 
 (parse.y)
-</pre>
-<p><code>struct RVarmap</code> is a struct used by the evaluator and holds a block local variable.
-You can tell the rest. The most used one is of course <code>node</code>.</p>
-<h3>Landscape with Syntax Trees</h3>
+</code></pre>
+
+<p><code class="highlighter-rouge">struct RVarmap</code> is a struct used by the evaluator and holds a block local variable.
+You can tell the rest. The most used one is of course <code class="highlighter-rouge">node</code>.</p>
+
+<h3 id="landscape-with-syntax-trees">Landscape with Syntax Trees</h3>
+
 <p>I mentioned that looking at the fact first is a theory of code reading.
 Since what we want to know this time is how the generated syntax tree is,
 we should start with looking at the answer (the syntax tree).</p>
-<p>It&#8217;s also nice using debuggers to observe every time,
+
+<p>It’s also nice using debuggers to observe every time,
 but you can visualize the syntax tree more handily
-by using the tool <code>nodedump</code> contained in the attached CD-<span class="caps">ROM</span>,
+by using the tool <code class="highlighter-rouge">nodedump</code> contained in the attached CD-ROM,
 This tool is originally the NodeDump made by <a href="http://www.pragmaticprogrammers.com">Pragmatic Programmers</a>
 and remodeled for this book.
 The original version shows quite explanatory output,
 but this remodeled version deeply and directly displays the appearance of the
 syntax tree.</p>
-<p>For example, in order to dump the simple expression <code>m(a)</code>, you can do as follows:</p>
-<pre class="screen">
-% ruby -rnodedump -e 'm(a)'
+
+<p>For example, in order to dump the simple expression <code class="highlighter-rouge">m(a)</code>, you can do as follows:</p>
+
+<pre><code class="language-screen">% ruby -rnodedump -e 'm(a)'
 NODE_NEWLINE
 nd_file = "-e"
 nd_nth  = 1
@@ -328,70 +388,81 @@ nd_next:
             NODE_VCALL
             nd_mid = 9625 (a)
         nd_next = (null)
-</pre>
-<p>The <code>-r</code> option is used to specify the library to be load,
-and the <code>-e</code> is used to pass a program.
+</code></pre>
+
+<p>The <code class="highlighter-rouge">-r</code> option is used to specify the library to be load,
+and the <code class="highlighter-rouge">-e</code> is used to pass a program.
 Then, the syntax tree expression of the program will be dumped.</p>
-<p>I&#8217;ll briefly explain about how to see the content.
-<code>NODE_NEWLINE</code> and <code>NODE_FCALL</code> and such are the node types.
+
+<p>I’ll briefly explain about how to see the content.
+<code class="highlighter-rouge">NODE_NEWLINE</code> and <code class="highlighter-rouge">NODE_FCALL</code> and such are the node types.
 What are written at the same indent level of each node are the contents of its node members.
-For example, the root is <code>NODE_NEWLINE</code>, and it has the three members:
-<code>nd_file nd_nth nd_next</code>. <code>nd_file</code> points to the <code>"-e"</code> string of C,
-and <code>ng_nth</code> points to the 1 integer of C, and <code>nd_next</code> holds the next node <code>NODE_CALL</code>.
+For example, the root is <code class="highlighter-rouge">NODE_NEWLINE</code>, and it has the three members:
+<code class="highlighter-rouge">nd_file nd_nth nd_next</code>. <code class="highlighter-rouge">nd_file</code> points to the <code class="highlighter-rouge">"-e"</code> string of C,
+and <code class="highlighter-rouge">ng_nth</code> points to the 1 integer of C, and <code class="highlighter-rouge">nd_next</code> holds the next node <code class="highlighter-rouge">NODE_CALL</code>.
 But since these explanation in text are probably not intuitive,
 I recommend you to also check Fig.4 at the same time.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_stree.jpg" alt="(stree)"><br>
-Fig.4: Syntax Tree</p>
+<img src="images/ch_syntree_stree.jpg" alt="(stree)" /><br />
+Fig.4: Syntax Tree
+
 </p>
-<p>I&#8217;ll explain the meaning of each node. <code>NODE_CALL</code> is a Function <span class="caps">CALL</span>.
-<code>NODE_ARRAY</code> is as its name suggests the node of array, and here it expresses
-the list of arguments. <code>NODE_VCALL</code> is a Variable or <span class="caps">CALL</span>, a reference to
+<p>I’ll explain the meaning of each node. <code class="highlighter-rouge">NODE_CALL</code> is a Function CALL.
+<code class="highlighter-rouge">NODE_ARRAY</code> is as its name suggests the node of array, and here it expresses
+the list of arguments. <code class="highlighter-rouge">NODE_VCALL</code> is a Variable or CALL, a reference to
 undefined local variable will become this.</p>
-<p>Then, what is <code>NODE_NEWLINE</code> ? This is the node to join the name of the currently
-executed file and the line number at runtime and is set for each <code>stmt</code>.
+
+<p>Then, what is <code class="highlighter-rouge">NODE_NEWLINE</code> ? This is the node to join the name of the currently
+executed file and the line number at runtime and is set for each <code class="highlighter-rouge">stmt</code>.
 Therefore, when only thinking about the meaning of the execution, this node can
-be ignored. When you <code>require</code> <code>nodedump-short</code> instead of <code>nodedump</code>,
-distractions like <code>NODE_NEWLINE</code> are left out in the first place. Since it is
-easier to see if it is simple, <code>nodedump-short</code> will be used later on except for
+be ignored. When you <code class="highlighter-rouge">require</code> <code class="highlighter-rouge">nodedump-short</code> instead of <code class="highlighter-rouge">nodedump</code>,
+distractions like <code class="highlighter-rouge">NODE_NEWLINE</code> are left out in the first place. Since it is
+easier to see if it is simple, <code class="highlighter-rouge">nodedump-short</code> will be used later on except for
 when particularly written.</p>
-<p>Now, we&#8217;ll look at the three type of composing elements in order to grasp how
+
+<p>Now, we’ll look at the three type of composing elements in order to grasp how
 the whole syntax tree is. The first one is the leaves of a syntax tree. Next,
-we&#8217;ll look at expressions that are combinations of that leaves, this means they
+we’ll look at expressions that are combinations of that leaves, this means they
 are branches of a syntax tree.
 The last one is the list to list up the statements that is the trunk of a syntax
 tree in other words.</p>
-<h3>Leaf</h3>
-<p>First, let&#8217;s start with the edges that are the leaves of the syntax tree.
+
+<h3 id="leaf">Leaf</h3>
+
+<p>First, let’s start with the edges that are the leaves of the syntax tree.
 Literals and variable references and so on, among the rules, they are what
-belong to <code>primary</code> and are particularly simple even among the <code>primary</code> rules.</p>
-<pre class="screen">
-% ruby -rnodedump-short -e '1'
+belong to <code class="highlighter-rouge">primary</code> and are particularly simple even among the <code class="highlighter-rouge">primary</code> rules.</p>
+
+<pre><code class="language-screen">% ruby -rnodedump-short -e '1'
 NODE_LIT
 nd_lit = 1:Fixnum
-</pre>
-<p>1 as a numeric value. There&#8217;s not any twist. However, notice that what is
-stored in the node is not 1 of C but 1 of Ruby (1 of <code>Fixnum</code>). This is because &#8230;</p>
-<pre class="screen">
-% ruby -rnodedump-short -e ':sym'
+</code></pre>
+
+<p>1 as a numeric value. There’s not any twist. However, notice that what is
+stored in the node is not 1 of C but 1 of Ruby (1 of <code class="highlighter-rouge">Fixnum</code>). This is because …</p>
+
+<pre><code class="language-screen">% ruby -rnodedump-short -e ':sym'
 NODE_LIT
 nd_lit = 9617:Symbol
-</pre>
-<p>This way, <code>Symbol</code> is represented by the same <code>NODE_LIT</code> when it becomes a syntax tree.
-As the above example, <code>VALUE</code> is always stored in <code>nd_lit</code> so it can be handled
-completely in the same way whether it is a <code>Symbol</code> or a <code>Fixnum</code> when executing.
+</code></pre>
+
+<p>This way, <code class="highlighter-rouge">Symbol</code> is represented by the same <code class="highlighter-rouge">NODE_LIT</code> when it becomes a syntax tree.
+As the above example, <code class="highlighter-rouge">VALUE</code> is always stored in <code class="highlighter-rouge">nd_lit</code> so it can be handled
+completely in the same way whether it is a <code class="highlighter-rouge">Symbol</code> or a <code class="highlighter-rouge">Fixnum</code> when executing.
 In this way, all we need to do when dealing with it are retrieving the value
-in <code>nd_lit</code> and returning it. Since we create a syntax tree in order to execute it,
+in <code class="highlighter-rouge">nd_lit</code> and returning it. Since we create a syntax tree in order to execute it,
 designing it so that it becomes convenient when executing is the right thing to do.</p>
-<pre class="screen">
-% ruby -rnodedump-short -e '"a"'
+
+<pre><code class="language-screen">% ruby -rnodedump-short -e '"a"'
 NODE_STR
 nd_lit = "a":String
-</pre>
+</code></pre>
+
 <p>A string. This is also a Ruby string.
 String literals are copied when actually used.</p>
-<pre class="screen">
-% ruby -rnodedump -e '[0,1]'
+
+<pre><code class="language-screen">% ruby -rnodedump -e '[0,1]'
 NODE_NEWLINE
 nd_file = "-e"
 nd_nth  = 1
@@ -408,33 +479,43 @@ nd_next:
             NODE_LIT
             nd_lit = 1:Fixnum
         nd_next = (null)
-</pre>
-<p>Array. I can&#8217;t say this is a leaf, but let&#8217;s allow this to be here because it&#8217;s
-also a literal. It seems like a list of <code>NODE_ARRAY</code> hung with each element node.
-The reason why only in this case I didn&#8217;t use <code>nodedump-short</code> is &#8230;
-you will understand after finishing to read this section.</p>
-<h3>Branch</h3>
-<p>Next, we&#8217;ll focus on &#8220;combinations&#8221; that are branches.
-<code>if</code> will be taken as an example.</p>
-<h4><code>if</code></h4>
-<p>I feel like <code>if</code> is always used as an example, that&#8217;s because its structure is
-simple and there&#8217;s not any reader who don&#8217;t know about <code>if</code>, so it is convenient
-for writers.</p>
-<p>Anyway, this is an example of <code>if</code>.
-For example, let&#8217;s convert this code to a syntax tree.</p>
-<p class="caption">▼The Source Program</p>
+</code></pre>
 
-<pre class="longlist">
-if true
+<p>Array. I can’t say this is a leaf, but let’s allow this to be here because it’s
+also a literal. It seems like a list of <code class="highlighter-rouge">NODE_ARRAY</code> hung with each element node.
+The reason why only in this case I didn’t use <code class="highlighter-rouge">nodedump-short</code> is …
+you will understand after finishing to read this section.</p>
+
+<h3 id="branch">Branch</h3>
+
+<p>Next, we’ll focus on “combinations” that are branches.
+<code class="highlighter-rouge">if</code> will be taken as an example.</p>
+
+<h4 id="if"><code class="highlighter-rouge">if</code></h4>
+
+<p>I feel like <code class="highlighter-rouge">if</code> is always used as an example, that’s because its structure is
+simple and there’s not any reader who don’t know about <code class="highlighter-rouge">if</code>, so it is convenient
+for writers.</p>
+
+<p>Anyway, this is an example of <code class="highlighter-rouge">if</code>.
+For example, let’s convert this code to a syntax tree.</p>
+
+<p class="caption">
+▼The Source Program
+
+</p>
+<pre><code class="language-longlist">if true
   'true expr'
 else
   'false expr'
 end
-</pre>
-<p class="caption">▼Its syntax tree expression</p>
+</code></pre>
 
-<pre class="longlist">
-NODE_IF
+<p class="caption">
+▼Its syntax tree expression
+
+</p>
+<pre><code class="language-longlist">NODE_IF
 nd_cond:
     NODE_TRUE
 nd_body:
@@ -443,15 +524,19 @@ nd_body:
 nd_else:
     NODE_STR
     nd_lit = "false expr":String
-</pre>
-<p>Here, the previously described <code>nodedump-short</code> is used, so <code>NODE_NEWLINE</code>
-disappeared. <code>nd_cond</code> is the condition, <code>nd_body</code> is the body of the true case,
-<code>nd_else</code> is the body of the false case.</p>
-<p>Then, let&#8217;s look at the code to build this.</p>
-<p class="caption">▼ <code>if</code>  rule</p>
+</code></pre>
 
-<pre class="longlist">
-1373                  | kIF expr_value then
+<p>Here, the previously described <code class="highlighter-rouge">nodedump-short</code> is used, so <code class="highlighter-rouge">NODE_NEWLINE</code>
+disappeared. <code class="highlighter-rouge">nd_cond</code> is the condition, <code class="highlighter-rouge">nd_body</code> is the body of the true case,
+<code class="highlighter-rouge">nd_else</code> is the body of the false case.</p>
+
+<p>Then, let’s look at the code to build this.</p>
+
+<p class="caption">
+▼ `if` rule
+
+</p>
+<pre><code class="language-longlist">1373                  | kIF expr_value then
 1374                    compstmt
 1375                    if_tail
 1376                    kEND
@@ -461,50 +546,63 @@ disappeared. <code>nd_cond</code> is the condition, <code>nd_body</code> is the 
 1380                      }
 
 (parse.y)
-</pre>
-<p>It seems that <code>NEW_IF()</code> is the macro to create <code>NODE_IF</code>. Among the values of
-the symbols, <code>$2 $4 $5</code> are used, thus the correspondences between the symbols
-of the rule and <code>$n</code> are:</p>
-<pre class="emlist">
-kIF    expr_value  then  compstmt  if_tail  kEND
+</code></pre>
+
+<p>It seems that <code class="highlighter-rouge">NEW_IF()</code> is the macro to create <code class="highlighter-rouge">NODE_IF</code>. Among the values of
+the symbols, <code class="highlighter-rouge">$2 $4 $5</code> are used, thus the correspondences between the symbols
+of the rule and <code class="highlighter-rouge">$n</code> are:</p>
+
+<pre><code class="language-emlist">kIF    expr_value  then  compstmt  if_tail  kEND
  $1          $2      $3        $4       $5    $6
 NEW_IF(expr_value,       compstmt, if_tail)
-</pre>
-<p>this way. In other words, <code>expr_value</code> is the condition expression, <code>compstmt</code>
-(<code>$4</code>) is the case of true, <code>if_tail</code> is the case of false.</p>
-<p>On the other hand, the macros to create nodes are all named <code>NEW_xxxx</code>, and they
-are defined <code>node.h</code>. Let&#8217;s look at <code>NEW_IF()</code>.</p>
-<p class="caption">▼ <code>NEW_IF()</code> </p>
+</code></pre>
 
-<pre class="longlist">
- 243  #define NEW_IF(c,t,e) rb_node_newnode(NODE_IF,c,t,e)
+<p>this way. In other words, <code class="highlighter-rouge">expr_value</code> is the condition expression, <code class="highlighter-rouge">compstmt</code>
+(<code class="highlighter-rouge">$4</code>) is the case of true, <code class="highlighter-rouge">if_tail</code> is the case of false.</p>
+
+<p>On the other hand, the macros to create nodes are all named <code class="highlighter-rouge">NEW_xxxx</code>, and they
+are defined <code class="highlighter-rouge">node.h</code>. Let’s look at <code class="highlighter-rouge">NEW_IF()</code>.</p>
+
+<p class="caption">
+▼ `NEW_IF()`
+
+</p>
+<pre><code class="language-longlist"> 243  #define NEW_IF(c,t,e) rb_node_newnode(NODE_IF,c,t,e)
 
 (node.h)
-</pre>
-<p>As for the parameters,
-it seems that <code>c</code> represents condition, <code>t</code> represents then, and <code>e</code> represents
-else respectively. As described at the previous section, the order of
-members of a node is not so meaningful, so you don&#8217;t need to be careful about
-parameter names in this kind of place.</p>
-<p>And, the <code>code()</code> which processes the node of the condition expression in the
-action is a semantic analysis function. This will be described later.</p>
-<p>Additionally, <code>fixpos()</code> corrects the line number. <code>NODE</code> is initialized with
-the file name and the line number of the time when it is &#8220;created&#8221;. However,
-for instance, the code of <code>if</code> should already be parsed by <code>end</code> by the time
-when creating <code>NODE_IF</code>. Thus, the line number would go wrong if it remains
-untouched. Therefore, it needs to be corrected by <code>fixpos()</code>.</p>
-<pre class="emlist">
-fixpos(dest, src)
-</pre>
-<p>This way, the line number of the node <code>dest</code> is set to the one of the node <code>src</code>.
-As for <code>if</code>, the line number of the condition expression becomes the line number
-of the whole <code>if</code> expression.</p>
-<h4><code>elsif</code></h4>
-<p>Subsequently, let&#8217;s look at the rule of <code>if_tail</code>.</p>
-<p class="caption">▼ <code>if_tail</code> </p>
+</code></pre>
 
-<pre class="longlist">
-1543  if_tail         : opt_else
+<p>As for the parameters,
+it seems that <code class="highlighter-rouge">c</code> represents condition, <code class="highlighter-rouge">t</code> represents then, and <code class="highlighter-rouge">e</code> represents
+else respectively. As described at the previous section, the order of
+members of a node is not so meaningful, so you don’t need to be careful about
+parameter names in this kind of place.</p>
+
+<p>And, the <code class="highlighter-rouge">code()</code> which processes the node of the condition expression in the
+action is a semantic analysis function. This will be described later.</p>
+
+<p>Additionally, <code class="highlighter-rouge">fixpos()</code> corrects the line number. <code class="highlighter-rouge">NODE</code> is initialized with
+the file name and the line number of the time when it is “created”. However,
+for instance, the code of <code class="highlighter-rouge">if</code> should already be parsed by <code class="highlighter-rouge">end</code> by the time
+when creating <code class="highlighter-rouge">NODE_IF</code>. Thus, the line number would go wrong if it remains
+untouched. Therefore, it needs to be corrected by <code class="highlighter-rouge">fixpos()</code>.</p>
+
+<pre><code class="language-emlist">fixpos(dest, src)
+</code></pre>
+
+<p>This way, the line number of the node <code class="highlighter-rouge">dest</code> is set to the one of the node <code class="highlighter-rouge">src</code>.
+As for <code class="highlighter-rouge">if</code>, the line number of the condition expression becomes the line number
+of the whole <code class="highlighter-rouge">if</code> expression.</p>
+
+<h4 id="elsif"><code class="highlighter-rouge">elsif</code></h4>
+
+<p>Subsequently, let’s look at the rule of <code class="highlighter-rouge">if_tail</code>.</p>
+
+<p class="caption">
+▼ `if_tail`
+
+</p>
+<pre><code class="language-longlist">1543  if_tail         : opt_else
 1544                  | kELSIF expr_value then
 1545                    compstmt
 1546                    if_tail
@@ -520,22 +618,24 @@ of the whole <code>if</code> expression.</p>
 1557                      }
 
 (parse.y)
-</pre>
-<p>First, this rule expresses &#8220;a list ends with <code>opt_else</code> after zero or more
-number of <code>elsif</code> clauses&#8221;. That&#8217;s because, <code>if_tail</code> appears again and again
-while <code>elsif</code> continues, it disappears when <code>opt_else</code> comes in. We can
+</code></pre>
+
+<p>First, this rule expresses “a list ends with <code class="highlighter-rouge">opt_else</code> after zero or more
+number of <code class="highlighter-rouge">elsif</code> clauses”. That’s because, <code class="highlighter-rouge">if_tail</code> appears again and again
+while <code class="highlighter-rouge">elsif</code> continues, it disappears when <code class="highlighter-rouge">opt_else</code> comes in. We can
 understand this by extracting arbitrary times.</p>
-<pre class="emlist">
-if_tail: kELSIF .... if_tail
+
+<pre><code class="language-emlist">if_tail: kELSIF .... if_tail
 if_tail: kELSIF .... kELSIF .... if_tail
 if_tail: kELSIF .... kELSIF .... kELSIF .... if_tail
 if_tail: kELSIF .... kELSIF .... kELSIF .... opt_else
 if_tail: kELSIF .... kELSIF .... kELSIF .... kELSE compstmt
-</pre>
-<p>Next, let&#8217;s focus on the actions, surprisingly, <code>elsif</code> uses the same <code>NEW_IF()</code> as <code>if</code>.
+</code></pre>
+
+<p>Next, let’s focus on the actions, surprisingly, <code class="highlighter-rouge">elsif</code> uses the same <code class="highlighter-rouge">NEW_IF()</code> as <code class="highlighter-rouge">if</code>.
 It means, the below two programs will lose the difference after they become syntax trees.</p>
-<pre class="emlist">
-if cond1                  if cond1
+
+<pre><code class="language-emlist">if cond1                  if cond1
   body1                     body1
 elsif cond2               else
   body2                     if cond2
@@ -548,125 +648,153 @@ end                           else
                               end
                             end
                           end
-</pre>
-<p>Come to think of it, in C language and such, there&#8217;s no distinction between
+</code></pre>
+
+<p>Come to think of it, in C language and such, there’s no distinction between
 the two also at the syntax level. Thus this might be a matter of course.
-Alternatively, the conditional operator (<code>a?b:c</code>) becomes indistinguishable
-from <code>if</code> statement after they become syntax trees.</p>
+Alternatively, the conditional operator (<code class="highlighter-rouge">a?b:c</code>) becomes indistinguishable
+from <code class="highlighter-rouge">if</code> statement after they become syntax trees.</p>
+
 <p>The precedences was very meaningful when it was in the context of grammar,
 but they become unnecessary any more because the structure of a syntax tree
-contains that information. And, the difference in appearance such as <code>if</code> and
+contains that information. And, the difference in appearance such as <code class="highlighter-rouge">if</code> and
 the conditional operator become completely meaningless,
 its meaning (its behavior) only matters.
-Therefore, there&#8217;s perfectly no problem if <code>if</code> and the conditional operator
+Therefore, there’s perfectly no problem if <code class="highlighter-rouge">if</code> and the conditional operator
 are the same in its syntax tree expression.</p>
-<p>I&#8217;ll introduce a few more examples. <code>add</code> and <code>&amp;&amp;</code> become the same.
-<code>or</code> and <code>||</code> are also equal to each other. <code>not</code> and <code>!</code>, <code>if</code> and modifier <code>if</code>,
+
+<p>I’ll introduce a few more examples. <code class="highlighter-rouge">add</code> and <code class="highlighter-rouge">&amp;&amp;</code> become the same.
+<code class="highlighter-rouge">or</code> and <code class="highlighter-rouge">||</code> are also equal to each other. <code class="highlighter-rouge">not</code> and <code class="highlighter-rouge">!</code>, <code class="highlighter-rouge">if</code> and modifier <code class="highlighter-rouge">if</code>,
 and so on. These pairs also become equal to each other.</p>
-<h4>Left Recursive and Right Recursive</h4>
+
+<h4 id="left-recursive-and-right-recursive">Left Recursive and Right Recursive</h4>
+
 <p>By the way, the symbol of a list was always written at the left side when expressing a list
-in Chapter 9: yacc crash course. However, have you noticed it becomes opposite in <code>if_tail</code> ?
-I&#8217;ll show only the crucial part again.</p>
-<pre class="emlist">
-if_tail: opt_else
+in Chapter 9: yacc crash course. However, have you noticed it becomes opposite in <code class="highlighter-rouge">if_tail</code> ?
+I’ll show only the crucial part again.</p>
+
+<pre><code class="language-emlist">if_tail: opt_else
        | kELSIF ... if_tail
-</pre>
-<p>Surely, it is opposite of the previous examples. <code>if_tail</code> which is the symbol
+</code></pre>
+
+<p>Surely, it is opposite of the previous examples. <code class="highlighter-rouge">if_tail</code> which is the symbol
 of a list is at the right side.</p>
-<p>In fact, there&#8217;s another established way of expressing lists,</p>
-<pre class="emlist">
-list: END_ITEM
+
+<p>In fact, there’s another established way of expressing lists,</p>
+
+<pre><code class="language-emlist">list: END_ITEM
     | ITEM list
-</pre>
+</code></pre>
+
 <p>when you write in this way, it becomes the list that contains continuous zero
-or more number of <code>ITEM</code> and ends with <code>END_ITEM</code>.</p>
+or more number of <code class="highlighter-rouge">ITEM</code> and ends with <code class="highlighter-rouge">END_ITEM</code>.</p>
+
 <p>As an expression of a list, whichever is used it does not create a so much difference,
 but the way that the actions are executed is fatally different.
-With the form that <code>list</code> is written at the right, the actions are sequentially
-executed from the last <code>ITEM</code>. We&#8217;ve already learned about the behavior of the
-stack of when <code>list</code> is at the left,
-so let&#8217;s try the case that <code>list</code> is at the right.
-The input is 4 <code>ITEM</code> s and <code>END_ITEM</code>.</p>
-<table>
-	<tr>
-		<td> </td>
-		<td> empty at first </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM</code> </td>
-		<td> shift <code>ITEM</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM</code> </td>
-		<td> shift <code>ITEM</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM ITEM</code> </td>
-		<td> shift <code>ITEM</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM ITEM ITEM</code> </td>
-		<td> shift <code>ITEM</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM ITEM ITEM END_ITEM</code> </td>
-		<td> shift <code>END_ITEM</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM ITEM ITEM list</code> </td>
-		<td> reduce <code>END_ITEM</code> to <code>list</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM ITEM list</code> </td>
-		<td> reduce <code>ITEM list</code> to <code>list</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM ITEM list</code> </td>
-		<td> reduce <code>ITEM list</code> to <code>list</code> </td>
-	</tr>
-	<tr>
-		<td> <code>ITEM list</code> </td>
-		<td> reduce <code>ITEM list</code> to <code>list</code> </td>
-	</tr>
-	<tr>
-		<td> <code>list</code> </td>
-		<td> reduce <code>ITEM list</code> to <code>list</code> </td>
-	</tr>
-	<tr>
-		<td> </td>
-		<td> accept. </td>
-	</tr>
-</table>
-<p>When <code>list</code> was at the left, shifts and reductions were done in turns.
-This time, as you see, there are continuous shifts and continuous reductions.</p>
-<p>The reason why <code>if_tail</code> places &#8220;<code>list</code> at the right&#8221; is to create a syntax tree
-from the bottom up. When creating from the bottom up, the node of <code>if</code> will be
-left in hand in the end. But if defining <code>if_tail</code> by placing &#8220;<code>list</code> at the left&#8221;,
-in order to eventually leave the node of <code>if</code> in hand, it needs to traverse all
-links of the <code>elsif</code> and every time <code>elsif</code>
-is found add it to the end. This is cumbersome. And, slow.
-Thus, <code>if_tail</code> is constructed in the &#8220;<code>list</code> at the right&#8221; manner.</p>
-<p>Finally, the meaning of the headline is, in grammar terms,
-&#8220;the left is <code>list</code>&#8221; is called left-recursive,
-&#8220;the right is <code>list</code>&#8221; is called right-recursive.
-These terms are used mainly when reading papers about processing grammars or
-writing a book of <code>yacc</code>.</p>
-<h3>Trunk</h3>
-<p>Leaf, branch, and finally, it&#8217;s trunk.
-Let&#8217;s look at how the list of statements are joined.</p>
-<p class="caption">▼The Source Program</p>
+With the form that <code class="highlighter-rouge">list</code> is written at the right, the actions are sequentially
+executed from the last <code class="highlighter-rouge">ITEM</code>. We’ve already learned about the behavior of the
+stack of when <code class="highlighter-rouge">list</code> is at the left,
+so let’s try the case that <code class="highlighter-rouge">list</code> is at the right.
+The input is 4 <code class="highlighter-rouge">ITEM</code> s and <code class="highlighter-rouge">END_ITEM</code>.</p>
 
-<pre class="longlist">
-7
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td> </td>
+      <td>empty at first</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM</code></td>
+      <td>shift <code class="highlighter-rouge">ITEM</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM</code></td>
+      <td>shift <code class="highlighter-rouge">ITEM</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM ITEM</code></td>
+      <td>shift <code class="highlighter-rouge">ITEM</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM ITEM ITEM</code></td>
+      <td>shift <code class="highlighter-rouge">ITEM</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM ITEM ITEM END_ITEM</code></td>
+      <td>shift <code class="highlighter-rouge">END_ITEM</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM ITEM ITEM list</code></td>
+      <td>reduce <code class="highlighter-rouge">END_ITEM</code> to <code class="highlighter-rouge">list</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM ITEM list</code></td>
+      <td>reduce <code class="highlighter-rouge">ITEM list</code> to <code class="highlighter-rouge">list</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM ITEM list</code></td>
+      <td>reduce <code class="highlighter-rouge">ITEM list</code> to <code class="highlighter-rouge">list</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">ITEM list</code></td>
+      <td>reduce <code class="highlighter-rouge">ITEM list</code> to <code class="highlighter-rouge">list</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">list</code></td>
+      <td>reduce <code class="highlighter-rouge">ITEM list</code> to <code class="highlighter-rouge">list</code></td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>accept.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>When <code class="highlighter-rouge">list</code> was at the left, shifts and reductions were done in turns.
+This time, as you see, there are continuous shifts and continuous reductions.</p>
+
+<p>The reason why <code class="highlighter-rouge">if_tail</code> places “<code class="highlighter-rouge">list</code> at the right” is to create a syntax tree
+from the bottom up. When creating from the bottom up, the node of <code class="highlighter-rouge">if</code> will be
+left in hand in the end. But if defining <code class="highlighter-rouge">if_tail</code> by placing “<code class="highlighter-rouge">list</code> at the left”,
+in order to eventually leave the node of <code class="highlighter-rouge">if</code> in hand, it needs to traverse all
+links of the <code class="highlighter-rouge">elsif</code> and every time <code class="highlighter-rouge">elsif</code>
+is found add it to the end. This is cumbersome. And, slow.
+Thus, <code class="highlighter-rouge">if_tail</code> is constructed in the “<code class="highlighter-rouge">list</code> at the right” manner.</p>
+
+<p>Finally, the meaning of the headline is, in grammar terms,
+“the left is <code class="highlighter-rouge">list</code>” is called left-recursive,
+“the right is <code class="highlighter-rouge">list</code>” is called right-recursive.
+These terms are used mainly when reading papers about processing grammars or
+writing a book of <code class="highlighter-rouge">yacc</code>.</p>
+
+<h3 id="trunk">Trunk</h3>
+
+<p>Leaf, branch, and finally, it’s trunk.
+Let’s look at how the list of statements are joined.</p>
+
+<p class="caption">
+▼The Source Program
+
+</p>
+<pre><code class="language-longlist">7
 8
 9
-</pre>
-<p>The dump of the corresponding syntax tree is shown below.
-This is not <code>nodedump-short</code> but in the perfect form.</p>
-<p class="caption">▼Its Syntax Tree</p>
+</code></pre>
 
-<pre class="longlist">
-NODE_BLOCK
+<p>The dump of the corresponding syntax tree is shown below.
+This is not <code class="highlighter-rouge">nodedump-short</code> but in the perfect form.</p>
+
+<p class="caption">
+▼Its Syntax Tree
+
+</p>
+<pre><code class="language-longlist">NODE_BLOCK
 nd_head:
     NODE_NEWLINE
     nd_file = "multistmt"
@@ -693,20 +821,25 @@ nd_next:
                 NODE_LIT
                 nd_lit = 9:Fixnum
         nd_next = (null)
-</pre>
-<p>We can see the list of <code>NODE_BLOCK</code> is created and <code>NODE_NEWLINE</code> are attached
-as headers. (Fig.5)</p>
-<p class="image">
-<p><img src="images/ch_syntree_blocklist.jpg" alt="(blocklist)"><br>
-Fig.5: <code>NODE_BLOCK</code> and <code>NODE_NEWLINE</code></p>
-</p>
-<p>It means, for each statement (<code>stmt</code>) <code>NODE_NEWLINE</code> is attached,
-and when they are multiple, it will be a list of <code>NODE_BLOCK</code>.
-Let&#8217;s also see the code.</p>
-<p class="caption">▼ <code>stmts</code> </p>
+</code></pre>
 
-<pre class="longlist">
- 354  stmts           : none
+<p>We can see the list of <code class="highlighter-rouge">NODE_BLOCK</code> is created and <code class="highlighter-rouge">NODE_NEWLINE</code> are attached
+as headers. (Fig.5)</p>
+
+<p class="image">
+<img src="images/ch_syntree_blocklist.jpg" alt="(blocklist)" /><br />
+Fig.5: `NODE_BLOCK` and `NODE_NEWLINE`
+
+</p>
+<p>It means, for each statement (<code class="highlighter-rouge">stmt</code>) <code class="highlighter-rouge">NODE_NEWLINE</code> is attached,
+and when they are multiple, it will be a list of <code class="highlighter-rouge">NODE_BLOCK</code>.
+Let’s also see the code.</p>
+
+<p class="caption">
+▼ `stmts`
+
+</p>
+<pre><code class="language-longlist"> 354  stmts           : none
  355                  | stmt
  356                      {
  357                          $$ = newline_node($1);
@@ -717,17 +850,22 @@ Let&#8217;s also see the code.</p>
  362                      }
 
 (parse.y)
-</pre>
-<p><code>newline_node()</code> caps <code>NODE_NEWLINE</code>, <code>block_append()</code> appends it to the list.
-It&#8217;s straightforward.
-Let&#8217;s look at the content only of the <code>block_append()</code>.</p>
-<h4><code>block_append()</code></h4>
-<p>It this function, the error checks are in the very middle and obstructive.
-Thus I&#8217;ll show the code without that part.</p>
-<p class="caption">▼ <code>block_append()</code>  (omitted)</p>
+</code></pre>
 
-<pre class="longlist">
-4285  static NODE*
+<p><code class="highlighter-rouge">newline_node()</code> caps <code class="highlighter-rouge">NODE_NEWLINE</code>, <code class="highlighter-rouge">block_append()</code> appends it to the list.
+It’s straightforward.
+Let’s look at the content only of the <code class="highlighter-rouge">block_append()</code>.</p>
+
+<h4 id="blockappend"><code class="highlighter-rouge">block_append()</code></h4>
+
+<p>It this function, the error checks are in the very middle and obstructive.
+Thus I’ll show the code without that part.</p>
+
+<p class="caption">
+▼ `block_append()` (omitted)
+
+</p>
+<pre><code class="language-longlist">4285  static NODE*
 4286  block_append(head, tail)
 4287      NODE *head, *tail;
 4288  {
@@ -758,160 +896,197 @@ Thus I&#8217;ll show the code without that part.</p>
 4332  }
 
 (parse.y)
-</pre>
-<p>According to the previous syntax tree dump, <code>NEW_BLOCK</code> was a linked list uses <code>nd_next</code>.
-Being aware of it while reading, it can be read &#8220;if either <code>head</code> or <code>tail</code> is not <code>NODE_BLOCK</code>,
-wrap it with <code>NODE_BLOCK</code> and join the lists each other.&#8221;</p>
-<p>Additionally, on (A-1~3), the <code>nd_end</code> of the <code>NODE_BLOCK</code> of the head of the
-list always points to the <code>NODE_BLOCK</code> of the tail of the list. This is probably
-because in this way we don&#8217;t have to traverse all elements when adding an
+</code></pre>
+
+<p>According to the previous syntax tree dump, <code class="highlighter-rouge">NEW_BLOCK</code> was a linked list uses <code class="highlighter-rouge">nd_next</code>.
+Being aware of it while reading, it can be read “if either <code class="highlighter-rouge">head</code> or <code class="highlighter-rouge">tail</code> is not <code class="highlighter-rouge">NODE_BLOCK</code>,
+wrap it with <code class="highlighter-rouge">NODE_BLOCK</code> and join the lists each other.”</p>
+
+<p>Additionally, on (A-1~3), the <code class="highlighter-rouge">nd_end</code> of the <code class="highlighter-rouge">NODE_BLOCK</code> of the head of the
+list always points to the <code class="highlighter-rouge">NODE_BLOCK</code> of the tail of the list. This is probably
+because in this way we don’t have to traverse all elements when adding an
 element to the tail (Fig.6).
-Conversely speaking, when you need to add elements later, <code>NODE_BLOCK</code> is suitable.</p>
+Conversely speaking, when you need to add elements later, <code class="highlighter-rouge">NODE_BLOCK</code> is suitable.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_append.jpg" alt="(append)"><br>
-Fig.6: Appending is easy.</p>
+<img src="images/ch_syntree_append.jpg" alt="(append)" /><br />
+Fig.6: Appending is easy.
+
 </p>
-<h3>The two types of lists</h3>
-<p>Now, I&#8217;ve explained the outline so far.
+<p>### The two types of lists</p>
+
+<p>Now, I’ve explained the outline so far.
 Because the structure of syntax tree will also appear in Part 3 in large amounts,
-we won&#8217;t go further as long as we are in Part 2.
-But before ending, there&#8217;s one more thing I&#8217;d like to talk about.
+we won’t go further as long as we are in Part 2.
+But before ending, there’s one more thing I’d like to talk about.
 It is about the two general-purpose lists.</p>
-<p>The two general-purpose lists mean <code>BLOCK</code> and <code>LIST</code>.
-<code>BLOCK</code> is, as previously described, a linked list of <code>NODE_BLOCK</code> to join the statements.
-<code>LIST</code> is, although it is called <code>LIST</code>, a list of <code>NODE_ARRAY</code>.
+
+<p>The two general-purpose lists mean <code class="highlighter-rouge">BLOCK</code> and <code class="highlighter-rouge">LIST</code>.
+<code class="highlighter-rouge">BLOCK</code> is, as previously described, a linked list of <code class="highlighter-rouge">NODE_BLOCK</code> to join the statements.
+<code class="highlighter-rouge">LIST</code> is, although it is called <code class="highlighter-rouge">LIST</code>, a list of <code class="highlighter-rouge">NODE_ARRAY</code>.
 This is what is used for array literals.
-<code>LIST</code> is used to store the arguments of a method or the list of multiple assignments.</p>
+<code class="highlighter-rouge">LIST</code> is used to store the arguments of a method or the list of multiple assignments.</p>
+
 <p>As for the difference between the two lists,
 looking at the usage of the nodes is helpful to understand.</p>
+
 <table>
-	<tr>
-		<td> <code>NODE_BLOCK</code> </td>
-		<td> <code>nd_head</code> </td>
-		<td> holding an element </td>
-	</tr>
-	<tr>
-		<td>              </td>
-		<td> <code>nd_end</code>  </td>
-		<td> pointing to the <code>NODE_BLOCK</code> of the end of the list </td>
-	</tr>
-	<tr>
-		<td>              </td>
-		<td> <code>nd_next</code> </td>
-		<td> pointing to the next <code>NODE_BLOCK</code> </td>
-	</tr>
-	<tr>
-		<td> <code>NODE_ARRAY</code> </td>
-		<td> <code>nd_head</code> </td>
-		<td> holding an element </td>
-	</tr>
-	<tr>
-		<td>              </td>
-		<td> <code>nd_alen</code> </td>
-		<td> the length of the list that follows this node </td>
-	</tr>
-	<tr>
-		<td>              </td>
-		<td> <code>nd_next</code> </td>
-		<td> pointing to the next <code>NODE_ARRAY</code> </td>
-	</tr>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="highlighter-rouge">NODE_BLOCK</code></td>
+      <td><code class="highlighter-rouge">nd_head</code></td>
+      <td>holding an element</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><code class="highlighter-rouge">nd_end</code></td>
+      <td>pointing to the <code class="highlighter-rouge">NODE_BLOCK</code> of the end of the list</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><code class="highlighter-rouge">nd_next</code></td>
+      <td>pointing to the next <code class="highlighter-rouge">NODE_BLOCK</code></td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">NODE_ARRAY</code></td>
+      <td><code class="highlighter-rouge">nd_head</code></td>
+      <td>holding an element</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><code class="highlighter-rouge">nd_alen</code></td>
+      <td>the length of the list that follows this node</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><code class="highlighter-rouge">nd_next</code></td>
+      <td>pointing to the next <code class="highlighter-rouge">NODE_ARRAY</code></td>
+    </tr>
+  </tbody>
 </table>
-<p>The usage differs only in the second elements that are <code>nd_end</code> and <code>nd_alen</code>.
+
+<p>The usage differs only in the second elements that are <code class="highlighter-rouge">nd_end</code> and <code class="highlighter-rouge">nd_alen</code>.
 And this is exactly the significance of the existence of each type of the two nodes.
-Since its size can be stored in <code>NODE_ARRAY</code>, we use an <code>ARRAY</code> list
+Since its size can be stored in <code class="highlighter-rouge">NODE_ARRAY</code>, we use an <code class="highlighter-rouge">ARRAY</code> list
 when the size of the list will frequently be required.
-Otherwise, we use a <code>BLOCK</code> list that is very fast to join.
-I don&#8217;t describe this topic in details because the codes that use them is
+Otherwise, we use a <code class="highlighter-rouge">BLOCK</code> list that is very fast to join.
+I don’t describe this topic in details because the codes that use them is
 necessary to understand the significance but not shown here,
 but when the codes appear in Part 3,
-I&#8217;d like you to recall this and think &#8220;Oh, this uses the length&#8221;.</p>
-<h2>Semantic Analysis</h2>
+I’d like you to recall this and think “Oh, this uses the length”.</p>
+
+<h2 id="semantic-analysis">Semantic Analysis</h2>
+
 <p>As I briefly mentioned at the beginning of Part 2, there are two types of analysis
 that are appearance analysis and semantic analysis.
-The appearance analysis is mostly done by <code>yacc</code>, the rest is doing the semantic
+The appearance analysis is mostly done by <code class="highlighter-rouge">yacc</code>, the rest is doing the semantic
 analysis inside actions.</p>
-<h3>Errors inside actions</h3>
+
+<h3 id="errors-inside-actions">Errors inside actions</h3>
+
 <p>What does the semantic analysis precisely mean?
 For example, there are type checks in a language that has types.
 Alternatively, check if variables with the same name are not defined multiple times,
 and check if variables are not used before their definitions,
 and check if the procedure being used is defined,
-and check if <code>return</code> is not used outside of procedures, and so on.
+and check if <code class="highlighter-rouge">return</code> is not used outside of procedures, and so on.
 These are part of the semantic analysis.</p>
-<p>What kind of semantic analysis is done in the current <code>ruby</code> ?
-Since the error checks occupies almost all of semantic analysis in <code>ruby</code>,
+
+<p>What kind of semantic analysis is done in the current <code class="highlighter-rouge">ruby</code> ?
+Since the error checks occupies almost all of semantic analysis in <code class="highlighter-rouge">ruby</code>,
 searching the places where generating errors seems a good way.
-In a parser of <code>yacc</code>, <code>yyerror()</code> is supposed to be called when an error occurs.
-Conversely speaking, there&#8217;s an error where <code>yyerror()</code> exists.
-So, I made a list of the places where calling <code>yyerror()</code> inside the actions.</p>
+In a parser of <code class="highlighter-rouge">yacc</code>, <code class="highlighter-rouge">yyerror()</code> is supposed to be called when an error occurs.
+Conversely speaking, there’s an error where <code class="highlighter-rouge">yyerror()</code> exists.
+So, I made a list of the places where calling <code class="highlighter-rouge">yyerror()</code> inside the actions.</p>
+
 <ul>
-	<li>an expression not having its value (void value expression) at a place where a value is required</li>
-	<li>an <code>alias</code> of <code>$n</code></li>
-	<li><code>BEGIN</code> inside of a method</li>
-	<li><code>END</code> inside of a method</li>
-	<li><code>return</code> outside of methods</li>
-	<li>a local variable at a place where constant is required</li>
-	<li>a <code>class</code> statement inside of a method</li>
-	<li>an invalid parameter variable (<code>$gvar</code> and <code>CONST</code> and such)</li>
-	<li>parameters with the same name appear twice</li>
-	<li>an invalid receiver of a singleton method (<code>def ().method</code> and such)</li>
-	<li>a singleton method definition on literals</li>
-	<li>an odd number of a list for hash literals</li>
-	<li>an assignment to <code>self/nil/true/false/__FILE__/__LINE__</code></li>
-	<li>a constant assignment inside of a method</li>
-	<li>a multiple assignment inside of a conditional expression</li>
+  <li>an expression not having its value (void value expression) at a place where a value is required</li>
+  <li>an <code class="highlighter-rouge">alias</code> of <code class="highlighter-rouge">$n</code></li>
+  <li><code class="highlighter-rouge">BEGIN</code> inside of a method</li>
+  <li><code class="highlighter-rouge">END</code> inside of a method</li>
+  <li><code class="highlighter-rouge">return</code> outside of methods</li>
+  <li>a local variable at a place where constant is required</li>
+  <li>a <code class="highlighter-rouge">class</code> statement inside of a method</li>
+  <li>an invalid parameter variable (<code class="highlighter-rouge">$gvar</code> and <code class="highlighter-rouge">CONST</code> and such)</li>
+  <li>parameters with the same name appear twice</li>
+  <li>an invalid receiver of a singleton method (<code class="highlighter-rouge">def ().method</code> and such)</li>
+  <li>a singleton method definition on literals</li>
+  <li>an odd number of a list for hash literals</li>
+  <li>an assignment to <code class="highlighter-rouge">self/nil/true/false/__FILE__/__LINE__</code></li>
+  <li>a constant assignment inside of a method</li>
+  <li>a multiple assignment inside of a conditional expression</li>
 </ul>
+
 <p>These checks can roughly be categorized by each purpose as follows:</p>
+
 <ul>
-	<li>for the better error message</li>
-	<li>in order not to make the rule too complex</li>
-	<li>the others (pure semantic analysis)</li>
+  <li>for the better error message</li>
+  <li>in order not to make the rule too complex</li>
+  <li>the others (pure semantic analysis)</li>
 </ul>
-<p>For example, &#8220;<code>return</code> outside of a method&#8221; is a check in order not to make the
+
+<p>For example, “<code class="highlighter-rouge">return</code> outside of a method” is a check in order not to make the
 rule too complex. Since this error is a problem of the structure, it can be
 dealt with by grammar.
-For example, it&#8217;s possible by defining the rules separately for both inside and
+For example, it’s possible by defining the rules separately for both inside and
 outside of methods and making the list of all what are allowed and what are not
 allowed respectively. But this is in any way cumbersome and rejecting it in an
 action is far more concise.</p>
-<p>And, &#8220;an assignment to <code>self</code>&#8221; seems a check for the better error message.
-In comparison to &#8220;<code>return</code> outside of methods&#8221;, rejecting it by grammar is much easier,
-but if it is rejected by the parser, the output would be just <code>"parse error"</code>.
+
+<p>And, “an assignment to <code class="highlighter-rouge">self</code>” seems a check for the better error message.
+In comparison to “<code class="highlighter-rouge">return</code> outside of methods”, rejecting it by grammar is much easier,
+but if it is rejected by the parser, the output would be just <code class="highlighter-rouge">"parse error"</code>.
 Comparing to it, the current</p>
-<pre class="screen">
-% ruby -e 'self = 1'
+
+<pre><code class="language-screen">% ruby -e 'self = 1'
 -e:1: Can't change the value of self
 self = 1
       ^
-</pre>
+</code></pre>
+
 <p>this error is much more friendly.</p>
-<p>Of course, we can not always say that an arbitrary rule is exactly &#8220;for this purpose&#8221;.
-For example, as for &#8220;<code>return</code> outside of methods&#8221;,
-this can also be considered that this is a check &#8220;for the better error message&#8221;.
+
+<p>Of course, we can not always say that an arbitrary rule is exactly “for this purpose”.
+For example, as for “<code class="highlighter-rouge">return</code> outside of methods”,
+this can also be considered that this is a check “for the better error message”.
 The purposes are overlapping each other.</p>
-<p>Now, the problem is &#8220;a pure semantic analysis&#8221;,
+
+<p>Now, the problem is “a pure semantic analysis”,
 in Ruby there are few things belong to this category.
 In the case of a typed language, the type analysis is a big event, but
 because variables are not typed in Ruby, it is meaningless.
 What is standing out instead is the cheek of an expression that has its value.</p>
-<p>To put &#8220;having its value&#8221; precisely,
-it is &#8220;you can obtain a value as a result of evaluating it&#8221;.
-<code>return</code> and <code>break</code> do not have values by themselves. Of course, a value is
-passed to the place where <code>return</code> to, but not any values are left at the place
-where <code>return</code> is written.
-Therefore, for example, the next expression is odd,</p>
-<pre class="emlist">
-i = return(1)
-</pre>
-<p>Since this kind of expressions are clearly due to misunderstanding or simple mistakes,
-it&#8217;s better to reject when compiling.
-Next, we&#8217;ll look at <code>value_expr</code> which is one of the functions to check if it takes a value.</p>
-<h3><code>value_expr()</code></h3>
-<p><code>value_expr()</code> is the function to check if it is an <code>expr</code> that has a value.</p>
-<p class="caption">▼ <code>value_expr()</code> </p>
 
-<pre class="longlist">
-4754  static int
+<p>To put “having its value” precisely,
+it is “you can obtain a value as a result of evaluating it”.
+<code class="highlighter-rouge">return</code> and <code class="highlighter-rouge">break</code> do not have values by themselves. Of course, a value is
+passed to the place where <code class="highlighter-rouge">return</code> to, but not any values are left at the place
+where <code class="highlighter-rouge">return</code> is written.
+Therefore, for example, the next expression is odd,</p>
+
+<pre><code class="language-emlist">i = return(1)
+</code></pre>
+
+<p>Since this kind of expressions are clearly due to misunderstanding or simple mistakes,
+it’s better to reject when compiling.
+Next, we’ll look at <code class="highlighter-rouge">value_expr</code> which is one of the functions to check if it takes a value.</p>
+
+<h3 id="valueexpr"><code class="highlighter-rouge">value_expr()</code></h3>
+
+<p><code class="highlighter-rouge">value_expr()</code> is the function to check if it is an <code class="highlighter-rouge">expr</code> that has a value.</p>
+
+<p class="caption">
+▼ `value_expr()`
+
+</p>
+<pre><code class="language-longlist">4754  static int
 4755  value_expr(node)
 4756      NODE *node;
 4757  {
@@ -967,40 +1142,48 @@ Next, we&#8217;ll look at <code>value_expr</code> which is one of the functions 
 4807  }
 
 (parse.y)
-</pre>
-<h4>Algorithm</h4>
-<p>Summary: It sequentially checks the nodes of the tree, if it hits &#8220;an expression
-certainly not having its value&#8221;, it means the tree does not have any value.
-Then it warns about that by using <code>rb_warning()</code> and return <code>Qfalse</code>. If it
-finishes to traverse the entire tree without hitting any &#8220;an expression not
-having its value&#8221;, it means the tree does have a value. Thus it returns <code>Qtrue</code>.</p>
-<p>Here, notice that it does not always need to check the whole tree.
-For example, let&#8217;s assume <code>value_expr()</code> is called on the argument of a method.
-Here:</p>
-<p class="caption">▼ check the value of  <code>arg</code>  by using  <code>value_expr()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-1055  arg_value       : arg
+<h4 id="algorithm">Algorithm</h4>
+
+<p>Summary: It sequentially checks the nodes of the tree, if it hits “an expression
+certainly not having its value”, it means the tree does not have any value.
+Then it warns about that by using <code class="highlighter-rouge">rb_warning()</code> and return <code class="highlighter-rouge">Qfalse</code>. If it
+finishes to traverse the entire tree without hitting any “an expression not
+having its value”, it means the tree does have a value. Thus it returns <code class="highlighter-rouge">Qtrue</code>.</p>
+
+<p>Here, notice that it does not always need to check the whole tree.
+For example, let’s assume <code class="highlighter-rouge">value_expr()</code> is called on the argument of a method.
+Here:</p>
+
+<p class="caption">
+▼ check the value of `arg` by using `value_expr()`
+
+</p>
+<pre><code class="language-longlist">1055  arg_value       : arg
 1056                      {
 1057                          value_expr($1);
 1058                          $$ = $1;
 1059                      }
 
 (parse.y)
-</pre>
-<p>Inside of this argument <code>$1</code>, there can also be other nesting method calls again.
+</code></pre>
+
+<p>Inside of this argument <code class="highlighter-rouge">$1</code>, there can also be other nesting method calls again.
 But, the argument of the inside method must have been already checked with
-<code>value_expr()</code>, so you don&#8217;t have to check it again.</p>
-<p>Let&#8217;s think more generally. Assume an arbitrary grammar element <code>A</code> exists,
-and assume <code>value_expr()</code> is called against its all composing elements,
-the necessity to check the element <code>A</code> again would disappear.</p>
-<p>Then, for example, how is <code>if</code> ? Is it possible to be handled as if <code>value_expr()</code>
-has already called for all elements? If I put only the bottom line, it isn&#8217;t.
-That is because, since <code>if</code> is a statement (which does not use a value),
+<code class="highlighter-rouge">value_expr()</code>, so you don’t have to check it again.</p>
+
+<p>Let’s think more generally. Assume an arbitrary grammar element <code class="highlighter-rouge">A</code> exists,
+and assume <code class="highlighter-rouge">value_expr()</code> is called against its all composing elements,
+the necessity to check the element <code class="highlighter-rouge">A</code> again would disappear.</p>
+
+<p>Then, for example, how is <code class="highlighter-rouge">if</code> ? Is it possible to be handled as if <code class="highlighter-rouge">value_expr()</code>
+has already called for all elements? If I put only the bottom line, it isn’t.
+That is because, since <code class="highlighter-rouge">if</code> is a statement (which does not use a value),
 the main body should not have to return a value.
 For example, in the next case:</p>
-<pre class="emlist">
-def method
+
+<pre><code class="language-emlist">def method
   if true
     return 1
   else
@@ -1008,26 +1191,30 @@ def method
   end
   5
 end
-</pre>
-<p>This <code>if</code> statement does not need a value.<br>
+</code></pre>
+
+<p>This <code class="highlighter-rouge">if</code> statement does not need a value.<br />
 But in the next case, its value is necessary.</p>
-<pre class="emlist">
-def method( arg )
+
+<pre><code class="language-emlist">def method( arg )
   tmp = if arg
         then 3
         else 98
         end
   tmp * tmp / 3.5
 end
-</pre>
-<p>So, in this case, the <code>if</code> statement must be checked when checking the entire
-assignment expression. This kind of things are laid out in the <code>switch</code>
-statement of <code>value_expr()</code>.</p>
-<h4>Removing Tail Recursion</h4>
-<p>By the way, when looking over the whole <code>value_expr</code>, we can see that there&#8217;s
+</code></pre>
+
+<p>So, in this case, the <code class="highlighter-rouge">if</code> statement must be checked when checking the entire
+assignment expression. This kind of things are laid out in the <code class="highlighter-rouge">switch</code>
+statement of <code class="highlighter-rouge">value_expr()</code>.</p>
+
+<h4 id="removing-tail-recursion">Removing Tail Recursion</h4>
+
+<p>By the way, when looking over the whole <code class="highlighter-rouge">value_expr</code>, we can see that there’s
 the following pattern appears frequently:</p>
-<pre class="emlist">
-while (node) {
+
+<pre><code class="language-emlist">while (node) {
     switch (nd_type(node)) {
       case NODE_XXXX:
         node = node-&gt;nd_xxxx;
@@ -1036,114 +1223,139 @@ while (node) {
          ：
     }
 }
-</pre>
+</code></pre>
+
 <p>This expression will also carry the same meaning after being modified to the below:</p>
-<pre class="emlist">
-return value_expr(node-&gt;nd_xxxx)
-</pre>
-<p>A code like this which does a recursive call just before <code>return</code> is called a
-tail recursion. It is known that this can generally be converted to <code>goto</code>.
+
+<pre><code class="language-emlist">return value_expr(node-&gt;nd_xxxx)
+</code></pre>
+
+<p>A code like this which does a recursive call just before <code class="highlighter-rouge">return</code> is called a
+tail recursion. It is known that this can generally be converted to <code class="highlighter-rouge">goto</code>.
 This method is often used when optimizing.
 As for Scheme, it is defined in specifications that tail recursions must be
 removed by language processors. This is because recursions are often used
 instead of loops in Lisp-like languages.</p>
-<p>However, be careful that tail recursions are only when &#8220;calling just before <code>return</code>&#8221;.
-For example, take a look at the <code>NODE_IF</code> of <code>value_expr()</code>,</p>
-<pre class="emlist">
-if (!value_expr(node-&gt;nd_body)) return Qfalse;
+
+<p>However, be careful that tail recursions are only when “calling just before <code class="highlighter-rouge">return</code>”.
+For example, take a look at the <code class="highlighter-rouge">NODE_IF</code> of <code class="highlighter-rouge">value_expr()</code>,</p>
+
+<pre><code class="language-emlist">if (!value_expr(node-&gt;nd_body)) return Qfalse;
 node = node-&gt;nd_else;
 break;
-</pre>
+</code></pre>
+
 <p>As shown above, the first time is a recursive call.
-Rewriting this to the form of using <code>return</code>,</p>
-<pre class="emlist">
-return value_expr(node-&gt;nd_body) &amp;&amp; value_expr(node-&gt;nd_else);
-</pre>
-<p>If the left <code>value_expr()</code> is false, the right <code>value_expr()</code> is also executed.
-In this case, the left <code>value_expr()</code> is not &#8220;just before&#8221; <code>return</code>.
+Rewriting this to the form of using <code class="highlighter-rouge">return</code>,</p>
+
+<pre><code class="language-emlist">return value_expr(node-&gt;nd_body) &amp;&amp; value_expr(node-&gt;nd_else);
+</code></pre>
+
+<p>If the left <code class="highlighter-rouge">value_expr()</code> is false, the right <code class="highlighter-rouge">value_expr()</code> is also executed.
+In this case, the left <code class="highlighter-rouge">value_expr()</code> is not “just before” <code class="highlighter-rouge">return</code>.
 Therefore, it is not a tail recursion.
-Hence, it can&#8217;t be extracted to <code>goto</code>.</p>
-<h3>The whole picture of the value check</h3>
-<p>As for value checks, we won&#8217;t read the functions further.
-You might think it&#8217;s too early, but all of the other functions are, as the same
-as <code>value_expr()</code>, step-by-step one-by-one only traversing and checking nodes,
+Hence, it can’t be extracted to <code class="highlighter-rouge">goto</code>.</p>
+
+<h3 id="the-whole-picture-of-the-value-check">The whole picture of the value check</h3>
+
+<p>As for value checks, we won’t read the functions further.
+You might think it’s too early, but all of the other functions are, as the same
+as <code class="highlighter-rouge">value_expr()</code>, step-by-step one-by-one only traversing and checking nodes,
 so they are completely not interesting.
-However, I&#8217;d like to cover the whole picture at least,
+However, I’d like to cover the whole picture at least,
 so I finish this section by just showing the call graph of the relevant functions (Fig.7).</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_callgraph.jpg" alt="(callgraph)"><br>
-Fig.7: the call graph of the value check functions</p>
+<img src="images/ch_syntree_callgraph.jpg" alt="(callgraph)" /><br />
+Fig.7: the call graph of the value check functions
+
 </p>
-<h2>Local Variables</h2>
-<h3>Local Variable Definitions</h3>
+<p>Local Variables
+—————</p>
+
+<h3 id="local-variable-definitions">Local Variable Definitions</h3>
+
 <p>The variable definitions in Ruby are really various.
 As for constants and class variables, these are defined on the first assignment.
 As for instance variables and global variables, as all names can be considered
 that they are already defined, you can refer them without assigning beforehand
 (although it produces warnings).</p>
+
 <p>The definitions of local variables are again completely different from the above all.
 A local variable is defined when its assignment appears on the program.
 For example, as follows:</p>
-<pre class="emlist">
-lvar = nil
+
+<pre><code class="language-emlist">lvar = nil
 p lvar      # being defined
-</pre>
-<p>In this case, as the assignment to <code>lvar</code> is written at the first line,
-in this moment <code>lvar</code> is defined.
-When it is undefined, it ends up with a runtime exception <code>NameError</code> as follows:</p>
-<pre class="emlist">
-% ruby lvar.rb
+</code></pre>
+
+<p>In this case, as the assignment to <code class="highlighter-rouge">lvar</code> is written at the first line,
+in this moment <code class="highlighter-rouge">lvar</code> is defined.
+When it is undefined, it ends up with a runtime exception <code class="highlighter-rouge">NameError</code> as follows:</p>
+
+<pre><code class="language-emlist">% ruby lvar.rb
 lvar.rb:1: undefined local variable or method `lvar'
-for #&lt;Object:0x40163a9c&gt; (NameError)
-</pre>
-<p>Why does it say <code>"local variable or method"</code>?
+for # (NameError)
+</code></pre>
+
+<p>Why does it say <code class="highlighter-rouge">"local variable or method"</code>?
 As for methods, the parentheses of the arguments can be omitted when calling,
-so when there&#8217;s not any arguments, it can&#8217;t be distinguished from local variables.
-To resolve this situation, <code>ruby</code> tries to call it as a method  when it finds
+so when there’s not any arguments, it can’t be distinguished from local variables.
+To resolve this situation, <code class="highlighter-rouge">ruby</code> tries to call it as a method when it finds
 an undefined local variable. Then if the corresponding method is not found, it
 generates an error such as the above one.</p>
-<p>By the way, it is defined when &#8220;it appears&#8221;, this means it is defined even
+
+<p>By the way, it is defined when “it appears”, this means it is defined even
 though it was not assigned. The initial value of a defined variable is nil.</p>
-<pre class="emlist">
-if false
+
+<pre><code class="language-emlist">if false
   lvar = "this assigment will never be executed"
 end
 p lvar   # shows nil
-</pre>
-<p>Moreover, since it is defined &#8220;when&#8221; it &#8220;appears&#8221;, the definition has to be
+</code></pre>
+
+<p>Moreover, since it is defined “when” it “appears”, the definition has to be
 before the reference in a symbol sequence.
 For example, in the next case, it is not defined.</p>
-<pre class="emlist">
-p lvar       # not defined !
+
+<pre><code class="language-emlist">p lvar       # not defined !
 lvar = nil   # although appearing here ...
-</pre>
-<p>Be careful about the point of &#8220;in the symbol sequence&#8221;.
+</code></pre>
+
+<p>Be careful about the point of “in the symbol sequence”.
 It has completely nothing to do with the order of evaluations.
 For example, for the next code, naturally the condition expression is evaluated first,
-but in the symbol sequence, at the moment when <code>p</code> appears the assignment
-to <code>lvar</code> has not appeared yet.
-Therefore, this produces <code>NameError</code>.</p>
-<pre class="emlist">
-p(lvar) if lvar = true
-</pre>
-<p>What we&#8217;ve learned by now is that the local variables are extremely influenced
+but in the symbol sequence, at the moment when <code class="highlighter-rouge">p</code> appears the assignment
+to <code class="highlighter-rouge">lvar</code> has not appeared yet.
+Therefore, this produces <code class="highlighter-rouge">NameError</code>.</p>
+
+<pre><code class="language-emlist">p(lvar) if lvar = true
+</code></pre>
+
+<p>What we’ve learned by now is that the local variables are extremely influenced
 by the appearances. When a symbol sequence that expresses an assignment appears,
 it will be defined in the appearance order. Based on this information, we can
-infer that <code>ruby</code> seems to define local variables while parsing because the
+infer that <code class="highlighter-rouge">ruby</code> seems to define local variables while parsing because the
 order of the symbol sequence does not exist after leaving the parser.
-And in fact, it is true. In <code>ruby</code>, the parser defines local variables.</p>
-<h3>Block Local Variables</h3>
+And in fact, it is true. In <code class="highlighter-rouge">ruby</code>, the parser defines local variables.</p>
+
+<h3 id="block-local-variables">Block Local Variables</h3>
+
 <p>The local variables newly defined in an iterator block are called block local
 variables or dynamic variables. Block local variables are, in language
 specifications, identical to local variables. However, these two differ in
 their implementations.
-We&#8217;ll look at how is the difference from now on.</p>
-<h3>The data structure</h3>
-<p>We&#8217;ll start with the local variable table <code>struct local_vars</code>.</p>
-<p class="caption">▼ <code>struct local_vars</code> </p>
+We’ll look at how is the difference from now on.</p>
 
-<pre class="longlist">
-5174  static struct local_vars {
+<h3 id="the-data-structure">The data structure</h3>
+
+<p>We’ll start with the local variable table <code class="highlighter-rouge">struct local_vars</code>.</p>
+
+<p class="caption">
+▼ `struct local_vars`
+
+</p>
+<pre><code class="language-longlist">5174  static struct local_vars {
 5175      ID *tbl;                    /* the table of local variable names */
 5176      int nofree;                 /* whether it is used from outside */
 5177      int cnt;                    /* the size of the tbl array */
@@ -1153,18 +1365,22 @@ We&#8217;ll look at how is the difference from now on.</p>
 5181  } *lvtbl;
 
 (parse.y)
-</pre>
-<p>The member name <code>prev</code> indicates that the <code>struct local_vars</code> is a
-opposite-direction linked list. &#8230; Based on this, we can expect a stack.
-The simultaneously declared global variable <code>lvtbl</code> points to <code>local_vars</code> that
+</code></pre>
+
+<p>The member name <code class="highlighter-rouge">prev</code> indicates that the <code class="highlighter-rouge">struct local_vars</code> is a
+opposite-direction linked list. … Based on this, we can expect a stack.
+The simultaneously declared global variable <code class="highlighter-rouge">lvtbl</code> points to <code class="highlighter-rouge">local_vars</code> that
 is the top of that stack.</p>
-<p>And, <code>struct RVarmap</code> is defined in <code>env.h</code>,
+
+<p>And, <code class="highlighter-rouge">struct RVarmap</code> is defined in <code class="highlighter-rouge">env.h</code>,
 and is available to other files and is also used by the evaluator.
 This is used to store the block local variables.</p>
-<p class="caption">▼ <code>struct RVarmap</code> </p>
 
-<pre class="longlist">
-  52  struct RVarmap {
+<p class="caption">
+▼ `struct RVarmap`
+
+</p>
+<pre><code class="language-longlist">  52  struct RVarmap {
   53      struct RBasic super;
   54      ID id;                  /* the variable name */
   55      VALUE val;              /* its value */
@@ -1172,28 +1388,35 @@ This is used to store the block local variables.</p>
   57  };
 
 (env.h)
-</pre>
-<p>Since there&#8217;s <code>struct RBasic</code> at the top, this is a Ruby object.
-It means it is managed by the garbage collector.
-And since it is joined by the <code>next</code> member, it is probably a linked list.</p>
-<p>Based on the observation we&#8217;ve done and the information that will be explained,
-Fig.8 illustrates the image of both structs while executing the parser.</p>
-<p class="image">
-<p><img src="images/ch_syntree_localvars.jpg" alt="(localvars)"><br>
-Fig.8: The image of local variable tables at runtime</p>
-</p>
-<h3>Local Variable Scope</h3>
-<p>When looking over the list of function names of <code>parse.y</code>,
-we can find functions such as <code>local_push() local_pop() local_cnt()</code> are laid out.
-In whatever way of thinking, they appear to be relating to a local variable.
-Moreover, because the names are <code>push pop</code>, it is clearly a stack.
-So first, let&#8217;s find out the places where using these functions.</p>
-<p class="caption">▼ <code>local_push() local_pop()</code>  used examples</p>
+</code></pre>
 
-<pre class="longlist">
-1475                  | kDEF fname
+<p>Since there’s <code class="highlighter-rouge">struct RBasic</code> at the top, this is a Ruby object.
+It means it is managed by the garbage collector.
+And since it is joined by the <code class="highlighter-rouge">next</code> member, it is probably a linked list.</p>
+
+<p>Based on the observation we’ve done and the information that will be explained,
+Fig.8 illustrates the image of both structs while executing the parser.</p>
+
+<p class="image">
+<img src="images/ch_syntree_localvars.jpg" alt="(localvars)" /><br />
+Fig.8: The image of local variable tables at runtime
+
+</p>
+<p>### Local Variable Scope</p>
+
+<p>When looking over the list of function names of <code class="highlighter-rouge">parse.y</code>,
+we can find functions such as <code class="highlighter-rouge">local_push() local_pop() local_cnt()</code> are laid out.
+In whatever way of thinking, they appear to be relating to a local variable.
+Moreover, because the names are <code class="highlighter-rouge">push pop</code>, it is clearly a stack.
+So first, let’s find out the places where using these functions.</p>
+
+<p class="caption">
+▼ `local_push() local_pop()` used examples
+
+</p>
+<pre><code class="language-longlist">1475                  | kDEF fname
 1476                      {
-1477                          $&lt;id&gt;$ = cur_mid;
+1477                          $$ = cur_mid;
 1478                          cur_mid = $2;
 1479                          in_def++;
 1480                          local_push(0);
@@ -1210,47 +1433,59 @@ So first, let&#8217;s find out the places where using these functions.</p>
 1489                          fixpos($$, $4);
 1490                          local_pop();
 1491                          in_def--;
-1492                          cur_mid = $&lt;id&gt;3;
+1492                          cur_mid = $3;
 1493                      }
 
 (parse.y)
-</pre>
-<p>At <code>def</code>, I could find the place where it is used. It can also be found in class
+</code></pre>
+
+<p>At <code class="highlighter-rouge">def</code>, I could find the place where it is used. It can also be found in class
 definitions and singleton class definitions, and module definitions.
 In other words, it is the place where the scope of local variables is cut.
 Moreover, as for how they are used,
-it does <code>push</code> where the method definition starts and does <code>pop</code> when the definition ends.
+it does <code class="highlighter-rouge">push</code> where the method definition starts and does <code class="highlighter-rouge">pop</code> when the definition ends.
 This means, as we expected, it is almost certain that the functions start with
-<code>local_</code> are relating to local variables. And it is also revealed that the part
-between <code>push</code> and <code>pop</code> is probably a local variable scope.</p>
-<p>Moreover, I also searched <code>local_cnt()</code>.</p>
-<p class="caption">▼ <code>NEW_LASGN()</code> </p>
+<code class="highlighter-rouge">local_</code> are relating to local variables. And it is also revealed that the part
+between <code class="highlighter-rouge">push</code> and <code class="highlighter-rouge">pop</code> is probably a local variable scope.</p>
 
-<pre class="longlist">
- 269  #define NEW_LASGN(v,val) rb_node_newnode(NODE_LASGN,v,val,local_cnt(v))
+<p>Moreover, I also searched <code class="highlighter-rouge">local_cnt()</code>.</p>
+
+<p class="caption">
+▼ `NEW_LASGN()`
+
+</p>
+<pre><code class="language-longlist"> 269  #define NEW_LASGN(v,val) rb_node_newnode(NODE_LASGN,v,val,local_cnt(v))
 
 (node.h)
-</pre>
-<p>This is found in <code>node.h</code>. Even though there are also the places where using in <code>parse.y</code>,
-I found it in the other file. Thus, probably I&#8217;m in desperation.</p>
-<p>This <code>NEW_LASGN</code> is &#8220;new local assignment&#8221;. This should mean the node of an
-assignment to a local variable. And also considering the place where using it,
-the parameter <code>v</code> is apparently the local variable name. <code>val</code> is probably
-(a syntax tree that represents). the right-hand side value</p>
-<p>Based on the above observations, <code>local_push()</code> is at the beginning of the local variable,
-<code>local_cnt()</code> is used to add a local variable if there&#8217;s a local variable assignment in the halfway,
-<code>local_pop()</code> is used when ending the scope.
-This perfect scenario comes out. (Fig.9)</p>
-<p class="image">
-<p><img src="images/ch_syntree_localtbl.jpg" alt="(localtbl)"><br>
-Fig.9: the flow of the local variable management</p>
-</p>
-<p>Then, let&#8217;s look at the content of the function.</p>
-<h3><code>push</code> and <code>pop</code></h3>
-<p class="caption">▼ <code>local_push()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-5183  static void
+<p>This is found in <code class="highlighter-rouge">node.h</code>. Even though there are also the places where using in <code class="highlighter-rouge">parse.y</code>,
+I found it in the other file. Thus, probably I’m in desperation.</p>
+
+<p>This <code class="highlighter-rouge">NEW_LASGN</code> is “new local assignment”. This should mean the node of an
+assignment to a local variable. And also considering the place where using it,
+the parameter <code class="highlighter-rouge">v</code> is apparently the local variable name. <code class="highlighter-rouge">val</code> is probably
+(a syntax tree that represents). the right-hand side value</p>
+
+<p>Based on the above observations, <code class="highlighter-rouge">local_push()</code> is at the beginning of the local variable,
+<code class="highlighter-rouge">local_cnt()</code> is used to add a local variable if there’s a local variable assignment in the halfway,
+<code class="highlighter-rouge">local_pop()</code> is used when ending the scope.
+This perfect scenario comes out. (Fig.9)</p>
+
+<p class="image">
+<img src="images/ch_syntree_localtbl.jpg" alt="(localtbl)" /><br />
+Fig.9: the flow of the local variable management
+
+</p>
+<p>Then, let’s look at the content of the function.</p>
+
+<h3 id="push-and-pop"><code class="highlighter-rouge">push</code> and <code class="highlighter-rouge">pop</code></h3>
+
+<p class="caption">
+▼ `local_push()`
+
+</p>
+<pre><code class="language-longlist">5183  static void
 5184  local_push(top)
 5185      int top;
 5186  {
@@ -1272,15 +1507,19 @@ Fig.9: the flow of the local variable management</p>
 5202  }
 
 (parse.y)
-</pre>
-<p>As we expected, it seems that <code>struct local_vars</code> is used as a stack.
-Also, we can see <code>lvtbl</code> is pointing to the top of the stack.
-The lines relates to <code>rb_dvar_push()</code> will be read later, so it is left untouched for now.</p>
-<p>Subsequently, we&#8217;ll look at <code>local_pop()</code> and <code>local_tbl()</code> at the same time.</p>
-<p class="caption">▼ <code>local_tbl local_pop</code> </p>
+</code></pre>
 
-<pre class="longlist">
-5218  static ID*
+<p>As we expected, it seems that <code class="highlighter-rouge">struct local_vars</code> is used as a stack.
+Also, we can see <code class="highlighter-rouge">lvtbl</code> is pointing to the top of the stack.
+The lines relates to <code class="highlighter-rouge">rb_dvar_push()</code> will be read later, so it is left untouched for now.</p>
+
+<p>Subsequently, we’ll look at <code class="highlighter-rouge">local_pop()</code> and <code class="highlighter-rouge">local_tbl()</code> at the same time.</p>
+
+<p class="caption">
+▼ `local_tbl local_pop`
+
+</p>
+<pre><code class="language-longlist">5218  static ID*
 5219  local_tbl()
 5220  {
 5221      lvtbl-&gt;nofree = 1;
@@ -1302,30 +1541,37 @@ The lines relates to <code>rb_dvar_push()</code> will be read later, so it is le
 5216  }
 
 (parse.y)
-</pre>
-<p>I&#8217;d like you to look at <code>local_tbl()</code>.
-This is the function to obtain the current local variable table (<code>lvtbl-&gt;tbl</code>).
-By calling this, the <code>nofree</code> of the current table becomes true.
-The meaning of <code>nofree</code> seems naturally &#8220;Don&#8217;t <code>free()</code>&#8221;.
-In other words, this is like reference counting, &#8220;this table will be used, so
-please don&#8217;t <code>free()</code>&#8221;. Conversely speaking,
-when <code>local_tbl()</code> was not called with a table even once,
+</code></pre>
+
+<p>I’d like you to look at <code class="highlighter-rouge">local_tbl()</code>.
+This is the function to obtain the current local variable table (<code class="highlighter-rouge">lvtbl-&gt;tbl</code>).
+By calling this, the <code class="highlighter-rouge">nofree</code> of the current table becomes true.
+The meaning of <code class="highlighter-rouge">nofree</code> seems naturally “Don’t <code class="highlighter-rouge">free()</code>”.
+In other words, this is like reference counting, “this table will be used, so
+please don’t <code class="highlighter-rouge">free()</code>”. Conversely speaking,
+when <code class="highlighter-rouge">local_tbl()</code> was not called with a table even once,
 that table will be freed at the moment when being popped and be discarded.
 For example, this situation probably happens when a method without any local variables.</p>
-<p>However, the &#8220;necessary table&#8221; here means <code>lvtbl-&gt;tbl</code>.
-As you can see, <code>lvtbl</code> itself will be freed at the same moment when being popped.
-It means only the generated <code>lvtbl-&gt;tbl</code> is used in the evaluator.
-Then, the structure of <code>lvtbl-&gt;tbl</code> is becoming important.
-Let&#8217;s look at the function <code>local_cnt()</code> (which seems) to add variables
-which is probably helpful to understand how the structure is.</p>
-<p>And before that, I&#8217;d like you to remember that <code>lvtbl-&gt;cnt</code> is stored
-at the index 0 of the <code>lvtbl-&gt;tbl</code>.</p>
-<h3>Adding variables</h3>
-<p>The function (which seems) to add a local variable is <code>local_cnt()</code>.</p>
-<p class="caption">▼ <code>local_cnt()</code> </p>
 
-<pre class="longlist">
-5246  static int
+<p>However, the “necessary table” here means <code class="highlighter-rouge">lvtbl-&gt;tbl</code>.
+As you can see, <code class="highlighter-rouge">lvtbl</code> itself will be freed at the same moment when being popped.
+It means only the generated <code class="highlighter-rouge">lvtbl-&gt;tbl</code> is used in the evaluator.
+Then, the structure of <code class="highlighter-rouge">lvtbl-&gt;tbl</code> is becoming important.
+Let’s look at the function <code class="highlighter-rouge">local_cnt()</code> (which seems) to add variables
+which is probably helpful to understand how the structure is.</p>
+
+<p>And before that, I’d like you to remember that <code class="highlighter-rouge">lvtbl-&gt;cnt</code> is stored
+at the index 0 of the <code class="highlighter-rouge">lvtbl-&gt;tbl</code>.</p>
+
+<h3 id="adding-variables">Adding variables</h3>
+
+<p>The function (which seems) to add a local variable is <code class="highlighter-rouge">local_cnt()</code>.</p>
+
+<p class="caption">
+▼ `local_cnt()`
+
+</p>
+<pre><code class="language-longlist">5246  static int
 5247  local_cnt(id)
 5248      ID id;
 5249  {
@@ -1333,43 +1579,50 @@ at the index 0 of the <code>lvtbl-&gt;tbl</code>.</p>
 5251
 5252      if (id == 0) return lvtbl-&gt;cnt;
 5253
-5254      for (cnt=1, max=lvtbl-&gt;cnt+1; cnt&lt;max;cnt++) {
-5255          if (lvtbl-&gt;tbl[cnt] == id) return cnt-1;
+5254      for (cnt=1, max=lvtbl-&gt;cnt+1; cnttbl[cnt] == id) return cnt-1;
 5256      }
 5257      return local_append(id);
 5258  }
 
 (parse.y)
-</pre>
-<p>This scans <code>lvtbl-&gt;tbl</code> and searches what is equals to <code>id</code>.
-If the searched one is found, it straightforwardly returns <code>cnt-1</code>.
-If nothing is found, it does <code>local_append()</code>.
-<code>local_append()</code> must be, as it is called <code>append</code>, the procedure to append.
-In other words, <code>local_cnt()</code> checks if the variable was already registered,
-if it was not, adds it by using <code>local_append()</code> and returns it.</p>
-<p>What is the meaning of the return value of this function? <code>lvtbl-&gt;tbl</code> seems an
-array of the variables, so there&#8217;re one-to-one correspondences between the
-variable names and &#8220;their index &#8211; 1 (<code>cnt-1</code>)&#8221;. (Fig.10)</p>
+</code></pre>
+
+<p>This scans <code class="highlighter-rouge">lvtbl-&gt;tbl</code> and searches what is equals to <code class="highlighter-rouge">id</code>.
+If the searched one is found, it straightforwardly returns <code class="highlighter-rouge">cnt-1</code>.
+If nothing is found, it does <code class="highlighter-rouge">local_append()</code>.
+<code class="highlighter-rouge">local_append()</code> must be, as it is called <code class="highlighter-rouge">append</code>, the procedure to append.
+In other words, <code class="highlighter-rouge">local_cnt()</code> checks if the variable was already registered,
+if it was not, adds it by using <code class="highlighter-rouge">local_append()</code> and returns it.</p>
+
+<p>What is the meaning of the return value of this function? <code class="highlighter-rouge">lvtbl-&gt;tbl</code> seems an
+array of the variables, so there’re one-to-one correspondences between the
+variable names and “their index - 1 (<code class="highlighter-rouge">cnt-1</code>)”. (Fig.10)</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_lvtbltbl.jpg" alt="(lvtbltbl)"><br>
-Fig.10: The correspondences between the variable names and the return values</p>
+<img src="images/ch_syntree_lvtbltbl.jpg" alt="(lvtbltbl)" /><br />
+Fig.10: The correspondences between the variable names and the return values
+
 </p>
 <p>Moreover, this return value is calculated so that the start point becomes 0,
 the local variable space is probably an array.
 And, this returns the index to access that array.
 If it is not, like the instance variables or constants,
 (the ID of) the variable name could have been used as a key in the first place.</p>
+
 <p>You might want to know why it is avoiding index 0 (the loop start
-from <code>cnt=1</code>) for some reasons, it is probably to store a value at <code>local_pop()</code>.</p>
-<p>Based on the knowledge we&#8217;ve learned, we can understand the role of <code>local_append()</code>
+from <code class="highlighter-rouge">cnt=1</code>) for some reasons, it is probably to store a value at <code class="highlighter-rouge">local_pop()</code>.</p>
+
+<p>Based on the knowledge we’ve learned, we can understand the role of <code class="highlighter-rouge">local_append()</code>
 without actually looking at the content.
 It registers a local variable and returns
-&#8220;(the index of the variable in <code>lvtbl-&gt;tbl</code>) &#8211; 1&#8221;.
-It is shown below, let&#8217;s make sure.</p>
-<p class="caption">▼ <code>local_append()</code> </p>
+“(the index of the variable in <code class="highlighter-rouge">lvtbl-&gt;tbl</code>) - 1”.
+It is shown below, let’s make sure.</p>
 
-<pre class="longlist">
-5225  static int
+<p class="caption">
+▼ `local_append()`
+
+</p>
+<pre><code class="language-longlist">5225  static int
 5226  local_append(id)
 5227      ID id;
 5228  {
@@ -1391,70 +1644,86 @@ It is shown below, let&#8217;s make sure.</p>
 5244  }
 
 (parse.y)
-</pre>
-<p>It seems definitely true. <code>lvtbl-&gt;tbl</code> is an array of the local variable names,
-and its index &#8211; 1 is the return value (local variable ID).</p>
-<p>Note that it increases <code>lvtbl-&gt;cnt</code>.
-Since the code to increase <code>lvtbl-&gt;cnt</code> only exists here,
+</code></pre>
+
+<p>It seems definitely true. <code class="highlighter-rouge">lvtbl-&gt;tbl</code> is an array of the local variable names,
+and its index - 1 is the return value (local variable ID).</p>
+
+<p>Note that it increases <code class="highlighter-rouge">lvtbl-&gt;cnt</code>.
+Since the code to increase <code class="highlighter-rouge">lvtbl-&gt;cnt</code> only exists here,
 from only this code its meaning can be decided.
 Then, what is the meaning? It is,
-since &#8220;<code>lvtbl-&gt;cnt</code> increases by 1 when a new variable is added&#8221;,
-&#8220;<code>lvtbl-&gt;cnt</code> holds the number of local variables in this scope&#8221;.</p>
-<p>Finally, I&#8217;ll explain about <code>tbl[1]</code> and <code>tbl[2]</code>. These <code>'_'</code> and <code>'~'</code> are,
+since “<code class="highlighter-rouge">lvtbl-&gt;cnt</code> increases by 1 when a new variable is added”,
+“<code class="highlighter-rouge">lvtbl-&gt;cnt</code> holds the number of local variables in this scope”.</p>
+
+<p>Finally, I’ll explain about <code class="highlighter-rouge">tbl[1]</code> and <code class="highlighter-rouge">tbl[2]</code>. These <code class="highlighter-rouge">'_'</code> and <code class="highlighter-rouge">'~'</code> are,
 as you can guess if you are familiar with Ruby,
-the special variables named <code>$_</code> and <code>$~</code>.
+the special variables named <code class="highlighter-rouge">$_</code> and <code class="highlighter-rouge">$~</code>.
 Though their appearances are identical to global variables,
 they are actually local variables.
-Even If you didn&#8217;t explicitly use it, when the methods such as <code>Kernel#gets</code> are called,
+Even If you didn’t explicitly use it, when the methods such as <code class="highlighter-rouge">Kernel#gets</code> are called,
 these variables are implicitly assigned,
-thus it&#8217;s necessary that the spaces are always allocated.</p>
-<h3>Summary of local variables</h3>
+thus it’s necessary that the spaces are always allocated.</p>
+
+<h3 id="summary-of-local-variables">Summary of local variables</h3>
+
 <p>Since the description of local variables were complex in various ways,
-let&#8217;s summarize it.</p>
+let’s summarize it.</p>
+
 <p>First, It seems the local variables are different from the other variables
-because they are not managed with <code>st_table</code>.
+because they are not managed with <code class="highlighter-rouge">st_table</code>.
 Then, where are they stored in? It seems the answer is an array.
 Moreover, it is stored in a different array for each scope.</p>
-<p>The array is <code>lvtbl-&gt;tbl</code>, and the index 0 holds the <code>lvtbl-&gt;cnt</code> which is set
-at <code>local_pop()</code>. In other words, it holds the number of the local variables.
+
+<p>The array is <code class="highlighter-rouge">lvtbl-&gt;tbl</code>, and the index 0 holds the <code class="highlighter-rouge">lvtbl-&gt;cnt</code> which is set
+at <code class="highlighter-rouge">local_pop()</code>. In other words, it holds the number of the local variables.
 The index 1 or more hold the local variable names defined in the scope.
 Fig.11 shows the final appearance we expect.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_tbl.jpg" alt="(tbl)"><br>
-Fig.11: correspondences between local variable names and the return values</p>
+<img src="images/ch_syntree_tbl.jpg" alt="(tbl)" /><br />
+Fig.11: correspondences between local variable names and the return values
+
 </p>
-<h3>Block Local Variables</h3>
-<p>The rest is <code>dyna_vars</code> which is a member of <code>struct local_vars</code>.
+<p>### Block Local Variables</p>
+
+<p>The rest is <code class="highlighter-rouge">dyna_vars</code> which is a member of <code class="highlighter-rouge">struct local_vars</code>.
 In other words, this is about the block local variables.
 I thought that there must be the functions to do something with this,
 looked over the list of the function names,
 and found them as expected.
-There are the suspicious functions named <code>dyna_push() dyna_pop() dyna_in_block()</code>.
+There are the suspicious functions named <code class="highlighter-rouge">dyna_push() dyna_pop() dyna_in_block()</code>.
 Moreover, here is the place where these are used.</p>
-<p class="caption">▼ an example using  <code>dyna_push dyna_pop</code> </p>
 
-<pre class="longlist">
-1651  brace_block     : '{'
+<p class="caption">
+▼ an example using `dyna_push dyna_pop`
+
+</p>
+<pre><code class="language-longlist">1651  brace_block     : '{'
 1652                      {
-1653                          $&lt;vars&gt;$ = dyna_push();
+1653                          $$ = dyna_push();
 1654                      }
 1655                    opt_block_var
 1656                    compstmt '}'
 1657                      {
 1658                          $$ = NEW_ITER($3, 0, $4);
 1659                          fixpos($$, $4);
-1660                          dyna_pop($&lt;vars&gt;2);
+1660                          dyna_pop($2);
 1661                      }
 
 (parse.y)
-</pre>
-<p><code>push</code> at the beginning of an iterator block, <code>pop</code> at the end.
-This must be the process of block local variables.</p>
-<p>Now, we are going to look at the functions.</p>
-<p class="caption">▼ <code>dyna_push()</code> </p>
+</code></pre>
 
-<pre class="longlist">
-5331  static struct RVarmap*
+<p><code class="highlighter-rouge">push</code> at the beginning of an iterator block, <code class="highlighter-rouge">pop</code> at the end.
+This must be the process of block local variables.</p>
+
+<p>Now, we are going to look at the functions.</p>
+
+<p class="caption">
+▼ `dyna_push()`
+
+</p>
+<pre><code class="language-longlist">5331  static struct RVarmap*
 5332  dyna_push()
 5333  {
 5334      struct RVarmap* vars = ruby_dyna_vars;
@@ -1465,14 +1734,17 @@ This must be the process of block local variables.</p>
 5339  }
 
 (parse.y)
-</pre>
-<p>Increasing <code>lvtbl-&gt;dlev</code> seems the mark indicates the existence of the block
-local variable scope.
-Meanwhile, <code>rb_dvar_push()</code> is &#8230;</p>
-<p class="caption">▼ <code>rb_dvar_push()</code> </p>
+</code></pre>
 
-<pre class="longlist">
- 691  void
+<p>Increasing <code class="highlighter-rouge">lvtbl-&gt;dlev</code> seems the mark indicates the existence of the block
+local variable scope.
+Meanwhile, <code class="highlighter-rouge">rb_dvar_push()</code> is …</p>
+
+<p class="caption">
+▼ `rb_dvar_push()`
+
+</p>
+<pre><code class="language-longlist"> 691  void
  692  rb_dvar_push(id, value)
  693      ID id;
  694      VALUE value;
@@ -1481,24 +1753,29 @@ Meanwhile, <code>rb_dvar_push()</code> is &#8230;</p>
  697  }
 
 (eval.c)
-</pre>
-<p>It creates a <code>struct RVarmap</code> that has the variable name <code>id</code> and the value
-<code>val</code> as its members, adds it to the top of the global variable <code>ruby_dyna_vars</code>.
+</code></pre>
+
+<p>It creates a <code class="highlighter-rouge">struct RVarmap</code> that has the variable name <code class="highlighter-rouge">id</code> and the value
+<code class="highlighter-rouge">val</code> as its members, adds it to the top of the global variable <code class="highlighter-rouge">ruby_dyna_vars</code>.
 This is again and again the form of cons.
-In <code>dyna_push()</code>, <code>ruby_dyan_vars</code> is not set aside,
-it seems it adds directly to the <code>ruby_dyna_vars</code> of the previous scope.</p>
-<p>Moreover, the value of the <code>id</code> member of the <code>RVarmap</code> to be added here is 0.
+In <code class="highlighter-rouge">dyna_push()</code>, <code class="highlighter-rouge">ruby_dyan_vars</code> is not set aside,
+it seems it adds directly to the <code class="highlighter-rouge">ruby_dyna_vars</code> of the previous scope.</p>
+
+<p>Moreover, the value of the <code class="highlighter-rouge">id</code> member of the <code class="highlighter-rouge">RVarmap</code> to be added here is 0.
 Although it was not seriously discussed in this book,
-the <code>ID</code> of <code>ruby</code> will never be 0 while it is normally created by <code>rb_intern()</code>.
-Thus, we can infer that this <code>RVarmap</code>, as it is like <code>NUL</code> or <code>NULL</code>,
+the <code class="highlighter-rouge">ID</code> of <code class="highlighter-rouge">ruby</code> will never be 0 while it is normally created by <code class="highlighter-rouge">rb_intern()</code>.
+Thus, we can infer that this <code class="highlighter-rouge">RVarmap</code>, as it is like <code class="highlighter-rouge">NUL</code> or <code class="highlighter-rouge">NULL</code>,
 probably has a role as sentinel.
 If we think based on this assumption, we can describe the reason why the holder
-of a variable (<code>RVarmap</code>) is added even though not any variables are added.</p>
-<p>Next, <code>dyna_pop()</code>.</p>
-<p class="caption">▼ <code>dyna_pop()</code> </p>
+of a variable (<code class="highlighter-rouge">RVarmap</code>) is added even though not any variables are added.</p>
 
-<pre class="longlist">
-5341  static void
+<p>Next, <code class="highlighter-rouge">dyna_pop()</code>.</p>
+
+<p class="caption">
+▼ `dyna_pop()`
+
+</p>
+<pre><code class="language-longlist">5341  static void
 5342  dyna_pop(vars)
 5343      struct RVarmap* vars;
 5344  {
@@ -1507,18 +1784,22 @@ of a variable (<code>RVarmap</code>) is added even though not any variables are 
 5347  }
 
 (parse.y)
-</pre>
-<p>By reducing <code>lvtbl-&gt;dlev</code>, it writes down the fact that the block local
+</code></pre>
+
+<p>By reducing <code class="highlighter-rouge">lvtbl-&gt;dlev</code>, it writes down the fact that the block local
 variable scope ended.
 It seems that something is done by using the argument,
-let&#8217;s see this later at once.</p>
-<p>The place to add a block local variable has not appeared yet.
-Something like <code>local_cnt()</code> of local variables is missing.
-So, I did plenty of <code>grep</code> with <code>dvar</code> and <code>dyna</code>, and this code was found.</p>
-<p class="caption">▼ <code>assignable()</code>  (partial)</p>
+let’s see this later at once.</p>
 
-<pre class="longlist">
-4599  static NODE*
+<p>The place to add a block local variable has not appeared yet.
+Something like <code class="highlighter-rouge">local_cnt()</code> of local variables is missing.
+So, I did plenty of <code class="highlighter-rouge">grep</code> with <code class="highlighter-rouge">dvar</code> and <code class="highlighter-rouge">dyna</code>, and this code was found.</p>
+
+<p class="caption">
+▼ `assignable()` (partial)
+
+</p>
+<pre><code class="language-longlist">4599  static NODE*
 4600  assignable(id, val)
 4601      ID id;
 4602      NODE *val;
@@ -1528,35 +1809,41 @@ So, I did plenty of <code>grep</code> with <code>dvar</code> and <code>dyna</cod
 4635              return NEW_DASGN_CURR(id, val);
 
 (parse.y)
-</pre>
-<p><code>assignable()</code> is the function to create a node relates to assignments,
+</code></pre>
+
+<p><code class="highlighter-rouge">assignable()</code> is the function to create a node relates to assignments,
 this citation is the fragment of that function only contains the part to deal
 with block local variables.
-It seems that it adds a new variable (to <code>ruby_dyna_vars</code>)
-by using <code>rb_dvar_push()</code> that we&#8217;ve just seen.</p>
-<h3><code>ruby_dyna_vars</code> in the parser</h3>
-<p>Now, taking the above all into considerations, let&#8217;s imagine the appearance of
-<code>ruby_dyna_vars</code> at the moment when a local variable scope is finished to be
+It seems that it adds a new variable (to <code class="highlighter-rouge">ruby_dyna_vars</code>)
+by using <code class="highlighter-rouge">rb_dvar_push()</code> that we’ve just seen.</p>
+
+<h3 id="rubydynavars-in-the-parser"><code class="highlighter-rouge">ruby_dyna_vars</code> in the parser</h3>
+
+<p>Now, taking the above all into considerations, let’s imagine the appearance of
+<code class="highlighter-rouge">ruby_dyna_vars</code> at the moment when a local variable scope is finished to be
 parsed.</p>
+
 <p>First, as I said previously,
-the <code>RVarmap</code> of <code>id=0</code> which is added at the beginning of a block scope is a
+the <code class="highlighter-rouge">RVarmap</code> of <code class="highlighter-rouge">id=0</code> which is added at the beginning of a block scope is a
 sentinel which represents a break between two block scopes.
-We&#8217;ll call this &#8220;the header of <code>ruby_dyna_vars</code>&#8221;.</p>
+We’ll call this “the header of <code class="highlighter-rouge">ruby_dyna_vars</code>”.</p>
+
 <p>Next, among the previously shown actions of the rule of the iterator block,
-I&#8217;d like you to focus on this part:</p>
-<pre class="emlist">
-$&lt;vars&gt;$ = dyna_push();    /* what assigned into $&lt;vars&gt;$ is ... */
+I’d like you to focus on this part:</p>
+
+<pre><code class="language-emlist">$$ = dyna_push();    /* what assigned into $$ is ... */
         ：
         ：
-dyna_pop($&lt;vars&gt;2);        /* …… appears at $&lt;vars&gt;2 */
-</pre>
-<p><code>dyna_push()</code> returns the <code>ruby_dyna_vars</code> at the moment.
-<code>dyna_pop()</code> put the argument into <code>ruby_dyna_vars</code>.
-This means <code>ruby_dyna_vars</code> would be saved and restored for each the block local
+dyna_pop($2);        /* …… appears at $2 */
+</code></pre>
+
+<p><code class="highlighter-rouge">dyna_push()</code> returns the <code class="highlighter-rouge">ruby_dyna_vars</code> at the moment.
+<code class="highlighter-rouge">dyna_pop()</code> put the argument into <code class="highlighter-rouge">ruby_dyna_vars</code>.
+This means <code class="highlighter-rouge">ruby_dyna_vars</code> would be saved and restored for each the block local
 variable scope.
 Therefore, when parsing the following program,</p>
-<pre class="emlist">
-iter {
+
+<pre><code class="language-emlist">iter {
     a = nil
     iter {
         b = nil
@@ -1572,34 +1859,41 @@ iter {
     }
     # nesting level 1
 }
-</pre>
-<p>Fig.12 shows the <code>ruby_dyna_vars</code> in this situation.</p>
+</code></pre>
+
+<p>Fig.12 shows the <code class="highlighter-rouge">ruby_dyna_vars</code> in this situation.</p>
+
 <p class="image">
-<p><img src="images/ch_syntree_dynavars.jpg" alt="(dynavars)"><br>
-Fig.12: <code>ruby_dyna_vars</code> when all scopes are finished to be parsed</p>
+<img src="images/ch_syntree_dynavars.jpg" alt="(dynavars)" /><br />
+Fig.12: `ruby_dyna_vars` when all scopes are finished to be parsed
+
 </p>
 <p>This structure is fairly smart.
-That&#8217;s because the variables of the higher levels can naturally be accessed by
+That’s because the variables of the higher levels can naturally be accessed by
 traversing over all of the list even if the nesting level is deep.
 This way has the simpler searching process than creating a different table for
 each level.</p>
-<p>Plus, in the figure, it looks like <code>bb</code> is hung at a strange place,
+
+<p>Plus, in the figure, it looks like <code class="highlighter-rouge">bb</code> is hung at a strange place,
 but this is correct.
 When a variable is found at the nest level which is decreased after increased once,
 it is attached to the subsequent of the list of the original level.
 Moreover, in this way, the specification of local variable that
-&#8220;only the variables which already exist in the symbol sequence are defined&#8221;
+“only the variables which already exist in the symbol sequence are defined”
 is expressed in a natural form.</p>
+
 <p>And finally, at each cut of local variable scopes (this is not of block local
-variable scopes), this link is entirely saved or restored to <code>lvtbl-&gt;dyna_vars</code>.
-I&#8217;d like you to go back a little and check <code>local_push()</code> and <code>local_pop()</code>.</p>
-<p>By the way, although creating the <code>ruby_dyna_vars</code> list was a huge task,
+variable scopes), this link is entirely saved or restored to <code class="highlighter-rouge">lvtbl-&gt;dyna_vars</code>.
+I’d like you to go back a little and check <code class="highlighter-rouge">local_push()</code> and <code class="highlighter-rouge">local_pop()</code>.</p>
+
+<p>By the way, although creating the <code class="highlighter-rouge">ruby_dyna_vars</code> list was a huge task,
 it is by itself not used at the evaluator. This list is used only to check the
 existence of the variables and will be garbage collected at the same moment
 when parsing is finished. And after entering the evaluator, another chain is
 created again.
-There&#8217;s a quite deep reason for this, &#8230; we&#8217;ll see around this once again in
+There’s a quite deep reason for this, … we’ll see around this once again in
 Part 3.</p>
+
 
     <footer>
       The original work is Copyright © 2002 - 2004 Minero AOKI.

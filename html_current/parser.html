@@ -18,37 +18,50 @@
       </ul>
     </nav>
 
-    <p>Translated by Robert <span class="caps">GRAVINA</span> &amp; ocha-</p>
-<h1>Chapter 10: Parser</h1>
-<h2>Outline of this chapter</h2>
-<h3>Parser construction</h3>
+    <p>Translated by Robert GRAVINA &amp; ocha-</p>
+
+<h1 id="chapter-10-parser">Chapter 10: Parser</h1>
+
+<h2 id="outline-of-this-chapter">Outline of this chapter</h2>
+
+<h3 id="parser-construction">Parser construction</h3>
+
 <p>The main source of the parser is `parser.y`.
 Because it is `*.y`, it is the input for `yacc`
 and `parse.c` is generated from it.</p>
+
 <p>Although one would expect `lex.c` to contain the scanner, this is not the case.
 This file is created by `gperf`, taking the file `keywords` as input, and
 defines the reserved word hashtable. This tool-generated `lex.c` is `#include`d
 in (the also tool-generated) `parse.c`. The details of this process is somewhat
 difficult to explain at this time, so we shall return to this later.</p>
+
 <p>Figure 1 shows the parser construction process. For the benefit of those readers
 using Windows who may not be aware, the `mv` (move) command creates a new copy
 of a file and removes the original. `cc` is, of course, the C compiler and `cpp`
 the C pre-processor.</p>
-<p><img src="images/ch_parser_build.jpg" title="Parser construction process" alt="Parser construction process" /></p>
-<h3>Dissecting `parse.y`</h3>
-<p>Let&#8217;s now look at `parse.y` in a bit more detail. The following figure presents
+
+<p><img src="images/ch_parser_build.jpg" alt="Parser construction process" title="Parser construction process" /></p>
+
+<h3 id="dissecting-parsey">Dissecting `parse.y`</h3>
+
+<p>Let’s now look at `parse.y` in a bit more detail. The following figure presents
 a rough outline of the contents of `parse.y`.</p>
-<p>▼ parse.y
-<pre class="longlist">
-%{
+
+<p>▼ parse.y</p>
+
+<pre><code class="language-longlist">%{
 header
 %}
-%union &#8230;.
-%token &#8230;.
-%type &#8230;.</p>
-<p>%%</p>
-<p>rules</p>
-<p>%%
+%union ....
+%token ....
+%type ....
+
+%%
+
+rules
+
+%%
 user code section
     parser interface
     scanner (character stream processing)
@@ -56,100 +69,120 @@ user code section
     semantic analysis
     local variable management
     ID implementation
-</pre></p>
+</code></pre>
+
 <p>As for the rules and definitions part, it is as previously described.
 Since this part is indeed the heart of the parser,
-I&#8217;ll start to explain it ahead of the other parts in the next section.</p>
+I’ll start to explain it ahead of the other parts in the next section.</p>
+
 <p>There are a considerable number of support functions defined in the user code
 section, but roughly speaking, they can be divided into the six parts
 written above. The following table shows where each of parts are
 explained in this book.</p>
+
 <table>
-	<tr>
-		<th>Part</th>
-		<th>Chapter</th>
-		<th>Section</th>
-	</tr>
-	<tr>
-		<td>Parser interface</td>
-		<td>This chapter</td>
-		<td>Section 3 &#8220;Scanning&#8221;</td>
-	</tr>
-	<tr>
-		<td>Scanner</td>
-		<td>This chapter</td>
-		<td>Section 3 &#8220;Scanning&#8221;</td>
-	</tr>
-	<tr>
-		<td>Syntax tree construction</td>
-		<td>Chapter 12 &#8220;Syntax tree construction&#8221;</td>
-		<td>Section 2 &#8220;Syntax tree construction&#8221;</td>
-	</tr>
-	<tr>
-		<td>Semantic analysis</td>
-		<td>Chapter 12 &#8220;Syntax tree construction&#8221;</td>
-		<td>Section 3 &#8220;Semantic analysis&#8221;</td>
-	</tr>
-	<tr>
-		<td>Local variable management</td>
-		<td>Chapter 12 &#8220;Syntax tree construction&#8221;</td>
-		<td>Section 4 &#8220;Local variables&#8221;</td>
-	</tr>
-	<tr>
-		<td>`ID` implementation</td>
-		<td>Chapter 3 &#8220;Names and name tables&#8221;</td>
-		<td>Section 2 &#8220;`ID` and symbols&#8221;</td>
-	</tr>
+  <thead>
+    <tr>
+      <th>Part</th>
+      <th>Chapter</th>
+      <th>Section</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Parser interface</td>
+      <td>This chapter</td>
+      <td>Section 3 “Scanning”</td>
+    </tr>
+    <tr>
+      <td>Scanner</td>
+      <td>This chapter</td>
+      <td>Section 3 “Scanning”</td>
+    </tr>
+    <tr>
+      <td>Syntax tree construction</td>
+      <td>Chapter 12 “Syntax tree construction”</td>
+      <td>Section 2 “Syntax tree construction”</td>
+    </tr>
+    <tr>
+      <td>Semantic analysis</td>
+      <td>Chapter 12 “Syntax tree construction”</td>
+      <td>Section 3 “Semantic analysis”</td>
+    </tr>
+    <tr>
+      <td>Local variable management</td>
+      <td>Chapter 12 “Syntax tree construction”</td>
+      <td>Section 4 “Local variables”</td>
+    </tr>
+    <tr>
+      <td>`ID` implementation</td>
+      <td>Chapter 3 “Names and name tables”</td>
+      <td>Section 2 “`ID` and symbols”</td>
+    </tr>
+  </tbody>
 </table>
-<h2>General remarks about grammar rules</h2>
-<h3>Coding rules</h3>
+
+<h2 id="general-remarks-about-grammar-rules">General remarks about grammar rules</h2>
+
+<h3 id="coding-rules">Coding rules</h3>
+
 <p>The grammar of `ruby` conforms to a coding standard and is thus easy to read
 once you are familiar with it.</p>
+
 <p>Firstly, regarding symbol names, all non-terminal symbols are written in lower
 case characters. Terminal symbols are prefixed by some lower case character and
 then followed by upper case. Reserved words (keywords) are prefixed with the
 character `k`. Other terminal symbols are prefixed with the character `t`.</p>
+
 <p>▼ Symbol name examples</p>
+
 <table>
-	<tr>
-		<th>Token</th>
-		<th>Symbol name</th>
-	</tr>
-	<tr>
-		<td>(non-terminal symbol)</td>
-		<td>`bodystmt`</td>
-	</tr>
-	<tr>
-		<td>`if`</td>
-		<td>`kIF`</td>
-	</tr>
-	<tr>
-		<td>`def`</td>
-		<td>`kDEF`</td>
-	</tr>
-	<tr>
-		<td>`rescue`</td>
-		<td>`kRESCUE`</td>
-	</tr>
-	<tr>
-		<td>`varname`</td>
-		<td>`tIDENTIFIER`</td>
-	</tr>
-	<tr>
-		<td>`ConstName`</td>
-		<td>`tCONST`</td>
-	</tr>
-	<tr>
-		<td>1</td>
-		<td>`tINTEGER`</td>
-	</tr>
+  <thead>
+    <tr>
+      <th>Token</th>
+      <th>Symbol name</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>(non-terminal symbol)</td>
+      <td>`bodystmt`</td>
+    </tr>
+    <tr>
+      <td>`if`</td>
+      <td>`kIF`</td>
+    </tr>
+    <tr>
+      <td>`def`</td>
+      <td>`kDEF`</td>
+    </tr>
+    <tr>
+      <td>`rescue`</td>
+      <td>`kRESCUE`</td>
+    </tr>
+    <tr>
+      <td>`varname`</td>
+      <td>`tIDENTIFIER`</td>
+    </tr>
+    <tr>
+      <td>`ConstName`</td>
+      <td>`tCONST`</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>`tINTEGER`</td>
+    </tr>
+  </tbody>
 </table>
+
 <p>The only exceptions to these rules are `klBEGIN` and `klEND`. These symbol names
-refer to the reserved words for &#8220;<span class="caps">BEGIN</span>&#8221; and &#8220;<span class="caps">END</span>&#8221;, respectively, and the `l`
+refer to the reserved words for “BEGIN” and “END”, respectively, and the `l`
 here stands for `large`. Since the reserved words `begin` and `end` already
 exist (naturally, with symbol names `kBEGIN` and `kEND`), these non-standard
 symbol names were required.</p>
-<h3>Important symbols</h3>
+
+<h3 id="important-symbols">Important symbols</h3>
+
 <p>`parse.y` contains both grammar rules and actions, however, for now I would like
 to concentrate on the grammar rules alone. The script sample/exyacc.rb can be
 used to extract the grammar rules from this file.
@@ -158,265 +191,326 @@ which also contains the grammar rules,
 however it is rather difficult to read. In this chapter I have used a slighty
 modified version of `exyacc.rb`\footnote{modified `exyacc.rb`:`tools/exyacc2.rb`
 located on the attached CD-ROM} to extract the grammar rules.</p>
-<p>▼ `parse.y`(rules)
-<pre class="longlist">
-program         : compstmt</p>
-<p>bodystmt        : compstmt
+
+<p>▼ `parse.y`(rules)</p>
+
+<pre><code class="language-longlist">program         : compstmt
+
+bodystmt        : compstmt
                   opt_rescue
                   opt_else
-                  opt_ensure</p>
-<p>compstmt        : stmts opt_terms
+                  opt_ensure
+
+compstmt        : stmts opt_terms
                        :
                        :
-</pre></p>
-<p>The output is quite long &#8211; over 450 lines of grammar rules &#8211; and as such I have
+</code></pre>
+
+<p>The output is quite long - over 450 lines of grammar rules - and as such I have
 only included the most important parts in this chapter.</p>
+
 <p>Which symbols, then, are the most important? The names such as `program`, `expr`,
-`stmt`, `primary`, `arg` etc. are always very important. It&#8217;s because they
+`stmt`, `primary`, `arg` etc. are always very important. It’s because they
 represent the general parts of the grammatical elements of a programming
 language. The following table outlines the elements we should generally focus on
 in the syntax of a program.</p>
+
 <table>
-	<tr>
-		<th>Syntax element</th>
-		<th>Predicted symbol names</th>
-	</tr>
-	<tr>
-		<td>Program</td>
-		<td>`program prog file input stmts whole`</td>
-	</tr>
-	<tr>
-		<td>Sentence</td>
-		<td>`statement stmt`</td>
-	</tr>
-	<tr>
-		<td>Expression</td>
-		<td>`expression expr exp`</td>
-	</tr>
-	<tr>
-		<td>Smallest element</td>
-		<td>`primary prim`</td>
-	</tr>
-	<tr>
-		<td>Left hand side of an expression</td>
-		<td>`lhs`(left hand side)</td>
-	</tr>
-	<tr>
-		<td>Right hand side of an expression</td>
-		<td>`rhs`(right hand side)</td>
-	</tr>
-	<tr>
-		<td>Function call</td>
-		<td>`funcall function_call call function`</td>
-	</tr>
-	<tr>
-		<td>Method call</td>
-		<td>`method method_call call`</td>
-	</tr>
-	<tr>
-		<td>Argument</td>
-		<td>`argument arg`</td>
-	</tr>
-	<tr>
-		<td>Function definition</td>
-		<td>`defun definition function fndef`</td>
-	</tr>
-	<tr>
-		<td>Declarations</td>
-		<td>`declaration decl`</td>
-	</tr>
+  <thead>
+    <tr>
+      <th>Syntax element</th>
+      <th>Predicted symbol names</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Program</td>
+      <td>`program prog file input stmts whole`</td>
+    </tr>
+    <tr>
+      <td>Sentence</td>
+      <td>`statement stmt`</td>
+    </tr>
+    <tr>
+      <td>Expression</td>
+      <td>`expression expr exp`</td>
+    </tr>
+    <tr>
+      <td>Smallest element</td>
+      <td>`primary prim`</td>
+    </tr>
+    <tr>
+      <td>Left hand side of an expression</td>
+      <td>`lhs`(left hand side)</td>
+    </tr>
+    <tr>
+      <td>Right hand side of an expression</td>
+      <td>`rhs`(right hand side)</td>
+    </tr>
+    <tr>
+      <td>Function call</td>
+      <td>`funcall function_call call function`</td>
+    </tr>
+    <tr>
+      <td>Method call</td>
+      <td>`method method_call call`</td>
+    </tr>
+    <tr>
+      <td>Argument</td>
+      <td>`argument arg`</td>
+    </tr>
+    <tr>
+      <td>Function definition</td>
+      <td>`defun definition function fndef`</td>
+    </tr>
+    <tr>
+      <td>Declarations</td>
+      <td>`declaration decl`</td>
+    </tr>
+  </tbody>
 </table>
+
 <p>In general, programming languages tend to have the following hierarchy structure.</p>
+
 <table>
-	<tr>
-		<th>Program element</th>
-		<th>Properties</th>
-	</tr>
-	<tr>
-		<td>Program</td>
-		<td>Usually a list of statements</td>
-	</tr>
-	<tr>
-		<td>Statement</td>
-		<td>What can not be combined with the others. A syntax tree trunk.</td>
-	</tr>
-	<tr>
-		<td>Expression</td>
-		<td>What is a combination by itself and can also be a part of another
-expression. A syntax tree internal node.</td>
-	</tr>
-	<tr>
-		<td>Primary</td>
-		<td>An element which can not be further decomposed. A syntax tree leaf node.</td>
-	</tr>
+  <thead>
+    <tr>
+      <th>Program element</th>
+      <th>Properties</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Program</td>
+      <td>Usually a list of statements</td>
+    </tr>
+    <tr>
+      <td>Statement</td>
+      <td>What can not be combined with the others. A syntax tree trunk.</td>
+    </tr>
+    <tr>
+      <td>Expression</td>
+      <td>What is a combination by itself and can also be a part of another</td>
+    </tr>
+    <tr>
+      <td>expression. A syntax tree internal node.</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Primary</td>
+      <td>An element which can not be further decomposed. A syntax tree leaf node.</td>
+    </tr>
+  </tbody>
 </table>
+
 <p>The statements are things like function definitions in C or class definitions
 in Java. An expression can be a procedure call, an arithmetic expression
 etc., while a primary usually refers to a string literal or number. Some languages
 do not contain all of these symbol types, however they generally contain some
 kind of hierarchy of symbols such as `program`→`stmt`→`expr`→`primary`.</p>
+
 <p>However, a structure at a low level can be contained by a superior structure.
 For example, in C a function call is an expression but it can solely be put.
 It means it is an expression but it can also be a statement.</p>
+
 <p>Conversely, when surrounded in parentheses, expressions become primaries.
 It is because the lower the level of an element the higher the precedence it has.</p>
+
 <p>The range of statements differ considerably between programming languages.
-Let&#8217;s consider assignment as an example.
+Let’s consider assignment as an example.
 In C, because it is part of expressions, we can use the value of the whole
 assignment expression. But in Pascal, assignment is a statement, we cannot do
 such thing. Also,
 function and class definitions are typically statements however in languages
 such as Lisp and Scheme, since everything is an expression,
 they do not have statements in the first place.
-Ruby is close to Lisp&#8217;s design in this regard.</p>
-<h3>Program structure</h3>
-<p>Now let&#8217;s turn our attention to the grammar rules of `ruby`. Firstly,
+Ruby is close to Lisp’s design in this regard.</p>
+
+<h3 id="program-structure">Program structure</h3>
+
+<p>Now let’s turn our attention to the grammar rules of `ruby`. Firstly,
 in `yacc`, the left hand side of the first rule represents the entire grammar.
 Currently, it is `program`.
 Following further and further from here,
 as the same as the established tactic,
 the four `program stmt expr primary` will be found.
-With adding `arg` to them, let&#8217;s look at their rules.</p>
-<p>▼ `ruby` grammar (outline)
-<pre class="longlist">
-program         : compstmt</p>
-<p>compstmt        : stmts opt_terms</p>
-<p>stmts           : none
+With adding `arg` to them, let’s look at their rules.</p>
+
+<p>▼ `ruby` grammar (outline)</p>
+
+<pre><code class="language-longlist">program         : compstmt
+
+compstmt        : stmts opt_terms
+
+stmts           : none
                 | stmt
-                | stmts terms stmt</p>
-<p>stmt            : kALIAS fitem  fitem
+                | stmts terms stmt
+
+stmt            : kALIAS fitem  fitem
                 | kALIAS tGVAR tGVAR
                     :
                     :
-                | expr</p>
-<p>expr            : kRETURN call_args
+                | expr
+
+expr            : kRETURN call_args
                 | kBREAK call_args
                     :
                     :
-                | &#8216;!&#8217; command_call
-                | arg</p>
-<p>arg             : lhs &#8216;=&#8217; arg
+                | '!' command_call
+                | arg
+
+arg             : lhs '=' arg
                 | var_lhs tOP_ASGN arg
-                | primary_value &#8216;[&#8217; aref_args &#8216;]&#8217; tOP_ASGN arg
+                | primary_value '[' aref_args ']' tOP_ASGN arg
                     :
                     :
-                | arg &#8216;?&#8217; arg &#8216;:&#8217; arg
-                | primary</p>
-<p>primary         : literal
+                | arg '?' arg ':' arg
+                | primary
+
+primary         : literal
                 | strings
                     :
                     :
-                | tLPAREN_ARG expr  &#8216;)&#8217;
-                | tLPAREN compstmt &#8216;)&#8217;
+                | tLPAREN_ARG expr  ')'
+                | tLPAREN compstmt ')'
                     :
                     :
                 | kREDO
                 | kRETRY
-</pre></p>
+</code></pre>
+
 <p>If we focus on the last rule of each element,
 we can clearly make out a hierarchy of `program`→`stmt`→`expr`→`arg`→
 `primary`.</p>
-<p>Also, we&#8217;d like to focus on this rule of `primary`.</p>
-<pre class="emlist">
-primary         : literal
+
+<p>Also, we’d like to focus on this rule of `primary`.</p>
+
+<pre><code class="language-emlist">primary         : literal
                     :
                     :
                 | tLPAREN_ARG expr  ')'      /* here */
-</pre>
+</code></pre>
+
 <p>The name `tLPAREN_ARG` comes from `t` for terminal symbol, `L` for left and
-`<span class="caps">PAREN</span>` for parentheses &#8211; it is the open parenthesis. Why this isn&#8217;t `&#8216;(&#8217;`
-is covered in the next section &#8220;Context-dependent scanner&#8221;. Anyway, the purpose
+`PAREN` for parentheses - it is the open parenthesis. Why this isn’t `’(‘`
+is covered in the next section “Context-dependent scanner”. Anyway, the purpose
 of this rule is demote an `expr` to a `primary`. This creates
 a cycle which can be seen in Figure 2, and the arrow shows how this rule is
 reduced during parsing.</p>
-<p><img src="images/ch_parser_exprloop.jpg" title="`expr` demotion" alt="`expr` demotion" /></p>
+
+<p><img src="images/ch_parser_exprloop.jpg" alt="`expr` demotion" title="`expr` demotion" /></p>
+
 <p>The next rule is also particularly interesting.</p>
-<pre class="emlist">
-primary         : literal
+
+<pre><code class="language-emlist">primary         : literal
                     :
                     :
                 | tLPAREN compstmt ')'   /* here */
-</pre>
+</code></pre>
+
 <p>A `compstmt`, which equals to the entire program (`program`), can be demoted to
 a `primary` with this rule. The next figure illustrates this rule in action.</p>
-<p><img src="images/ch_parser_progloop.jpg" title="`program` demotion" alt="`program` demotion" /></p>
+
+<p><img src="images/ch_parser_progloop.jpg" alt="`program` demotion" title="`program` demotion" /></p>
+
 <p>This means that for any syntax element in Ruby, if we surround it with
 parenthesis it will become a `primary` and can be passed as an argument to a
 function, be used as the right hand side of an expression etc.
 This is an incredible fact.
-Let&#8217;s actually confirm it.</p>
-<pre class="emlist">
-p((class C; end))
+Let’s actually confirm it.</p>
+
+<pre><code class="language-emlist">p((class C; end))
 p((def a() end))
 p((alias ali gets))
 p((if true then nil else nil end))
 p((1 + 1 * 1 ** 1 - 1 / 1 ^ 1))
-</pre>
+</code></pre>
+
 <p>If we invoke `ruby` with the `-c` option (syntax check), we get the following
 output.</p>
-<pre class="screen">
-% ruby -c primprog.rb
+
+<pre><code class="language-screen">% ruby -c primprog.rb
 Syntax OK
-</pre>
-<p>Indeed, it&#8217;s hard to believe but, it could actually pass.
+</code></pre>
+
+<p>Indeed, it’s hard to believe but, it could actually pass.
 Apparently, we did not get the wrong idea.</p>
+
 <p>If we care about the details,
 since there are what rejected by the semantic analysis (see also Chapter 12
-&#8220;Syntax tree construction&#8221;), it is not perfectly possible.
+“Syntax tree construction”), it is not perfectly possible.
 For example passing a `return` statement as an argument to a
 function will result in an error.
-But at least at the level of the outlooks, the &#8220;surrounding
-anything in parenthesis means it can be passed as an argument to a function&#8221;
+But at least at the level of the outlooks, the “surrounding
+anything in parenthesis means it can be passed as an argument to a function”
 rule does hold.</p>
+
 <p>In the next section I will cover the contents of the important elements one by
 one.</p>
-<h3>`program`</h3>
-<p>▼ `program`
-<pre class="longlist">
-program         : compstmt</p>
-<p>compstmt        : stmts opt_terms</p>
-<p>stmts           : none
+
+<h3 id="program">`program`</h3>
+
+<p>▼ `program`</p>
+
+<pre><code class="language-longlist">program         : compstmt
+
+compstmt        : stmts opt_terms
+
+stmts           : none
                 | stmt
                 | stmts terms stmt
-</pre></p>
+</code></pre>
+
 <p>As mentioned earlier,
-`program` represents the entire grammar that  means the entire program.
+`program` represents the entire grammar that means the entire program.
 That `program` equals to `compstmts`,
 and `compstmts` is almost equivalent to `stmts`.
 That `stmts` is a list of `stmt`s delimited by `terms`.
 Hence, the entire program is a list of `stmt`s delimited by `terms`.</p>
-<p>`terms` is (of course) an abbreviation for &#8220;terminators&#8221;, the symbols that
+
+<p>`terms` is (of course) an abbreviation for “terminators”, the symbols that
 terminate the sentences, such as semicolons or newlines.
-`opt_terms` means &#8220;OPTional terms&#8221;. The definitions are as follows:</p>
-<p>▼ `opt_terms`
-<pre class="longlist">
-opt_terms       :
-                | terms</p>
-<p>terms           : term
-                | terms &#8216;;&#8217;</p>
-<p>term            : &#8216;;&#8217;
-                | &#8216;\n&#8217;
-</pre></p>
-<p>The initial `;` or `\n` of a `terms` can be followed by any number of `;` only; based on that, you might start thinking that if there are 2 or more consecutive newlines, it could cause a problem. Let&#8217;s try and see what actually happens.</p>
-<pre class="emlist">
-1 + 1   # first newline
+`opt_terms` means “OPTional terms”. The definitions are as follows:</p>
+
+<p>▼ `opt_terms`</p>
+
+<pre><code class="language-longlist">opt_terms       :
+                | terms
+
+terms           : term
+                | terms ';'
+
+term            : ';'
+                | '\n'
+</code></pre>
+
+<p>The initial `;` or `\n` of a `terms` can be followed by any number of `;` only; based on that, you might start thinking that if there are 2 or more consecutive newlines, it could cause a problem. Let’s try and see what actually happens.</p>
+
+<pre><code class="language-emlist">1 + 1   # first newline
         # second newline
         # third newline
 1 + 1
-</pre>
+</code></pre>
+
 <p>Run that with `ruby -c`.</p>
-<pre class="screen">
-% ruby -c optterms.rb
+
+<pre><code class="language-screen">% ruby -c optterms.rb
 Syntax OK
-</pre>
+</code></pre>
+
 <p>Strange, it worked! What actually happens is this: consecutive newlines are simply discarded by the scanner, which returns only the first newline in a series.</p>
+
 <p>By the way, although we said that `program` is the same as `compstmt`, if that was really true, you would question why `compstmt` exists at all. Actually, the distinction is there only for execution of semantic actions. `program` exists to execute any semantic actions which should be done once in the processing of an entire program. If it was only a question of parsing, `program` could be omitted with no problems at all.</p>
-<p>To generalize this point, the grammar rules can be divided into 2 groups: those which are needed for parsing the program structure, and those which are needed for execution of semantic actions. The `none` rule which was mentioned earlier when talking about `stmts` is another one which exists for executing actions &#8212; it&#8217;s used to return a `<span class="caps">NULL</span>` pointer for an empty list of type `NODE*`.</p>
-<h3>`stmt`</h3>
-<p>Next is `stmt`. This one is rather involved, so we&#8217;ll look into it a bit at a time.</p>
-<p>▼ `stmt`(1)
-<pre class="longlist">
-stmt            : kALIAS fitem  fitem
+
+<p>To generalize this point, the grammar rules can be divided into 2 groups: those which are needed for parsing the program structure, and those which are needed for execution of semantic actions. The `none` rule which was mentioned earlier when talking about `stmts` is another one which exists for executing actions – it’s used to return a `NULL` pointer for an empty list of type `NODE*`.</p>
+
+<h3 id="stmt">`stmt`</h3>
+
+<p>Next is `stmt`. This one is rather involved, so we’ll look into it a bit at a time.</p>
+
+<p>▼ `stmt`(1)</p>
+
+<pre><code class="language-longlist">stmt            : kALIAS fitem  fitem
                 | kALIAS tGVAR tGVAR
                 | kALIAS tGVAR tBACK_REF
                 | kALIAS tGVAR tNTH_REF
@@ -426,84 +520,111 @@ stmt            : kALIAS fitem  fitem
                 | stmt kWHILE_MOD expr_value
                 | stmt kUNTIL_MOD expr_value
                 | stmt kRESCUE_MOD stmt
-                | klBEGIN &#8216;{&#8217; compstmt &#8216;}&#8217;
-                | klEND &#8216;{&#8217; compstmt &#8216;}&#8217;
-</pre></p>
-<p>Looking at that, somehow things start to make sense. The first few have `alias`, then `undef`, then the next few are all something followed by `_MOD` &#8212; those should be statements with postposition modifiers, as you can imagine.</p>
-<p>`expr_value` and `primary_value` are grammar rules which exist to execute semantic actions. For example, `expr_value` represents an `expr` which has a value. Expressions which don&#8217;t have values are `return` and `break`, or `return`/`break` followed by a postposition modifier, such as an `if` clause. For a detailed definition of what it means to &#8220;have a value&#8221;, see chapter 12, &#8220;Syntax Tree Construction&#8221;. In the same way, `primary_value` is a `primary` which has a value.</p>
-<p>As explained earlier, `klBEGIN` and `klEND` represent `<span class="caps">BEGIN</span>` and `<span class="caps">END</span>`.</p>
-<p>▼ `stmt`(2)
-<pre class="longlist">
-                | lhs &#8216;=&#8217; command_call
-                | mlhs &#8216;=&#8217; command_call
+                | klBEGIN '{' compstmt '}'
+                | klEND '{' compstmt '}'
+</code></pre>
+
+<p>Looking at that, somehow things start to make sense. The first few have `alias`, then `undef`, then the next few are all something followed by `_MOD` – those should be statements with postposition modifiers, as you can imagine.</p>
+
+<p>`expr_value` and `primary_value` are grammar rules which exist to execute semantic actions. For example, `expr_value` represents an `expr` which has a value. Expressions which don’t have values are `return` and `break`, or `return`/`break` followed by a postposition modifier, such as an `if` clause. For a detailed definition of what it means to “have a value”, see chapter 12, “Syntax Tree Construction”. In the same way, `primary_value` is a `primary` which has a value.</p>
+
+<p>As explained earlier, `klBEGIN` and `klEND` represent `BEGIN` and `END`.</p>
+
+<p>▼ `stmt`(2)</p>
+
+<pre><code class="language-longlist">                | lhs '=' command_call
+                | mlhs '=' command_call
                 | var_lhs tOP_ASGN command_call
-                | primary_value &#8216;[&#8217; aref_args &#8216;]&#8217; tOP_ASGN command_call
-                | primary_value &#8216;.&#8217; tIDENTIFIER tOP_ASGN command_call
-                | primary_value &#8216;.&#8217; tCONSTANT tOP_ASGN command_call
+                | primary_value '[' aref_args ']' tOP_ASGN command_call
+                | primary_value '.' tIDENTIFIER tOP_ASGN command_call
+                | primary_value '.' tCONSTANT tOP_ASGN command_call
                 | primary_value tCOLON2 tIDENTIFIER tOP_ASGN command_call
                 | backref tOP_ASGN command_call
-</pre></p>
+</code></pre>
+
 <p>Looking at these rules all at once is the right approach.
-The common point is that they all have `command_call` on the right-hand side. `command_call` represents a method call with the parentheses omitted. The new symbols which are introduced here are explained in the following table. I hope you&#8217;ll refer to the table as you check over each grammar rule.</p>
+The common point is that they all have `command_call` on the right-hand side. `command_call` represents a method call with the parentheses omitted. The new symbols which are introduced here are explained in the following table. I hope you’ll refer to the table as you check over each grammar rule.</p>
+
 <table>
-	<tr>
-		<td>`lhs`</td>
-		<td> the left hand side of an assignment (Left Hand Side)</td>
-	</tr>
-	<tr>
-		<td>`mlhs`</td>
-		<td> the left hand side of a multiple assignment (Multiple Left Hand Side)</td>
-	</tr>
-	<tr>
-		<td>`var_lhs`</td>
-		<td> the left hand side of an assignment to a kind of variable  (VARiable Left Hand Side) </td>
-	</tr>
-	<tr>
-		<td>`tOP_ASGN`</td>
-		<td>compound assignment operator like `+=` or `*=` (OPerator ASsiGN)</td>
-	</tr>
-	<tr>
-		<td>`aref_args`</td>
-		<td>argument to a `[]` method call (Array REFerence)</td>
-	</tr>
-	<tr>
-		<td>`tIDENTIFIER`</td>
-		<td>identifier which can be used as a local variable</td>
-	</tr>
-	<tr>
-		<td>`tCONSTANT`</td>
-		<td>constant identifier (with leading uppercase letter)</td>
-	</tr>
-	<tr>
-		<td>`tCOLON2`</td>
-		<td>`::`</td>
-	</tr>
-	<tr>
-		<td>`backref`</td>
-		<td>`$1 $2 $3&#8230;`</td>
-	</tr>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`lhs`</td>
+      <td>the left hand side of an assignment (Left Hand Side)</td>
+    </tr>
+    <tr>
+      <td>`mlhs`</td>
+      <td>the left hand side of a multiple assignment (Multiple Left Hand Side)</td>
+    </tr>
+    <tr>
+      <td>`var_lhs`</td>
+      <td>the left hand side of an assignment to a kind of variable (VARiable Left Hand Side)</td>
+    </tr>
+    <tr>
+      <td>`tOP_ASGN`</td>
+      <td>compound assignment operator like `+=` or `*=` (OPerator ASsiGN)</td>
+    </tr>
+    <tr>
+      <td>`aref_args`</td>
+      <td>argument to a `[]` method call (Array REFerence)</td>
+    </tr>
+    <tr>
+      <td>`tIDENTIFIER`</td>
+      <td>identifier which can be used as a local variable</td>
+    </tr>
+    <tr>
+      <td>`tCONSTANT`</td>
+      <td>constant identifier (with leading uppercase letter)</td>
+    </tr>
+    <tr>
+      <td>`tCOLON2`</td>
+      <td>`::`</td>
+    </tr>
+    <tr>
+      <td>`backref`</td>
+      <td>`$1 $2 $3…`</td>
+    </tr>
+  </tbody>
 </table>
+
 <p>`aref` is a `Lisp` jargon.
-There&#8217;s also `aset` as the other side of a pair,
-which is an abbreviation of &#8220;array set&#8221;.
+There’s also `aset` as the other side of a pair,
+which is an abbreviation of “array set”.
 This abbreviation is used at a lot of places in the source code of `ruby`.</p>
-<p class="caption">▼ `stmt` (3)</p>
-<pre class="longlist">
-                | lhs '=' mrhs_basic
+
+<p class="caption">
+▼ \`stmt\` (3)
+
+</p>
+<pre><code class="language-longlist">                | lhs '=' mrhs_basic
                 | mlhs '=' mrhs
-</pre>
+</code></pre>
+
 <p>These two are multiple assignments.
 `mrhs` has the same structure as `mlhs` and it means multiple `rhs` (the right hand side).
-We&#8217;ve come to recognize that knowing the meanings of names makes the comprehension much easier.</p>
-<p class="caption">▼ `stmt` (4)</p>
-<pre class="longlist">
-                | expr
-</pre>
+We’ve come to recognize that knowing the meanings of names makes the comprehension much easier.</p>
+
+<p class="caption">
+▼ \`stmt\` (4)
+
+</p>
+<pre><code class="language-longlist">                | expr
+</code></pre>
+
 <p>Lastly, it joins to `expr`.</p>
-<h3>`expr`</h3>
-<p class="caption">▼ `expr` </p>
-<pre class="longlist">
-expr            : kRETURN call_args
+
+<h3 id="expr">`expr`</h3>
+
+<p class="caption">
+▼ \`expr\`
+
+</p>
+<pre><code class="language-longlist">expr            : kRETURN call_args
                 | kBREAK call_args
                 | kNEXT call_args
                 | command_call
@@ -512,40 +633,49 @@ expr            : kRETURN call_args
                 | kNOT expr
                 | '!' command_call
                 | arg
-</pre>
+</code></pre>
+
 <p>Expression. The expression of `ruby` is very small in grammar.
-That&#8217;s because those ordinary contained in `expr` are mostly went into `arg`.
+That’s because those ordinary contained in `expr` are mostly went into `arg`.
 Conversely speaking, those who could not go to `arg` are left here.
 And what are left are, again, method calls without parentheses.
 `call_args` is an bare argument list,
 `command_call` is, as previously mentioned, a method without parentheses.
-If this kind of things was contained in the &#8220;small&#8221; unit,
+If this kind of things was contained in the “small” unit,
 it would cause conflicts tremendously.</p>
+
 <p>However, these two below are of different kind.</p>
-<pre class="emlist">
-expr kAND expr
+
+<pre><code class="language-emlist">expr kAND expr
 expr kOR expr
-</pre>
-<p>`kAND` is &#8220;`and`&#8221;, and `kOR` is &#8220;`or`&#8221;.
+</code></pre>
+
+<p>`kAND` is “`and`”, and `kOR` is “`or`”.
 Since these two have their roles as control structures,
-they must be contained in the &#8220;big&#8221; syntax unit which is larger than `command_call`.
+they must be contained in the “big” syntax unit which is larger than `command_call`.
 And since `command_call` is contained in `expr`,
 at least they need to be `expr` to go well.
-For example, the following usage is possible &#8230;</p>
-<pre class="emlist">
-  valid_items.include? arg  or raise ArgumentError, 'invalid arg'
+For example, the following usage is possible …</p>
+
+<pre><code class="language-emlist">  valid_items.include? arg  or raise ArgumentError, 'invalid arg'
 # valid_items.include?(arg) or raise(ArgumentError, 'invalid arg')
-</pre>
+</code></pre>
+
 <p>However, if the rule of `kOR` existed in `arg` instead of `expr`,
 it would be joined as follows.</p>
-<pre class="emlist">
-valid_items.include?((arg or raise)) ArgumentError, 'invalid arg'
-</pre>
+
+<pre><code class="language-emlist">valid_items.include?((arg or raise)) ArgumentError, 'invalid arg'
+</code></pre>
+
 <p>Obviously, this would end up a parse error.</p>
-<h3>`arg`</h3>
-<p class="caption">▼ `arg` </p>
-<pre class="longlist">
-arg             : lhs '=' arg
+
+<h3 id="arg">`arg`</h3>
+
+<p class="caption">
+▼ \`arg\`
+
+</p>
+<pre><code class="language-longlist">arg             : lhs '=' arg
                 | var_lhs tOP_ASGN arg
                 | primary_value '[' aref_args ']' tOP_ASGN arg
                 | primary_value '.' tIDENTIFIER tOP_ASGN arg
@@ -584,250 +714,316 @@ arg             : lhs '=' arg
                 | kDEFINED opt_nl  arg
                 | arg '?' arg ':' arg
                 | primary
-</pre>
+</code></pre>
+
 <p>Although there are many rules here, the complexity of the grammar is not
 proportionate to the number of rules.
 A grammar that merely has a lot of cases can be handled very easily by `yacc`,
 rather, the depth or recursive of the rules has more influences the complexity.</p>
+
 <p>Then, it makes us curious about the rules are defined recursively in the form
 of `arg OP arg` at the place for operators,
 but because for all of these operators their operator precedences are defined,
 this is virtually only a mere enumeration.
-Let&#8217;s cut the &#8220;mere enumeration&#8221; out from the `arg` rule by merging.</p>
-<pre class="emlist">
-arg: lhs '=' arg              /* 1 */
+Let’s cut the “mere enumeration” out from the `arg` rule by merging.</p>
+
+<pre><code class="language-emlist">arg: lhs '=' arg              /* 1 */
    | primary T_opeq arg       /* 2 */
    | arg T_infix arg          /* 3 */
    | T_pre arg                /* 4 */
    | arg '?' arg ':' arg      /* 5 */
    | primary                  /* 6 */
-</pre>
-<p>There&#8217;s no meaning to distinguish terminal symbols from lists of terminal symbols,
+</code></pre>
+
+<p>There’s no meaning to distinguish terminal symbols from lists of terminal symbols,
 they are all expressed with symbols with `T_`.
 `opeq` is `operator + equal`,
-`T_pre` represents the prepositional operators such as `&#8216;!&#8217;` and `&#8216;~&#8217;`,
-`T_infix` represents the infix operators such as `&#8216;*&#8217;` and `&#8216;%&#8217;`.</p>
+`T_pre` represents the prepositional operators such as `’!’` and `’~’`,
+`T_infix` represents the infix operators such as `’*’` and `’%’`.</p>
+
 <p>To avoid conflicts in this structure,
 things like written below become important
 (but, these does not cover all).</p>
+
 <ul>
-	<li>`T_infix` should not contain `&#8216;=&#8217;`.</li>
+  <li>`T_infix` should not contain `’=’`.</li>
 </ul>
+
 <p>Since `args` partially overlaps `lhs`,
-if `&#8216;=&#8217;` is contained, the rule 1 and the rule 3 cannot be distinguished.</p>
+if `’=’` is contained, the rule 1 and the rule 3 cannot be distinguished.</p>
+
 <ul>
-	<li>`T_opeq` and `T_infix` should not have any common rule.</li>
+  <li>`T_opeq` and `T_infix` should not have any common rule.</li>
 </ul>
+
 <p>Since `args` contains `primary`,
 if they have any common rule, the rule 2 and the rule 3 cannot be distinguished.</p>
+
 <ul>
-	<li>`T_infix` should not contain `&#8216;?&#8217;`.</li>
+  <li>`T_infix` should not contain `’?’`.</li>
 </ul>
+
 <p>If it contains, the rule 3 and 5 would produce a shift/reduce conflict.</p>
+
 <ul>
-	<li>`T_pre` should not contain `&#8216;?&#8217;` or `&#8216;:&#8217;`.</li>
+  <li>`T_pre` should not contain `’?’` or `’:’`.</li>
 </ul>
+
 <p>If it contains, the rule 4 and 5 would conflict in a very complicated way.</p>
+
 <p>The conclusion is all requirements are met and this grammar does not conflict.
-We could say it&#8217;s a matter of course.</p>
-<h3>`primary`</h3>
-<p>Because `primary` has a lot of grammar rules, we&#8217;ll split them up and show them in parts.</p>
-<p class="caption">▼ `primary` (1)</p>
-<pre class="longlist">
-primary         : literal
+We could say it’s a matter of course.</p>
+
+<h3 id="primary">`primary`</h3>
+
+<p>Because `primary` has a lot of grammar rules, we’ll split them up and show them in parts.</p>
+
+<p class="caption">
+▼ \`primary\` (1)
+
+</p>
+<pre><code class="language-longlist">primary         : literal
                 | strings
                 | xstring
                 | regexp
                 | words
                 | qwords
-</pre>
+</code></pre>
+
 <p>Literals.
 `literal` is for `Symbol` literals (`:sym`) and numbers.</p>
-<p class="caption">▼ `primary` (2)</p>
-<pre class="longlist">
-                | var_ref
+
+<p class="caption">
+▼ \`primary\` (2)
+
+</p>
+<pre><code class="language-longlist">                | var_ref
                 | backref
                 | tFID
-</pre>
+</code></pre>
+
 <p>Variables.
 `var_ref` is for local variables and instance variables and etc.
-`backref` is for `$1 $2 $3` &#8230;
-`tFID` is for the identifiers with `!` or `?`, say, `include? reject!`.
-There&#8217;s no possibility of `tFID` being a local variable,
+`backref` is for `$1 $2 $3` …
+`tFID` is for the identifiers with `<img src="` or `?`, say, `include? reject" alt="" />`.
+There’s no possibility of `tFID` being a local variable,
 even if it appears solely, it becomes a method call at the parser level.</p>
-<p class="caption">▼ `primary` (3)</p>
-<pre class="longlist">
-                | kBEGIN
+
+<p class="caption">
+▼ \`primary\` (3)
+
+</p>
+<pre><code class="language-longlist">                | kBEGIN
                   bodystmt
                   kEND
-</pre>
+</code></pre>
+
 <p>`bodystmt` contains `rescue` and `ensure`.
 It means this is the `begin` of the exception control.</p>
-<p class="caption">▼ `primary` (4)</p>
-<pre class="longlist">
-                | tLPAREN_ARG expr  ')'
+
+<p class="caption">
+▼ \`primary\` (4)
+
+</p>
+<pre><code class="language-longlist">                | tLPAREN_ARG expr  ')'
                 | tLPAREN compstmt ')'
-</pre>
+</code></pre>
+
 <p>This has already described. Syntax demoting.</p>
-<p class="caption">▼ `primary` (5)</p>
-<pre class="longlist">
-                | primary_value tCOLON2 tCONSTANT
+
+<p class="caption">
+▼ \`primary\` (5)
+
+</p>
+<pre><code class="language-longlist">                | primary_value tCOLON2 tCONSTANT
                 | tCOLON3 cname
-</pre>
+</code></pre>
+
 <p>Constant references. `tCONSTANT` is for constant names (capitalized identifiers).</p>
+
 <p>Both `tCOLON2` and `tCOLON3` are `::`,
 but `tCOLON3` represents only the `::` which means the top level.
 In other words, it is the `::` of `::Const`.
-The `::` of `Net::<span class="caps">SMTP</span>` is `tCOLON2`.</p>
+The `::` of `Net::SMTP` is `tCOLON2`.</p>
+
 <p>The reason why different symbols are used for the same token
 is to deal with the methods without parentheses.
 For example, it is to distinguish the next two from each other:</p>
-<pre class="emlist">
-p Net::HTTP    # p(Net::HTTP)
+
+<pre><code class="language-emlist">p Net::HTTP    # p(Net::HTTP)
 p Net  ::HTTP  # p(Net(::HTTP))
-</pre>
-<p>If there&#8217;s a space or a delimiter character such as an open parenthesis just before it,
+</code></pre>
+
+<p>If there’s a space or a delimiter character such as an open parenthesis just before it,
 it becomes `tCOLON3`. In the other cases, it becomes `tCOLON2`.</p>
-<p class="caption">▼ `primary` (6)</p>
-<pre class="longlist">
-                | primary_value '[' aref_args ']'
-</pre>
+
+<p class="caption">
+▼ \`primary\` (6)
+
+</p>
+<pre><code class="language-longlist">                | primary_value '[' aref_args ']'
+</code></pre>
+
 <p>Index-form calls, for instance, `arr[i]`.</p>
-<p class="caption">▼ `primary` (7)</p>
-<pre class="longlist">
-                | tLBRACK aref_args ']'
+
+<p class="caption">
+▼ \`primary\` (7)
+
+</p>
+<pre><code class="language-longlist">                | tLBRACK aref_args ']'
                 | tLBRACE assoc_list '}'
-</pre>
+</code></pre>
+
 <p>Array literals and Hash literals.
-This `tLBRACK` represents also `&#8216;[&#8217;`,
-`&#8216;[&#8217;` means a `&#8216;[&#8217;` without a space in front of it.
+This `tLBRACK` represents also `’[’`,
+`’[’` means a `’[’` without a space in front of it.
 The necessity of this differentiation is also a side effect of method calls
 without parentheses.</p>
+
 <p>The terminal symbols of this rule is very incomprehensible because they differs
 in just a character.
 The following table shows how to read each type of parentheses,
-so I&#8217;d like you to make use of it when reading.</p>
-<p class="caption">▼ English names for each parentheses </p>
-<table>
-	<tr>
-		<td> Symbol </td>
-		<td> English Name </td>
-	</tr>
-	<tr>
-		<td> () </td>
-		<td> parentheses </td>
-	</tr>
-	<tr>
-		<td> {} </td>
-		<td> braces </td>
-	</tr>
-	<tr>
-		<td> [] </td>
-		<td> brackets </td>
-	</tr>
-</table>
-<p class="caption">▼ `primary` (8)</p>
-<pre class="longlist">
-                | kRETURN
+so I’d like you to make use of it when reading.</p>
+
+<p class="caption">
+▼ English names for each parentheses
+
+</p>
+<p>|        |              |
+|——–|————–|
+| Symbol | English Name |
+| ()     | parentheses  |
+| {}     | braces       |
+| []   | brackets     |</p>
+
+<p class="caption">
+▼ \`primary\` (8)
+
+</p>
+<pre><code class="language-longlist">                | kRETURN
                 | kYIELD '(' call_args ')'
                 | kYIELD '(' ')'
                 | kYIELD
                 | kDEFINED opt_nl '('  expr ')'
-</pre>
+</code></pre>
+
 <p>Syntaxes whose forms are similar to method calls.
 Respectively, `return`, `yield`, `defined?`.</p>
+
 <p>There arguments for `yield`, but `return` does not have any arguments. Why?
 The fundamental reason is that `yield` itself has its return value but
 `return` does not.
-However, even if there&#8217;s not any arguments here,
+However, even if there’s not any arguments here,
 it does not mean you cannot pass values, of course.
 There was the following rule in `expr`.</p>
-<pre class="emlist">
-kRETURN call_args
-</pre>
+
+<pre><code class="language-emlist">kRETURN call_args
+</code></pre>
+
 <p>`call_args` is a bare argument list,
 so it can deal with `return 1` or `return nil`.
 Things like `return(1)` are handled as `return (1)`.
 For this reason,
 surrounding the multiple arguments of a `return` with parentheses
 as in the following code should be impossible.</p>
-<pre class="emlist">
-return(1, 2, 3)   # interpreted as return  (1,2,3) and results in parse error
-</pre>
+
+<pre><code class="language-emlist">return(1, 2, 3)   # interpreted as return  (1,2,3) and results in parse error
+</code></pre>
+
 <p>You could understand more about around here
 if you will check this again after reading
-the next chapter &#8220;Finite-State Scanner&#8221;.</p>
-<p class="caption">▼ `primary` (9)</p>
-<pre class="longlist">
-                | operation brace_block
+the next chapter “Finite-State Scanner”.</p>
+
+<p class="caption">
+▼ \`primary\` (9)
+
+</p>
+<pre><code class="language-longlist">                | operation brace_block
                 | method_call
                 | method_call brace_block
-</pre>
+</code></pre>
+
 <p>Method calls. `method_call` is with arguments (also with parentheses),
 `operation` is without both arguments and parentheses,
 `brace_block` is either `{` ~ `}` or `do` ~ `end`
 and if it is attached to a method, the method is an iterator.
-For the question &#8220;Even though it is `brace`, why is `do` ~ `end` contained in
-it?&#8221;, there&#8217;s a reason that is more abyssal than Marian Trench,
+For the question “Even though it is `brace`, why is `do` ~ `end` contained in
+it?”, there’s a reason that is more abyssal than Marian Trench,
 but again the only way to understand is reading
-the next chapter &#8220;Finite-State Scanner&#8221;.</p>
-<p class="caption">▼ `primary` (10)</p>
-<pre class="longlist">
-  | kIF expr_value then compstmt if_tail kEND         # if
+the next chapter “Finite-State Scanner”.</p>
+
+<p class="caption">
+▼ \`primary\` (10)
+
+</p>
+<pre><code class="language-longlist">  | kIF expr_value then compstmt if_tail kEND         # if
   | kUNLESS expr_value then compstmt opt_else kEND    # unless
   | kWHILE expr_value do compstmt kEND                # while
   | kUNTIL expr_value do compstmt kEND                # until
   | kCASE expr_value opt_terms case_body kEND         # case
   | kCASE opt_terms case_body kEND                    # case(Form2)
   | kFOR block_var kIN expr_value do compstmt kEND    # for
-</pre>
+</code></pre>
+
 <p>The basic control structures.
 A little unexpectedly, things appear to be this big are put inside `primary`,
-which is &#8220;small&#8221;.
+which is “small”.
 Because `primary` is also `arg`,
 we can also do something like this.</p>
-<pre class="emlist">
-p(if true then 'ok' end)   # shows "ok"
-</pre>
-<p>I mentioned &#8220;almost all syntax elements are expressions&#8221;
+
+<pre><code class="language-emlist">p(if true then 'ok' end)   # shows "ok"
+</code></pre>
+
+<p>I mentioned “almost all syntax elements are expressions”
 was one of the traits of Ruby.
 It is concretely expressed by the fact that `if` and `while` are in `primary`.</p>
-<p>Why is there no problem if these &#8220;big&#8221; elements are contained in `primary`?
-That&#8217;s because the Ruby&#8217;s syntax has a trait that &#8220;it begins with the terminal
-symbol A and ends with the terminal symbol B&#8221;.
-In the next section, we&#8217;ll think about this point again.</p>
-<p class="caption">▼ `primary` (11)</p>
-<pre class="longlist">
-  | kCLASS cname superclass bodystmt kEND        # class definition
+
+<p>Why is there no problem if these “big” elements are contained in `primary`?
+That’s because the Ruby’s syntax has a trait that “it begins with the terminal
+symbol A and ends with the terminal symbol B”.
+In the next section, we’ll think about this point again.</p>
+
+<p class="caption">
+▼ \`primary\` (11)
+
+</p>
+<pre><code class="language-longlist">  | kCLASS cname superclass bodystmt kEND        # class definition
   | kCLASS tLSHFT expr term bodystmt kEND        # singleton class definition
   | kMODULE cname bodystmt kEND                  # module definition
   | kDEF fname f_arglist bodystmt kEND           # method definition
   | kDEF singleton dot_or_colon fname f_arglist bodystmt kEND
                                                  # singleton method definition
-</pre>
+</code></pre>
+
 <p>Definition statements.
-I&#8217;ve called them the class statements and the class statements,
+I’ve called them the class statements and the class statements,
 but essentially I should have been called them the class primaries, probably.
-These are all fit the pattern &#8220;beginning with the terminal symbol A and ending with B&#8221;,
+These are all fit the pattern “beginning with the terminal symbol A and ending with B”,
 even if such rules are increased a lot more,
 it would never be a problem.</p>
-<p class="caption">▼ `primary` (12)</p>
-<pre class="longlist">
-                | kBREAK
+
+<p class="caption">
+▼ \`primary\` (12)
+
+</p>
+<pre><code class="language-longlist">                | kBREAK
                 | kNEXT
                 | kREDO
                 | kRETRY
-</pre>
+</code></pre>
+
 <p>Various jumps.
 These are, well, not important from the viewpoint of grammar.</p>
-<h3>Conflicting Lists</h3>
-<p>In the previous section, the question &#8220;is it all right that `if` is in such
-`primary`?&#8221; was suggested.
+
+<h3 id="conflicting-lists">Conflicting Lists</h3>
+
+<p>In the previous section, the question “is it all right that `if` is in such
+`primary`?” was suggested.
 To proof precisely is not easy,
 but explaining instinctively is relatively easy.
-Here, let&#8217;s simulate with a small rule defined as follows:</p>
-<pre class="emlist">
-%token A B o
+Here, let’s simulate with a small rule defined as follows:</p>
+
+<pre><code class="language-emlist">%token A B o
 %%
 element   : A item_list B
 
@@ -836,29 +1032,34 @@ item_list :
 
 item      : element
           | o
-</pre>
+</code></pre>
+
 <p>`element` is the element that we are going to examine.
 For example, if we think about `if`, it would be `if`.
 `element` is a list that starts with the terminal symbol `A` and ends with `B`.
 As for `if`, it starts with `if` and ends with `end`.
 The `o` contents are methods or variable references or literals.
 For an element of the list, the `o` or `element` is nesting.</p>
+
 <p>With the parser based on this grammar,
-let&#8217;s try to parse the following input.</p>
-<pre class="emlist">
-A  A  o  o  o  B  o  A  o  A  o  o  o  B  o  B  B
-</pre>
+let’s try to parse the following input.</p>
+
+<pre><code class="language-emlist">A  A  o  o  o  B  o  A  o  A  o  o  o  B  o  B  B
+</code></pre>
+
 <p>They are nesting too many times for humans to comprehend
 without some helps such as indents.
 But it becomes relatively easy if you think in the next way.
-Because it&#8217;s certain that `A` and `B` which contain only several `o` between
+Because it’s certain that `A` and `B` which contain only several `o` between
 them are going to appear, replace them to a single `o` when they appear.
 All we have to do is repeating this procedure.
 Figure 4 shows the consequence.</p>
-<p><img src="images/ch_parser_ablist.jpg" title="parse a list which starts with A and ends with B" alt="parse a list which starts with A and ends with B" /></p>
-<p>However, if the ending `B` is missing, &#8230;</p>
-<pre class="emlist">
-%token A o
+
+<p><img src="images/ch_parser_ablist.jpg" alt="parse a list which starts with A and ends with B" title="parse a list which starts with A and ends with B" /></p>
+
+<p>However, if the ending `B` is missing, …</p>
+
+<pre><code class="language-emlist">%token A o
 %%
 element   : A item_list    /* B is deleted for an experiment */
 
@@ -867,79 +1068,112 @@ item_list :
 
 item      : element
           | o
-</pre>
+</code></pre>
+
 <p>I processed this with `yacc` and got 2 shift/reduce conflicts.
 It means this grammar is ambiguous.
 If we simply take `B` out from the previous one,
 The input would be as follows.</p>
-<pre class="emlist">
-A  A  o  o  o  o  A  o  A  o  o  o  o
-</pre>
-<p>This is hard to interpret in any way. However, there was a rule that &#8220;choose
-shift if it is a shift/reduce conflict&#8221;,
-let&#8217;s follow it as an experiment and parse the input
+
+<pre><code class="language-emlist">A  A  o  o  o  o  A  o  A  o  o  o  o
+</code></pre>
+
+<p>This is hard to interpret in any way. However, there was a rule that “choose
+shift if it is a shift/reduce conflict”,
+let’s follow it as an experiment and parse the input
 with shift (meaning interior) which takes precedence. (Figure 5)</p>
-<p><img src="images/ch_parser_alist.jpg" title="parse a list of lists which start with A" alt="parse a list of lists which start with A" /></p>
+
+<p><img src="images/ch_parser_alist.jpg" alt="parse a list of lists which start with A" title="parse a list of lists which start with A" /></p>
+
 <p>It could be parsed. However, this is completely different from the intention of
 the input, there becomes no way to split the list in the middle.</p>
+
 <p>Actually, the methods without parentheses of Ruby is in the similar situation
-to this. It&#8217;s not so easy to understand but
+to this. It’s not so easy to understand but
 a pair of a method name and its first argument is `A`.
-This is because, since there&#8217;s no comma only between the two,
+This is because, since there’s no comma only between the two,
 it can be recognized as the start of a new list.</p>
-<p>Also, the &#8220;practical&#8221; <span class="caps">HTML</span> contains this pattern.
-It is, for instance, when `</p>` or `</i>` is omitted.
-That&#8217;s why `yacc` could not be used for ordinary <span class="caps">HTML</span> at all.</p>
-<h2>Scanner</h2>
-<h3>Parser Outline</h3>
-<p>I&#8217;ll explain about the outline of the parser before moving on to the scanner.
+
+<p>Also, the “practical” HTML contains this pattern.
+It is, for instance, when `</p>
+
+<p>&lt;/p&gt;
+` or `&lt;/i&gt;` is omitted.
+That’s why `yacc` could not be used for ordinary HTML at all.</p>
+
+<h2 id="scanner">Scanner</h2>
+
+<h3 id="parser-outline">Parser Outline</h3>
+
+<p>I’ll explain about the outline of the parser before moving on to the scanner.
 Take a look at Figure 6.</p>
-<p><img src="images/ch_parser_interf.jpg" title="Parser Interface (Call Graph)" alt="Parser Interface (Call Graph)" /></p>
+
+<p>!images/ch_parser_interf.jpg(Parser Interface (Call Graph))!</p>
+
 <p>There are three official interfaces of the parser: `rb_compile_cstr()`,
 `rb_compile_string()`, `rb_compile_file()`.
 They read a program from C string,
 a Ruby string object and a Ruby `IO` object, respectively, and compile it.</p>
+
 <p>These functions, directly or indirectly, call `yycompile()`,
 and in the end, the control will be completely moved to `yyparse()`,
 which is generated by `yacc`.
 Since the heart of the parser is nothing but `yyparse()`,
-it&#8217;s nice to understand by placing `yyparse()` at the center.
+it’s nice to understand by placing `yyparse()` at the center.
 In other words, functions before moving on to `yyparse()` are all preparations,
 and functions after `yyparse()` are merely chore functions being pushed around
 by `yyparse()`.</p>
+
 <p>The rest functions in `parse.y` are auxiliary functions called by `yylex()`,
 and these can also be clearly categorized.</p>
+
 <p>First, the input buffer is at the lowest level of the scanner.
 `ruby` is designed so that you can input source programs via both Ruby `IO`
 objects and strings.
 The input buffer hides that and makes it look like a single byte stream.</p>
+
 <p>The next level is the token buffer.
 It reads 1 byte at a time from the input buffer,
 and keeps them until it will form a token.</p>
+
 <p>Therefore, the whole structure of `yylex` can be depicted as Figure 7.</p>
-<p><img src="images/ch_parser_scanner.jpg" title="The whole picture of the scanner" alt="The whole picture of the scanner" /></p>
-<h3>The input buffer</h3>
-<p>Let&#8217;s start with the input buffer. Its interfaces are only the three: `nextc()`, `pushback()`, `peek()`.</p>
+
+<p><img src="images/ch_parser_scanner.jpg" alt="The whole picture of the scanner" title="The whole picture of the scanner" /></p>
+
+<h3 id="the-input-buffer">The input buffer</h3>
+
+<p>Let’s start with the input buffer. Its interfaces are only the three: `nextc()`, `pushback()`, `peek()`.</p>
+
 <p>Although this is sort of insistent,
 I said the first thing is to investigate data structures.
 The variables used by the input buffer are the followings:</p>
-<p class="caption">▼ the input buffer</p>
-<pre class="longlist">
-2279  static char *lex_pbeg;
+
+<p class="caption">
+▼ the input buffer
+
+</p>
+<pre><code class="language-longlist">2279  static char *lex_pbeg;
 2280  static char *lex_p;
 2281  static char *lex_pend;
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>The beginning, the current position and the end of the buffer.
 Apparently, this buffer seems a simple single-line string buffer (Figure 8).</p>
-<p><img src="images/ch_parser_ibuffer.jpg" title="The input buffer" alt="The input buffer" /></p>
-<h4>`nextc()`</h4>
-<p>Then, let&#8217;s look at the places using them.
-First, I&#8217;ll start with `nextc()` that seems the most orthodox.</p>
-<p class="caption">▼ `nextc()` </p>
-<pre class="longlist">
-2468  static inline int
+
+<p><img src="images/ch_parser_ibuffer.jpg" alt="The input buffer" title="The input buffer" /></p>
+
+<h4 id="nextc">`nextc()`</h4>
+
+<p>Then, let’s look at the places using them.
+First, I’ll start with `nextc()` that seems the most orthodox.</p>
+
+<p class="caption">
+▼ \`nextc()\`
+
+</p>
+<pre><code class="language-longlist">2468  static inline int
 2469  nextc()
 2470  {
 2471      int c;
@@ -973,18 +1207,21 @@ First, I&#8217;ll start with `nextc()` that seems the most orthodox.</p>
 2499  }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>It seems that the first `if` is to test if it reaches the end of the input buffer.
-And, the `if` inside of it seems, since the `else` returns `-1` (`<span class="caps">EOF</span>`),
+And, the `if` inside of it seems, since the `else` returns `-1` (`EOF`),
 to test the end of the whole input.
 Conversely speaking, when the input ends, `lex_input` becomes 0.
 ((errata: it does not. lex_input will never become 0 during ordinary scan.))</p>
+
 <p>From this, we can see that strings are coming bit by bit into the input buffer.
 Since the name of the function which updates the buffer is `lex_getline`,
-it&#8217;s definite that each line comes in at a time.</p>
+it’s definite that each line comes in at a time.</p>
+
 <p>Here is the summary:</p>
-<pre class="emlist">
-if ( reached the end of the buffer )
+
+<pre><code class="language-emlist">if ( reached the end of the buffer )
     if (still there's more input)
         read the next line
     else
@@ -992,12 +1229,16 @@ if ( reached the end of the buffer )
 move the pointer forward
 skip reading CR of CRLF
 return c
-</pre>
-<p>Let&#8217;s also look at the function `lex_getline()`, which provides lines.
+</code></pre>
+
+<p>Let’s also look at the function `lex_getline()`, which provides lines.
 The variables used by this function are shown together in the following.</p>
-<p class="caption">▼ `lex_getline()` </p>
-<pre class="longlist">
-2276  static VALUE (*lex_gets)();     /* gets function */
+
+<p class="caption">
+▼ \`lex\_getline()\`
+
+</p>
+<pre><code class="language-longlist">2276  static VALUE (*lex_gets)();     /* gets function */
 2277  static VALUE lex_input;         /* non-nil if File */
 
 2420  static VALUE
@@ -1011,14 +1252,18 @@ The variables used by this function are shown together in the following.</p>
 2428  }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>Except for the first line, this is not important.
 Apparently, `lex_gets` should be the pointer to the function to read a line,
 `lex_input` should be the actual input.
 I searched the place where setting `lex_gets` and this is what I found:</p>
-<p class="caption">▼ set `lex_gets` </p>
-<pre class="longlist">
-2430  NODE*
+
+<p class="caption">
+▼ set \`lex\_gets\`
+
+</p>
+<pre><code class="language-longlist">2430  NODE*
 2431  rb_compile_string(f, s, line)
 2432      const char *f;
 2433      VALUE s;
@@ -1038,14 +1283,19 @@ I searched the place where setting `lex_gets` and this is what I found:</p>
 2461      lex_input = file;
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>`rb_io_gets()` is not an exclusive function for the parser
 but one of the general-purpose library of Ruby.
 It is the function to read a line from an `IO` object.</p>
+
 <p>On the other hand, `lex_get_str()` is defined as follows:</p>
-<p class="caption">▼ `lex_get_str()` </p>
-<pre class="longlist">
-2398  static int lex_gets_ptr;
+
+<p class="caption">
+▼ \`lex\_get\_str()\`
+
+</p>
+<pre><code class="language-longlist">2398  static int lex_gets_ptr;
 
 2400  static VALUE
 2401  lex_get_str(s)
@@ -1068,23 +1318,30 @@ It is the function to read a line from an `IO` object.</p>
 2418  }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>`lex_gets_ptr` remembers the place it have already read.
 This moves it to the next `\n`,
 and simultaneously cut out at the place and return it.</p>
-<p>Here, let&#8217;s go back to `nextc`.
+
+<p>Here, let’s go back to `nextc`.
 As described, by preparing the two functions with the same interface,
 it switch the function pointer when initializing the parser,
 and the other part is used in common.
 It can also be said that the difference of the code is converted to the data
 and absorbed. There was also a similar method of `st_table`.</p>
-<h4>`pushback()`</h4>
+
+<h4 id="pushback">`pushback()`</h4>
+
 <p>With the knowledge of the physical structure of the buffer and `nextc`,
 we can understand the rest easily.
 `pushback()` writes back a character. If put it in C, it is `ungetc()`.</p>
-<p class="caption">▼ `pushback()` </p>
-<pre class="longlist">
-2501  static void
+
+<p class="caption">
+▼ \`pushback()\`
+
+</p>
+<pre><code class="language-longlist">2501  static void
 2502  pushback(c)
 2503      int c;
 2504  {
@@ -1093,64 +1350,90 @@ we can understand the rest easily.
 2507  }
 
 (parse.y)
-</pre>
-<h4>`peek()`</h4>
+</code></pre>
+
+<h4 id="peek">`peek()`</h4>
+
 <p>`peek()` checks the next character without moving the pointer forward.</p>
-<p class="caption">▼ `peek()` </p>
-<pre class="longlist">
-2509  #define peek(c) (lex_p != lex_pend &amp;&amp; (c) == *lex_p)
+
+<p class="caption">
+▼ \`peek()\`
+
+</p>
+<pre><code class="language-longlist">2509  #define peek(c) (lex_p != lex_pend &amp;&amp; (c) == *lex_p)
 
 (parse.y)
-</pre>
-<h3>The Token Buffer</h3>
+</code></pre>
+
+<h3 id="the-token-buffer">The Token Buffer</h3>
+
 <p>The token buffer is the buffer of the next level.
 It keeps the strings until a token will be able to cut out.
 There are the five interfaces as follows:</p>
+
 <table>
-	<tr>
-		<td> `newtok` </td>
-		<td> begin a new token </td>
-	</tr>
-	<tr>
-		<td> `tokadd` </td>
-		<td> add a character to the buffer </td>
-	</tr>
-	<tr>
-		<td> `tokfix` </td>
-		<td> fix a token </td>
-	</tr>
-	<tr>
-		<td> `tok` </td>
-		<td> the pointer to the beginning of the buffered string </td>
-	</tr>
-	<tr>
-		<td> `toklen` </td>
-		<td> the length of the buffered string </td>
-	</tr>
-	<tr>
-		<td> `toklast` </td>
-		<td> the last byte of the buffered string </td>
-	</tr>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`newtok`</td>
+      <td>begin a new token</td>
+    </tr>
+    <tr>
+      <td>`tokadd`</td>
+      <td>add a character to the buffer</td>
+    </tr>
+    <tr>
+      <td>`tokfix`</td>
+      <td>fix a token</td>
+    </tr>
+    <tr>
+      <td>`tok`</td>
+      <td>the pointer to the beginning of the buffered string</td>
+    </tr>
+    <tr>
+      <td>`toklen`</td>
+      <td>the length of the buffered string</td>
+    </tr>
+    <tr>
+      <td>`toklast`</td>
+      <td>the last byte of the buffered string</td>
+    </tr>
+  </tbody>
 </table>
-<p>Now, we&#8217;ll start with the data structures.</p>
-<p class="caption">▼ The Token Buffer </p>
-<pre class="longlist">
-2271  static char *tokenbuf = NULL;
+
+<p>Now, we’ll start with the data structures.</p>
+
+<p class="caption">
+▼ The Token Buffer
+
+</p>
+<pre><code class="language-longlist">2271  static char *tokenbuf = NULL;
 2272  static int   tokidx, toksiz = 0;
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>`tokenbuf` is the buffer, `tokidx` is the end of the token
 (since it is of `int`, it seems an index),
 and `toksiz` is probably the buffer length.
 This is also simply structured. If depicting it,
 it would look like Figure 9.</p>
-<p><img src="images/ch_parser_tbuffer.jpg" title="The token buffer" alt="The token buffer" /></p>
-<p>Let&#8217;s continuously go to the interface and
+
+<p><img src="images/ch_parser_tbuffer.jpg" alt="The token buffer" title="The token buffer" /></p>
+
+<p>Let’s continuously go to the interface and
 read `newtok()`, which starts a new token.</p>
-<p class="caption">▼ `newtok()` </p>
-<pre class="longlist">
-2516  static char*
+
+<p class="caption">
+▼ \`newtok()\`
+
+</p>
+<pre><code class="language-longlist">2516  static char*
 2517  newtok()
 2518  {
 2519      tokidx = 0;
@@ -1166,20 +1449,26 @@ read `newtok()`, which starts a new token.</p>
 2529  }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>The initializing interface of the whole buffer does not exist,
-it&#8217;s possible that the buffer is not initialized.
+it’s possible that the buffer is not initialized.
 Therefore, the first `if` checks it and initializes it.
-`ALLOC_N()` is the macro `ruby` defines and is almost the same as  `calloc`.</p>
+`ALLOC_N()` is the macro `ruby` defines and is almost the same as `calloc`.</p>
+
 <p>The initial value of the allocating length is 60,
 and if it becomes too big (`&gt; 4096`),
 it would be returned back to small.
 Since a token becoming this long is unlikely,
 this size is realistic.</p>
-<p>Next, let&#8217;s look at the `tokadd()` to add a character to token buffer.</p>
-<p class="caption">▼ `tokadd()` </p>
-<pre class="longlist">
-2531  static void
+
+<p>Next, let’s look at the `tokadd()` to add a character to token buffer.</p>
+
+<p class="caption">
+▼ \`tokadd()\`
+
+</p>
+<pre><code class="language-longlist">2531  static void
 2532  tokadd(c)
 2533      char c;
 2534  {
@@ -1191,31 +1480,42 @@ this size is realistic.</p>
 2540  }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>At the first line, a character is added.
 Then, it checks the token length and if it seems about to exceed the buffer end,
 it performs `REALLOC_N()`.
 `REALLOC_N()` is a `realloc()` which has the same way of specifying arguments
 as `calloc()`.</p>
+
 <p>The rest interfaces are summarized below.</p>
-<p class="caption">▼ `tokfix() tok() toklen() toklast()` </p>
-<pre class="longlist">
-2511  #define tokfix() (tokenbuf[tokidx]='\0')
+
+<p class="caption">
+▼ \`tokfix() tok() toklen() toklast()\`
+
+</p>
+<pre><code class="language-longlist">2511  #define tokfix() (tokenbuf[tokidx]='\0')
 2512  #define tok() tokenbuf
 2513  #define toklen() tokidx
 2514  #define toklast() (tokidx&gt;0?tokenbuf[tokidx-1]:0)
 
 (parse.y)
-</pre>
-<p>There&#8217;s probably no question.</p>
-<h3>`yylex()`</h3>
+</code></pre>
+
+<p>There’s probably no question.</p>
+
+<h3 id="yylex">`yylex()`</h3>
+
 <p>`yylex()` is very long. Currently, there are more than 1000 lines.
 The most of them is occupied by a huge `switch` statement,
 it branches based on each character.
-First, I&#8217;ll show the whole structure that some parts of it are left out.</p>
-<p class="caption">▼ `yylex` outline </p>
-<pre class="longlist">
-3106  static int
+First, I’ll show the whole structure that some parts of it are left out.</p>
+
+<p class="caption">
+▼ \`yylex\` outline
+
+</p>
+<pre><code class="language-longlist">3106  static int
 3107  yylex()
 3108  {
 3109      static ID last_id = 0;
@@ -1273,38 +1573,46 @@ First, I&#8217;ll show the whole structure that some parts of it are left out.</
       }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>As for the return value of `yylex()`,
 zero means that the input has finished,
 non-zero means a symbol.</p>
-<p>Be careful that a extremely concise variable named &#8220;`c`&#8221; is used all over this function.
+
+<p>Be careful that a extremely concise variable named “`c`” is used all over this function.
 `space_seen++` when reading a space will become helpful later.</p>
+
 <p>All it has to do as the rest is to keep branching for each character and processing it,
 but since continuous monotonic procedure is lasting, it is boring for readers.
-Therefore, we&#8217;ll narrow them down to a few points.
+Therefore, we’ll narrow them down to a few points.
 In this book not all characters will be explained,
 but it is easy if you will amplify the same pattern.</p>
-<h4>`&#8216;!&#8217;`</h4>
-<p>Let&#8217;s start with what is simple first.</p>
-<p class="caption">▼ `yylex` &#8211; `&#8216;!&#8217;` </p>
+
+<h4 id="section">`’!’`</h4>
+
+<p>Let’s start with what is simple first.</p>
+
+<p class="caption">
+▼ \`yylex\` - \`'![]('` </p>
 <pre class="longlist">
-3205        case '!':
-3206          lex_state = EXPR_BEG;
-3207          if ((c = nextc()) == '=') {
+3205        case ')':
+3206 lex\_state = EXPR\_BEG;
+3207 if ((c = nextc())  '=') {
 3208              return tNEQ;
 3209          }
-3210          if (c == '~') {
-3211              return tNMATCH;
-3212          }
-3213          pushback(c);
-3214          return '!';
+3210          if (c  '~') {
+3211 return tNMATCH;
+3212 }
+3213 pushback©;
+3214 return '!';
 
 (parse.y)
+
 </pre>
 <p>I wroute out the meaning of the code,
-so I&#8217;d like you to read them by comparing each other.</p>
-<pre class="emlist">
-case '!':
+so I’d like you to read them by comparing each other.</p>
+
+<pre><code class="language-emlist">case '!':
   move to EXPR_BEG
   if (the next character is '=' then) {
       token is 「!=(tNEQ)」
@@ -1314,25 +1622,32 @@ case '!':
   }
   if it is neither, push the read character back
   token is '!'
-</pre>
+</code></pre>
+
 <p>This `case` clause is short, but describes the important rule of the scanner.
-It is &#8220;the longest match rule&#8221;.
-The two characters `&#8220;!=&#8221;` can be interpreted in two ways: &#8220;`!` and `=`&#8221; or &#8220;`!=`&#8221;,
-but in this case `&#8220;!=&#8221;` must be selected.
+It is “the longest match rule”.
+The two characters `”<img src="&quot;` can be interpreted in two ways:" alt="" title="`)\` and \`=\`&quot; or &quot;\`![](`&quot;,
+but in this case `" />=”` must be selected.
 The longest match is essential for scanners of programming languages.</p>
+
 <p>And, `lex_state` is the variable represents the state of the scanner.
 This will be discussed too much
-in the next chapter &#8220;Finite-State Scanner&#8221;,
+in the next chapter “Finite-State Scanner”,
 you can ignore it for now.
-`EXPR_BEG` indicates &#8220;it is clearly at the beginning&#8221;.
+`EXPR_BEG` indicates “it is clearly at the beginning”.
 This is because
-whichever it is `!` of `not` or it is `!=` or it is `!~`,
+whichever it is `<img src="` of `not` or it is `" alt="" />=` or it is `!~`,
 its next symbol is the beginning of an expression.</p>
-<h4>`&#8216;&lt;&#8217;`</h4>
-<p>Next, we&#8217;ll try to look at `&#8216;&lt;&#8217;` as an example of using `yylval` (the value of a symbol).</p>
-<p class="caption">▼ `yylex`−`&#8216;&gt;&#8217;`</p>
-<pre class="longlist">
-3296        case '&gt;':
+
+<h4 id="lt">`‘&lt;’`</h4>
+
+<p>Next, we’ll try to look at `‘&lt;’` as an example of using `yylval` (the value of a symbol).</p>
+
+<p class="caption">
+▼ \`yylex\`−\`'&gt;'\`
+
+</p>
+<pre><code class="language-longlist">3296        case '&gt;':
 3297          switch (lex_state) {
 3298            case EXPR_FNAME: case EXPR_DOT:
 3299              lex_state = EXPR_ARG; break;
@@ -1355,31 +1670,39 @@ its next symbol is the beginning of an expression.</p>
 3316          return '&gt;';
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>The places except for `yylval` can be ignored.
 Concentrating only one point when reading a program is essential.</p>
+
 <p>At this point, for the symbol `tOP_ASGN` of `&gt;&gt;=`, it set its value `tRSHIFT`.
 Since the used union member is `id`, its type is `ID`.
 `tOP_ASGN` is the symbol of self assignment,
 it represents all of the things like `+=` and `-=` and `*=`.
 In order to distinguish them later,
 it passes the type of the self assignment as a value.</p>
+
 <p>The reason why the self assignments are bundled is,
 it makes the rule shorter.
 Bundling things that can be bundled at the scanner as much as possible
 makes the rule more concise.
 Then, why are the binary arithmetic operators not bundled?
 It is because they differs in their precedences.</p>
-<h4>`&#8216;:&#8217;`</h4>
+
+<h4 id="section-1">`’:’`</h4>
+
 <p>If scanning is completely independent from parsing, this talk would be simple.
 But in reality, it is not that simple.
 The Ruby grammar is particularly complex,
-it has a somewhat different meaning when there&#8217;s a space in front of it,
+it has a somewhat different meaning when there’s a space in front of it,
 the way to split tokens is changed depending on the situation around.
-The code of `&#8216;:&#8217;` shown below is an example that a space changes the behavior.</p>
-<p class="caption">▼ `yylex`−`&#8216;:&#8217;`</p>
-<pre class="longlist">
-3761        case ':':
+The code of `’:’` shown below is an example that a space changes the behavior.</p>
+
+<p class="caption">
+▼ \`yylex\`−\`':'\`
+
+</p>
+<pre><code class="language-longlist">3761        case ':':
 3762          c = nextc();
 3763          if (c == ':') {
 3764              if (lex_state == EXPR_BEG ||  lex_state == EXPR_MID ||
@@ -1401,21 +1724,26 @@ The code of `&#8216;:&#8217;` shown below is an example that a space changes the
 3778          return tSYMBEG;
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>Again, ignoring things relating to `lex_state`,
-I&#8217;d like you focus on around `space_seen`.</p>
-<p>`space_seen` is the variable that becomes true when there&#8217;s a space before a token.
-If it is met, meaning there&#8217;s a space in front of `&#8216;::&#8217;`, it becomes `tCOLON3`,
-if there&#8217;s not, it seems to become `tCOLON2`.
+I’d like you focus on around `space_seen`.</p>
+
+<p>`space_seen` is the variable that becomes true when there’s a space before a token.
+If it is met, meaning there’s a space in front of `’::’`, it becomes `tCOLON3`,
+if there’s not, it seems to become `tCOLON2`.
 This is as I explained at `primary` in the previous section.</p>
-<h4>Identifier</h4>
+
+<h4 id="identifier">Identifier</h4>
+
 <p>Until now, since there were only symbols,
 it was just a character or 2 characters.
-This time, we&#8217;ll look at a little long things.
+This time, we’ll look at a little long things.
 It is the scanning pattern of identifiers.</p>
+
 <p>First, the outline of `yylex` was as follows:</p>
-<pre class="emlist">
-yylex(...)
+
+<pre><code class="language-emlist">yylex(...)
 {
     switch (c = nextc()) {
       case xxxx:
@@ -1427,12 +1755,16 @@ yylex(...)
 
    the scanning code of identifiers
 }
-</pre>
+</code></pre>
+
 <p>The next code is an extract from the end of the huge `switch`.
-This is relatively long, so I&#8217;ll show it with comments.</p>
-<p class="caption">▼ `yylex`  &#8212; identifiers </p>
-<pre class="longlist">
-4081        case '@':                 /* an instance variable or a class variable */
+This is relatively long, so I’ll show it with comments.</p>
+
+<p class="caption">
+▼ \`yylex\` -- identifiers
+
+</p>
+<pre><code class="language-longlist">4081        case '@':                 /* an instance variable or a class variable */
 4082          c = nextc();
 4083          newtok();
 4084          tokadd('@');
@@ -1487,37 +1819,44 @@ This is relatively long, so I&#8217;ll show it with comments.</p>
 4131      tokfix();
 
 (parse.y)
-</pre>
-<p>Finally, I&#8217;d like you focus on the condition
+</code></pre>
+
+<p>Finally, I’d like you focus on the condition
 at the place where adding `!` or `?`.
 This part is to interpret in the next way.</p>
-<pre class="emlist">
-obj.m=1       # obj.m  =   1       (not obj.m=)
+
+<pre><code class="language-emlist">obj.m=1       # obj.m  =   1       (not obj.m=)
 obj.m!=1      # obj.m  !=  1       (not obj.m!)
-</pre>
+</code></pre>
+
 <p>((errata: this code is not relating to that condition))</p>
-<p>This is &#8220;not&#8221; longest-match.
-The &#8220;longest-match&#8221; is a principle but not a constraint.
+
+<p>This is “not” longest-match.
+The “longest-match” is a principle but not a constraint.
 Sometimes, you can refuse it.</p>
-<h4>The reserved words</h4>
+
+<h4 id="the-reserved-words">The reserved words</h4>
+
 <p>After scanning the identifiers, there are about 100 lines of the code further
 to determine the actual symbols.
 In the previous code, instance variables, class variables and local variables,
 they are scanned all at once,
 but they are categorized here.</p>
-<p>This is OK but, inside it there&#8217;s a little strange part.
+
+<p>This is OK but, inside it there’s a little strange part.
 It is the part to filter the reserved words.
 Since the reserved words are not different from local variables in its
 character type, scanning in a bundle and categorizing later is more efficient.</p>
-<p>Then, assume there&#8217;s `str` that is a `char*` string,
+
+<p>Then, assume there’s `str` that is a `char*` string,
 how can we determine whether it is a reserved word?
-First, of course, there&#8217;s a way of comparing a lot by `if` statements and `strcmp()`.
+First, of course, there’s a way of comparing a lot by `if` statements and `strcmp()`.
 However, this is completely not smart. It is not flexible.
 Its speed will also linearly increase.
 Usually, only the data would be separated to a list or a hash
 in order to keep the code short.</p>
-<pre class="emlist">
-/* convert the code to data */
+
+<pre><code class="language-emlist">/* convert the code to data */
 struct entry {char *name; int symbol;};
 struct entry *table[] = {
     {"if",     kIF},
@@ -1530,73 +1869,95 @@ struct entry *table[] = {
     ....
     return lookup_symbol(table, tok());
 }
-</pre>
+</code></pre>
+
 <p>Then, how `ruby` is doing is that, it uses a hash table.
 Furthermore, it is a perfect hash.
 As I said when talking about `st_table`,
 if you knew the set of the possible keys beforehand,
 sometimes you could create a hash function that never conflicts.
 As for the reserved words,
-&#8220;the set of the possible keys is known beforehand&#8221;,
+“the set of the possible keys is known beforehand”,
 so it is likely that we can create a perfect hash function.</p>
-<p>But, &#8220;being able to create&#8221; and actually creating are different.
+
+<p>But, “being able to create” and actually creating are different.
 Creating manually is too much cumbersome.
 Since the reserved words can increase or decrease,
 this kind of process must be automated.</p>
-<p>Therefore, `gperf` comes in. `gperf` is one of <span class="caps">GNU</span> products,
+
+<p>Therefore, `gperf` comes in. `gperf` is one of GNU products,
 it generates a perfect function from a set of values.
 In order to know the usage of `gperf` itself in detail,
 I recommend to do `man gperf`.
-Here, I&#8217;ll only describe how to use the generated result.</p>
+Here, I’ll only describe how to use the generated result.</p>
+
 <p>In `ruby` the input file for `gperf` is `keywords` and the output is `lex.c`.
 `parse.y` directly `#include` it.
 Basically, doing `#include` C files is not good,
 but performing non-essential file separation for just one function is worse.
-Particularly, in `ruby, there&#8217;s the possibility that `extern+ functions are
+Particularly, in `ruby, there’s the possibility that `extern+ functions are
 used by extension libraries without being noticed, thus
 the function that does not want to keep its compatibility should be `static`.</p>
+
 <p>Then, in the `lex.c`, a function named `rb_reserved_word()` is defined.
 By calling it with the `char*` of a reserved word as key, you can look up.
-The return value is `<span class="caps">NULL</span>` if not found, `struct kwtable*` if found
+The return value is `NULL` if not found, `struct kwtable*` if found
 (in other words, if the argument is a reserved word).
 The definition of `struct kwtable` is as follows:</p>
-<p class="caption">▼ `kwtable` </p>
-<pre class="longlist">
-   1  struct kwtable {char *name; int id[2]; enum lex_state state;};
+
+<p class="caption">
+▼ \`kwtable\`
+
+</p>
+<pre><code class="language-longlist">   1  struct kwtable {char *name; int id[2]; enum lex_state state;};
 
 (keywords)
-</pre>
-<p>`name` is the name of the reserved word, `id<sup class="footnote" id="fnr0"><a href="#fn0">0</a></sup>` is its symbol,
-`id<sup class="footnote" id="fnr1"><a href="#fn1">1</a></sup>` is its symbol as a modification (`kIF_MOD` and such).
-`lex_state` is &#8220;the `lex_state` should be moved to after reading this reserved word&#8221;.
+</code></pre>
+
+<p>`name` is the name of the reserved word, `id[0]` is its symbol,
+`id[1]` is its symbol as a modification (`kIF_MOD` and such).
+`lex_state` is “the `lex_state` should be moved to after reading this reserved word”.
 `lex_state` will be explained in the next chapter.</p>
+
 <p>This is the place where actually looking up.</p>
-<p class="caption">▼ `yylex()`  &#8212; identifier &#8212; call  `rb_reserved_word()` </p>
-<pre class="longlist">
-4173                  struct kwtable *kw;
+
+<p class="caption">
+▼ \`yylex()\` -- identifier -- call \`rb\_reserved\_word()\`
+
+</p>
+<pre><code class="language-longlist">4173                  struct kwtable *kw;
 4174
 4175                  /* See if it is a reserved word.  */
 4176                  kw = rb_reserved_word(tok(), toklen());
 4177                  if (kw) {
 
 (parse.y)
-</pre>
-<h3>Strings</h3>
-<p>The double quote (`&quot;`) part of `yylex()` is this.</p>
-<p class="caption">▼ `yylex` − `&#8216;&quot;&#8217;` </p>
-<pre class="longlist">
-3318        case '"':
+</code></pre>
+
+<h3 id="strings">Strings</h3>
+
+<p>The double quote (`”`) part of `yylex()` is this.</p>
+
+<p class="caption">
+▼ \`yylex\` − \`'"'\`
+
+</p>
+<pre><code class="language-longlist">3318        case '"':
 3319          lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
 3320          return tSTRING_BEG;
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>Surprisingly it finishes after scanning only the first character.
 Then, this time, when taking a look at the rule,
 `tSTRING_BEG` is found in the following part:</p>
-<p class="caption">▼ rules for strings </p>
-<pre class="longlist">
-string1         : tSTRING_BEG string_contents tSTRING_END
+
+<p class="caption">
+▼ rules for strings
+
+</p>
+<pre><code class="language-longlist">string1         : tSTRING_BEG string_contents tSTRING_END
 
 string_contents :
                 | string_contents string_content
@@ -1611,37 +1972,46 @@ string_dvar     : tGVAR
                 | backref
 
 term_push       :
-</pre>
+</code></pre>
+
 <p>These rules are the part introduced to deal with embedded expressions inside of strings.
 `tSTRING_CONTENT` is literal part,
-`tSTRING_DBEG` is `&#8220;#{&#8221;`.
-`tSTRING_DVAR` represents &#8220;`#` that in front of a variable&#8221;. For example,</p>
-<pre class="emlist">
-".....#$gvar...."
-</pre>
+`tSTRING_DBEG` is `”#{“`.
+`tSTRING_DVAR` represents “`#` that in front of a variable”. For example,</p>
+
+<pre><code class="language-emlist">".....#$gvar...."
+</code></pre>
+
 <p>this kind of syntax.
 I have not explained but when the embedded expression is only a variable,
 `{` and `}` can be left out.
 But this is often not recommended.
-`D` of `<span class="caps">DVAR</span>`, `<span class="caps">DBEG</span>` seems the abbreviation of `dynamic`.</p>
+`D` of `DVAR`, `DBEG` seems the abbreviation of `dynamic`.</p>
+
 <p>And, `backref` represents the special variables relating to regular expressions,
-such as `$1 $2` or `$&amp; $&#8217;`.</p>
-<p>`term_push` is &#8220;a rule defined for its action&#8221;.</p>
-<p>Now, we&#8217;ll go back to `yylex()` here.
+such as `$1 $2` or `$&amp; $’`.</p>
+
+<p>`term_push` is “a rule defined for its action”.</p>
+
+<p>Now, we’ll go back to `yylex()` here.
 If it simply returns the parser,
-since its context is the &#8220;interior&#8221; of a string,
+since its context is the “interior” of a string,
 it would be a problem if a variable and `if` and others are suddenly scanned in
 the next `yylex()`.
-What plays an important role there is &#8230;</p>
-<pre class="emlist">
-      case '"':
+What plays an important role there is …</p>
+
+<pre><code class="language-emlist">      case '"':
         lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
         return tSTRING_BEG;
-</pre>
-<p>&#8230; `lex_strterm`. Let&#8217;s go back to the beginning of `yylex()`.</p>
-<p class="caption">▼ the beginning of  `yylex()` </p>
-<pre class="longlist">
-3106  static int
+</code></pre>
+
+<p>… `lex_strterm`. Let’s go back to the beginning of `yylex()`.</p>
+
+<p class="caption">
+▼ the beginning of \`yylex()\`
+
+</p>
+<pre><code class="language-longlist">3106  static int
 3107  yylex()
 3108  {
 3109      static ID last_id = 0;
@@ -1659,29 +2029,33 @@ What plays an important role there is &#8230;</p>
 3136      switch (c = nextc()) {
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>If `lex_strterm` exists, it enters the string mode without asking.
-It means, conversely speaking, if there&#8217;s `lex_strterm`,
+It means, conversely speaking, if there’s `lex_strterm`,
 it is while scanning string,
 and when parsing the embedded expressions inside strings,
 you have to set `lex_strterm` to 0.
 And, when the embedded expression ends, you have to set it back.
 This is done in the following part:</p>
-<p class="caption">▼ `string_content` </p>
-<pre class="longlist">
-1916  string_content  : ....
+
+<p class="caption">
+▼ \`string\_content\`
+
+</p>
+<pre><code class="language-longlist">1916  string_content  : ....
 1917                  | tSTRING_DBEG term_push
 1918                      {
-1919                          $&lt;num&gt;1 = lex_strnest;
-1920                          $&lt;node&gt;$ = lex_strterm;
+1919                          $1 = lex_strnest;
+1920                          $$ = lex_strterm;
 1921                          lex_strterm = 0;
 1922                          lex_state = EXPR_BEG;
 1923                      }
 1924                    compstmt '}'
 1925                      {
-1926                          lex_strnest = $&lt;num&gt;1;
+1926                          lex_strnest = $1;
 1927                          quoted_term = $2;
-1928                          lex_strterm = $&lt;node&gt;3;
+1928                          lex_strterm = $3;
 1929                          if (($$ = $4) &amp;&amp; nd_type($$) == NODE_NEWLINE) {
 1930                              $$ = $$-&gt;nd_next;
 1931                              rb_gc_force_recycle((VALUE)$4);
@@ -1690,64 +2064,82 @@ This is done in the following part:</p>
 1934                      }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>In the embedded action, `lex_stream` is saved as the value of `tSTRING_DBEG`
 (virtually, this is a stack push),
 it recovers in the ordinary action (pop).
 This is a fairly smart way.</p>
+
 <p>But why is it doing this tedious thing?
-Can&#8217;t it be done by, after scanning normally,
+Can’t it be done by, after scanning normally,
 calling `yyparse()` recursively at the point when it finds `#{` ?
-There&#8217;s actually a problem.
-`yyparse()` can&#8217;t be called recursively.
+There’s actually a problem.
+`yyparse()` can’t be called recursively.
 This is the well known limit of `yacc`.
 Since the `yyval` that is used to receive or pass a value is a global variable,
 careless recursive calls can destroy the value.
-With `bison` (`yacc` of <span class="caps">GNU</span>),
+With `bison` (`yacc` of GNU),
 recursive calls are possible by using `%pure_parser` directive,
 but the current ruby decided not to assume `bison`.
-In reality, `byacc` (Berkely yacc) is often used in <span class="caps">BSD</span>-derived OS and Windows and such,
+In reality, `byacc` (Berkely yacc) is often used in BSD-derived OS and Windows and such,
 if `bison` is assumed, it causes a little cumbersome.</p>
-<h4>`lex_strterm`</h4>
-<p>As we&#8217;ve seen, when you consider `lex_stream` as a boolean value,
+
+<h4 id="lexstrterm">`lex_strterm`</h4>
+
+<p>As we’ve seen, when you consider `lex_stream` as a boolean value,
 it represents whether or not the scanner is in the string mode.
 But its contents also has a meaning.
-First, let&#8217;s look at its type.</p>
-<p class="caption">▼ `lex_strterm`</p>
-<pre class="longlist">
-  72  static NODE *lex_strterm;
+First, let’s look at its type.</p>
+
+<p class="caption">
+▼ \`lex\_strterm\`
+
+</p>
+<pre><code class="language-longlist">  72  static NODE *lex_strterm;
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>This definition shows its type is `NODE*`.
 This is the type used for syntax tree and will be discussed in detail
 in Chapter 12: Syntax tree construction.
 For the time being, it is a structure which has three elements,
-since it is `<span class="caps">VALUE</span>` you don&#8217;t have to `free()` it,
+since it is `VALUE` you don’t have to `free()` it,
 you should remember only these two points.</p>
-<p class="caption">▼ `NEW_STRTERM()`</p>
-<pre class="longlist">
-2865  #define NEW_STRTERM(func, term, paren) \
+
+<p class="caption">
+▼ \`NEW\_STRTERM()\`
+
+</p>
+<pre><code class="language-longlist">2865  #define NEW_STRTERM(func, term, paren) \
 2866          rb_node_newnode(NODE_STRTERM, (func), (term), (paren))
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>This is a macro to create a node to be stored in `lex_stream`.
 First, `term` is the terminal character of the string.
-For example, if it is a `&#8220;` string, it is `&#8221;`,
-and if it is a `&#8216;` string, it is `&#8217;`.</p>
+For example, if it is a `”` string, it is `”`,
+and if it is a `’` string, it is `’`.</p>
+
 <p>`paren` is used to store the corresponding parenthesis when it is a `%` string.
 For example,</p>
-<pre class="emlist">
-%Q(..........)
-</pre>
-<p>in this case, `paren` stores `&#8216;(&#8217;`. And, `term` stores the closing parenthesis `&#8216;)&#8217;`.
+
+<pre><code class="language-emlist">%Q(..........)
+</code></pre>
+
+<p>in this case, `paren` stores `’(‘`. And, `term` stores the closing parenthesis `’)’`.
 If it is not a `%` string, `paren` is 0.</p>
+
 <p>At last, `func`, this indicates the type of a string.
 The available types are decided as follows:</p>
-<p class="caption">▼ `func`</p>
-<pre class="longlist">
-2775  #define STR_FUNC_ESCAPE 0x01  /* backslash notations such as \n are in effect  */
+
+<p class="caption">
+▼ \`func\`
+
+</p>
+<pre><code class="language-longlist">2775  #define STR_FUNC_ESCAPE 0x01  /* backslash notations such as \n are in effect  */
 2776  #define STR_FUNC_EXPAND 0x02  /* embedded expressions are in effect */
 2777  #define STR_FUNC_REGEXP 0x04  /* it is a regular expression */
 2778  #define STR_FUNC_QWORDS 0x08  /* %w(....) or %W(....) */
@@ -1763,40 +2155,55 @@ The available types are decided as follows:</p>
 2788  };
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>Each meaning of `enum string_type` is as follows:</p>
+
 <table>
-	<tr>
-		<td> `str_squote` </td>
-		<td> `&#8217;` string / `%q` </td>
-	</tr>
-	<tr>
-		<td> `str_dquote` </td>
-		<td> `&quot;` string / `%Q` </td>
-	</tr>
-	<tr>
-		<td> `str_xquote` </td>
-		<td> command string (not be explained in this book) </td>
-	</tr>
-	<tr>
-		<td> `str_regexp` </td>
-		<td> regular expression </td>
-	</tr>
-	<tr>
-		<td> `str_sword`  </td>
-		<td> `%w` </td>
-	</tr>
-	<tr>
-		<td> `str_dword`  </td>
-		<td> `%W` </td>
-	</tr>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`str_squote`</td>
+      <td>`’` string / `%q`</td>
+    </tr>
+    <tr>
+      <td>`str_dquote`</td>
+      <td>`”` string / `%Q`</td>
+    </tr>
+    <tr>
+      <td>`str_xquote`</td>
+      <td>command string (not be explained in this book)</td>
+    </tr>
+    <tr>
+      <td>`str_regexp`</td>
+      <td>regular expression</td>
+    </tr>
+    <tr>
+      <td>`str_sword`</td>
+      <td>`%w`</td>
+    </tr>
+    <tr>
+      <td>`str_dword`</td>
+      <td>`%W`</td>
+    </tr>
+  </tbody>
 </table>
-<h4>String scan function</h4>
+
+<h4 id="string-scan-function">String scan function</h4>
+
 <p>The rest is reading `yylex()` in the string mode,
 in other words, the `if` at the beginning.</p>
-<p class="caption">▼ `yylex`− string</p>
-<pre class="longlist">
-3114      if (lex_strterm) {
+
+<p class="caption">
+▼ \`yylex\`− string
+
+</p>
+<pre><code class="language-longlist">3114      if (lex_strterm) {
 3115          int token;
 3116          if (nd_type(lex_strterm) == NODE_HEREDOC) {
 3117              token = here_document(lex_strterm);
@@ -1817,26 +2224,33 @@ in other words, the `if` at the beginning.</p>
 3132      }
 
 (parse.y)
-</pre>
+</code></pre>
+
 <p>It is divided into the two major groups: here document and others.
-But this time, we won&#8217;t read `parse_string()`.
+But this time, we won’t read `parse_string()`.
 As I previously described, there are a lot of conditions,
 it is tremendously being a spaghetti code.
 If I tried to explain it,
-odds are high that readers would complain that &#8220;it is as the code is written!&#8221;.
+odds are high that readers would complain that “it is as the code is written!”.
 Furthermore, although it requires a lot of efforts, it is not interesting.</p>
+
 <p>But, not explaining at all is also not a good thing to do,
 The modified version that functions are separately defined for each target to be scanned
-is contained in the attached CD-<span class="caps">ROM</span> (`doc/parse_string.html`).
-I&#8217;d like readers who are interested in to try to look over it.</p>
-<h4>Here Document</h4>
+is contained in the attached CD-ROM (`doc/parse_string.html`).
+I’d like readers who are interested in to try to look over it.</p>
+
+<h4 id="here-document">Here Document</h4>
+
 <p>In comparison to the ordinary strings, here documents are fairly interesting.
 That may be because, unlike the other elements, it deal with a line at a time.
 Moreover, it is terrific that the starting symbol can exist in the middle of a program.
-First, I&#8217;ll show the code of `yylex()` to scan the starting symbol of a here document.</p>
-<p class="caption">▼ `yylex`−`&#8216;&lt;&#8217;`</p>
-<pre class="longlist">
-3260        case '&lt;':
+First, I’ll show the code of `yylex()` to scan the starting symbol of a here document.</p>
+
+<p class="caption">
+▼ \`yylex\`−\`'&lt;'\`
+
+</p>
+<pre><code class="language-longlist">3260        case '&lt;':
 3261          c = nextc();
 3262          if (c == '&lt;' &amp;&amp;
 3263              lex_state != EXPR_END &amp;&amp;
@@ -1848,14 +2262,18 @@ First, I&#8217;ll show the code of `yylex()` to scan the starting symbol of a he
 3269              if (token) return token;
 
 (parse.y)
-</pre>
-<p>As usual, we&#8217;ll ignore the herd of `lex_state`.
-Then, we can see that it reads only &#8220;`&lt;&lt;`&#8221; here
-and the rest is scanned at `heredoc_identifier()`.<br>
+</code></pre>
+
+<p>As usual, we’ll ignore the herd of `lex_state`.
+Then, we can see that it reads only “`&lt;&lt;`” here
+and the rest is scanned at `heredoc_identifier()`.<br />
 Therefore, here is `heredoc_identifier()`.</p>
-<p class="caption">▼ `heredoc_identifier()`</p>
-<pre class="longlist">
-2926  static int
+
+<p class="caption">
+▼ \`heredoc\_identifier()\`
+
+</p>
+<pre><code class="language-longlist">2926  static int
 2927  heredoc_identifier()
 2928  {
           /* ... omission ... reading the starting symbol */
@@ -1871,34 +2289,42 @@ Therefore, here is `heredoc_identifier()`.</p>
 2988  }
 
 (parse.y)
-</pre>
-<p>The part which reads the starting symbol (`&lt;&lt;<span class="caps">EOS</span>`) is not important, so it is totally left out.
+</code></pre>
+
+<p>The part which reads the starting symbol (`&lt;&lt;EOS`) is not important, so it is totally left out.
 Until now, the input buffer probably has become as depicted as Figure 10.
-Let&#8217;s recall that the input buffer reads a line at a time.</p>
-<p><img src="images/ch_parser_lexparams.jpg" title="scanning `&quot;printf\(&lt;&lt;EOS,n\)&quot;`" alt="scanning `&quot;printf\(&lt;&lt;EOS,n\)&quot;`" /></p>
-<p>What `heredoc_identifier()` is doing is as follows:<br>
-(A) `len` is the number of read bytes in the current line.<br>
-(B) and, suddenly move `lex_p` to the end of the line.<br>
+Let’s recall that the input buffer reads a line at a time.</p>
+
+<p>!images/ch_parser_lexparams.jpg(scanning <code class="highlighter-rouge">"printf\(&lt;&lt;EOS,n\)"</code>)!</p>
+
+<p>What <code class="highlighter-rouge">heredoc_identifier()</code> is doing is as follows:<br />
+(A) `len` is the number of read bytes in the current line.<br />
+(B) and, suddenly move `lex_p` to the end of the line.<br />
 It means that in the read line, the part after the starting symbol is read but
 not parsed. When is that rest part parsed?
 For this mystery, a hint is that at (C) the `lex_lastline` (the currently
 read line) and `len` (the length that has already read) are saved.</p>
+
 <p>Then, the dynamic call graph before and after `heredoc_identifier` is simply
 shown below:</p>
-<pre class="emlist">
-yyparse
+
+<pre><code class="language-emlist">yyparse
     yylex(case '&lt;')
         heredoc_identifier(lex_strterm = ....)
     yylex(the beginning if)
         here_document
-</pre>
+</code></pre>
+
 <p>And, this `here_document()` is doing the scan of the body of the here document.
 Omitting invalid cases and adding some comments,
 `heredoc_identifier()` is shown below.
 Notice that `lex_strterm` remains unchanged after it was set at `heredoc_identifier()`.</p>
-<p class="caption">▼ `here_document()`(simplified)</p>
-<pre class="longlist">
-here_document(NODE *here)
+
+<p class="caption">
+▼ \`here\_document()\`(simplified)
+
+</p>
+<pre><code class="language-longlist">here_document(NODE *here)
 {
     VALUE line;                      /* the line currently being scanned */
     VALUE str = rb_str_new("", 0);   /* a string to store the results */
@@ -1923,21 +2349,26 @@ here_document(NODE *here)
     yylval.node = NEW_STR(str);
     return tSTRING_CONTENT;
 }
-</pre>
+</code></pre>
+
 <p>`rb_str_cat()` is the function to connect a `char*` at the end of a Ruby string.
 It means that the currently being read line `lex_lastline` is connected to
-`str` at (A). After it is connected, there&#8217;s no use of the current line.
+`str` at (A). After it is connected, there’s no use of the current line.
 At (B), suddenly moving `lex_p` to the end of line.
 And (C) is a problem, in this place, it looks like doing the check whether
-it is finished, but actually the next &#8220;line&#8221; is read.
-I&#8217;d like you to recall that `nextc()` automatically reads the next line when
+it is finished, but actually the next “line” is read.
+I’d like you to recall that `nextc()` automatically reads the next line when
 the current line has finished to be read.
 So, since the current line is forcibly finished at (B),
 `lex_p` moves to the next line at (C).</p>
+
 <p>And finally, leaving the `do` ~ `while` loop, it is `heredoc_restore()`.</p>
-<p class="caption">▼ `heredoc_restore()` </p>
-<pre class="longlist">
-2990  static void
+
+<p class="caption">
+▼ \`heredoc\_restore()\`
+
+</p>
+<pre><code class="language-longlist">2990  static void
 2991  heredoc_restore(here)
 2992      NODE *here;
 2993  {
@@ -1953,13 +2384,16 @@ So, since the current line is forcibly finished at (B),
 3003  }
 
 (parse.y)
-</pre>
-<p>`here&#8594;nd_orig` holds the line which contains the starting symbol.<br>
-`here&#8594;nd_nth` holds the length already read in the line contains the starting
-symbol.<br>
+</code></pre>
+
+<p>`here-&gt;nd_orig` holds the line which contains the starting symbol.<br />
+`here-&gt;nd_nth` holds the length already read in the line contains the starting
+symbol.<br />
 It means it can continue to scan from the just after the starting symbol
 as if there was nothing happened. (Figure 11)</p>
-<p><img src="images/ch_parser_heredoc.jpg" title="The picture of assignation of scanning Here Document" alt="The picture of assignation of scanning Here Document" /></p>
+
+<p><img src="images/ch_parser_heredoc.jpg" alt="The picture of assignation of scanning Here Document" title="The picture of assignation of scanning Here Document" /></p>
+
 
     <footer>
       The original work is Copyright © 2002 - 2004 Minero AOKI.

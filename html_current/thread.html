@@ -18,13 +18,16 @@
       </ul>
     </nav>
 
-    <h1>Chapter 19: Threads</h1>
-<h2>Outline</h2>
-<h3>Ruby Interface</h3>
+    <h1 id="chapter-19-threads">Chapter 19: Threads</h1>
+
+<h2 id="outline">Outline</h2>
+
+<h3 id="ruby-interface">Ruby Interface</h3>
+
 <p>Come to think of it, I feel I have not introduced an actual code to use Ruby threads.
-This is not so special, but here I&#8217;ll introduce it just in case.</p>
-<pre class="emlist">
-Thread.fork {
+This is not so special, but here I’ll introduce it just in case.</p>
+
+<pre><code class="language-emlist">Thread.fork {
     while true
       puts 'forked thread'
     end
@@ -32,106 +35,110 @@ Thread.fork {
 while true
   puts 'main thread'
 end
-</pre>
+</code></pre>
+
 <p>When executing this program,
-a lot of `&#8220;forked thread&#8221;` and `&#8220;main thread&#8221;` are printed in the properly mixed
+a lot of `“forked thread”` and `“main thread”` are printed in the properly mixed
 state.</p>
+
 <p>Of course, other than just creating multiple threads, there are also various
-ways to control. There&#8217;s not the `synchronize` as a reserved word like Java,
+ways to control. There’s not the `synchronize` as a reserved word like Java,
 common primitives such as `Mutex` or `Queue` or `Monitor` are of course available,
 and the below APIs can be used to control a thread itself.</p>
-<p class="caption">▼ Thread <span class="caps">API</span></p>
-<table>
-	<tr>
-		<td> `Thread.pass` </td>
-		<td> transfer the execution to any other thread </td>
-	</tr>
-	<tr>
-		<td> `Thread.kill(th)` </td>
-		<td> terminates the `th` thread </td>
-	</tr>
-	<tr>
-		<td> `Thread.exit` </td>
-		<td> terminates the thread itself </td>
-	</tr>
-	<tr>
-		<td> `Thread.stop` </td>
-		<td> temporarily stop the thread itself </td>
-	</tr>
-	<tr>
-		<td> `Thread#join` </td>
-		<td> waiting for the thread to finish </td>
-	</tr>
-	<tr>
-		<td> `Thread#wakeup` </td>
-		<td> to wake up the temporarily stopped thread </td>
-	</tr>
-</table>
-<h3>`ruby` Thread</h3>
-<p>Threads are supposed to &#8220;run all together&#8221;,
+
+<p class="caption">
+▼ Thread API
+
+</p>
+<p>|                     |                                            |
+|———————|——————————————–|
+| `Thread.pass`     | transfer the execution to any other thread |
+| `Thread.kill(th)` | terminates the `th` thread               |
+| `Thread.exit`     | terminates the thread itself               |
+| `Thread.stop`     | temporarily stop the thread itself         |
+| `Thread#join`    | waiting for the thread to finish           |
+| `Thread#wakeup`  | to wake up the temporarily stopped thread  |</p>
+
+<h3 id="ruby-thread">`ruby` Thread</h3>
+
+<p>Threads are supposed to “run all together”,
 but actually they are running for a little time in turns.
-To be precise, by making some efforts on a machine of multi <span class="caps">CPU</span>,
-it&#8217;s possible that, for instance, two of them are running at the same time.
-But still, if there are more threads than the number of <span class="caps">CPU</span>,
+To be precise, by making some efforts on a machine of multi CPU,
+it’s possible that, for instance, two of them are running at the same time.
+But still, if there are more threads than the number of CPU,
 they have to run in turns.</p>
+
 <p>In other words, in order to create threads, someone has to switch the threads
 in somewhere. There are roughly two ways to do it:
 kernel-level threads and user-level threads.
 They are respectively, as the names suggest, to create a thread in kernel or at
-user-level. If it is kernel-level, by making use of multi-<span class="caps">CPU</span>,
+user-level. If it is kernel-level, by making use of multi-CPU,
 multiple threads can run at the same time.</p>
+
 <p>Then, how about the thread of `ruby`? It is user-level thread.
 And (Therefore), the number of threads that are runnable at the same time is
 limited to one.</p>
-<h3>Is it preemptive?</h3>
-<p>I&#8217;ll describe about the traits of `ruby` threads in more detail.
+
+<h3 id="is-it-preemptive">Is it preemptive?</h3>
+
+<p>I’ll describe about the traits of `ruby` threads in more detail.
 As an alternative point of view of threads,
-there&#8217;s the point that is &#8220;is it preemptive?&#8221;.</p>
-<p>When we say &#8220;thread (system) is preemptive&#8221;,
+there’s the point that is “is it preemptive?”.</p>
+
+<p>When we say “thread (system) is preemptive”,
 the threads will automatically be switched without being explicitly switched by
 its user.
-Looking this from the opposite direction, the user can&#8217;t control the timing of
+Looking this from the opposite direction, the user can’t control the timing of
 switching threads.</p>
+
 <p>On the other hand, in a non-preemptive thread system,
 until the user will explicitly say
-&#8220;I can pass the control right to the next thread&#8221;,
+“I can pass the control right to the next thread”,
 threads will never be switched.
 Looking this from the opposite direction,
-when and where there&#8217;s the possibility of switching threads is obvious.</p>
+when and where there’s the possibility of switching threads is obvious.</p>
+
 <p>This distinction is also for processes,
-in that case, preemptive is considered as &#8220;superior&#8221;.
+in that case, preemptive is considered as “superior”.
 For example, if a program had a bug and it entered an infinite loop,
 the processes would never be able to switch.
 This means a user program can halt the whole system and is not good.
 And, switching processes was non-preemptive on Windows 3.1
-because its base was MS-<span class="caps">DOS</span>,
+because its base was MS-DOS,
 but Windows 95 is preemptive. Thus, the system is more robust.
-Hence, it is said that Windows 95 is &#8220;superior&#8221; to 3.1.</p>
+Hence, it is said that Windows 95 is “superior” to 3.1.</p>
+
 <p>Then, how about the `ruby` thread? It is preemptive at Ruby-level,
 and non-preemptive at C level. In other words, when you are writing C code,
 you can determine almost certainly the timings of switching threads.</p>
+
 <p>Why is this designed in this way? Threads are indeed convenient,
 but its user also need to prepare certain minds.
 It means that it is necessary the code is compatible to the threads.
 (It must be multi-thread safe). In other words, in order to make it preemptive
 also in C level, the all C libraries have to be thread safe.</p>
+
 <p>But in reality, there are also a lot of C libraries that are still not thread safe.
 A lot of efforts were made to ease to write extension libraries,
 but it would be brown if the number of usable libraries is decreased by
 requiring thread safety.
 Therefore, non-preemptive at C level is a reasonable choice for `ruby`.</p>
-<h3>Management System</h3>
-<p>We&#8217;ve understand `ruby` thread is non-preemptive at C level.
-It means after it runs for a while, it voluntarily let go of the controlling
-right. Then, I&#8217;d like you to suppose that now a currently being executed thread
-is about to quit the execution. Who will next receive the control right?
-But before that, it&#8217;s impossible to guess it without knowing how threads are
-expressed inside `ruby` in the first place.
-Let&#8217;s look at the variables and the data types to manage threads.</p>
-<p class="caption">▼ the structure to manage threads</p>
 
-<pre class="longlist">
- 864  typedef struct thread * rb_thread_t;
+<h3 id="management-system">Management System</h3>
+
+<p>We’ve understand `ruby` thread is non-preemptive at C level.
+It means after it runs for a while, it voluntarily let go of the controlling
+right. Then, I’d like you to suppose that now a currently being executed thread
+is about to quit the execution. Who will next receive the control right?
+But before that, it’s impossible to guess it without knowing how threads are
+expressed inside `ruby` in the first place.
+Let’s look at the variables and the data types to manage threads.</p>
+
+<p class="caption">
+▼ the structure to manage threads
+
+</p>
+<pre><code class="language-longlist"> 864  typedef struct thread * rb_thread_t;
  865  static rb_thread_t curr_thread = 0;
  866  static rb_thread_t main_thread;
 
@@ -139,7 +146,8 @@ Let&#8217;s look at the variables and the data types to manage threads.</p>
 7302      struct thread *next, *prev;
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>Since `struct thread` is very huge for some reason,
 this time I narrowed it down to the only important part.
 It is why there are only the two. These `next` and `prev` are member names,
@@ -149,49 +157,60 @@ And actually it is not an ordinary dual-directional list,
 the both ends are connected. It means, it is circular.
 This is a big point. Adding the static `main_thread` and `curr_thread` variables
 to it, the whole data structure would look like Figure 1.</p>
+
 <p class="image">
-<p><img src="images/ch_thread_thread.jpg" alt="(thread)"><br>
-Figure 1: the data structures to manage threads</p>
+<img src="images/ch_thread_thread.jpg" alt="(thread)" /><br />
+Figure 1: the data structures to manage threads
+
 </p>
 <p>`main_thread` (main thread) means the thread existed at the time when a program
-started, meaning the &#8220;first&#8221; thread. `curr_thread` is obviously `current thread`,
+started, meaning the “first” thread. `curr_thread` is obviously `current thread`,
 meaning the thread currently running.
 The value of `main_thread` will never change while the process is running,
 but the value of `curr_thread` will change frequently.</p>
-<p>In this way, because the list is being a circle, the procedure to chose &#8220;the
-next thread&#8221; becomes easy. It can be done by merely following the `next` link.
+
+<p>In this way, because the list is being a circle, the procedure to chose “the
+next thread” becomes easy. It can be done by merely following the `next` link.
 Only by this, we can run all threads equally to some extent.</p>
-<h3>What does switching threads mean?</h3>
+
+<h3 id="what-does-switching-threads-mean">What does switching threads mean?</h3>
+
 <p>By the way, what is a thread in the first place?
 Or, what makes us to say threads are switched?</p>
+
 <p>These are very difficult questions. Similar to what a program is or what an
 object is, when asked about what are usually understood by feelings,
-it&#8217;s hard to answer clearly.
-Especially, &#8220;what is the difference between threads and processes?&#8221;
+it’s hard to answer clearly.
+Especially, “what is the difference between threads and processes?”
 is a good question.</p>
+
 <p>Still, in a realistic range, we can describe it to some extent.
 What necessary for threads is the context of executing.
-As for the context of `ruby`, as we&#8217;ve seen by now,
+As for the context of `ruby`, as we’ve seen by now,
 it consists of `ruby_frame` and `ruby_scope` and `ruby_class` and so on.
 And `ruby` allocates the substance of `ruby_frame` on the machine stack,
 and there are also the stack space used by extension libraries,
 therefore the machine stack is also necessary as a context of a Ruby program.
-And finally, the <span class="caps">CPU</span> registers are indispensable.
+And finally, the CPU registers are indispensable.
 These various contexts are the elements to enable threads,
 and switching them means switching threads.
-Or, it is called &#8220;context-switch&#8221;.</p>
-<h3>The way of context-switching</h3>
+Or, it is called “context-switch”.</p>
+
+<h3 id="the-way-of-context-switching">The way of context-switching</h3>
+
 <p>The rest talk is how to switch contexts.
 `ruby_scope` and `ruby_class` are easy to replace:
 allocate spaces for them somewhere such as the heap and
 set them aside one by one.
-For the <span class="caps">CPU</span> registers, we can make it
+For the CPU registers, we can make it
 because we can save and write back them by using `setjmp()`.
 The spaces for both purposes are respectively prepared in `rb_thread_t`.</p>
-<p class="caption">▼ `struct thread`  (partial)</p>
 
-<pre class="longlist">
-7301  struct thread {
+<p class="caption">
+▼ \`struct thread\` (partial)
+
+</p>
+<pre><code class="language-longlist">7301  struct thread {
 7302      struct thread *next, *prev;
 7303      jmp_buf context;
 
@@ -218,61 +237,77 @@ The spaces for both purposes are respectively prepared in `rb_thread_t`.</p>
 7335      int safe;                   /* ruby_safe_level */
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>As shown above, there are the members that seem to correspond to `ruby_frame`
-and `ruby_scope`. There&#8217;s also a `jmp_buf` to save the registers.</p>
+and `ruby_scope`. There’s also a `jmp_buf` to save the registers.</p>
+
 <p>Then, the problem is the machine stack.
 How can we substitute them?</p>
+
 <p>The way which is the most straightforward for the mechanism is directly writing
 over the pointer to the position (end) of the stack.
-Usually, it is in the <span class="caps">CPU</span> registers.
+Usually, it is in the CPU registers.
 Sometimes it is a specific register,
 and it is also possible that a general-purpose register is allocated for it.
 Anyway, it is in somewhere.
-For convenience, we&#8217;ll call it the stack pointer from now on.
+For convenience, we’ll call it the stack pointer from now on.
 It is obvious that the different space can be used as the stack by modifying it.
-But it is also obvious in this way we have to deal with it for each <span class="caps">CPU</span>
+But it is also obvious in this way we have to deal with it for each CPU
 and for each OS, thus it is really hard to serve the potability.</p>
+
 <p>Therefore, `ruby` uses a very violent way to implement the substitution of the
-machine stack. That is, if we can&#8217;t modify the stack pointer, let&#8217;s modify the
+machine stack. That is, if we can’t modify the stack pointer, let’s modify the
 place the stack pointer points to. We know the stack can be directly modified
-as we&#8217;ve seen in the description about the garbage collection,
+as we’ve seen in the description about the garbage collection,
 the rest is slightly changing what to do.
 The place to store the stack properly exists in `struct thread`.</p>
-<p class="caption">▼ `struct thread`  (partial)</p>
 
-<pre class="longlist">
-7310      int   stk_len;      /* the stack length */
+<p class="caption">
+▼ \`struct thread\` (partial)
+
+</p>
+<pre><code class="language-longlist">7310      int   stk_len;      /* the stack length */
 7311      int   stk_max;      /* the size of memory allocated for stk_ptr */
 7312      VALUE*stk_ptr;      /* the copy of the stack */
 7313      VALUE*stk_pos;      /* the position of the stack */
 
 (eval.c)
-</pre>
-<h3>How the explanation goes</h3>
-<p>So far, I&#8217;ve talked about various things, but the important points can be
+</code></pre>
+
+<h3 id="how-the-explanation-goes">How the explanation goes</h3>
+
+<p>So far, I’ve talked about various things, but the important points can be
 summarized to the three:</p>
+
 <ul>
-	<li>When</li>
-	<li>To which thread</li>
-	<li>How</li>
+  <li>When</li>
+  <li>To which thread</li>
+  <li>How</li>
 </ul>
+
 <p>to switch context. These are also the points of this chapter.
-Below, I&#8217;ll describe them using a section for each of the three points
+Below, I’ll describe them using a section for each of the three points
 respectively.</p>
-<h2>Trigger</h2>
-<p>To begin with, it&#8217;s the first point, when to switch threads.
+
+<h2 id="trigger">Trigger</h2>
+
+<p>To begin with, it’s the first point, when to switch threads.
 In other words, what is the cause of switching threads.</p>
-<h3>Waiting I/O</h3>
+
+<h3 id="waiting-io">Waiting I/O</h3>
+
 <p>For example, when trying to read in something by calling `IO#gets` or `IO#read`,
 since we can expect it will take a lot of time to read,
-it&#8217;s better to run the other threads in the meantime.
+it’s better to run the other threads in the meantime.
 In other words, a forcible switch becomes necessary here.
 Below is the interface of `getc`.</p>
-<p class="caption">▼ `rb_getc()` </p>
 
-<pre class="longlist">
-1185  int
+<p class="caption">
+▼ \`rb\_getc()\`
+
+</p>
+<pre><code class="language-longlist">1185  int
 1186  rb_getc(f)
 1187      FILE *f;
 1188  {
@@ -289,20 +324,24 @@ Below is the interface of `getc`.</p>
 1199  }
 
 (io.c)
-</pre>
+</code></pre>
+
 <p>`READ_DATA_PENDING(f)` is a macro to check if the content of the buffer of the
-file is still there. If there&#8217;s the content of the buffer,
+file is still there. If there’s the content of the buffer,
 it means it can move without any waiting time,
 thus it would read it immediately.
 If it was empty, it means it would take some time,
 thus it would `rb_thread_wait_fd()`.
 This is an indirect cause of switching threads.</p>
-<p>If `rb_thread_wait_fd()` is &#8220;indirect&#8221;, there also should be a &#8220;direct&#8221; cause.
-What is it? Let&#8217;s see the inside of `rb_thread_wait_fd()`.</p>
-<p class="caption">▼ `rb_thread_wait_fd()` </p>
 
-<pre class="longlist">
-8047  void
+<p>If `rb_thread_wait_fd()` is “indirect”, there also should be a “direct” cause.
+What is it? Let’s see the inside of `rb_thread_wait_fd()`.</p>
+
+<p class="caption">
+▼ \`rb\_thread\_wait\_fd()\`
+
+</p>
+<pre><code class="language-longlist">8047  void
 8048  rb_thread_wait_fd(fd)
 8049      int fd;
 8050  {
@@ -317,32 +356,39 @@ What is it? Let&#8217;s see the inside of `rb_thread_wait_fd()`.</p>
 8059  }
 
 (eval.c)
-</pre>
-<p>There&#8217;s `rb_thread_schedule()` at the last line.
-This function is the &#8220;direct cause&#8221;.
+</code></pre>
+
+<p>There’s `rb_thread_schedule()` at the last line.
+This function is the “direct cause”.
 It is the heart of the implementation of the `ruby` threads,
 and does select and switch to the next thread.</p>
+
 <p>What makes us understand this function has such role is,
-in my case, I knew the word &#8220;scheduling&#8221; of threads beforehand.
-Even if you didn&#8217;t know, because you remembers now,
-you&#8217;ll be able to notice it at the next time.</p>
+in my case, I knew the word “scheduling” of threads beforehand.
+Even if you didn’t know, because you remembers now,
+you’ll be able to notice it at the next time.</p>
+
 <p>And, in this case, it does not merely pass the control to the other thread,
 but it also stops itself.
-Moreover, it has an explicit deadline that is &#8220;by the time when it becomes readable&#8221;.
+Moreover, it has an explicit deadline that is “by the time when it becomes readable”.
 Therefore, this request should be told to `rb_thread_schedule()`.
 This is the part to assign various things to the members of `curr_thread`.
 The reason to stop is stored in `wait_for`,
 the information to be used when waking up is stored in `fd`,
 respectively.</p>
-<h3>Waiting the other thread</h3>
+
+<h3 id="waiting-the-other-thread">Waiting the other thread</h3>
+
 <p>After understanding threads are switched at the timing of `rb_thread_schedule()`,
 this time, conversely, from the place where `rb_thread_schedule()` appears,
 we can find the places where threads are switched.
 Then by scanning, I found it in the function named `rb_thread_join()`.</p>
-<p class="caption">▼ `rb_thread_join()`  (partial)</p>
 
-<pre class="longlist">
-8227  static int
+<p class="caption">
+▼ \`rb\_thread\_join()\` (partial)
+
+</p>
+<pre><code class="language-longlist">8227  static int
 8228  rb_thread_join(th, limit)
 8229      rb_thread_t th;
 8230      double limit;
@@ -356,19 +402,24 @@ Then by scanning, I found it in the function named `rb_thread_join()`.</p>
 8248          rb_thread_schedule();
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>This function is the substance of `Thread#join`,
 and `Thread#join` is a method to wait until the receiver thread will end.
-Indeed, since there&#8217;s time to wait, running the other threads is economy.
+Indeed, since there’s time to wait, running the other threads is economy.
 Because of this, the second reason to switch is found.</p>
-<h3>Waiting For Time</h3>
+
+<h3 id="waiting-for-time">Waiting For Time</h3>
+
 <p>Moreover, also in the function named `rb_thread_wait_for()`,
 `rb_thread_schedule()` was found.
-This is the substance of (Ruby&#8217;s) `sleep` and such.</p>
-<p class="caption">▼ `rb_thread_wait_for` (simplified)</p>
+This is the substance of (Ruby’s) `sleep` and such.</p>
 
-<pre class="longlist">
-8080  void
+<p class="caption">
+▼ \`rb\_thread\_wait\_for\` (simplified)
+
+</p>
+<pre><code class="language-longlist">8080  void
 8081  rb_thread_wait_for(time)
 8082      struct timeval time;
 8083  {
@@ -383,13 +434,16 @@ This is the substance of (Ruby&#8217;s) `sleep` and such.</p>
 8129  }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>`timeofday()` returns the current time.
 Because the value of `time` is added to it,
 `date` indicates the time when the waiting time is over.
-In other words, this is the order &#8220;I&#8217;d like to stop until it will be the
-specific time&#8221;.</p>
-<h3>Switch by expirations</h3>
+In other words, this is the order “I’d like to stop until it will be the
+specific time”.</p>
+
+<h3 id="switch-by-expirations">Switch by expirations</h3>
+
 <p>In the above all cases,
 because some manipulations are done from Ruby level,
 consequently it causes to switch threads.
@@ -399,17 +453,21 @@ a particular thread would continue to run eternally. Therefore,
 we need to let it voluntary dispose the control right after running
 for a while.
 Then, how long a thread can run by the time when it will have to stop,
-is what I&#8217;ll talk about next.</p>
-<h4>`setitimer`</h4>
+is what I’ll talk about next.</p>
+
+<h4 id="setitimer">`setitimer`</h4>
+
 <p>Since it is the same every now and then,
 I feel like lacking the skill to entertain,
 but I searched the places where calling `rb_thread_schedule()` further.
 And this time it was found in the strange place.
 It is here.</p>
-<p class="caption">▼ `catch_timer()` </p>
 
-<pre class="longlist">
-8574  static void
+<p class="caption">
+▼ \`catch\_timer()\`
+
+</p>
+<pre><code class="language-longlist">8574  static void
 8575  catch_timer(sig)
 8576      int sig;
 8577  {
@@ -425,15 +483,18 @@ It is here.</p>
 8587  }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>This seems something relating to signals.
 What is this?
 I followed the place where this `catch_timer()` function is used,
 then it was used around here:</p>
-<p class="caption">▼ `rb_thread_start_0()` (partial)</p>
 
-<pre class="longlist">
-8620  static VALUE
+<p class="caption">
+▼ \`rb\_thread\_start\_0()\` (partial)
+
+</p>
+<pre><code class="language-longlist">8620  static VALUE
 8621  rb_thread_start_0(fn, arg, th_arg)
 8622      VALUE (*fn)();
 8623      void *arg;
@@ -454,42 +515,51 @@ then it was used around here:</p>
 8643  #endif
 
 (eval.c)
-</pre>
-<p>This means, `catch_timer` is a signal handler of `<span class="caps">SIGVTALRM</span>`.</p>
-<p>Here, &#8220;what kind of signal `<span class="caps">SIGVTALRM</span>` is&#8221; becomes the question.
+</code></pre>
+
+<p>This means, `catch_timer` is a signal handler of `SIGVTALRM`.</p>
+
+<p>Here, “what kind of signal `SIGVTALRM` is” becomes the question.
 This is actually the signal sent when using the system call named `setitimer`.
-That&#8217;s why there&#8217;s a check of `HAVE_SETITIMER` just before it.
-`setitimer` is an abbreviation of &#8220;<span class="caps">SET</span> Interval <span class="caps">TIMER</span>&#8221;
+That’s why there’s a check of `HAVE_SETITIMER` just before it.
+`setitimer` is an abbreviation of “SET Interval TIMER”
 and a system call to tell OS to send signals with a certain interval.</p>
+
 <p>Then, where is the place calling `setitimer`? It is the `rb_thread_start_timer()`,
 which is coincidently located at the last of this list.</p>
+
 <p>To sum up all, it becomes the following scenario.
 `setitimer` is used to send signals with a certain interval.
 The signals are caught by `catch_timer()`.
 There, `rb_thread_schedule()` is called and threads are switched. Perfect.</p>
+
 <p>However, signals could occur anytime,
 if it was based on only what described until here,
 it means it would also be preemptive at C level.
-Then, I&#8217;d like you to see the code of `catch_timer()` again.</p>
-<pre class="emlist">
-if (rb_trap_immediate) {
+Then, I’d like you to see the code of `catch_timer()` again.</p>
+
+<pre><code class="language-emlist">if (rb_trap_immediate) {
     rb_thread_schedule();
 }
 else rb_thread_pending = 1;
-</pre>
-<p>There&#8217;s a required condition that is doing `rb_thread_schedule()` only when
+</code></pre>
+
+<p>There’s a required condition that is doing `rb_thread_schedule()` only when
 it is `rb_trap_immediate`. This is the point. `rb_trap_immediate` is, as the
-name suggests, expressing &#8220;whether or not immediately process signals&#8221;,
+name suggests, expressing “whether or not immediately process signals”,
 and it is usually false.
 It becomes true only while the limited time such as while doing I/O on a single
 thread. In the source code, it is the part between `TRAP_BEG` and `TRAP_END`.</p>
-<p>On the other hand, since `rb_thread_pending` is set when it is false,
-let&#8217;s follow this.
-This variable is used in the following place.</p>
-<p class="caption">▼ `CHECK_INTS` − `HAVE_SETITIMER` </p>
 
-<pre class="longlist">
-  73  #if defined(HAVE_SETITIMER) &amp;&amp; !defined(__BOW__)
+<p>On the other hand, since `rb_thread_pending` is set when it is false,
+let’s follow this.
+This variable is used in the following place.</p>
+
+<p class="caption">
+▼ \`CHECK\_INTS\` − \`HAVE\_SETITIMER\`
+
+</p>
+<pre><code class="language-longlist">  73  #if defined(HAVE_SETITIMER) &amp;&amp; !defined(__BOW__)
   74  EXTERN int rb_thread_pending;
   75  # define CHECK_INTS do {\
   76      if (!rb_prohibit_interrupt) {\
@@ -500,25 +570,31 @@ This variable is used in the following place.</p>
   81  } while (0)
 
 (rubysig.h)
-</pre>
+</code></pre>
+
 <p>This way, inside of `CHECK_INTS`, `rb_thread_pending` is checked and
 `rb_thread_schedule()` is done.
-It means, when receiving `<span class="caps">SIGVTALRM</span>`, `rb_thread_pending` becomes true,
+It means, when receiving `SIGVTALRM`, `rb_thread_pending` becomes true,
 then the thread will be switched at the next time going through `CHECK_INTS`.</p>
+
 <p>This `CHECK_INTS` has appeared at various places by now.
 For example, `rb_eval()` and `rb_call0()` and `rb_yeild_0`.
 `CHECK_INTS` would be meaningless if it was not located where the place
 frequently being passed.
 Therefore, it is natural to exist in the important functions.</p>
-<h4>`tick`</h4>
-<p>We understood the case when there&#8217;s `setitimer`.
-But what if `setitimer` does not exist?
-Actually, the answer is in `CHECK_INTS`, which we&#8217;ve just seen.
-It is the definition of the `#else` side.</p>
-<p class="caption">▼ `CHECK_INTS` − `not HAVE_SETITIMER` </p>
 
-<pre class="longlist">
-  84  EXTERN int rb_thread_tick;
+<h4 id="tick">`tick`</h4>
+
+<p>We understood the case when there’s `setitimer`.
+But what if `setitimer` does not exist?
+Actually, the answer is in `CHECK_INTS`, which we’ve just seen.
+It is the definition of the `#else` side.</p>
+
+<p class="caption">
+▼ \`CHECK\_INTS\` − \`not HAVE\_SETITIMER\`
+
+</p>
+<pre><code class="language-longlist">  84  EXTERN int rb_thread_tick;
   85  #define THREAD_TICK 500
   86  #define CHECK_INTS do {\
   87      if (!rb_prohibit_interrupt) {\
@@ -533,22 +609,29 @@ It is the definition of the `#else` side.</p>
   96  } while (0)
 
 (rubysig.h)
-</pre>
+</code></pre>
+
 <p>Every time going through `CHECK_INTS`, decrement `rb_thread_tick`.
 When it becomes 0, do `rb_thread_schedule()`.
 In other words, the mechanism is that the thread will be switched
 after `THREAD_TICK` (=500) times going through `CHECK_INTS`.</p>
-<h2>Scheduling</h2>
+
+<h2 id="scheduling">Scheduling</h2>
+
 <p>The second point is to which thread to switch.
-What solely responsible for this decision is  `rb_thread_schedule()`.</p>
-<h3>`rb_thread_schedule()`</h3>
+What solely responsible for this decision is `rb_thread_schedule()`.</p>
+
+<h3 id="rbthreadschedule">`rb_thread_schedule()`</h3>
+
 <p>The important functions of `ruby` are always huge.
 This `rb_thread_schedule()` has more than 220 lines.
-Let&#8217;s exhaustively divide it into portions.</p>
-<p class="caption">▼ `rb_thread_schedule()` (outline)</p>
+Let’s exhaustively divide it into portions.</p>
 
-<pre class="longlist">
-7819  void
+<p class="caption">
+▼ \`rb\_thread\_schedule()\` (outline)
+
+</p>
+<pre><code class="language-longlist">7819  void
 7820  rb_thread_schedule()
 7821  {
 7822      rb_thread_t next;           /* OK */
@@ -584,61 +667,75 @@ Let&#8217;s exhaustively divide it into portions.</p>
 8045  }
 
 (eval.c)
-</pre>
-<p>(A) When there&#8217;s only one thread, this does not do anything and returns immediately.
+</code></pre>
+
+<p>(A) When there’s only one thread, this does not do anything and returns immediately.
 Therefore, the talks after this can be thought based on the assumption that
 there are always multiple threads.</p>
+
 <p>(B) Subsequently, the initialization of the variables.
 We can consider the part until and including the `while` is the initialization.
 Since `cur` is following `prev`,
 the last alive thread (`status != THREAD_KILLED`) will be set.
-It is not &#8220;the first&#8221; one
-because there are a lot of loops that &#8220;start with the next of `curr` then
-deal with `curr` and end&#8221;.</p>
+It is not “the first” one
+because there are a lot of loops that “start with the next of `curr` then
+deal with `curr` and end”.</p>
+
 <p>After that, we can see the sentences about `select`.
 Since the thread switch of `ruby` is considerably depending on `select`,
-let&#8217;s first study about `select` in advance here.</p>
-<h3>`select`</h3>
+let’s first study about `select` in advance here.</p>
+
+<h3 id="select">`select`</h3>
+
 <p>`select` is a system call to wait until the preparation for reading or writing a
 certain file will be completed.
 Its prototype is this:</p>
-<pre class="emlist">
-int select(int max,
+
+<pre><code class="language-emlist">int select(int max,
            fd_set *readset, fd_set *writeset, fd_set *exceptset,
            struct timeval *timeout);
-</pre>
+</code></pre>
+
 <p>In the variable of type `fd_set`, a set of `fd` that we want to check is stored.
-The first argument `max` is &#8220;(the maximum value of `fd` in `fd_set`) + 1&#8221;.
+The first argument `max` is “(the maximum value of `fd` in `fd_set`) + 1”.
 The `timeout` is the maximum waiting time of `select`.
-If `timeout` is `<span class="caps">NULL</span>`, it would wait eternally.
+If `timeout` is `NULL`, it would wait eternally.
 If `timeout` is 0, without waiting for even just a second,
 it would only check and return immediately.
-As for the return value, I&#8217;ll talk about it at the moment when using it.</p>
-<p>I&#8217;ll talk about `fd_set` in detail.
-`fd_set` can be manipulated by using the below macros:</p>
-<p class="caption">▼ `fd_set`  maipulation</p>
+As for the return value, I’ll talk about it at the moment when using it.</p>
 
-<pre class="longlist">
-fd_set set;
+<p>I’ll talk about `fd_set` in detail.
+`fd_set` can be manipulated by using the below macros:</p>
+
+<p class="caption">
+▼ \`fd\_set\` maipulation
+
+</p>
+<pre><code class="language-longlist">fd_set set;
 
 FD_ZERO(&amp;set)       /* initialize */
 FD_SET(fd, &amp;set)    /* add a file descriptor fd to the set */
 FD_ISSET(fd, &amp;set)  /* true if fd is in the set */
-</pre>
-<p>`fd_set` is typically a bit array,
-and when we want to check  n-th file descriptor, the n-th bit is set (Figure 2).</p>
-<div class="image">
-<p><img src="images/ch_thread_fdset.jpg" alt="(fdset)"><br>
-Figure 2: fd_set</p>
-</div>
-<p>I&#8217;ll show a simple usage example of `select`.</p>
-<p class="caption">▼ a usage exmple of  `select`  </p>
+</code></pre>
 
-<pre class="longlist">
-#include &lt;stdio.h&gt;
-#include &lt;sys/types.h&gt;
-#include &lt;sys/time.h&gt;
-#include &lt;unistd.h&gt;
+<p>`fd_set` is typically a bit array,
+and when we want to check n-th file descriptor, the n-th bit is set (Figure 2).</p>
+
+<div class="image">
+<img src="images/ch_thread_fdset.jpg" alt="(fdset)" /><br />
+Figure 2: fd\_set
+
+</div>
+<p>I’ll show a simple usage example of `select`.</p>
+
+<p class="caption">
+▼ a usage exmple of \`select\`
+
+</p>
+<pre><code class="language-longlist">#include 
+#include 
+#include 
+#include 
 
 int
 main(int argc, char **argv)
@@ -652,26 +749,31 @@ main(int argc, char **argv)
     read(STDIN_FILENO, buf, 1024);  /* success without delay */
     exit(0);
 }
-</pre>
+</code></pre>
+
 <p>This code assume the system call is always success,
 thus there are not any error checks at all.
-I&#8217;d like you to see only the flow that is  `FD_ZERO` &#8594; `FD_SET` &#8594; `select`.
-Since here the fifth argument `timeout` of `select` is `<span class="caps">NULL</span>`,
+I’d like you to see only the flow that is `FD_ZERO` <del><span style="text-align:right;">`FD_SET`</span></del>&gt; `select`.
+Since here the fifth argument `timeout` of `select` is `NULL`,
 this `select` call waits eternally for reading `stdin`.
 And since this `select` is completed,
 the next `read` does not have to wait to read at all.
 By putting `print` in the middle,
 you will get further understandings about its behavior.
-And a little more detailed example code is put in the attached CD-<span class="caps">ROM</span>
+And a little more detailed example code is put in the attached CD-ROM
 {see also `doc/select.html`}.</p>
-<h3>Preparations for `select`</h3>
-<p>Now, we&#8217;ll go back to the code of `rb_thread_schedule()`.
-Since this code branches based on the reason why threads are waiting.
-I&#8217;ll show the content in shortened form.</p>
-<p class="caption">▼ `rb_thread_schedule()` − preparations for  `select` </p>
 
-<pre class="longlist">
-7848    again:
+<h3 id="preparations-for-select">Preparations for `select`</h3>
+
+<p>Now, we’ll go back to the code of `rb_thread_schedule()`.
+Since this code branches based on the reason why threads are waiting.
+I’ll show the content in shortened form.</p>
+
+<p class="caption">
+▼ \`rb\_thread\_schedule()\` − preparations for \`select\`
+
+</p>
+<pre><code class="language-longlist">7848    again:
           /* initialize the variables relating to select */
 7849      max = -1;
 7850      FD_ZERO(&amp;readfds);
@@ -701,50 +803,59 @@ I&#8217;ll show the content in shortened form.</p>
 7901      END_FOREACH_FROM(curr, th);
 
 (eval.c)
-</pre>
-<p>Whether it is supposed to be or not,
-what stand out are the macros named `<span class="caps">FOREACH</span>`-some.
-These two are defined as follows:</p>
-<p class="caption">▼ `FOREACH_THREAD_FROM` </p>
+</code></pre>
 
-<pre class="longlist">
-7360  #define FOREACH_THREAD_FROM(f,x) x = f; do { x = x-&gt;next;
+<p>Whether it is supposed to be or not,
+what stand out are the macros named `FOREACH`-some.
+These two are defined as follows:</p>
+
+<p class="caption">
+▼ \`FOREACH\_THREAD\_FROM\`
+
+</p>
+<pre><code class="language-longlist">7360  #define FOREACH_THREAD_FROM(f,x) x = f; do { x = x-&gt;next;
 7361  #define END_FOREACH_FROM(f,x) } while (x != f)
 
 (eval.c)
-</pre>
-<p>Let&#8217;s extract them for better understandability.</p>
-<pre class="emlist">
-th = curr;
+</code></pre>
+
+<p>Let’s extract them for better understandability.</p>
+
+<pre><code class="language-emlist">th = curr;
 do {
     th = th-&gt;next;
     {
         .....
     }
 } while (th != curr);
-</pre>
+</code></pre>
+
 <p>This means: follow the circular list of threads from the next of `curr`
 and process `curr` at last and end,
 and meanwhile the `th` variable is used.
-This makes me think about the Ruby&#8217;s iterators
-&#8230; is this my too much imagination?</p>
-<p>Here, we&#8217;ll go back to the subsequence of the code, it uses
-this a bit strange loop and checks if there&#8217;s any thread which needs `select`.
-As we&#8217;ve seen previously, since `select` can wait for
+This makes me think about the Ruby’s iterators
+… is this my too much imagination?</p>
+
+<p>Here, we’ll go back to the subsequence of the code, it uses
+this a bit strange loop and checks if there’s any thread which needs `select`.
+As we’ve seen previously, since `select` can wait for
 reading/writing/exception/time all at once,
 you can probably understand I/O waits and time waits can be centralized by single `select`.
-And though I didn&#8217;t describe about it in the previous section,
+And though I didn’t describe about it in the previous section,
 `select` waits are also possible.
-There&#8217;s also a method named `IO.select` in the Ruby&#8217;s library,
+There’s also a method named `IO.select` in the Ruby’s library,
 and you can use `rb_thread_select()` at C level.
 Therefore, we need to execute that `select` at the same time.
 By merging `fd_set`, multiple `select` can be done at once.</p>
-<p>The rest is only `join` wait.
-As for its code, let&#8217;s see it just in case.</p>
-<p class="caption">▼ `rb_thread_schedule()` − `select`  preparation − `join`  wait</p>
 
-<pre class="longlist">
-7861          if (th-&gt;wait_for &amp; WAIT_JOIN) {
+<p>The rest is only `join` wait.
+As for its code, let’s see it just in case.</p>
+
+<p class="caption">
+▼ \`rb\_thread\_schedule()\` − \`select\` preparation − \`join\` wait
+
+</p>
+<pre><code class="language-longlist">7861          if (th-&gt;wait_for &amp; WAIT_JOIN) {
 7862              if (rb_thread_dead(th-&gt;join)) {
 7863                  th-&gt;status = THREAD_RUNNABLE;
 7864                  found = 1;
@@ -752,22 +863,27 @@ As for its code, let&#8217;s see it just in case.</p>
 7866          }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>The meaning of `rb_thread_dead()` is obvious because of its name.
 It determines whether or not the thread of the argument has finished.</p>
-<h3>Calling `select`</h3>
-<p>By now, we&#8217;ve figured out whether `select` is necessary or not,
+
+<h3 id="calling-select">Calling `select`</h3>
+
+<p>By now, we’ve figured out whether `select` is necessary or not,
 and if it is necessary, its `fd_set` has already prepared.
-Even if there&#8217;s a immediately invocable thread (`THREAD_RUNNABLE`),
+Even if there’s a immediately invocable thread (`THREAD_RUNNABLE`),
 we need to call `select` beforehand.
-It&#8217;s possible that there&#8217;s actually a thread that it has already been while
+It’s possible that there’s actually a thread that it has already been while
 since its I/O wait finished and has the higher priority.
 But in that case, tell `select` to immediately return
 and let it only check if I/O was completed.</p>
-<p class="caption">▼ `rb_thread_schedule()` − `select` </p>
 
-<pre class="longlist">
-7904      if (need_select) {
+<p class="caption">
+▼ \`rb\_thread\_schedule()\` − \`select\`
+
+</p>
+<pre><code class="language-longlist">7904      if (need_select) {
 7905          /* convert delay into timeval */
 7906          /* if theres immediately invocable threads, do only I/O checks */
 7907          if (found) {
@@ -801,33 +917,43 @@ and let it only check if I/O was completed.</p>
 7994      }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>The first half of the block is as written in the comment.
 Since `delay` is the `usec` until the any thread will be next invocable,
 it is converted into `timeval` form.</p>
+
 <p>In the last half, it actually calls `select` and branches based on its result.
 Since this code is long, I divided it again.
 When being cut in by a signal, it either goes back to the beginning
 then processes again or becomes an error.
 What are meaningful are the rest two.</p>
-<h4>Timeout</h4>
+
+<h4 id="timeout">Timeout</h4>
+
 <p>When `select` is timeout, a thread of time wait or `select` wait may become
 invocable. Check about it and search runnable threads.
 If it is found, set `THREAD_RUNNABLE` to it.</p>
-<h4>Completing normally</h4>
+
+<h4 id="completing-normally">Completing normally</h4>
+
 <p>If `select` is normally completed,
 it means either the preparation for I/O is completed or `select` wait ends.
 Search the threads that are no longer waiting by checking `fd_set`.
 If it is found, set `THREAD_RUNNABLE` to it.</p>
-<h3>Decide the next thread</h3>
+
+<h3 id="decide-the-next-thread">Decide the next thread</h3>
+
 <p>Taking all the information into considerations,
 eventually decide the next thread to invoke.
 Since all what was invocable and all what had finished waiting and so on became
-`<span class="caps">RUNNABLE</span>`, you can arbitrary pick up one of them.</p>
-<p class="caption">▼ `rb_thread_schedule()` − decide the next thread</p>
+`RUNNABLE`, you can arbitrary pick up one of them.</p>
 
-<pre class="longlist">
-7996      FOREACH_THREAD_FROM(curr, th) {
+<p class="caption">
+▼ \`rb\_thread\_schedule()\` − decide the next thread
+
+</p>
+<pre><code class="language-longlist">7996      FOREACH_THREAD_FROM(curr, th) {
 7997          if (th-&gt;status == THREAD_TO_KILL) {              /*（A）*/
 7998              next = th;
 7999              break;
@@ -840,54 +966,69 @@ Since all what was invocable and all what had finished waiting and so on became
 8006      END_FOREACH_FROM(curr, th);
 
 (eval.c)
-</pre>
-<p>(A) if there&#8217;s a thread that is about to finish,
+</code></pre>
+
+<p>(A) if there’s a thread that is about to finish,
 give it the high priority and let it finish.</p>
+
 <p>(B) find out what seems runnable.
 However it seems to consider the value of `priority`.
 This member can also be modified from Ruby level
 by using `Tread#priority Thread#priority=`.
 `ruby` itself does not especially modify it.</p>
+
 <p>If these are done but the next thread could not be found,
 in other words if the `next` was not set, what happen?
 Since `select` has already been done,
 at least one of threads of time wait or I/O wait should have finished waiting.
 If it was missing, the rest is only the waits for the other threads,
-and moreover there&#8217;s no runnable threads,
+and moreover there’s no runnable threads,
 thus this wait will never end.
 This is a dead lock.</p>
+
 <p>Of course, for the other reasons, a dead lock can happen,
-but generally it&#8217;s very hard to detect a dead lock.
+but generally it’s very hard to detect a dead lock.
 Especially in the case of `ruby`, `Mutex` and such are implemented at Ruby
 level, the perfect detection is nearly impossible.</p>
-<h3>Switching Threads</h3>
+
+<h3 id="switching-threads">Switching Threads</h3>
+
 <p>The next thread to invoke has been determined.
 I/O and `select` checks has also been done.
 The rest is transferring the control to the target thread.
 However, for the last of `rb_thread_schedule()` and the code to switch threads,
-I&#8217;ll start a new section.</p>
-<h2>Context Switch</h2>
+I’ll start a new section.</p>
+
+<h2 id="context-switch">Context Switch</h2>
+
 <p>The last third point is thread-switch,
 and it is context-switch.
 This is the most interesting part of threads of `ruby`.</p>
-<h3>The Base Line</h3>
-<p>Then we&#8217;ll start with the tail of `rb_thread_schedule()`.
-Since the story of this section is very complex,
-I&#8217;ll go with a significantly simplified version.</p>
-<p class="caption">▼ `rb_thread_schedule()`  (context switch)</p>
 
-<pre class="longlist">
-if (THREAD_SAVE_CONTEXT(curr)) {
+<h3 id="the-base-line">The Base Line</h3>
+
+<p>Then we’ll start with the tail of `rb_thread_schedule()`.
+Since the story of this section is very complex,
+I’ll go with a significantly simplified version.</p>
+
+<p class="caption">
+▼ \`rb\_thread\_schedule()\` (context switch)
+
+</p>
+<pre><code class="language-longlist">if (THREAD_SAVE_CONTEXT(curr)) {
     return;
 }
 rb_thread_restore_context(next, RESTORE_NORMAL);
-</pre>
+</code></pre>
+
 <p>As for the part of `THREAD_SAVE_CONTEXT()`,
 we need to extract the content at several places in order to understand.</p>
-<p class="caption">▼ `THREAD_SAVE_CONTEXT()` </p>
 
-<pre class="longlist">
-7619  #define THREAD_SAVE_CONTEXT(th) \
+<p class="caption">
+▼ \`THREAD\_SAVE\_CONTEXT()\`
+
+</p>
+<pre><code class="language-longlist">7619  #define THREAD_SAVE_CONTEXT(th) \
 7620      (rb_thread_save_context(th),thread_switch(setjmp((th)-&gt;context)))
 
 7587  static int
@@ -912,10 +1053,11 @@ we need to extract the content at several places in order to understand.</p>
 7617  }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>If I merge the three then extract it, here is the result:</p>
-<pre class="emlist">
-rb_thread_save_context(curr);
+
+<pre><code class="language-emlist">rb_thread_save_context(curr);
 switch (setjmp(curr-&gt;context)) {
   case 0:
     break;
@@ -929,40 +1071,48 @@ switch (setjmp(curr-&gt;context)) {
     return;
 }
 rb_thread_restore_context(next, RESTORE_NORMAL);
-</pre>
+</code></pre>
+
 <p>At both of the return value of `setjmp()` and `rb_thread_restore_context()`,
 `RESTORE_NORMAL` appears,
 this is clearly suspicious.
 Since it does `longjmp()` in `rb_thread_restore_context()`,
 we can expect the correspondence between `setjmp()` and `longjmp()`.
 And if we will imagine the meaning also from the function names,</p>
-<pre class="emlist">
-save the context of the current thread
+
+<pre><code class="language-emlist">save the context of the current thread
 setjmp
 restore the context of the next thread
 longjmp
-</pre>
+</code></pre>
+
 <p>The rough main flow would probably look like this.
 However what we have to be careful about here is,
 this pair of `setjmp()` and `longjmp()` is not completed in this thread.
 `setjmp()` is used to save the context of this thread,
 `longjmp()` is used to restore the context of the next thread.
-In other words, there&#8217;s a chain of `setjmp`/`longjmp()` as follows. (Figure 3)</p>
+In other words, there’s a chain of `setjmp`/`longjmp()` as follows. (Figure 3)</p>
+
 <div class="image">
-<p><img src="images/ch_thread_setjmploop.jpg" alt="(setjmploop)"><br>
-Figure 3: the backstitch by chaining of `setjmp`</p>
+<img src="images/ch_thread_setjmploop.jpg" alt="(setjmploop)" /><br />
+Figure 3: the backstitch by chaining of \`setjmp\`
+
 </div>
-<p>We can restore around the <span class="caps">CPU</span> registers with `setjmp()`/`longjmp()`,
+<p>We can restore around the CPU registers with `setjmp()`/`longjmp()`,
 so the remaining context is the Ruby stacks in addition to the machine stack.
 `rb_thread_save_context()` is to save it,
 and `rb_thread_restore_context()` is to restore it.
-Let&#8217;s look at each of them in sequential order.</p>
-<h3>`rb_thread_save_context()`</h3>
-<p>Now, we&#8217;ll start with `rb_thread_save_context()`, which saves a context.</p>
-<p class="caption">▼ `rb_thread_save_context()` (simplified)</p>
+Let’s look at each of them in sequential order.</p>
 
-<pre class="longlist">
-7539  static void
+<h3 id="rbthreadsavecontext">`rb_thread_save_context()`</h3>
+
+<p>Now, we’ll start with `rb_thread_save_context()`, which saves a context.</p>
+
+<p class="caption">
+▼ \`rb\_thread\_save\_context()\` (simplified)
+
+</p>
+<pre><code class="language-longlist">7539  static void
 7540  rb_thread_save_context(th)
 7541      rb_thread_t th;
 7542  {
@@ -972,9 +1122,7 @@ Let&#8217;s look at each of them in sequential order.</p>
 7546
 7547      len = ruby_stack_length(&amp;pos);
 7548      th-&gt;stk_len = 0;
-7549      th-&gt;stk_pos = (rb_gc_stack_start&lt;pos)?rb_gc_stack_start
-7550                                           :rb_gc_stack_start - len;
-7551      if (len &gt; th-&gt;stk_max) {
+7549      th-&gt;stk_pos = (rb_gc_stack_start th-&gt;stk_max) {
 7552          REALLOC_N(th-&gt;stk_ptr, VALUE, len);
 7553          th-&gt;stk_max = len;
 7554      }
@@ -986,38 +1134,47 @@ Let&#8217;s look at each of them in sequential order.</p>
       }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>The last half is just keep assigning the global variables such as `ruby_scope`
 into `th`, so it is omitted because it is not interesting.
 The rest, in the part shown above, it attempts to copy the entire machine stack
-into the place where `th&#8594;stk_ptr` points to.</p>
+into the place where `th-&gt;stk_ptr` points to.</p>
+
 <p>First, it is `ruby_stack_length()` which writes the head address of the stack
 into the parameter `pos` and returns its length.
 The range of the stack is determined by using this value
-and the address of the bottom-end side is set to `th&#8594;stk_ptr`.
+and the address of the bottom-end side is set to `th-&gt;stk_ptr`.
 We can see some branches,
 it is because both a stack extending higher and a stack extending lower are
 possible. (Figure 4)</p>
+
 <div class="image">
-<p><img src="images/ch_thread_twodirection.jpg" alt="(twodirection)"><br>
-Fig.4: a stack extending above and a stack extending below</p>
+<img src="images/ch_thread_twodirection.jpg" alt="(twodirection)" /><br />
+Fig.4: a stack extending above and a stack extending below
+
 </div>
-<p>After that, the rest is allocating a memory in where `th&#8594;stkptr` points to and
-copying the stack: allocate the memory whose size is `th&#8594;stk_max` then copy the
+<p>After that, the rest is allocating a memory in where `th-&gt;stkptr` points to and
+copying the stack: allocate the memory whose size is `th-&gt;stk_max` then copy the
 stack by the `len` length.</p>
+
 <p>`FLUSH_REGISTER_WINDOWS` was described in Chapter 5: Garbage collection,
 so its explanation might no longer be necessary.
 This is a macro (whose substance is written in Assembler)
 to write down the cache of the stack space to the memory.
 It must be called when the target is the entire stack.</p>
-<h3>`rb_thread_restore_context()`</h3>
+
+<h3 id="rbthreadrestorecontext">`rb_thread_restore_context()`</h3>
+
 <p>And finally,
 it is `rb_thread_restore_context()`,
 which is the function to restore a thread.</p>
-<p class="caption">▼ `rb_thread_restore_context()` </p>
 
-<pre class="longlist">
-7635  static void
+<p class="caption">
+▼ \`rb\_thread\_restore\_context()\`
+
+</p>
+<pre><code class="language-longlist">7635  static void
 7636  rb_thread_restore_context(th, exit)
 7637      rb_thread_t th;
 7638      int exit;
@@ -1056,11 +1213,13 @@ which is the function to restore a thread.</p>
 7690  }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>The `th` parameter is the target to give the execution back.
-`<acronym title=")` and `longjmp("><span class="caps">MEMCPY</span></acronym>` in the last half are at the heart.
-The closer `<acronym title=")` to the last, the better it is, because
-after this manipulation, the stack is in a destroyed state until `longjmp("><span class="caps">MEMCPY</span></acronym>`.</p>
+`MEMCPY()` and `longjmp()` in the last half are at the heart.
+The closer `MEMCPY()` to the last, the better it is, because
+after this manipulation, the stack is in a destroyed state until `longjmp()`.</p>
+
 <p>Nevertheless, there are `rb_lastline_set()` and `rb_backref_set()`.
 They are the restorations of `$_` and `$~`.
 Since these two variables are not only local variables but also thread local variables,
@@ -1068,7 +1227,8 @@ even if it is only a single local variable slot,
 there are its as many slots as the number of threads.
 This must be here because the place actually being written back is the stack.
 Because they are local variables, their slot spaces are allocated with `alloca()`.</p>
-<p>That&#8217;s it for the basics. But if we merely write the stack back,
+
+<p>That’s it for the basics. But if we merely write the stack back,
 in the case when the stack of the current thread is shorter than the stack of
 the thread to switch to,
 the stack frame of the very currently executing function
@@ -1077,10 +1237,12 @@ It means the content of the `th` parameter will be destroyed.
 Therefore, in order to prevent this from occurring,
 we first need to extend the stack.
 This is done by the `stack_extend()` in the first half.</p>
-<p class="caption">▼ `stack_extend()` </p>
 
-<pre class="longlist">
-7624  static void
+<p class="caption">
+▼ \`stack\_extend()\`
+
+</p>
+<pre><code class="language-longlist">7624  static void
 7625  stack_extend(th, exit)
 7626      rb_thread_t th;
 7627      int exit;
@@ -1092,39 +1254,46 @@ This is done by the `stack_extend()` in the first half.</p>
 7633  }
 
 (eval.c)
-</pre>
+</code></pre>
+
 <p>By allocating a local variable (which will be put at the machine stack space)
 whose size is 1K, forcibly extend the stack.
 However, though this is a matter of course, doing `return` from `stack_extend()`
 means the extended stack will shrink immediately.
 This is why `rb_thread_restore_context()` is called again immediately in the
 place.</p>
+
 <p>By the way, the completion of the task of `rb_thread_restore_context()`
 means it has reached the call of `longjmp()`,
 and once it is called it will never return back.
 Obviously, the call of `stack_extend()` will also never return.
 Therefore, `rb_thread_restore_context()` does not have to think about
 such as possible procedures after returning from `stack_extend()`.</p>
-<h3>Issues</h3>
+
+<h3 id="issues">Issues</h3>
+
 <p>This is the implementation of the `ruby` thread switch.
-We can&#8217;t think it is lightweight.
+We can’t think it is lightweight.
 Plenty of `malloc() realloc()` and plenty of `memcpy()` and doing `setjmp() longjmp()`
 then furthermore calling functions to extend the stack.
-There&#8217;s no problem to express &#8220;It is deadly heavy&#8221;.
-But instead, there&#8217;s not any system call depending on a particular OS,
+There’s no problem to express “It is deadly heavy”.
+But instead, there’s not any system call depending on a particular OS,
 and there are just a few assembly only for the register windows of Sparc.
 Indeed, this seems to be highly portable.</p>
-<p>There&#8217;s another problem. It is, because the stacks of all threads are allocated to the
-same address, there&#8217;s the possibility that the code using the pointer to the
+
+<p>There’s another problem. It is, because the stacks of all threads are allocated to the
+same address, there’s the possibility that the code using the pointer to the
 stack space is not runnable. Actually, Tcl/Tk excellently matches this
-situation, in order to bypass, Ruby&#8217;s Tcl/Tk interface reluctantly choses
+situation, in order to bypass, Ruby’s Tcl/Tk interface reluctantly choses
 to access only from the main thread.</p>
+
 <p>Of course, this does not go along with native threads.
 It would be necessary to restrict `ruby` threads to run only on a particular
 native thread in order to let them work properly.
-In <span class="caps">UNIX</span>, there are still a few libraries that use a lot of threads.
+In UNIX, there are still a few libraries that use a lot of threads.
 But in Win32, because threads are running every now and then,
 we need to be careful about it.</p>
+
 
     <footer>
       The original work is Copyright © 2002 - 2004 Minero AOKI.

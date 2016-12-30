@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>  Ruby Hacking Guide </title>
+  <title>  Performance of GC |  Ruby Hacking Guide </title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
@@ -18,95 +18,117 @@
       </ul>
     </nav>
 
-    <h1>Final Chapter: Ruby&#8217;s future</h1>
-<h2>Issues to be addressed</h2>
-<p><code>ruby</code> isn&#8217;t &#8216;completely finished&#8217; software. It&#8217;s still being developed,
+    <h1 id="final-chapter-rubys-future">Final Chapter: Ruby’s future</h1>
+
+<h2 id="issues-to-be-addressed">Issues to be addressed</h2>
+
+<p><code class="highlighter-rouge">ruby</code> isn’t ‘completely finished’ software. It’s still being developed,
 there are still a lot of issues. Firstly, we want to try removing
 inherent problems in the current interpreter.</p>
-<p>The order of the topics is mostly in the same order as the chapters of 
+
+<p>The order of the topics is mostly in the same order as the chapters of
 this book.</p>
-<h3>Performance of GC</h3>
+
+<h3 id="performance-of-gc">Performance of GC</h3>
+
 <p>The performance of the current GC might be
-&#8220;not notably bad, but not notably good&#8221;.
-&#8220;not notably bad&#8221; means &#8220;it won&#8217;t cause troubles in our daily life&#8221;,
-and &#8220;not notably good&#8221; means &#8220;its downside will be exposed under heavy load&#8221;.
+“not notably bad, but not notably good”.
+“not notably bad” means “it won’t cause troubles in our daily life”,
+and “not notably good” means “its downside will be exposed under heavy load”.
 For example, if it is an application which creates plenty of objects and keeps
 holding them, its speed would slow down radically.
 Every time doing GC, it needs to mark all of the objects,
 and furthermore it would becomes to need to invoke GC more often
-because it can&#8217;t collect them.
+because it can’t collect them.
 To counter this problem, Generational GC, which was mentioned in Chapter 5,
 must be effective. (At least, it is said so in theory.)</p>
+
 <p>Also regarding its response speed,
 there are still rooms we can improve.
 With the current GC, while it is running, the entire interpretor stops.
-Thus, when the program is an editor or a <span class="caps">GUI</span> application,
+Thus, when the program is an editor or a GUI application,
 sometimes it freezes and stops to react.
-Even if it&#8217;s just 0.1 second,
+Even if it’s just 0.1 second,
 stopping when typing characters would give a very bad impression.
 Currently, there are few such applications created or,
 even if exists, its size might be enough small not to expose this problem.
 However, if such application will actually be created in the future,
 there might be the necessity to consider Incremental GC.</p>
-<h3>Implementation of parser</h3>
-<p>As we saw in Part 2, the implementation of <code>ruby</code> parser has already utilized
-@yacc@&#8217;s ability to almost its limit, thus I can&#8217;t think it can endure further
-expansions. It&#8217;s all right if there&#8217;s nothing planned to expand,
-but a big name &#8220;keyword argument&#8221; is planned next
-and it&#8217;s sad if we could not express another demanded grammar because of the
-limitation of <code>yacc</code>.</p>
-<h3>Reuse of parser</h3>
-<p>Ruby&#8217;s parser is very complex. In particular, dealing with around <code>lex_state</code>
+
+<h3 id="implementation-of-parser">Implementation of parser</h3>
+
+<p>As we saw in Part 2, the implementation of <code class="highlighter-rouge">ruby</code> parser has already utilized
+<code class="highlighter-rouge">yacc</code>’s ability to almost its limit, thus I can’t think it can endure further
+expansions. It’s all right if there’s nothing planned to expand,
+but a big name “keyword argument” is planned next
+and it’s sad if we could not express another demanded grammar because of the
+limitation of <code class="highlighter-rouge">yacc</code>.</p>
+
+<h3 id="reuse-of-parser">Reuse of parser</h3>
+
+<p>Ruby’s parser is very complex. In particular, dealing with around <code class="highlighter-rouge">lex_state</code>
 seriously is very hard. Due to this, embedding a Ruby program or creating a
 program to deal with a Ruby program itself is quite difficult.</p>
-<p>For example, I&#8217;m developing a tool named <code>racc</code>,
-which is prefixed with R because it is a Ruby-version <code>yacc</code>.
-With <code>racc</code>, the syntax of grammar files are almost the same as <code>yacc</code>
+
+<p>For example, I’m developing a tool named <code class="highlighter-rouge">racc</code>,
+which is prefixed with R because it is a Ruby-version <code class="highlighter-rouge">yacc</code>.
+With <code class="highlighter-rouge">racc</code>, the syntax of grammar files are almost the same as <code class="highlighter-rouge">yacc</code>
 but we can write actions in Ruby.
 To do so, it could not determine the end of an action without parsing Ruby code
-properly, but &#8220;properly&#8221; is very difficult. Since there&#8217;s no other choice,
-currently I&#8217;ve compromised at the level that it can parse &#8220;almost all&#8221;.</p>
+properly, but “properly” is very difficult. Since there’s no other choice,
+currently I’ve compromised at the level that it can parse “almost all”.</p>
+
 <p>As another example which requires analyzing Ruby program,
-I can enumerate some tools like <code>indent</code> and <code>lint</code>,
+I can enumerate some tools like <code class="highlighter-rouge">indent</code> and <code class="highlighter-rouge">lint</code>,
 but creating such tool also requires a lot efforts.
 It would be desperate if it is something complex like a refactoring tool.</p>
-<p>Then, what can we do? If we can&#8217;t recreate the same thing,
-what if @ruby@&#8217;s original parser can be used as a component?
+
+<p>Then, what can we do? If we can’t recreate the same thing,
+what if <code class="highlighter-rouge">ruby</code>’s original parser can be used as a component?
 In other words, making the parser itself a library.
 This is a feature we want by all means.</p>
-<p>However, what becomes problem here is, as long as <code>yacc</code> is used,
+
+<p>However, what becomes problem here is, as long as <code class="highlighter-rouge">yacc</code> is used,
 we cannot make parser reentrant.
-It means, say, we cannot call <code>yyparse()</code> recursively,
+It means, say, we cannot call <code class="highlighter-rouge">yyparse()</code> recursively,
 and we cannot call it from multiple threads.
 Therefore, it should be implemented in the way of not returning control to Ruby
 while parsing.</p>
-<h3>Hiding Code</h3>
-<p>With current <code>ruby</code>, it does not work without the source code of the program to
-run. Thus, people who don&#8217;t want others to read their source code might have
+
+<h3 id="hiding-code">Hiding Code</h3>
+
+<p>With current <code class="highlighter-rouge">ruby</code>, it does not work without the source code of the program to
+run. Thus, people who don’t want others to read their source code might have
 trouble.</p>
-<h3>Interpretor Object</h3>
-<p>Currently each process cannot have multiple <code>ruby</code> interpretors,
+
+<h3 id="interpretor-object">Interpretor Object</h3>
+
+<p>Currently each process cannot have multiple <code class="highlighter-rouge">ruby</code> interpretors,
 this was discussed in Chapter 13.
 If having multiple interpretors is practically possible, it seems better,
 but is it possible to implement such thing?</p>
-<h3>The structure of evaluator</h3>
-<p>Current <code>eval.c</code> is, above all, too complex.
-Embedding Ruby&#8217;s stack frames to machine stack could occasionally become the
-source of trouble, using <code>setjmp() longjmp()</code> aggressively makes it less easy to
+
+<h3 id="the-structure-of-evaluator">The structure of evaluator</h3>
+
+<p>Current <code class="highlighter-rouge">eval.c</code> is, above all, too complex.
+Embedding Ruby’s stack frames to machine stack could occasionally become the
+source of trouble, using <code class="highlighter-rouge">setjmp() longjmp()</code> aggressively makes it less easy to
 understand and slows down its speed.
-Particularly with <span class="caps">RISC</span> machine, which has many registers, using <code>setjmp()</code>
-aggressively can easily cause slowing down because <code>setjmp()</code> set aside all
+Particularly with RISC machine, which has many registers, using <code class="highlighter-rouge">setjmp()</code>
+aggressively can easily cause slowing down because <code class="highlighter-rouge">setjmp()</code> set aside all
 things in registers.</p>
-<h3>The performance of evaluator</h3>
-<p><code>ruby</code> is already enough fast for ordinary use.
+
+<h3 id="the-performance-of-evaluator">The performance of evaluator</h3>
+
+<p><code class="highlighter-rouge">ruby</code> is already enough fast for ordinary use.
 But aside from it, regarding a language processor,
 definitely the faster is the better.
 To achieve better performance, in other words to optimize,
 what can we do?
 In such case, the first thing we have to do is profiling.
 So I profiled.</p>
-<pre class="emlist">
-  %   cumulative   self              self     total
+
+<pre><code class="language-emlist">  %   cumulative   self              self     total
  time   seconds   seconds    calls  ms/call  ms/call  name
  20.25      1.64     1.64  2638359     0.00     0.00  rb_eval
  12.47      2.65     1.01  1113947     0.00     0.00  ruby_re_match
@@ -117,113 +139,142 @@ So I profiled.</p>
   5.19      5.27     0.42   388066     0.00     0.00  st_foreach
   3.46      5.55     0.28  8605866     0.00     0.00  rb_gc_mark
   2.22      5.73     0.18  3819588     0.00     0.00  call_cfunc
-</pre>
+</code></pre>
+
 <p>This is a profile when running some application but
 this is approximately the profile of a general Ruby program.
-<code>rb_eval()</code> appeared in the overwhelming percentage being at the top,
+<code class="highlighter-rouge">rb_eval()</code> appeared in the overwhelming percentage being at the top,
 after that, in addition to functions of GC, evaluator core,
 functions that are specific to the program are mixed.
 For example, in the case of this application,
-it takes a lot of time for regular expression match (<code>ruby_re_match</code>).</p>
+it takes a lot of time for regular expression match (<code class="highlighter-rouge">ruby_re_match</code>).</p>
+
 <p>However, even if we understood this, the question is how to improve it.
-To think simply, it can be archived by making <code>rb_eval()</code> faster.
-That said, but as for <code>ruby</code> core, there are almost not any room which can be
-easily optimized. For instance, apparently &#8220;tail recursive &#8594; <code>goto</code> conversion&#8221;
-used in the place of <code>NODE_IF</code> and others has already applied almost all
+To think simply, it can be archived by making <code class="highlighter-rouge">rb_eval()</code> faster.
+That said, but as for <code class="highlighter-rouge">ruby</code> core, there are almost not any room which can be
+easily optimized. For instance, apparently “tail recursive -&gt; <code class="highlighter-rouge">goto</code> conversion”
+used in the place of <code class="highlighter-rouge">NODE_IF</code> and others has already applied almost all
 possible places it can be applied.
 In other words, without changing the way of thinking fundamentally,
-there&#8217;s no room to improve.</p>
-<h3>The implementation of thread</h3>
+there’s no room to improve.</p>
+
+<h3 id="the-implementation-of-thread">The implementation of thread</h3>
+
 <p>This was also discussed in Chapter 19. There are really a lot of issues about
-the implementation of the current ruby&#8217;s thread. Particularly, it cannot mix
-with native threads so badly. The two great advantages of @ruby@&#8217;s thread,
+the implementation of the current ruby’s thread. Particularly, it cannot mix
+with native threads so badly. The two great advantages of <code class="highlighter-rouge">ruby</code>’s thread,
 (1) high portability (2) the same behavior everywhere,
 are definitely incomparable, but probably that implementation is something we
-cannot continue to use eternally, isn&#8217;t it?</p>
-<h2>`ruby` 2</h2>
-<p>Subsequently, on the other hand, I&#8217;ll introduce the trend of the original `ruby`,
+cannot continue to use eternally, isn’t it?</p>
+
+<h2 id="ruby-2">`ruby` 2</h2>
+
+<p>Subsequently, on the other hand, I’ll introduce the trend of the original `ruby`,
 how it is trying to counter these issues.</p>
-<h3>Rite</h3>
-<p>At the present time, ruby&#8217;s edge is 1.6.7 as the stable version and 1.7.3 as the
+
+<h3 id="rite">Rite</h3>
+
+<p>At the present time, ruby’s edge is 1.6.7 as the stable version and 1.7.3 as the
 development version, but perhaps the next stable version 1.8 will come out in
 the near future. Then at that point, the next development version 1.9.0 will
 start at the same time. And after that, this is a little irregular but 1.9.1
 will be the next stable version.</p>
+
 <table>
-	<tr>
-		<th>stable </th>
-		<th>development </th>
-		<th>when to start </th>
-	</tr>
-	<tr>
-		<td> 1.6.x </td>
-		<td> 1.7.x </td>
-		<td> 1.6.0 was released on 2000-09-19 </td>
-	</tr>
-	<tr>
-		<td> 1.8.x </td>
-		<td> 1.9.x </td>
-		<td> probably it will come out within 6 months </td>
-	</tr>
-	<tr>
-		<td> 1.9.1~ </td>
-		<td> 2.0.0 </td>
-		<td> maybe about 2 years later </td>
-	</tr>
+  <thead>
+    <tr>
+      <th>stable</th>
+      <th>development</th>
+      <th>when to start</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1.6.x</td>
+      <td>1.7.x</td>
+      <td>1.6.0 was released on 2000-09-19</td>
+    </tr>
+    <tr>
+      <td>1.8.x</td>
+      <td>1.9.x</td>
+      <td>probably it will come out within 6 months</td>
+    </tr>
+    <tr>
+      <td>1.9.1~</td>
+      <td>2.0.0</td>
+      <td>maybe about 2 years later</td>
+    </tr>
+  </tbody>
 </table>
+
 <p>And the next-to-next generational development version is `ruby` 2, whose code
 name is Rite. Apparently this name indicates a respect for the inadequacy that
 Japanese cannot distinguish the sounds of L and R.</p>
+
 <p>What will be changed in 2.0 is, in short, almost all the entire core.
 Thread, evaluator, parser, all of them will be changed.
 However, nothing has been written as a code yet, so things written here is
-entirely just a &#8220;plan&#8221;. If you expect so much, it&#8217;s possible it will turn out
-disappointments. Therefore, for now, let&#8217;s just expect slightly.</p>
-<h3>The language to write</h3>
+entirely just a “plan”. If you expect so much, it’s possible it will turn out
+disappointments. Therefore, for now, let’s just expect slightly.</p>
+
+<h3 id="the-language-to-write">The language to write</h3>
+
 <p>Firstly, the language to use. Definitely it will be C. Mr. Matsumoto said to
 `ruby-talk`, which is the English mailing list for Ruby,</p>
+
 <blockquote>
-<p>I hate C++.</p>
+I hate C++.
+
 </blockquote>
 <p>So, C++ is most unlikely. Even if all the parts will be recreated,
 it is reasonable that the object system will remain almost the same,
 so not to increase extra efforts around this is necessary.
-However, chances are good that it will be <span class="caps">ANSI</span> C next time.</p>
-<h3>GC</h3>
+However, chances are good that it will be ANSI C next time.</p>
+
+<h3 id="gc">GC</h3>
+
 <p>Regarding the implementation of GC,
 the good start point would be
 `Boehm GC`\footnote{Boehm GC `http://www.hpl.hp.com/personal/Hans_Boehm/gc`}.
 Bohem GC is a conservative and incremental and generational GC,
 furthermore, it can mark all stack spaces of all threads even while native
-threads are running. It&#8217;s really an impressive GC.
-Even if it is introduced once, it&#8217;s hard to tell whether it will be used
+threads are running. It’s really an impressive GC.
+Even if it is introduced once, it’s hard to tell whether it will be used
 perpetually, but anyway it will proceed for the direction to which we can expect
 somewhat improvement on speed.</p>
-<h3>Parser</h3>
-<p>Regarding the specification, it&#8217;s very likely that the nested method calls
-without parentheses will be forbidden. As we&#8217;ve seen, `command_call` has a great
+
+<h3 id="parser">Parser</h3>
+
+<p>Regarding the specification, it’s very likely that the nested method calls
+without parentheses will be forbidden. As we’ve seen, `command_call` has a great
 influence on all over the grammar. If this is simplified, both the parser and
 the scanner will also be simplified a lot.
 However, the ability to omit parentheses itself will never be disabled.</p>
+
 <p>And regarding its implementation, whether we continue to use `yacc` is still
-under discussion. If we won&#8217;t use, it would mean hand-writing, but is it
+under discussion. If we won’t use, it would mean hand-writing, but is it
 possible to implement such complex thing by hand? Such anxiety might left.
 Whichever way we choose, the path must be thorny.</p>
-<h3>Evaluator</h3>
+
+<h3 id="evaluator">Evaluator</h3>
+
 <p>The evaluator will be completely recreated.
 Its aims are mainly to improve speed and to simplify the implementation.
 There are two main viewpoints:</p>
+
 <ul>
-	<li>remove recursive calls like `rb_eval()`</li>
-	<li>switch to a bytecode interpretor</li>
+  <li>remove recursive calls like `rb_eval()`</li>
+  <li>switch to a bytecode interpretor</li>
 </ul>
+
 <p>First, removing recursive calls of `rb_eval()`. The way to remove is,
-maybe the most intuitive explanation is that it&#8217;s like the &#8220;tail recursive &#8594;
-`goto` conversion&#8221;. Inside a single `rb_eval()`, circling around by using
+maybe the most intuitive explanation is that it’s like the “tail recursive -&gt;
+`goto` conversion”. Inside a single `rb_eval()`, circling around by using
 `goto`. That decreases the number of function calls and removes the necessity of
 `setjmp()` that is used for `return` or `break`.
 However, when a function defined in C is called, calling a function is
 inevitable, and at that point `setjmp()` will still be required.</p>
+
 <p>Bytecode is, in short, something like a program written in machine language.
 It became famous because of the virtual machine of Smalltalk90,
 it is called bytecode because each instruction is one-byte.
@@ -232,198 +283,248 @@ so natural basis in size to deal with,
 but in many cases each instruction consists of bits in machine languages.
 For example, in Alpha, among a 32-bit instruction code, the beginning 6-bit
 represents the instruction type.</p>
+
 <p>The advantage of bytecode interpretors is mainly for speed. There are two
-reasons: Firstly, unlike syntax trees, there&#8217;s no need to traverse pointers.
-Secondly, it&#8217;s easy to do peephole optimization.</p>
+reasons: Firstly, unlike syntax trees, there’s no need to traverse pointers.
+Secondly, it’s easy to do peephole optimization.</p>
+
 <p>And in the case when bytecode is saved and read in later,
-because there&#8217;s no need to parse, we can naturally expect better performance.
+because there’s no need to parse, we can naturally expect better performance.
 However, parsing is a procedure which is done only once at the beginning of a
 program and even currently it does not take so much time. Therefore, its
 influence will not be so much.</p>
-<p>If you&#8217;d like to know about how the bytecode evaluator could be,
+
+<p>If you’d like to know about how the bytecode evaluator could be,
 `regex.c` is worth to look at.
 For another example, Python is a bytecode interpretor.</p>
-<h3>Thread</h3>
+
+<h3 id="thread">Thread</h3>
+
 <p>Regarding thread, the thing is native thread support.
 The environment around thread has been significantly improved,
-comparing with the situation in 1994, the year of Ruby&#8217;s birth.
+comparing with the situation in 1994, the year of Ruby’s birth.
 So it might be judged that
 we can get along with native thread now.</p>
+
 <p>Using native thread means being preemptive also at C level,
 thus the interpretor itself must be multi-thread safe,
 but it seems this point is going to be solved by using a global lock
 for the time being.</p>
-<p>Additionally, that somewhat arcane &#8220;continuation&#8221;, it seems likely to be removed.
-`ruby`&#8217;s continuation highly depends on the implementation of thread,
+
+<p>Additionally, that somewhat arcane “continuation”, it seems likely to be removed.
+`ruby`’s continuation highly depends on the implementation of thread,
 so naturally it will disappear if thread is switched to native thread.
-The existence of that feature is because &#8220;it can be implemented&#8221;
+The existence of that feature is because “it can be implemented”
 and it is rarely actually used. Therefore there might be no problem.</p>
-<h3>M17N</h3>
-<p>In addition, I&#8217;d like to mention a few things about class libraries.
+
+<h3 id="m17n">M17N</h3>
+
+<p>In addition, I’d like to mention a few things about class libraries.
 This is about multi-lingualization (M17N for short).
 What it means exactly in the context of programming is
 being able to deal with multiple character encodings.</p>
+
 <p>`ruby` with Multi-lingualization support has already implemented and you can
-obtain it from the `ruby_m17m` branch of the <span class="caps">CVS</span> repository.
+obtain it from the `ruby_m17m` branch of the CVS repository.
 It is not absorbed yet because it is judged that its specification is immature.
 If good interfaces is designed,
 it will be absorbed at some point in the middle of 1.9.</p>
-<h3>IO</h3>
+
+<h3 id="io">IO</h3>
+
 <p>The `IO` class in current Ruby is a simple wrapper of `stdio`,
 but in this approach,</p>
+
 <ul>
-	<li>there are too many but slight differences between various platforms.</li>
-	<li>we&#8217;d like to have finer control on buffers.</li>
+  <li>there are too many but slight differences between various platforms.</li>
+  <li>we’d like to have finer control on buffers.</li>
 </ul>
+
 <p>these two points cause complaints.
 Therefore, it seems Rite will have its own `stdio`.</p>
-<h2>Ruby Hacking Guide</h2>
-<p>So far, we&#8217;ve always acted as observers who look at `ruby` from outside.
+
+<h2 id="ruby-hacking-guide">Ruby Hacking Guide</h2>
+
+<p>So far, we’ve always acted as observers who look at `ruby` from outside.
 But, of course, `ruby` is not a product which displayed in a showcase.
 It means we can influence it if we take an action for it.
 In the last section of this book,
-I&#8217;ll introduce the suggestions and activities for `ruby` from community,
+I’ll introduce the suggestions and activities for `ruby` from community,
 as a farewell gift for Ruby Hackers both at present and in the future.</p>
-<h3>Generational GC</h3>
+
+<h3 id="generational-gc">Generational GC</h3>
+
 <p>First, as also mentioned in Chapter 5,
 the generational GC made by Mr. Kiyama Masato.
 As described before, with the current patch,</p>
+
 <ul>
-	<li>it is less fast than expected.</li>
-	<li>it needs to be updated to fit the edge `ruby`</li>
+  <li>it is less fast than expected.</li>
+  <li>it needs to be updated to fit the edge `ruby`</li>
 </ul>
-<p>these points are problems, but here I&#8217;d like to highly value it because,
+
+<p>these points are problems, but here I’d like to highly value it because,
 more than anything else, it was the first large non-official patch.</p>
-<h3>Oniguruma</h3>
-<p>The regular expression engine used by current Ruby is a remodeled version of <span class="caps">GNU</span>
-regex. That <span class="caps">GNU</span> regex was in the first place written for Emacs. And then it was
+
+<h3 id="oniguruma">Oniguruma</h3>
+
+<p>The regular expression engine used by current Ruby is a remodeled version of GNU
+regex. That GNU regex was in the first place written for Emacs. And then it was
 remodeled so that it can support multi-byte characters. And then Mr. Matsumoto
 remodeled so that it is compatible with Perl.
 As we can easily imagine from this history,
 its construction is really intricate and spooky.
-Furthermore, due to the <span class="caps">LPGL</span> license of this <span class="caps">GNU</span> regex,
+Furthermore, due to the LPGL license of this GNU regex,
 the license of `ruby` is very complicated,
 so replacing this engine has been an issue from a long time ago.</p>
-<p>What suddenly emerged here is the regular expression engine &#8220;Oniguruma&#8221; by
+
+<p>What suddenly emerged here is the regular expression engine “Oniguruma” by
 Mr. K. Kosako. I heard this is written really well, it is likely being
 absorbed as soon as possible.</p>
-<p>You can obtain Oniguruma from the `ruby`&#8217;s <span class="caps">CVS</span> repository in the following way.</p>
-<pre class="screen">
-% cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src co oniguruma
-</pre>
-<h3>ripper</h3>
+
+<p>You can obtain Oniguruma from the `ruby`’s CVS repository in the following way.</p>
+
+<pre><code class="language-screen">% cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src co oniguruma
+</code></pre>
+
+<h3 id="ripper">ripper</h3>
+
 <p>Next, ripper is my product. It is an extension library made by remodeling
-`parse.y`. It is not a change applied to the `ruby`&#8217;s main body, but I
+`parse.y`. It is not a change applied to the `ruby`’s main body, but I
 introduced it here as one possible direction to make the parser a component.</p>
+
 <p>It is implemented with kind of streaming interface and
-it can pick up things such as token scan or parser&#8217;s reduction as events.
-It is put in the attached CD-<span class="caps">ROM</span>
+it can pick up things such as token scan or parser’s reduction as events.
+It is put in the attached CD-ROM
 \footnote{ripper：`archives/ripper-0.0.5.tar.gz` of the attached CD-ROM},
-so I&#8217;d like you to give it a try.
+so I’d like you to give it a try.
 Note that the supported grammar is a little different from the current one
 because this version is based on `ruby` 1.7 almost half-year ago.</p>
-<p>I created this just because &#8220;I happened to come up with this idea&#8221;,
+
+<p>I created this just because “I happened to come up with this idea”,
 if this is accounted, I think it is constructed well.
 It took only three days or so to implement, really just a piece of cake.</p>
-<h3>A parser alternative</h3>
+
+<h3 id="a-parser-alternative">A parser alternative</h3>
+
 <p>This product has not yet appeared in a clear form,
-there&#8217;s a person who write a Ruby parser in C++ which can be used totally
+there’s a person who write a Ruby parser in C++ which can be used totally
 independent of `ruby`. (`[ruby-talk:50497]`).</p>
-<h3>JRuby</h3>
-<p>More aggressively, there&#8217;s an attempt to rewrite entire the interpretor.
+
+<h3 id="jruby">JRuby</h3>
+
+<p>More aggressively, there’s an attempt to rewrite entire the interpretor.
 For example, a Ruby written in Java,
 Ruby\footnote{JRuby `http://jruby.sourceforge.net`},
 has appeared.
 It seems it is being implemented by a large group of people,
 Mr. Jan Arne Petersen and many others.</p>
+
 <p>I tried it a little and as my reviews,</p>
+
 <ul>
-	<li>the parser is written really well. It does precisely handle even finer
-  behaviors such as spaces or here document.</li>
-	<li>`instance_eval` seems not in effect (probably it couldn&#8217;t be helped).</li>
-	<li>it has just a few built-in libraries yet (couldn&#8217;t be helped as well).</li>
-	<li>we can&#8217;t use extension libraries with it (naturally).</li>
-	<li>because Ruby&#8217;s <span class="caps">UNIX</span> centric is all cut out,
-  there&#8217;s little possibility that we can run already-existing scripts without
-  any change.</li>
-	<li>slow</li>
+  <li>the parser is written really well. It does precisely handle even finer
+behaviors such as spaces or here document.</li>
+  <li>`instance_eval` seems not in effect (probably it couldn’t be helped).</li>
+  <li>it has just a few built-in libraries yet (couldn’t be helped as well).</li>
+  <li>we can’t use extension libraries with it (naturally).</li>
+  <li>because Ruby’s UNIX centric is all cut out,
+there’s little possibility that we can run already-existing scripts without
+any change.</li>
+  <li>slow</li>
 </ul>
+
 <p>perhaps I could say at least these things.
-Regarding the last one &#8220;slow&#8221;, its degree is,
+Regarding the last one “slow”, its degree is,
 the execution time it takes is 20 times longer than the one of the original
 `ruby`. Going this far is too slow.
 It is not expected running fast because that Ruby VM runs on Java VM.
 Waiting for the machine to become 20 times faster seems only way.</p>
-<p>However, the overall impression I got was, it&#8217;s way better than I imagined.</p>
-<h3>NETRuby</h3>
+
+<p>However, the overall impression I got was, it’s way better than I imagined.</p>
+
+<h3 id="netruby">NETRuby</h3>
+
 <p>If it can run with Java, it should also with C#.
 Therefore, a Ruby written in C# appeared,
-&#8220;NETRuby\footnote{NETRuby `http://sourceforge.jp/projects/netruby/`}&#8221;.
+“NETRuby\footnote{NETRuby `http://sourceforge.jp/projects/netruby/`}”.
 The author is Mr. arton.</p>
-<p>Because I don&#8217;t have any .<span class="caps">NET</span> environment at hand,
+
+<p>Because I don’t have any .NET environment at hand,
 I checked only the source code,
 but according to the author,</p>
+
 <ul>
-	<li>more than anything, it&#8217;s slow</li>
-	<li>it has a few class libraries</li>
-	<li>the compatibility of exception handling is not good</li>
+  <li>more than anything, it’s slow</li>
+  <li>it has a few class libraries</li>
+  <li>the compatibility of exception handling is not good</li>
 </ul>
+
 <p>such things are the problems.
 But `instance_eval` is in effect (astounding!).</p>
-<h3>How to join `ruby` development</h3>
-<p>`ruby`&#8217;s developer is really Mr. Matsumoto as an individual,
+
+<h3 id="how-to-join-ruby-development">How to join `ruby` development</h3>
+
+<p>`ruby`’s developer is really Mr. Matsumoto as an individual,
 regarding the final decision about the direction `ruby` will take,
 he has the definitive authority.
 But at the same time, `ruby` is an open source software,
 anyone can join the development.
 Joining means, you can suggest your opinions or send patches.
 The below is to concretely tell you how to join.</p>
-<p>In `ruby`&#8216;s case, the mailing list is at the center of the development,
-so it&#8217;s good to join the mailing list.
+
+<p>In `ruby`’s case, the mailing list is at the center of the development,
+so it’s good to join the mailing list.
 The mailing lists currently at the center of the community are three:
 `ruby-list`, `ruby-dev`, `ruby-talk`.
-`ruby-list` is a mailing list for &#8220;anything relating to Ruby&#8221; in Japanese.
+`ruby-list` is a mailing list for “anything relating to Ruby” in Japanese.
 `ruby-dev` is for the development version `ruby`, this is also in Japanese.
 `ruby-talk` is an English mailing list.
-The way to join is shown on the page &#8220;mailing lists&#8221; at Ruby&#8217;s official site
-\footnote{Ruby&#8217;s official site: `http://www.ruby-lang.org/ja/`}.
+The way to join is shown on the page “mailing lists” at Ruby’s official site
+\footnote{Ruby’s official site: `http://www.ruby-lang.org/ja/`}.
 For these mailing lists, read-only people are also welcome,
 so I recommend just joining first and watching discussions
 to grasp how it is.</p>
-<p>Though Ruby&#8217;s activity started in Japan,
-recently sometimes it is said &#8220;the main authority now belongs to `ruby-talk`&#8221;.
+
+<p>Though Ruby’s activity started in Japan,
+recently sometimes it is said “the main authority now belongs to `ruby-talk`”.
 But the center of the development is still `ruby-dev`.
 Because people who has the commit right to `ruby` (e.g. core members) are mostly
 Japanese, the difficulty and reluctance of using English
 naturally lead them to `ruby-dev`.
 If there will be more core members who prefer to use English,
 the situation could be changed,
-but meanwhile the core of `ruby`&#8217;s development might remain `ruby-dev`.</p>
-<p>However, it&#8217;s bad if people who cannot speak Japanese cannot join the
+but meanwhile the core of `ruby`’s development might remain `ruby-dev`.</p>
+
+<p>However, it’s bad if people who cannot speak Japanese cannot join the
 development, so currently the summary of `ruby-dev` is translated once a week
 and posted to `ruby-talk`.
 I also help that summarising, but only three people do it in turn now,
 so the situation is really harsh.
 The members to help summarize is always in demand.
-If you think you&#8217;re the person who can help,
-I&#8217;d like you to state it at `ruby-list`.</p>
+If you think you’re the person who can help,
+I’d like you to state it at `ruby-list`.</p>
+
 <p>And as the last note,
 only its source code is not enough for a software.
-It&#8217;s necessary to prepare various documents and maintain web sites.
+It’s necessary to prepare various documents and maintain web sites.
 And people who take care of these kind of things are always in short.
-There&#8217;s also a mailing list for the document-related activities,
-but as the first step you just have to propose &#8220;I&#8217;d like to do something&#8221; to `ruby-list`.
-I&#8217;ll answer it as much as possible,
+There’s also a mailing list for the document-related activities,
+but as the first step you just have to propose “I’d like to do something” to `ruby-list`.
+I’ll answer it as much as possible,
 and other people would respond to it, too.</p>
-<h3>Finale</h3>
+
+<h3 id="finale">Finale</h3>
+
 <p>The long journey of this book is going to end now.
 As there was the limitation of the number of pages,
 explaining all of the parts comprehensively was impossible,
-however I told everything I could tell about the `ruby`&#8216;s core.
-I won&#8217;t add extra things any more here.
-If you still have things you didn&#8217;t understand,
-I&#8217;d like you to investigate it by reading the source code by yourself as much as
+however I told everything I could tell about the `ruby`’s core.
+I won’t add extra things any more here.
+If you still have things you didn’t understand,
+I’d like you to investigate it by reading the source code by yourself as much as
 you want.</p>
+
 
     <footer>
       The original work is Copyright © 2002 - 2004 Minero AOKI.
