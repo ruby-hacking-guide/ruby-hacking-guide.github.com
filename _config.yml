@@ -1,4 +1,3 @@
 redcloth:
   hard_breaks: false
 exclude: ["ebooks", "script", "original_repo", "Gemfile", "Gemfile.lock", "dictionary.txt", "README.md"]
-markdown: kramdown
