@@ -134,7 +134,7 @@ It's good to have a look at the file once.
 The grammar file's content has the following form:
 
 ▼ General form of the grammar file
-```TODO-lang
+```
 %{
 Header
 %}

@@ -30,7 +30,7 @@ they are used to separate words. However, Ruby is not an ordinary language and
 meanings can change significantly depending on the presence of spaces.
 Here is an example
 
-```TODO-lang
+```ruby
 a[i] = 1      # a[i] = (1)
 a [i]         # a([i])
 ```
@@ -41,7 +41,7 @@ parameter.
 
 Here is another example.
 
-```TODO-lang
+```ruby
 a  +  1    # (a) + (1)
 a  +1      # a(+1)
 ```
@@ -52,7 +52,7 @@ However, the above examples might give one the impression that only omitting
 the method call parentheses can be a source of trouble. Let’s look at a
 different example.
 
-```TODO-lang
+```ruby
 `cvs diff parse.y`          # command call string
 obj.`("cvs diff parse.y")   # normal method call
 ```
@@ -63,7 +63,7 @@ they could be handled quite differently.
 
 Below is another example where the functioning changes dramatically
 
-```TODO-lang
+```ruby
 print(<<EOS)   # here-document
 ......
 EOS
@@ -88,7 +88,7 @@ Thus, it is a variable which shows the scanner’s state.
 What states are there? Let’s look at the definitions.
 
 ▼ `enum lex_state`
-```TODO-lang
+```c
   61  static enum lex_state {
   62      EXPR_BEG,      /* ignore newline, +/- is a sign. */
   63      EXPR_END,      /* newline significant, +/- is a operator. */
@@ -321,7 +321,7 @@ needs to continued, the `\n` will be ignored, and when it needs to be
 terminated, the `\n` is passed as a token. In the `yylex()` this is found here:
 
 ▼ `yylex()`-`'\n'`
-```TODO-lang
+```c
 3155        case '\n':
 3156          switch (lex_state) {
 3157            case EXPR_BEG:
@@ -352,7 +352,7 @@ trying to grasp too many things at once will only end in needless confusion.
 
 Let us now take a look at some examples using the `rubylex-analyser` tool.
 
-```TODO-lang
+```
 % rubylex-analyser -e '
 m(a,
   b, c) unless i
@@ -389,7 +389,7 @@ That is because the state is `EXPR_ARG`
 
 And that is how it should be used. Let us have another example.
 
-```TODO-lang
+```
 % rubylex-analyser -e 'class
 C < Object
 end'
@@ -407,7 +407,7 @@ EXPR_END             "\n"  \n                   EXPR_BEG
 The reserved word `class` is followed by `EXPR_CLASS` so the line-break is ignored.
 However, the superclass `Object` is followed by `EXPR_ARG`, so the `\n` appears.
 
-```TODO-lang
+```
 % rubylex-analyser -e 'obj.
 class'
 +EXPR_BEG
@@ -461,7 +461,7 @@ three cases.
 The name part of the method definition. This is handled by the parser.
 
 ▼ Method definition rule
-```TODO-lang
+```
                 | kDEF fname
                   f_arglist
                   bodystmt
@@ -477,7 +477,7 @@ one for singleton methods. For both, the name part is `fname` and it is defined
 as follows.
 
 ▼ `fname`
-```TODO-lang
+```
 fname           : tIDENTIFIER
                 | tCONSTANT
                 | tFID
@@ -517,7 +517,7 @@ Reserved word symbols are handled by both the scanner and the parser.
 First, the rule.
 
 ▼ `symbol`
-```TODO-lang
+```
 symbol          : tSYMBEG sym
 
 sym             : fname
@@ -543,7 +543,7 @@ scanner.
 
 
 ▼ `yylex`-`':'`
-```TODO-lang
+```c
 3761        case ':':
 3762          c = nextc();
 3763          if (c == ':') {
@@ -592,7 +592,7 @@ Modifiers
 For example, for `if` if there exists  a normal notation and one for postfix
 modification.
 
-```TODO-lang
+```ruby
 # Normal notation
 if cond then
   expr
@@ -605,13 +605,13 @@ expr if cond
 This could cause  a conflict. The reason can be guessed – again, it’s because
 method parentheses have been omitted previously. Observe this example
 
-```TODO-lang
+```ruby
 call if cond then a else b end
 ```
 
 Reading this expression up to the `if` gives us two possible interpretations.
 
-```TODO-lang
+```ruby
 call((if ....))
 call() if ....
 ```
@@ -620,7 +620,7 @@ When unsure, I recommend simply using trial and error and seeing if a conflict
 occurs. Let us try to handle it with `yacc` after changing `kIF_MOD` to `kIF`
 in the grammar.
 
-```TODO-lang
+```
 % yacc parse.y
 parse.y contains 4 shift/reduce conflicts and 13 reduce/reduce conflicts.
 ```
@@ -638,7 +638,7 @@ operators. In all, there are five - `kUNLESS_MOD kUNTIL_MOD kWHILE_MOD`
 `kRESCUE_MOD` and `kIF_MOD` The distinction is made here:
 
 ▼ `yylex`-Reserved word
-```TODO-lang
+```c
 4173                  struct kwtable *kw;
 4174
 4175                  /* See if it is a reserved word.  */

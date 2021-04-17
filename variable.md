@@ -116,6 +116,7 @@ parameter and the one with the shorter one takes `char*`. Because the
 one taking an `ID` seems closer to the internals, we'll look at it.
 
 ▼ `rb_cvar_get()`
+
 ```c
 1508  VALUE
 1509  rb_cvar_get(klass, id)
@@ -192,6 +193,7 @@ Could it mean that the constants are also...
 the constant `id` in the class `klass` to the value `val`.
 
 ▼ `rb_const_set()`
+
 ```c
 1377  void
 1378  rb_const_set(klass, id, val)
@@ -208,6 +210,7 @@ the constant `id` in the class `klass` to the value `val`.
 `mod_av_set()` does all the hard work:
 
 ▼ `mod_av_set()`
+
 ```c
 1352  static void
 1353  mod_av_set(klass, id, val, isconst)

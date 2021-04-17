@@ -38,7 +38,7 @@ API. I'll introduce to you these functions one by one.
 Ruby array class, `Array`, as an example.
 
 ▼ `Array` class definition
-```TODO-lang
+```c
   19  VALUE rb_cArray;
 
 1809  void
@@ -60,7 +60,7 @@ the class object, it also defines the constant. That means that after this
 you can already access `Array` from a Ruby program. It corresponds to
 the following Ruby program:
 
-```TODO-lang
+```ruby
 class Array < Object
 ```
 
@@ -75,7 +75,7 @@ class nested in an other class or module. This time the example is
 what is returned by `stat(2)`, `File::Stat`.
 
 ▼ Definition of `File::Stat`
-```TODO-lang
+```c
   78  VALUE rb_cFile;
   80  static VALUE rb_cStat;
 
@@ -87,7 +87,7 @@ what is returned by `stat(2)`, `File::Stat`.
 
 This code corresponds to the following Ruby program;
 
-```TODO-lang
+```ruby
 class File < IO
   class Stat < Object
 ```
@@ -99,7 +99,7 @@ This time again I omitted the `end` on purpose.
 `rb_define_module()` is simple so let's end this quickly.
 
 ▼ Definition of `Enumerable`
-```TODO-lang
+```c
   17  VALUE rb_mEnumerable;
 
  492      rb_mEnumerable = rb_define_module("Enumerable");
@@ -111,7 +111,7 @@ The `m` in the beginning of `rb_mEnumerable` is similar to the `c` for
 classes: it shows that it is a module. The corresponding Ruby program
 is:
 
-```TODO-lang
+```ruby
 module Enumerable
 ```
 
@@ -124,7 +124,7 @@ This time the function is the one for defining methods,
 example from `Array`.
 
 ▼ Definition of `Array#to_s`
-```TODO-lang
+```c
 1818  rb_define_method(rb_cArray, "to_s", rb_ary_to_s, 0);
 
 (array.c)
@@ -136,7 +136,7 @@ the number of parameters taken by the method. As `to_s` does not take
 any parameters, it's 0. If we write the corresponding Ruby program,
 we'll have this:
 
-```TODO-lang
+```ruby
 class Array < Object
   def to_s
     # content of rb_ary_to_s()
@@ -152,7 +152,7 @@ the enclosing `class` part.
 One more example, this time taking a parameter:
 
 ▼ Definition of `Array#concat`
-```TODO-lang
+```c
 1835  rb_define_method(rb_cArray, "concat", rb_ary_concat, 1);
 
 (array.c)
@@ -163,7 +163,7 @@ The class for the definition is `rb_cArray`
 is `rb_ary_concat()` and the number of parameters is 1. It
 corresponds to writing the corresponding Ruby program:
 
-```TODO-lang
+```ruby
 class Array < Object
   def concat( str )
     # content of rb_ary_concat()
@@ -180,7 +180,7 @@ show it here, but for a particular reason we'll look at `File.link`
 instead.
 
 ▼ Definition of `File.link`
-```TODO-lang
+```c
 2624  rb_define_singleton_method(rb_cFile, "link", rb_file_s_link, 2);
 
 (file.c)
@@ -199,7 +199,7 @@ instance, for `Array` a function `Init_Array()` like this has been
 made:
 
 ▼ `Init_Array`
-```TODO-lang
+```c
 1809  void
 1810  Init_Array()
 1811  {
@@ -223,7 +223,7 @@ The `Init` for the built-in functions are explicitly called during
 the startup of `ruby`. This is done in `inits.c`.
 
 ▼ `rb_call_inits()`
-```TODO-lang
+```c
   47  void
   48  rb_call_inits()
   49  {
@@ -250,7 +250,7 @@ That explains it for the built-in libraries, but what about extension
 libraries? In fact, for extension libraries the convention is the
 same. Take the following code:
 
-```TODO-lang
+```ruby
 require "myextension"
 ```
 
@@ -264,7 +264,7 @@ The following example is from `stringio`, an extension library
 provided with `ruby`, that is to say not from a built-in library.
 
 ▼ `Init_stringio()` (beginning)
-```TODO-lang
+```c
  895  void
  896  Init_stringio()
  897  {
@@ -291,7 +291,7 @@ in `m_tbl` will do. But what about singleton methods? We'll now look
 into the way singleton methods are defined.
 
 ▼ `rb_define_singleton_method()`
-```TODO-lang
+```c
  721  void
  722  rb_define_singleton_method(obj, name, func, argc)
  723      VALUE obj;
@@ -323,7 +323,7 @@ Well, let's confirm what the singleton classes are made of. It's too
 simple to just show you the code of a function each time so this time
 I'll use a new weapon, a call graph.
 
-```TODO-lang
+```
 rb_define_singleton_method
     rb_define_method
     rb_singleton_class
@@ -382,7 +382,7 @@ of `rb_define_class()` itself. I have some reasons to be interested in
 something that's deeper. That's why we will first look at the call
 graph of `rb_define_class()`.
 
-```TODO-lang
+```
 rb_define_class
     rb_class_inherited
     rb_define_class_id
@@ -397,7 +397,7 @@ I'm interested by `rb_class_new()`. Doesn't this name means it creates
 a new class? Let's confirm that.
 
 ▼ `rb_class_new()`
-```TODO-lang
+```c
   37  VALUE
   38  rb_class_new(super)
   39      VALUE super;
@@ -420,7 +420,7 @@ ignore it. `rb_raise()` is error handling so we can ignore it. Only
 `rb_class_boot()` remains. So let's look at it.
 
 ▼ `rb_class_boot()`
-```TODO-lang
+```c
   21  VALUE
   22  rb_class_boot(super)
   23      VALUE super;
@@ -459,7 +459,7 @@ and `rb_class_new()` is almost identical.
 
 Then, let's once more look at `rb_singleton_class()`'s call graph:
 
-```TODO-lang
+```
 rb_singleton_class
     SPECIAL_SINGLETON
     rb_make_metaclass
@@ -480,7 +480,7 @@ far, we just need to read `rb_singleton_class()` and
 non-essential parts.
 
 ▼ `rb_singleton_class()`
-```TODO-lang
+```c
  678  #define SPECIAL_SINGLETON(x,c) do {\
  679      if (obj == (x)) {\
  680          return c;\
@@ -550,7 +550,7 @@ them.
 ### Compressed `rb_make_metaclass()`
 
 ▼ `rb_make_metaclass()`
-```TODO-lang
+```c
  142  VALUE
  143  rb_make_metaclass(obj, super)
  144      VALUE obj, super;
@@ -586,7 +586,7 @@ because parameters, return values and local variables are all `VALUE`.
 That makes us able to compress to the following:
 
 ▼ `rb_singleton_class() rb_make_metaclass()` (after compression)
-```TODO-lang
+```c
 rb_singleton_class(obj)
 {
     if (FL_TEST(RBASIC(obj)->klass, FL_SINGLETON) &&
@@ -632,7 +632,7 @@ we'll remove it.
 With these simplifications, we get the following:
 
 ▼ `rb_singleton_class() rb_make_metaclass()` (after recompression)
-```TODO-lang
+```c
 rb_singleton_class(obj)
 {
     klass = create a class with RBASIC(obj)->klass as superclass;
@@ -647,7 +647,7 @@ because `klass` is used too often. So let's rename the `klass`
 variable to `sclass`.
 
 ▼ `rb_singleton_class() rb_make_metaclass()` (variable substitution)
-```TODO-lang
+```c
 rb_singleton_class(obj)
 {
     sclass = create a class with RBASIC(obj)->klass as superclass;
@@ -680,7 +680,7 @@ By the way, did you notice about, during the compression process,
 the call to `rb_singleton_class_attached()` was stealthily removed?
 Here:
 
-```TODO-lang
+```c
 rb_make_metaclass(obj, super)
 {
     klass = create a class with super as superclass;
@@ -692,7 +692,7 @@ rb_make_metaclass(obj, super)
 Let's have a look at what it does.
 
 ▼ `rb_singleton_class_attached()`
-```TODO-lang
+```c
  130  void
  131  rb_singleton_class_attached(klass, obj)
  132      VALUE klass, obj;
@@ -853,7 +853,7 @@ In Ruby, singleton methods defined in a class are called class
 methods. However, their specification is a little strange.
 For some reasons, class methods are inheritable.
 
-```TODO-lang
+```ruby
 class A
   def A.test    # defines a singleton method in A
     puts("ok")
@@ -881,7 +881,7 @@ Then let's first look at the code defining classes.
 Class definition means of course `rb_define_class()`. Now
 let's take the call graph of this function.
 
-```TODO-lang
+```
 rb_define_class
     rb_class_inherited
     rb_define_class_id
@@ -906,7 +906,7 @@ surroundings again.
 Let's first start our reading with its caller, `rb_define_class_id()`.
 
 ▼ `rb_define_class_id()`
-```TODO-lang
+```c
  160  VALUE
  161  rb_define_class_id(id, super)
  162      ID id;
@@ -932,13 +932,13 @@ that there's the `rb_make_metaclass()` in question. I'm concerned by
 the fact that when called from `rb_singleton_class()`, the parameters
 were different. Last time was like this:
 
-```TODO-lang
+```c
 rb_make_metaclass(obj, RBASIC(obj)->klass);
 ```
 
 But this time is like this:
 
-```TODO-lang
+```c
 rb_make_metaclass(klass, RBASIC(super)->klass);
 ```
 
@@ -949,7 +949,7 @@ depending on that? Let's have once again a look at a simplified
 #### `rb_make_metaclass` (once more)
 
 ▼ `rb_make_metaclass` (after first compression)
-```TODO-lang
+```c
 rb_make_metaclass(obj, super)
 {
     klass = create a class with super as superclass;
@@ -973,14 +973,14 @@ again, something is done only for `T_CLASS`, in other words
 classes. This clearly looks important. In `rb_define_class_id()`, as
 it's called like this:
 
-```TODO-lang
+```c
 rb_make_metaclass(klass, RBASIC(super)->klass);
 ```
 
 Let's expand `rb_make_metaclass()`'s parameter variables with the actual values.
 
 ▼ `rb_make_metaclass` (recompression)
-```TODO-lang
+```c
 rb_make_metaclass(klass, super_klass /* == RBASIC(super)->klass */)
 {
     sclass = create a class with super_class as superclass;
@@ -1019,7 +1019,7 @@ conclusion that `Object`'s class must be `(Object)`. And that's the
 case in practice. For example, by inheriting like in the following
 program :
 
-```TODO-lang
+```ruby
 class A < Object
 end
 class B < A
@@ -1057,7 +1057,7 @@ The second question: the class of `Object` must be `Class`. Didn't I
 properly confirm this in chapter 1: Ruby language minimum
 by using `class()` method?
 
-```TODO-lang
+```ruby
 p(Object.class())   # Class
 ```
 
@@ -1068,7 +1068,7 @@ classes. Let's look at the body of the method, `rb_obj_class()` to
 confirm that.
 
 ▼ `rb_obj_class()`
-```TODO-lang
+```c
   86  VALUE
   87  rb_obj_class(obj)
   88      VALUE obj;
@@ -1137,7 +1137,7 @@ in `ruby`, only these 3 classes's creation is handled specially.
 Then let's look at the code:
 
 ▼ `Object`, `Module` and `Class` creation
-```TODO-lang
+```c
 1243  rb_cObject = boot_defclass("Object", 0);
 1244  rb_cModule = boot_defclass("Module", rb_cObject);
 1245  rb_cClass =  boot_defclass("Class",  rb_cModule);
@@ -1186,7 +1186,7 @@ First we'll read `rb_defined_class()`. After the end of this function,
 the class can be found from the constant.
 
 ▼ `rb_define_class()`
-```TODO-lang
+```c
  183  VALUE
  184  rb_define_class(name, super)
  185      const char *name;
@@ -1254,7 +1254,7 @@ that's the reason of such halfway description around here.
 
 Moreover, about this coming after `rb_define_class_id()`,
 
-```TODO-lang
+```c
 st_add_direct(rb_class_tbl, id, klass);
 ```
 
@@ -1275,7 +1275,7 @@ implemented?
 In fact this is done by `rb_name_class()` which already appeared a long time
 ago. The call is around the following:
 
-```TODO-lang
+```
 rb_define_class
     rb_define_class_id
         rb_name_class
@@ -1284,7 +1284,7 @@ rb_define_class
 Let's look at its content:
 
 ▼ `rb_name_class()`
-```TODO-lang
+```c
  269  void
  270  rb_name_class(klass, id)
  271      VALUE klass;
@@ -1311,7 +1311,7 @@ little more complicated. The function to define these nested classes
 is `rb_define_class_under()`.
 
 ▼ `rb_define_class_under()`
-```TODO-lang
+```c
  215  VALUE
  216  rb_define_class_under(outer, name, super)
  217      VALUE outer;
@@ -1362,7 +1362,7 @@ information starting from top-level, for example
 "`Net::NetPrivate::Socket`".
 
 ▼ `rb_set_class_path()`
-```TODO-lang
+```c
  210  void
  211  rb_set_class_path(klass, under, name)
  212      VALUE klass, under;
@@ -1393,7 +1393,7 @@ can't be seen from a Ruby program. In `rb_name_class()` there was
 `__classid__`, but `id` is different because it does not include
 nesting information (look at the table below).
 
-```TODO-lang
+```
 __classpath__    Net::NetPrivate::Socket
 __classid__                       Socket
 ```
@@ -1409,7 +1409,7 @@ Contrary to what I have just said, there are in fact cases in which
 neither `__classpath__` nor `__classid__` are set. That is because in
 Ruby you can use a method like the following to create a class.
 
-```TODO-lang
+```ruby
 c = Class.new()
 ```
 
@@ -1420,7 +1420,7 @@ If a class is created like this, it won't go through
 However, if later it's assigned to a constant,
 a name will be attached to the class at that moment.
 
-```TODO-lang
+```ruby
 SomeClass = c   # the class name is SomeClass
 ```
 
@@ -1431,7 +1431,7 @@ For instance, when calling `p` on this
 this, a value equal to the class is searched in `rb_class_tbl`, and a
 name has to be chosen. The following case can also happen:
 
-```TODO-lang
+```ruby
 class A
   class B
     C = tmp = Class.new()
@@ -1459,7 +1459,7 @@ precise, its body is `rb_mod_include()`, and there
 implementation finally calls `rb_include_module()`. Mixing what's
 happening in Ruby and C gives us the following call graph.
 
-```TODO-lang
+```
 Module#include (rb_mod_include)
     Module#append_features (rb_mod_append_features)
         rb_include_module
@@ -1470,7 +1470,7 @@ by `rb_include_module()`. This function is
 a little long so we'll look at it a half at a time.
 
 ▼ `rb_include_module` (first half)
-```TODO-lang
+```c
       /* include module in class */
  347  void
  348  rb_include_module(klass, module)
@@ -1503,7 +1503,7 @@ For the moment it's only security and type checking, therefore we can
 ignore it. The process itself is below:
 
 ▼ `rb_include_module` (second half)
-```TODO-lang
+```c
  371      OBJ_INFECT(klass, module);
  372      c = klass;
  373      while (module) {
@@ -1543,7 +1543,7 @@ First, what the (A) block does is written in the comment. It seems to
 be a special condition so let's first skip reading it for now. By
 extracting the important parts from the rest we get the following:
 
-```TODO-lang
+```c
 c = klass;
 while (module) {
     c = RCLASS(c)->super = include_class_new(module, RCLASS(c)->super);
@@ -1559,7 +1559,7 @@ what, but at the moment I saw that I felt "Ah, doesn't this look the
 addition of elements to a list (like LISP's cons)?" and it suddenly
 make the story faster. In other words it's the following form:
 
-```TODO-lang
+```
 list = new(item, list)
 ```
 
@@ -1572,7 +1572,8 @@ But to be sure of this we have to look at `include_class_new()`.
 ### `include_class_new()`
 
 ▼ `include_class_new()`
-```TODO-lang
+
+```c
  319  static VALUE
  320  include_class_new(module, super)
  321      VALUE module, super;
@@ -1672,7 +1673,7 @@ that includes `m2`. From there, the changes made to include `m1` in
 Well, now we can explain the part of `rb_include_module()` we skipped.
 
 ▼ `rb_include_module` (avoiding double inclusion)
-```TODO-lang
+```c
  378  /* (A) skip if the superclass already includes module */
  379  for (p = RCLASS(klass)->super; p; p = RCLASS(p)->super) {
  380      switch (BUILTIN_TYPE(p)) {
@@ -1707,7 +1708,7 @@ the modules included by it must also already be
 included... that's what I thought for a moment, but we can have the
 following context:
 
-```TODO-lang
+```ruby
 module M
 end
 module M2

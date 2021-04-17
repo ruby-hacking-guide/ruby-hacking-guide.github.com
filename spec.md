@@ -40,7 +40,7 @@ other Ruby's literals.
 
 #### Single Quoted Strings
 
-```TODO-lang
+```ruby
 'string'              # 「string」
 '\\begin{document}'   # 「\begin{document}」
 '\n'                  # 「\n」backslash and an n, not a newline
@@ -60,7 +60,7 @@ And Ruby's strings aren't divided by newline characters.
 If we write a string over several lines the newlines are contained
 in the string.
 
-```TODO-lang
+```ruby
 'multi
     line
         string'
@@ -70,14 +70,14 @@ And if the `-K` option is given to the `ruby` command, multibyte strings
 will be accepted. At present the three encodings EUC-JP (`-Ke`),
 Shift JIS (`-Ks`), and UTF8 (`-Ku`) can be specified.
 
-```TODO-lang
+```ruby
 '「漢字が通る」と「マルチバイト文字が通る」はちょっと違う'
 # 'There's a little difference between "Kanji are accepted" and "Multibyte characters are accepted".'
 ```
 
 #### Double Quoted Strings
 
-```TODO-lang
+```ruby
 "string"              # 「string」
 "\n"                  # newline
 "\x0f"               # a byte given in hexadecimal form
@@ -100,7 +100,7 @@ are no limitations like only one variable or only one method.
 Getting this far, it is not a mere literal anymore but
 the entire thing can be considered as an expression to express a string.
 
-```TODO-lang
+```ruby
 "embedded #{lvar} expression"
 "embedded #{@ivar} expression"
 "embedded #{1 + 1} expression"
@@ -110,7 +110,7 @@ the entire thing can be considered as an expression to express a string.
 
 #### Strings with `%`
 
-```TODO-lang
+```ruby
 %q(string)            # same as 'string'
 %Q(string)            # same as "string"
 %(string)             # same as %Q(string) or "string"
@@ -122,7 +122,7 @@ changed by using `%`.
 In the following example, the same string is written as a `"`-string and
 `%`-string.
 
-```TODO-lang
+```ruby
 "<a href=\"http://i.loveruby.net#{path}\">"
 %Q(<a href="http://i.loveruby.net#{path}">)
 ```
@@ -136,7 +136,7 @@ Here we have used parentheses as delimiters, but something else is fine,
 too. Like brackets or braces or `#`. Almost every symbol is fine, even
 `%`.
 
-```TODO-lang
+```ruby
 %q#this is string#
 %q[this is string]
 %q%this is string%
@@ -151,7 +151,7 @@ When using here document,
 the lines between the line which contains the starting `<<EOS` and
 the line which contains the ending `EOS` would be the content.
 
-```TODO-lang
+```ruby
 "the characters between the starting symbol and the ending symbol
 will become a string."
 
@@ -173,7 +173,7 @@ Therefore, the position of the start identifier in the line is not important.
 Taking advantage of this, it doesn't matter that,
 for instance, it is written in the middle of an expression:
 
-```TODO-lang
+```ruby
 printf(<<EOS, count_n(str))
 count=%d
 EOS
@@ -182,7 +182,7 @@ EOS
 In this case the string `"count=%d\n"` goes in the place of `<<EOS`.
 So it's the same as the following.
 
-```TODO-lang
+```ruby
 printf("count=%d\n", count_n(str))
 ```
 
@@ -193,7 +193,7 @@ and there must not be another letter in that line. However
 if we write the start symbol with a minus like this `<<-EOS` we
 can indent the line with the end symbol.
 
-```TODO-lang
+```ruby
      <<-EOS
 It would be convenient if one could indent the content
 of a here document. But that's not possible.
@@ -207,7 +207,7 @@ Then the properties of the whole here document change.
 When we change `<<EOS` to `<<"EOS"` we can use embedded expressions
 and backslash notation.
 
-```TODO-lang
+```ruby
     <<"EOS"
 One day is #{24 * 60 * 60} seconds.
 Incredible.
@@ -228,7 +228,7 @@ Ruby strings are byte sequences, there are no character objects.
 Instead there are the following expressions which return the
 integers which correspond a certain character in ASCII code.
 
-```TODO-lang
+```ruby
 ?a                    # the integer which corresponds to "a"
 ?.                    # the integer which corresponds to "."
 ?\n                   # LF
@@ -237,7 +237,7 @@ integers which correspond a certain character in ASCII code.
 
 ### Regular Expressions
 
-```TODO-lang
+```ruby
 /regexp/
 /^Content-Length:/i
 /正規表現/
@@ -249,7 +249,7 @@ What is contained between slashes is a regular expression.
 Regular expressions are a language to designate string patterns.
 For example
 
-```TODO-lang
+```ruby
 /abc/
 ```
 

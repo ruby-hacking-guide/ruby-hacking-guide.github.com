@@ -25,7 +25,7 @@ First, let's think about a small program as below:
 
 <p class="caption">▼The Source Program</p>
 
-```TODO-lang
+```ruby
 iter_method() do
   9   # a mark to find this block
 end

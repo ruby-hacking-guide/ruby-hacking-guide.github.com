@@ -85,7 +85,7 @@ program, then it should be made into a different thread and have its
 security level raised. I haven't yet explained how to create a thread,
 but I will show an example here:
 
-```TODO-lang
+```ruby
 # Raise the security level in a different thread
 p($SAFE)   # 0 is the default
 Thread.fork {    # Start a different thread
@@ -146,7 +146,7 @@ The taint mark is, to be concrete, the `FL_TAINT` flag, which is set to
 Here is its usage.
 
 
-```TODO-lang
+```c
 OBJ_TAINT(obj)            /* set FL_TAINT to obj */
 OBJ_TAINTED(obj)          /* check if FL_TAINT is set to obj */
 OBJ_INFECT(dest, src)     /* infect FL_TAINT from src to dest */
@@ -158,7 +158,8 @@ let's briefly look over only `OBJ_INFECT()`.
 
 
 <p class="caption">▼ `OBJ_INFECT` </p>
-```TODO-lang
+
+```c
  441  #define OBJ_INFECT(x,s) do {                             \
           if (FL_ABLE(x) && FL_ABLE(s))                        \
               RBASIC(x)->flags |= RBASIC(s)->flags & FL_TAINT; \
@@ -179,7 +180,8 @@ it would propagate the flag.
 
 
 <p class="caption">▼ `ruby_safe_level` </p>
-```TODO-lang
+
+```c
  124  int ruby_safe_level = 0;
 
 7401  static void
@@ -224,7 +226,8 @@ you can ignore the interface and modify the security level.
 
 
 <p class="caption">▼ `rb_secure()` </p>
-```TODO-lang
+
+```c
  136  void
  137  rb_secure(level)
  138      int level;

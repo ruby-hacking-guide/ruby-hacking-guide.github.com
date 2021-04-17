@@ -38,7 +38,7 @@ Let's now look at `parse.y` in a bit more detail. The following figure presents
 a rough outline of the contents of `parse.y`.
 
 ▼ parse.y
-```TODO-lang
+```yacc
 %{
 header
 %}
@@ -119,7 +119,7 @@ modified version of `exyacc.rb`\footnote{modified `exyacc.rb`:`tools/exyacc2.rb`
 located on the attached CD-ROM} to extract the grammar rules.
 
 ▼ `parse.y`(rules)
-```TODO-lang
+```yacc
 program         : compstmt
 
 bodystmt        : compstmt
@@ -200,7 +200,7 @@ With adding `arg` to them, let's look at their rules.
 
 
 ▼ `ruby` grammar (outline)
-```TODO-lang
+```yacc
 program         : compstmt
 
 compstmt        : stmts opt_terms
@@ -248,7 +248,7 @@ we can clearly make out a hierarchy of `program`→`stmt`→`expr`→`arg`→
 
 Also, we'd like to focus on this rule of `primary`.
 
-```TODO-lang
+```yacc
 primary         : literal
                     :
                     :
@@ -269,7 +269,7 @@ reduced during parsing.
 
 The next rule is also particularly interesting.
 
-```TODO-lang
+```yacc
 primary         : literal
                     :
                     :
@@ -290,7 +290,7 @@ function, be used as the right hand side of an expression etc.
 This is an incredible fact.
 Let's actually confirm it.
 
-```TODO-lang
+```ruby
 p((class C; end))
 p((def a() end))
 p((alias ali gets))
@@ -301,7 +301,7 @@ p((1 + 1 * 1 ** 1 - 1 / 1 ^ 1))
 If we invoke `ruby` with the `-c` option (syntax check), we get the following
 output.
 
-```TODO-lang
+```
 % ruby -c primprog.rb
 Syntax OK
 ```
@@ -325,7 +325,7 @@ one.
 ### `program`
 
 ▼ `program`
-```TODO-lang
+```yacc
 program         : compstmt
 
 compstmt        : stmts opt_terms
@@ -347,7 +347,7 @@ terminate the sentences, such as semicolons or newlines.
 `opt_terms` means "OPTional terms". The definitions are as follows:
 
 ▼ `opt_terms`
-```TODO-lang
+```yacc
 opt_terms       :
                 | terms
 
@@ -360,7 +360,7 @@ term            : ';'
 
 The initial `;` or `\n` of a `terms` can be followed by any number of `;` only; based on that, you might start thinking that if there are 2 or more consecutive newlines, it could cause a problem. Let's try and see what actually happens.
 
-```TODO-lang
+```ruby
 1 + 1   # first newline
         # second newline
         # third newline
@@ -369,7 +369,7 @@ The initial `;` or `\n` of a `terms` can be followed by any number of `;` only; 
 
 Run that with `ruby -c`.
 
-```TODO-lang
+```
 % ruby -c optterms.rb
 Syntax OK
 ```
@@ -385,7 +385,7 @@ To generalize this point, the grammar rules can be divided into 2 groups: those 
 Next is `stmt`. This one is rather involved, so we'll look into it a bit at a time.
 
 ▼ `stmt`(1)
-```TODO-lang
+```yacc
 stmt            : kALIAS fitem  fitem
                 | kALIAS tGVAR tGVAR
                 | kALIAS tGVAR tBACK_REF
@@ -407,7 +407,7 @@ Looking at that, somehow things start to make sense. The first few have `alias`,
 As explained earlier, `klBEGIN` and `klEND` represent `BEGIN` and `END`.
 
 ▼ `stmt`(2)
-```TODO-lang
+```yacc
                 | lhs '=' command_call
                 | mlhs '=' command_call
                 | var_lhs tOP_ASGN command_call
@@ -439,7 +439,8 @@ This abbreviation is used at a lot of places in the source code of `ruby`.
 
 
 <p class="caption">▼ `stmt` (3)</p>
-```TODO-lang
+
+```yacc
                 | lhs '=' mrhs_basic
                 | mlhs '=' mrhs
 ```
@@ -451,7 +452,8 @@ We've come to recognize that knowing the meanings of names makes the comprehensi
 
 
 <p class="caption">▼ `stmt` (4)</p>
-```TODO-lang
+
+```yacc
                 | expr
 ```
 
@@ -465,7 +467,8 @@ Lastly, it joins to `expr`.
 
 
 <p class="caption">▼ `expr` </p>
-```TODO-lang
+
+```yacc
 expr            : kRETURN call_args
                 | kBREAK call_args
                 | kNEXT call_args
@@ -491,7 +494,7 @@ it would cause conflicts tremendously.
 However, these two below are of different kind.
 
 
-```TODO-lang
+```yacc
 expr kAND expr
 expr kOR expr
 ```
@@ -505,7 +508,7 @@ at least they need to be `expr` to go well.
 For example, the following usage is possible ...
 
 
-```TODO-lang
+```ruby
   valid_items.include? arg  or raise ArgumentError, 'invalid arg'
 # valid_items.include?(arg) or raise(ArgumentError, 'invalid arg')
 ```
@@ -515,21 +518,18 @@ However, if the rule of `kOR` existed in `arg` instead of `expr`,
 it would be joined as follows.
 
 
-```TODO-lang
+```ruby
 valid_items.include?((arg or raise)) ArgumentError, 'invalid arg'
 ```
 
-
 Obviously, this would end up a parse error.
-
-
-
 
 ### `arg`
 
 
 <p class="caption">▼ `arg` </p>
-```TODO-lang
+
+```yacc
 arg             : lhs '=' arg
                 | var_lhs tOP_ASGN arg
                 | primary_value '[' aref_args ']' tOP_ASGN arg
@@ -584,7 +584,7 @@ this is virtually only a mere enumeration.
 Let's cut the "mere enumeration" out from the `arg` rule by merging.
 
 
-```TODO-lang
+```yacc
 arg: lhs '=' arg              /* 1 */
    | primary T_opeq arg       /* 2 */
    | arg T_infix arg          /* 3 */
@@ -637,7 +637,8 @@ We could say it's a matter of course.
 Because `primary` has a lot of grammar rules, we'll split them up and show them in parts.
 
 <p class="caption">▼ `primary` (1)</p>
-```TODO-lang
+
+```yacc
 primary         : literal
                 | strings
                 | xstring
@@ -652,7 +653,8 @@ Literals.
 
 
 <p class="caption">▼ `primary` (2)</p>
-```TODO-lang
+
+```yacc
                 | var_ref
                 | backref
                 | tFID
@@ -668,7 +670,8 @@ even if it appears solely, it becomes a method call at the parser level.
 
 
 <p class="caption">▼ `primary` (3)</p>
-```TODO-lang
+
+```yacc
                 | kBEGIN
                   bodystmt
                   kEND
@@ -679,7 +682,8 @@ It means this is the `begin` of the exception control.
 
 
 <p class="caption">▼ `primary` (4)</p>
-```TODO-lang
+
+```yacc
                 | tLPAREN_ARG expr  ')'
                 | tLPAREN compstmt ')'
 ```
@@ -688,7 +692,8 @@ This has already described. Syntax demoting.
 
 
 <p class="caption">▼ `primary` (5)</p>
-```TODO-lang
+
+```yacc
                 | primary_value tCOLON2 tCONSTANT
                 | tCOLON3 cname
 ```
@@ -717,7 +722,8 @@ it becomes `tCOLON3`. In the other cases, it becomes `tCOLON2`.
 
 
 <p class="caption">▼ `primary` (6)</p>
-```TODO-lang
+
+```yacc
                 | primary_value '[' aref_args ']'
 ```
 
@@ -725,7 +731,8 @@ Index-form calls, for instance, `arr[i]`.
 
 
 <p class="caption">▼ `primary` (7)</p>
-```TODO-lang
+
+```yacc
                 | tLBRACK aref_args ']'
                 | tLBRACE assoc_list '}'
 ```
@@ -750,7 +757,8 @@ so I'd like you to make use of it when reading.
 
 
 <p class="caption">▼ `primary` (8)</p>
-```TODO-lang
+
+```yacc
                 | kRETURN
                 | kYIELD '(' call_args ')'
                 | kYIELD '(' ')'
@@ -770,7 +778,7 @@ it does not mean you cannot pass values, of course.
 There was the following rule in `expr`.
 
 
-```TODO-lang
+```yacc
 kRETURN call_args
 ```
 
@@ -794,7 +802,8 @@ the next chapter "Finite-State Scanner".
 
 
 <p class="caption">▼ `primary` (9)</p>
-```TODO-lang
+
+```yacc
                 | operation brace_block
                 | method_call
                 | method_call brace_block
@@ -812,7 +821,8 @@ the next chapter "Finite-State Scanner".
 
 
 <p class="caption">▼ `primary` (10)</p>
-```TODO-lang
+
+```yacc
   | kIF expr_value then compstmt if_tail kEND         # if
   | kUNLESS expr_value then compstmt opt_else kEND    # unless
   | kWHILE expr_value do compstmt kEND                # while
@@ -847,7 +857,8 @@ In the next section, we'll think about this point again.
 
 
 <p class="caption">▼ `primary` (11)</p>
-```TODO-lang
+
+```yacc
   | kCLASS cname superclass bodystmt kEND        # class definition
   | kCLASS tLSHFT expr term bodystmt kEND        # singleton class definition
   | kMODULE cname bodystmt kEND                  # module definition
@@ -866,7 +877,8 @@ it would never be a problem.
 
 
 <p class="caption">▼ `primary` (12)</p>
-```TODO-lang
+
+```yacc
                 | kBREAK
                 | kNEXT
                 | kREDO
@@ -891,7 +903,7 @@ but explaining instinctively is relatively easy.
 Here, let's simulate with a small rule defined as follows:
 
 
-```TODO-lang
+```yacc
 %token A B o
 %%
 element   : A item_list B
@@ -915,7 +927,7 @@ For an element of the list, the `o` or `element` is nesting.
 With the parser based on this grammar,
 let's try to parse the following input.
 
-```TODO-lang
+```
 A  A  o  o  o  B  o  A  o  A  o  o  o  B  o  B  B
 ```
 
@@ -936,7 +948,7 @@ Figure 4 shows the consequence.
 However, if the ending `B` is missing, ...
 
 
-```TODO-lang
+```yacc
 %token A o
 %%
 element   : A item_list    /* B is deleted for an experiment */
@@ -955,7 +967,7 @@ If we simply take `B` out from the previous one,
 The input would be as follows.
 
 
-```TODO-lang
+```
 A  A  o  o  o  o  A  o  A  o  o  o  o
 ```
 
@@ -1026,32 +1038,23 @@ by `yyparse()`.
 The rest functions in `parse.y` are auxiliary functions called by `yylex()`,
 and these can also be clearly categorized.
 
-
 First, the input buffer is at the lowest level of the scanner.
 `ruby` is designed so that you can input source programs via both Ruby `IO`
 objects and strings.
 The input buffer hides that and makes it look like a single byte stream.
 
-
 The next level is the token buffer.
 It reads 1 byte at a time from the input buffer,
 and keeps them until it will form a token.
 
-
 Therefore, the whole structure of `yylex` can be depicted as Figure 7.
-
 
 <figure>
 	<img src="images/ch_parser_scanner.jpg" alt="figure 7: The whole picture of the scanner">
 	<figcaption>figure 7: The whole picture of the scanner</figcaption>
 </figure>
 
-
-
-
-
 ### The input buffer
-
 
 Let's start with the input buffer. Its interfaces are only the three: `nextc()`, `pushback()`, `peek()`.
 
@@ -1062,7 +1065,8 @@ The variables used by the input buffer are the followings:
 
 
 <p class="caption">▼ the input buffer</p>
-```TODO-lang
+
+```yacc
 2279  static char *lex_pbeg;
 2280  static char *lex_p;
 2281  static char *lex_pend;
@@ -1091,6 +1095,7 @@ First, I'll start with `nextc()` that seems the most orthodox.
 
 
 <p class="caption">▼ `nextc()` </p>
+
 ```TODO-lang
 2468  static inline int
 2469  nextc()
@@ -1144,7 +1149,7 @@ it's definite that each line comes in at a time.
 Here is the summary:
 
 
-```TODO-lang
+```
 if ( reached the end of the buffer )
     if (still there's more input)
         read the next line
@@ -1161,7 +1166,8 @@ The variables used by this function are shown together in the following.
 
 
 <p class="caption">▼ `lex_getline()` </p>
-```TODO-lang
+
+```yacc
 2276  static VALUE (*lex_gets)();     /* gets function */
 2277  static VALUE lex_input;         /* non-nil if File */
 
@@ -1186,6 +1192,7 @@ I searched the place where setting `lex_gets` and this is what I found:
 
 
 <p class="caption">▼ set `lex_gets` </p>
+
 ```TODO-lang
 2430  NODE*
 2431  rb_compile_string(f, s, line)
@@ -1220,6 +1227,7 @@ On the other hand, `lex_get_str()` is defined as follows:
 
 
 <p class="caption">▼ `lex_get_str()` </p>
+
 ```TODO-lang
 2398  static int lex_gets_ptr;
 
@@ -1270,6 +1278,7 @@ we can understand the rest easily.
 `pushback()` writes back a character. If put it in C, it is `ungetc()`.
 
 <p class="caption">▼ `pushback()` </p>
+
 ```TODO-lang
 2501  static void
 2502  pushback(c)
@@ -1290,6 +1299,7 @@ we can understand the rest easily.
 
 
 <p class="caption">▼ `peek()` </p>
+
 ```TODO-lang
 2509  #define peek(c) (lex_p != lex_pend && (c) == *lex_p)
 
@@ -1318,6 +1328,7 @@ There are the five interfaces as follows:
 Now, we'll start with the data structures.
 
 <p class="caption">▼ The Token Buffer </p>
+
 ```TODO-lang
 2271  static char *tokenbuf = NULL;
 2272  static int   tokidx, toksiz = 0;
@@ -1344,6 +1355,7 @@ read `newtok()`, which starts a new token.
 
 
 <p class="caption">▼ `newtok()` </p>
+
 ```TODO-lang
 2516  static char*
 2517  newtok()
@@ -1381,6 +1393,7 @@ Next, let's look at the `tokadd()` to add a character to token buffer.
 
 
 <p class="caption">▼ `tokadd()` </p>
+
 ```TODO-lang
 2531  static void
 2532  tokadd(c)
@@ -1407,6 +1420,7 @@ as `calloc()`.
 The rest interfaces are summarized below.
 
 <p class="caption">▼ `tokfix() tok() toklen() toklast()` </p>
+
 ```TODO-lang
 2511  #define tokfix() (tokenbuf[tokidx]='\0')
 2512  #define tok() tokenbuf
@@ -1431,6 +1445,7 @@ First, I'll show the whole structure that some parts of it are left out.
 
 
 <p class="caption">▼ `yylex` outline </p>
+
 ```TODO-lang
 3106  static int
 3107  yylex()
@@ -1518,6 +1533,7 @@ Let's start with what is simple first.
 
 
 <p class="caption">▼ `yylex` - `'!'` </p>
+
 ```TODO-lang
 3205        case '!':
 3206          lex_state = EXPR_BEG;
@@ -1578,6 +1594,7 @@ Next, we'll try to look at `'<'` as an example of using `yylval` (the value of a
 
 
 <p class="caption">▼ `yylex`−`'&gt;'`</p>
+
 ```TODO-lang
 3296        case '>':
 3297          switch (lex_state) {
@@ -1639,6 +1656,7 @@ The code of `':'` shown below is an example that a space changes the behavior.
 
 
 <p class="caption">▼ `yylex`−`':'`</p>
+
 ```TODO-lang
 3761        case ':':
 3762          c = nextc();
@@ -1708,6 +1726,7 @@ This is relatively long, so I'll show it with comments.
 
 
 <p class="caption">▼ `yylex`  -- identifiers </p>
+
 ```TODO-lang
 4081        case '@':                 /* an instance variable or a class variable */
 4082          c = nextc();
@@ -1868,6 +1887,7 @@ The definition of `struct kwtable` is as follows:
 
 
 <p class="caption">▼ `kwtable` </p>
+
 ```TODO-lang
    1  struct kwtable {char *name; int id[2]; enum lex_state state;};
 
@@ -1885,6 +1905,7 @@ This is the place where actually looking up.
 
 
 <p class="caption">▼ `yylex()`  -- identifier -- call  `rb_reserved_word()` </p>
+
 ```TODO-lang
 4173                  struct kwtable *kw;
 4174
@@ -1905,6 +1926,7 @@ The double quote (`"`) part of `yylex()` is this.
 
 
 <p class="caption">▼ `yylex` − `'"'` </p>
+
 ```TODO-lang
 3318        case '"':
 3319          lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
@@ -1920,6 +1942,7 @@ Then, this time, when taking a look at the rule,
 
 
 <p class="caption">▼ rules for strings </p>
+
 ```TODO-lang
 string1         : tSTRING_BEG string_contents tSTRING_END
 
@@ -1983,6 +2006,7 @@ What plays an important role there is ...
 
 
 <p class="caption">▼ the beginning of  `yylex()` </p>
+
 ```TODO-lang
 3106  static int
 3107  yylex()
@@ -2015,6 +2039,7 @@ This is done in the following part:
 
 
 <p class="caption">▼ `string_content` </p>
+
 ```TODO-lang
 1916  string_content  : ....
 1917                  | tSTRING_DBEG term_push
@@ -2073,6 +2098,7 @@ First, let's look at its type.
 
 
 <p class="caption">▼ `lex_strterm`</p>
+
 ```TODO-lang
   72  static NODE *lex_strterm;
 
@@ -2089,6 +2115,7 @@ you should remember only these two points.
 
 
 <p class="caption">▼ `NEW_STRTERM()`</p>
+
 ```TODO-lang
 2865  #define NEW_STRTERM(func, term, paren) \
 2866          rb_node_newnode(NODE_STRTERM, (func), (term), (paren))
@@ -2120,6 +2147,7 @@ The available types are decided as follows:
 
 
 <p class="caption">▼ `func`</p>
+
 ```TODO-lang
 2775  #define STR_FUNC_ESCAPE 0x01  /* backslash notations such as \n are in effect  */
 2776  #define STR_FUNC_EXPAND 0x02  /* embedded expressions are in effect */
@@ -2160,6 +2188,7 @@ The rest is reading `yylex()` in the string mode,
 in other words, the `if` at the beginning.
 
 <p class="caption">▼ `yylex`− string</p>
+
 ```TODO-lang
 3114      if (lex_strterm) {
 3115          int token;
@@ -2212,6 +2241,7 @@ First, I'll show the code of `yylex()` to scan the starting symbol of a here doc
 
 
 <p class="caption">▼ `yylex`−`'&lt;'`</p>
+
 ```TODO-lang
 3260        case '<':
 3261          c = nextc();
@@ -2236,6 +2266,7 @@ Therefore, here is `heredoc_identifier()`.
 
 
 <p class="caption">▼ `heredoc_identifier()`</p>
+
 ```TODO-lang
 2926  static int
 2927  heredoc_identifier()
@@ -2294,6 +2325,7 @@ Notice that `lex_strterm` remains unchanged after it was set at `heredoc_identif
 
 
 <p class="caption">▼ `here_document()`(simplified)</p>
+
 ```TODO-lang
 here_document(NODE *here)
 {
@@ -2338,6 +2370,7 @@ And finally, leaving the `do` ~ `while` loop, it is `heredoc_restore()`.
 
 
 <p class="caption">▼ `heredoc_restore()` </p>
+
 ```TODO-lang
 2990  static void
 2991  heredoc_restore(here)

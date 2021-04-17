@@ -17,7 +17,7 @@ This is not so special, but here I'll introduce it just in case.
 
 
 
-```TODO-lang
+```ruby
 Thread.fork {
     while true
       puts 'forked thread'
@@ -146,7 +146,7 @@ Let's look at the variables and the data types to manage threads.
 
 <p class="caption">▼ the structure to manage threads</p>
 
-```TODO-lang
+```c
  864  typedef struct thread * rb_thread_t;
  865  static rb_thread_t curr_thread = 0;
  866  static rb_thread_t main_thread;
@@ -234,7 +234,7 @@ The spaces for both purposes are respectively prepared in `rb_thread_t`.
 
 <p class="caption">▼ `struct thread`  (partial)</p>
 
-```TODO-lang
+```c
 7301  struct thread {
 7302      struct thread *next, *prev;
 7303      jmp_buf context;
@@ -295,7 +295,7 @@ The place to store the stack properly exists in `struct thread`.
 
 <p class="caption">▼ `struct thread`  (partial)</p>
 
-```TODO-lang
+```c
 7310      int   stk_len;      /* the stack length */
 7311      int   stk_max;      /* the size of memory allocated for stk_ptr */
 7312      VALUE*stk_ptr;      /* the copy of the stack */
@@ -346,7 +346,7 @@ Below is the interface of `getc`.
 
 <p class="caption">▼ `rb_getc()` </p>
 
-```TODO-lang
+```c
 1185  int
 1186  rb_getc(f)
 1187      FILE *f;
@@ -382,7 +382,7 @@ What is it? Let's see the inside of `rb_thread_wait_fd()`.
 
 <p class="caption">▼ `rb_thread_wait_fd()` </p>
 
-```TODO-lang
+```c
 8047  void
 8048  rb_thread_wait_fd(fd)
 8049      int fd;
@@ -435,7 +435,7 @@ Then by scanning, I found it in the function named `rb_thread_join()`.
 
 <p class="caption">▼ `rb_thread_join()`  (partial)</p>
 
-```TODO-lang
+```c
 8227  static int
 8228  rb_thread_join(th, limit)
 8229      rb_thread_t th;
@@ -472,7 +472,7 @@ This is the substance of (Ruby's) `sleep` and such.
 
 <p class="caption">▼ `rb_thread_wait_for` (simplified)</p>
 
-```TODO-lang
+```c
 8080  void
 8081  rb_thread_wait_for(time)
 8082      struct timeval time;
@@ -527,7 +527,7 @@ It is here.
 
 <p class="caption">▼ `catch_timer()` </p>
 
-```TODO-lang
+```c
 8574  static void
 8575  catch_timer(sig)
 8576      int sig;
@@ -555,7 +555,7 @@ then it was used around here:
 
 <p class="caption">▼ `rb_thread_start_0()` (partial)</p>
 
-```TODO-lang
+```c
 8620  static VALUE
 8621  rb_thread_start_0(fn, arg, th_arg)
 8622      VALUE (*fn)();
@@ -607,7 +607,7 @@ Then, I'd like you to see the code of `catch_timer()` again.
 
 
 
-```TODO-lang
+```c
 if (rb_trap_immediate) {
     rb_thread_schedule();
 }
@@ -630,7 +630,7 @@ This variable is used in the following place.
 
 <p class="caption">▼ `CHECK_INTS` − `HAVE_SETITIMER` </p>
 
-```TODO-lang
+```c
   73  #if defined(HAVE_SETITIMER) && !defined(__BOW__)
   74  EXTERN int rb_thread_pending;
   75  # define CHECK_INTS do {\
@@ -671,7 +671,7 @@ It is the definition of the `#else` side.
 
 <p class="caption">▼ `CHECK_INTS` − `not HAVE_SETITIMER` </p>
 
-```TODO-lang
+```c
   84  EXTERN int rb_thread_tick;
   85  #define THREAD_TICK 500
   86  #define CHECK_INTS do {\
@@ -718,7 +718,7 @@ Let's exhaustively divide it into portions.
 
 <p class="caption">▼ `rb_thread_schedule()` (outline)</p>
 
-```TODO-lang
+```c
 7819  void
 7820  rb_thread_schedule()
 7821  {
@@ -787,7 +787,7 @@ Its prototype is this:
 
 
 
-```TODO-lang
+```c
 int select(int max,
            fd_set *readset, fd_set *writeset, fd_set *exceptset,
            struct timeval *timeout);
@@ -809,7 +809,7 @@ I'll talk about `fd_set` in detail.
 
 <p class="caption">▼ `fd_set`  maipulation</p>
 
-```TODO-lang
+```c
 fd_set set;
 
 FD_ZERO(&set)       /* initialize */
@@ -831,9 +831,9 @@ Figure 2: fd_set
 I'll show a simple usage example of `select`.
 
 
-<p class="caption">▼ a usage exmple of  `select`  </p>
+<p class="caption">▼ a usage example of  `select`  </p>
 
-```TODO-lang
+```c
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -880,7 +880,7 @@ I'll show the content in shortened form.
 
 <p class="caption">▼ `rb_thread_schedule()` − preparations for  `select` </p>
 
-```TODO-lang
+```c
 7848    again:
           /* initialize the variables relating to select */
 7849      max = -1;
@@ -921,7 +921,7 @@ These two are defined as follows:
 
 <p class="caption">▼ `FOREACH_THREAD_FROM` </p>
 
-```TODO-lang
+```c
 7360  #define FOREACH_THREAD_FROM(f,x) x = f; do { x = x->next;
 7361  #define END_FOREACH_FROM(f,x) } while (x != f)
 
@@ -933,7 +933,7 @@ Let's extract them for better understandability.
 
 
 
-```TODO-lang
+```c
 th = curr;
 do {
     th = th->next;
@@ -970,7 +970,7 @@ As for its code, let's see it just in case.
 
 <p class="caption">▼ `rb_thread_schedule()` − `select`  preparation − `join`  wait</p>
 
-```TODO-lang
+```c
 7861          if (th->wait_for & WAIT_JOIN) {
 7862              if (rb_thread_dead(th->join)) {
 7863                  th->status = THREAD_RUNNABLE;
@@ -1003,7 +1003,7 @@ and let it only check if I/O was completed.
 
 <p class="caption">▼ `rb_thread_schedule()` − `select` </p>
 
-```TODO-lang
+```c
 7904      if (need_select) {
 7905          /* convert delay into timeval */
 7906          /* if theres immediately invocable threads, do only I/O checks */
@@ -1085,7 +1085,7 @@ Since all what was invocable and all what had finished waiting and so on became
 
 <p class="caption">▼ `rb_thread_schedule()` − decide the next thread</p>
 
-```TODO-lang
+```c
 7996      FOREACH_THREAD_FROM(curr, th) {
 7997          if (th->status == THREAD_TO_KILL) {              /*（A）*/
 7998              next = th;
@@ -1164,7 +1164,7 @@ I'll go with a significantly simplified version.
 
 <p class="caption">▼ `rb_thread_schedule()`  (context switch)</p>
 
-```TODO-lang
+```c
 if (THREAD_SAVE_CONTEXT(curr)) {
     return;
 }
@@ -1178,7 +1178,7 @@ we need to extract the content at several places in order to understand.
 
 <p class="caption">▼ `THREAD_SAVE_CONTEXT()` </p>
 
-```TODO-lang
+```c
 7619  #define THREAD_SAVE_CONTEXT(th) \
 7620      (rb_thread_save_context(th),thread_switch(setjmp((th)->context)))
 
@@ -1211,7 +1211,7 @@ If I merge the three then extract it, here is the result:
 
 
 
-```TODO-lang
+```c
 rb_thread_save_context(curr);
 switch (setjmp(curr->context)) {
   case 0:
@@ -1236,15 +1236,12 @@ Since it does `longjmp()` in `rb_thread_restore_context()`,
 we can expect the correspondence between `setjmp()` and `longjmp()`.
 And if we will imagine the meaning also from the function names,
 
-
-
-```TODO-lang
+```
 save the context of the current thread
 setjmp
 restore the context of the next thread
 longjmp
 ```
-
 
 The rough main flow would probably look like this.
 However what we have to be careful about here is,
@@ -1276,7 +1273,7 @@ Now, we'll start with `rb_thread_save_context()`, which saves a context.
 
 <p class="caption">▼ `rb_thread_save_context()` (simplified)</p>
 
-```TODO-lang
+```c
 7539  static void
 7540  rb_thread_save_context(th)
 7541      rb_thread_t th;
@@ -1322,7 +1319,7 @@ possible. (Figure 4)
 
 <div class="image">
 <img src="images/ch_thread_twodirection.jpg" alt="(twodirection)"><br>
-Fig.4: a stack extending above and a stack extending below 
+Fig.4: a stack extending above and a stack extending below
 </div>
 
 
@@ -1350,7 +1347,7 @@ which is the function to restore a thread.
 
 <p class="caption">▼ `rb_thread_restore_context()` </p>
 
-```TODO-lang
+```c
 7635  static void
 7636  rb_thread_restore_context(th, exit)
 7637      rb_thread_t th;
@@ -1422,7 +1419,7 @@ This is done by the `stack_extend()` in the first half.
 
 <p class="caption">▼ `stack_extend()` </p>
 
-```TODO-lang
+```c
 7624  static void
 7625  stack_extend(th, exit)
 7626      rb_thread_t th;

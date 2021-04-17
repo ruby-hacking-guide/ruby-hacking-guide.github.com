@@ -28,7 +28,7 @@ Its return value is the value of the last expression of the program.
 
 
 
-```TODO-lang
+```ruby
 p eval("1 + 1")   # 2
 ```
 
@@ -37,7 +37,7 @@ You can also refer to a variable in its scope from inside of a string to `eval`.
 
 
 
-```TODO-lang
+```ruby
 lvar = 5
 @ivar = 6
 p eval("lvar + @ivar")   # 11
@@ -54,7 +54,7 @@ And you can also define methods and define classes.
 
 
 
-```TODO-lang
+```ruby
 def a
   eval('class C;  def test() puts("ok") end   end')
 end
@@ -70,7 +70,7 @@ its environment.
 
 
 
-```TODO-lang
+```ruby
 def new_env
   n = 5
   Proc.new { nil }   # turn the environment of this method into an object and return it
@@ -93,7 +93,7 @@ is as if in a module statement or a class statement.
 
 
 
-```TODO-lang
+```ruby
 lvar = "toplevel lvar"   # a local variable to confirm this scope
 
 module M
@@ -113,7 +113,7 @@ singleton class statement is the object.
 
 
 
-```TODO-lang
+```ruby
 lvar = "toplevel lvar"   # a local variable to confirm this scope
 
 obj = Object.new
@@ -133,7 +133,7 @@ For instance,
 
 
 
-```TODO-lang
+```ruby
 obj = Object.new
 p obj                 # #<Object:0x40274fac>
 obj.instance_eval {
@@ -169,7 +169,7 @@ parameters. Let's assume the form of call is limited to the below:
 
 
 
-```TODO-lang
+```ruby
 eval(prog_string, some_block)
 ```
 
@@ -180,7 +180,7 @@ The function prototype of `eval()` is:
 
 
 
-```TODO-lang
+```c
 static VALUE
 eval(VALUE self, VALUE src, VALUE scope, char *file, int line);
 ```
@@ -193,7 +193,7 @@ is supposed to be located. Then, let's see the content:
 
 <p class="caption">▼ `eval()` (simplified)</p>
 
-```TODO-lang
+```c
 4984  static VALUE
 4985  eval(self, src, scope, file, line)
 4986      VALUE self, src, scope;
@@ -310,7 +310,7 @@ Here is `compile()`.
 
 <p class="caption">▼ `compile()` </p>
 
-```TODO-lang
+```c
 4968  static NODE*
 4969  compile(src, file, line)
 4970      VALUE src;
@@ -362,7 +362,7 @@ They are called in this sort of way.
 
 <p class="caption">▼ How  `top_local_init()`  is called </p>
 
-```TODO-lang
+```c
 program :   { top_local_init(); }
           compstmt
             { top_local_setup(); }
@@ -376,7 +376,7 @@ And this is the content of it:
 
 <p class="caption">▼ `top_local_init()` </p>
 
-```TODO-lang
+```c
 5273  static void
 5274  top_local_init()
 5275  {
@@ -407,7 +407,7 @@ Next, here is `top_local_setup()`.
 
 <p class="caption">▼ `top_local_setup()` </p>
 
-```TODO-lang
+```c
 5291  static void
 5292  top_local_setup()
 5293  {
@@ -471,7 +471,7 @@ it is `yycompile()`.
 
 <p class="caption">▼ setting  `ruby_dyna_vars`  aside</p>
 
-```TODO-lang
+```c
 static NODE*
 yycompile(f, line)
 {
@@ -518,7 +518,7 @@ I'd like the readers who noticed this to be relieved by reading the next part.
 
 <p class="caption">▼ `yycompile()` − freeing  `ruby_dyna_vars` </p>
 
-```TODO-lang
+```c
 2386      vp = ruby_dyna_vars;
 2387      ruby_dyna_vars = vars;
 2388      lex_strterm = 0;
@@ -552,7 +552,7 @@ and the substance of `Object#instance_eval` is `rb_obj_instance_eval()`.
 
 <p class="caption">▼ `rb_mod_module_eval() rb_obj_instance_eval()` </p>
 
-```TODO-lang
+```c
 5316  VALUE
 5317  rb_mod_module_eval(argc, argv, mod)
 5318      int argc;
@@ -626,7 +626,7 @@ it becomes very comprehensible in comparison to the one before being absorbed.
 <p
 class="caption">▼<tt>specific_eval()</tt>−<tt>instance_eval</tt>, <tt>eval</tt>, string</p>
 
-```TODO-lang
+```c
 static VALUE
 instance_eval_string(self, src, file, line)
     VALUE self, src;
@@ -697,7 +697,7 @@ Here is the result of cutting them all.
 
 <p class="caption">▼ `specific_eval()` (simplified)</p>
 
-```TODO-lang
+```c
 5258  static VALUE
 5259  specific_eval(argc, argv, klass, self)
 5260      int argc;
@@ -735,7 +735,7 @@ Next, we'll look at `eval_under()` and `eval_under_i()`.
 
 <p class="caption">▼ `eval_under()` </p>
 
-```TODO-lang
+```c
 5222  static VALUE
 5223  eval_under(under, self, src, file, line)
 5224      VALUE under, self, src;
@@ -797,7 +797,7 @@ Also in the previous absorbed version, for only this point,
 
 
 
-```TODO-lang
+```c
 VALUE sclass = .....;
 VALUE cbase = sclass;
 ```
