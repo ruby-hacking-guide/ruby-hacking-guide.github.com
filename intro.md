@@ -3,7 +3,6 @@ layout: default
 title: Introduction
 ---
 
-
 Introduction
 ------------
 
@@ -13,7 +12,6 @@ Characteristics of Ruby
 Some of the readers may have already been familiar with Ruby,
 but (I hope) there are also many readers who have not. First let's go though a
 rough summary of the characteristics of Ruby for such people.
-
 
 Hereafter capital "Ruby" refers to Ruby as a language specification, and lowercase
 "ruby" refers to `ruby` command as an implementation.
@@ -26,31 +24,25 @@ The specification is merely
 shown as an implementation as `ruby`, and its varying continuously.
 For good or bad, it's free.
 
-
 Furthermore `ruby` itself is a free software.
 It's probably necessary to mention at least the two points here:
 The source code is open in public and distributed free of charge.
 Thanks to such condition, an attempt like this book can be approved.
 
-
 If you'd like to know the exact licence, you can read `README` and `LEGAL`.
 For the time being, I'd like you to remember that you can do at least the
 following things:
-
 
 * You can redistribute source code of `ruby`
 * You can modify source code of `ruby`
 * You can redistribute a copy of source code with your modification
 
-
 There is no need for special permission and payment in all these cases.
-
 
 By the way, the purpose of this book is to read the original `ruby`,
 thus the target source is the one not modified unless it is particularly
 specified. However, white spaces, new lines and comments were added or removed
 without asking.
-
 
 #### It's conservative
 
@@ -61,11 +53,9 @@ So it has a tendency to appeal to programmers who put importance on practical
 functionalities. The dyed-in-the-wool hackers like Scheme and Haskell lovers
 don't seem to find appeal in ruby, at least in a short glance.
 
-
 The library is conservative in the same way. Clear and unabbreviated names are
 given for new functions, while names that appears in C and Perl libraries have
 been taken from them. For example, `printf`, `getpwent`, `sub`, and `tr`.
-
 
 It is also conservative in implementation. Assembler is not its option for
 seeking speed. Portability is always considered a higher priority when it
@@ -75,7 +65,6 @@ conflicts with speed.
 
 Ruby is an object-oriented language. It is absolutely impossible to exclude it
 from the features of Ruby.
-
 
 I will not give a page to this book about what an object-oriented language is.
 To tell about an object-oriented feature about Ruby, the expression of the code
@@ -88,14 +77,12 @@ from the features of Ruby. To gain agreement of
 everyone, an introduction of Ruby must include "object-oriented" and "script
 language".
 
-
 However, what is a "script language" for example? I couldn't figure out the
 definition successfully. For example, John K. Ousterhout, the author of Tcl/Tk,
 gives a definition as "executable language using `#!` on UNIX". There are other
 definitions depending on the view points, such as one that can express a useful
 program with only one line, or that can execute the code by passing a program
 file from the command line, etc.
-
 
 However, I dare to use another definition, because I don't find much interest
 in "what" a script language.
@@ -104,9 +91,7 @@ that is, whether no one would complain about calling it a script language.
 To fulfill this definition, I would define the meaning of "script language" as
 follows.
 
-
 A language that its author calls it a "script language".
-
 
 I'm sure this definition will have no failure. And Ruby fulfills this point.
 Therefore I call Ruby a "script language".
@@ -119,7 +104,6 @@ It must be because in some points being an interpreter is better than being
 a compiler ... at least for ruby, it must be better.
 Well, what is good about being an interpreter?
 
-
 As a preparation step to investigating into it, let's start by thinking about
 the difference between an interpreter and a compiler. If the matter is to
 attempt a theoretical comparison in the process how a program is executed,
@@ -129,7 +113,6 @@ language, it may be possible to say it works as an interpreter.
 Then where is the place that actually makes a difference?
 It is a more practical place, in the process of development.
 
-
 I know somebody, as soon as hearing "in the process of development", would
 claim using a stereotypical phrase, that an interpreter reduces effort of
 compilation that makes the development procedure easier. But I don't think it's
@@ -138,7 +121,6 @@ process of compilation. Actually, Delphi can compile a project by hitting just
 F5. A claim about a long time for compilation is derived from the size of the
 project or optimization of the codes. Compilation itself doesn't owe a negative
 side.
-
 
 Well, why people perceive an interpreter and compiler so much different like
 this? I think that it is because the language developers so far have chosen
@@ -150,12 +132,10 @@ development and accuracy is required,
 it would be a compiler.
 That may be because of the speed, as well as the ease of creating a language.
 
-
 Therefore, I think "it's handy because it's an interpreter" is an outsized myth.
 Being an interpreter doesn't necessarily contribute the readiness in usage;
 seeking readiness in usage naturally makes your path toward building an
 interpreter language.
-
 
 Anyway, `ruby` is an interpreter; it has an important fact about where this
 book is facing, so I emphasize it here again.
@@ -170,7 +150,6 @@ It doesn't require any extremely unfamiliar library.
 It has only a few parts written in assembler.
 Therefore porting to a new platform is comparatively easy. Namely, it works
 on the following platforms currently.
-
 
 * Linux
 * Win32 (Windows 95, 98, Me, NT, 2000, XP)
@@ -191,16 +170,13 @@ on the following platforms currently.
 * OS/2 (emx)
 * Psion
 
-
 I heard that the main machine of the author Matsumoto is Linux.
 Thus when using Linux, you will not fail to compile any time.
-
 
 Furthermore, you can expect a stable functionality on a (typical) Unix environment.
 Considering the release cycle of packages, the primary option
 for the environment to hit around `ruby` should fall on a branch of PC UNIX,
   currently.
-
 
 On the other hand, the Win32 environment tends to cause problems definitely.
 The large gaps in the targeting OS model tend to cause problems around the
@@ -209,10 +185,8 @@ make better support. I use a native ruby on Windows 2000 and Me. Once it gets
 successfully run, it doesn't seem to show special concerns like frequent
 crashing. The main problems on Windows may be the gaps in the specifications.
 
-
 Another type of OS that many people may be interested in should probably be Mac
 OS (prior to v9) and handheld OS like Palm.
-
 
 Around `ruby 1.2` and before, it supported legacy Mac OS, but the development
 seems to be in suspension. Even a compiling can't get through. The biggest
@@ -220,18 +194,15 @@ cause is that the compiler environment of legacy Mac OS and the decrease of
 developers. Talking about Mac OS X, there's no worries because the body is
 UNIX.
 
-
 There seem to be discussions the portability to Palm several branches, but I
 have never heard of a successful project. I guess the difficulty lies in the
 necessity of settling down the specification-level standards such as `stdio` on
 the Palm platform, rather than the processes of actual implementation. Well I
-saw a porting to Psion has been done. ([ruby-list:36028]).
-
+saw a porting to Psion has been done. (\[ruby-list:36028\]).
 
 How about hot stories about VM seen in Java and .NET?
 Because I'd like to talk about them combining together with the implementation,
 this topic will be in the final chapter.
-
 
 #### Automatic memory control
 
@@ -240,7 +211,6 @@ this feature allows you to skip `free()` after `malloc()`.  Unused memory is
 detected by the system automatically, and will be released. It's so convenient
 that once you get used to GC you won't be willing to do such manual
 memory control again.
-
 
 The topics about GC have been common because of its popularity in recent
 languages with GC as a standard set, and it is fun that
@@ -253,7 +223,6 @@ variables conforms more with polymorphism, which is one of the strongest
 advantages of an object-oriented language.  Of course a language with variable
 type has a way to deal with polymorphism.  What I mean here is a typeless
 variables have better conformance.
-
 
 The level of "better conformance" in this case refers to synonyms like "handy".
 It's sometimes corresponds to crucial importance, sometimes it doesn't matter
@@ -279,7 +248,6 @@ result = cond ? process(val) : 0;
 
 This rewrite is possible because the conditional operator (`a?b:c`) is defined
 as an expression.
-
 
 On the other hand, in Ruby, you can write as follows because `if` is an expression.
 
@@ -335,7 +303,6 @@ there would be plenty of warnings shown.
 If you try to compile it with a C++ compiler,
 it would warn prototype mismatch and could not compile.
 ... These kind of stories are often reported to the mailing list.
-
 
 #### Extension library
 
@@ -408,11 +375,7 @@ At first, I mention the principle.
 
 #### Decide a goal
 
-
-<blockquote>
-An important key to reading the source code is to set a concrete goal.
-</blockquote>
-
+> An important key to reading the source code is to set a concrete goal.
 
 This is a word by the author of Ruby, Matsumoto. Indeed, his word is very convincing for me.
 When the motivation is a spontaneous idea "Maybe I should read a kernel, at least...",
@@ -553,7 +516,6 @@ Additionally, if a file contains some modules in it,
 for each module the functions to compose it should be grouped together,
 so you can find out the module structure from the order of the functions.
 
-
 #### Investigating abbreviations
 
 As you encounter ambiguous abbreviations, make a list of them and investigate
@@ -565,7 +527,6 @@ Abbreviations for a program are generally made by the methods like taking
 the initial letters or dropping the vowels. Especially,
 popular abbreviations in the fields of the target program are used
 unconditionally, thus you should be familiar with them at an early stage.
-
 
 #### Understanding data structure
 
@@ -606,7 +567,6 @@ seeing the actual example, thus it will be explained in the main part.
 Additionally, when you don't like its coding style,
 you can convert it by using the tool like `indent`.
 
-
 #### Experimenting by modifying it as you like
 
 It's a mystery of human body,
@@ -630,7 +590,6 @@ way. Otherwise, you would be wondering for hours because of a simple your own
 mistake. And since the purpose of rewriting is getting used to and not rewriting
 itself, please be careful not to be enthusiastic very much.
 
-
 ### Reading the history
 
 A program often comes with a document which is about the history of changes.
@@ -648,7 +607,6 @@ Moreover, in the case when there's a mailing list or a news group for
 developers, you should get the archives so that you can search over them any
 time because often there's the information about the exact reason of a certain
 change. Of course, if you can search online, it's also sufficient.
-
 
 ### The tools for static analysis
 
@@ -684,10 +642,6 @@ features.
 (It's more preferable if you can jump to the location)
 * function cross-reference
 
-
-
-
-
 Build
 =====
 
@@ -714,12 +668,10 @@ Additionally, it is likely that 1.8, which is the next stable version, will be
 out in the near future.
 And the last one is, investigating the edge would make our mood more pleasant.
 
-
 ### Getting the source code
 
 The archive of the target version is included in the attached CD-ROM.
 In the top directory of the CD-ROM,
-
 
 ```
 ruby-rhg.tar.gz
@@ -738,8 +690,6 @@ For example, the archive of `tar.gz` can be extracted as follows.
 ~/src % umount /mnt/cdrom
 ```
 
-
-
 ### Compiling
 
 Just by looking at the source code, you can "read" it.
@@ -756,7 +706,6 @@ so it will be described in the next section altogether.
 However, Cygwin is on Windows but almost Unix,
 thus I'd like you to read this section for it.
 
-
 #### Building on a Unix-like OS
 
 When it is a Unix-like OS, because generally it is equipped with a C
@@ -769,7 +718,6 @@ Let us suppose `~/src/ruby` is the place where the source code is extracted.
 ~/src/ruby % su
 ~/src/ruby # make install
 ```
-
 
 Below, I'll describe several points to be careful about.
 
@@ -786,11 +734,7 @@ as shared libraries (`libruby.so`).
 The detailed tutorial about building is included in `doc/build.html` of the
 attached CD-ROM, I'd like you to try as reading it.
 
-
-
-
 #### Building on Windows
-
 
 If the thing is to build on windows, it becomes way complicated.
 The source of the problem is, there are multiple building environments.
@@ -799,7 +743,6 @@ The source of the problem is, there are multiple building environments.
 * MinGW
 * Cygwin
 * Borland C++ Compiler
-
 
 First, the condition of the Cygwin environment is closer to UNIX than Windows,
 you can follow the building procedures for Unix-like OS.
@@ -825,7 +768,6 @@ there's more or less anxiety,
 but there was not any particular problem on the build test done before the
 publication of this book.
 
-
 Then, among the above four environments, which one should we choose?
 First, basically the Visual C++ version is the most unlikely to cause a problem,
 thus I recommend it.
@@ -840,8 +782,6 @@ For more detailed explanations and how to build with Borland C++ Compiler,
 they are included in `doc/build.html` of the attached CD-ROM,
 thus I'd like you to check it when it is necessary.
 
-
-
 #### Visual C++
 
 It is said Visual C++, but usually IDE is not used, we'll build from DOS prompt.
@@ -855,14 +795,12 @@ C:\> cd "\Program Files\Microsoft Visual Studio .NET\Vc7\bin"
 C:\Program Files\Microsoft Visual Studio .NET\Vc7\bin> vcvars32
 ```
 
-
 This is the case of Visual C++ .NET.
 If it is version 6, it can be found in the following place.
 
 ```
 C:\Program Files\Microsoft Visual Studio\VC98\bin\
 ```
-
 
 After executing `vcvars32`,
 all you have to do is to move to the `win32\` folder of the source tree of
@@ -876,12 +814,10 @@ C:\src\ruby\win32> nmake
 C:\src\ruby\win32> nmake DESTDIR="C:\Program Files\ruby" install
 ```
 
-
 Then, `ruby` command would be installed in `C:\Program Files\ruby\bin\`,
 and Ruby libraries would be in `C:\Program Files\ruby\lib\`.
 Because `ruby` does not use registries and such at all,
 you can uninstall it by deleting `C:\Program Files\ruby` and below.
-
 
 #### MinGW
 
@@ -916,9 +852,6 @@ compiled. Because really complicated things occur around here, the explanation
 would be fairly long, so I'll explain it comprehensively in `doc/build.html` of
 the attached CD-ROM.
 
-
-
-
 Building Details
 ================
 
@@ -933,7 +866,6 @@ Now, on whichever platform, building `ruby` is separated into three phases.
 Namely, `configure`, `make` and `make install`.
 As considering the explanation about `make install` unnecessary,
 I'll explain the `configure` phase and the `make` phase.
-
 
 ### `configure`
 
@@ -961,7 +893,6 @@ Makefile.in:  CFLAGS = @CFLAGS@
                      ↓
 Makefile   :  CFLAGS = -g -O2
 ```
-
 
 Alternatively, it writes out the information about, for instance, whether
 there are certain functions or particular header files, into a header file.
@@ -992,13 +923,11 @@ Its content is something like this.
          ：
 ```
 
-
 Each meaning is easy to understand.
 `HAVE_xxxx_H` probably indicates whether a certain header file exists,
 `SIZEOF_SHORT` must indicate the size of the `short` type of C.
 Likewise, `SIZEOF_INT` indicates the byte length of `int`,
 `HAVE_OFF_T` indicates whether the `offset_t` type is defined or not.
-
 
 As we can understand from the above things,
 `configure` does detect the differences but it does not automatically absorb the
@@ -1014,10 +943,6 @@ For example, as follows,
 
 (ruby.h)
 ```
-
-
-
-
 
 ### `autoconf`
 
@@ -1053,7 +978,6 @@ By the way, `ruby`'s `configure` is, as said before, generated by using
 can be used. Anyway, it's sufficient if ultimately there are `Makefile` and
 `config.h` and many others.
 
-
 ### `make`
 
 At the second phase, `make`, what is done?
@@ -1082,9 +1006,6 @@ itself. In this case, it cannot create `ruby` before compiling all extension
 libraries, but the extension libraries cannot be compiled without `ruby`.
 In order to resolve this dilemma, it uses `miniruby`.
 
-
-
-
 `CVS`
 =====
 
@@ -1096,7 +1017,6 @@ How `ruby` has been changed, why it has been so, these things are not described
 there. Then what is the way to see the entire picture including the past.
 We can do it by using CVS.
 
-
 ### About CVS
 
 CVS is shortly an undo list of editors.
@@ -1107,14 +1027,12 @@ time. Generally a program doing such job is called source code management
 system and CVS is the most famous open-source source code management system in
 this world.
 
-
 Since `ruby` is also managed with CVS,
 I'll explain a little about the mechanism and usage of CVS.
 First, the most important idea of CVS is repository and working-copy.
 I said CVS is something like an undo list of editor,
 in order to archive this, the records of every changing history should be saved
 somewhere. The place to store all of them is "CVS repository".
-
 
 Directly speaking, repository is what gathers all the past source codes.
 Of course, this is only a concept, in reality, in order to save spaces,
@@ -1123,18 +1041,15 @@ one recent appearance and the changing differences (namely, batches).
 In any ways, it is sufficient if we can obtain the appearance of a particular
 file of a particular moment any time.
 
-
 On the other hand, "working copy" is the result of taking files from the
 repository by choosing a certain point.
 There's only one repository,
 but you can have multiple working copies. (Figure 2)
 
-
 <figure>
 	<img src="images/ch_abstract_repo.jpg" alt="figure 2: Repository and working copies">
 	<figcaption>figure 2: Repository and working copies</figcaption>
 </figure>
-
 
 When you'd like to modify the source code,
 first take a working copy,
@@ -1150,12 +1065,10 @@ then we can obtain it any time.
 	<figcaption>figure 3: Checkin and Checkout</figcaption>
 </figure>
 
-
 The biggest trait of CVS is we can access it over the networks.
 It means, if there's only one server which holds the repository,
 everyone can checkin/checkout over the internet any time.
 But generally the access to check in is restricted and we can't do it freely.
-
 
 #### Revision
 
@@ -1164,19 +1077,14 @@ One way is to specify with time. By requiring "give me the edge version of that
 time", it would select it. But in practice, we rarely specify with time.
 Most commonly, we use something named "revision".
 
-
 "Revision" and "Version" have the almost same meaning.
 But usually "version" is attached to the project itself,
 thus using the word "version" can be confusing.
 Therefore, the word "revision" is used to indicate a bit smaller unit.
 
-
 In CVS, the file just stored in the repository is revision 1.1.
 Checking out it, modifying it, checking in it, then it would be revision 1.2.
 Next it would be 1.3 then 1.4.
-
-
-
 
 #### A simple usage example of CVS
 
@@ -1196,7 +1104,6 @@ Type the following commands when you are online.
 CVS Password: anonymous
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src checkout ruby
 ```
-
 
 Any options were not specified,
 thus the edge version would be automatically checked out.
@@ -1223,9 +1130,6 @@ The manual coming with `cvs` is fairly friendly.
 Regarding books which you can read in Japanese,
 I recommend translated "Open Source Development with CVS" Karl Fogel, Moshe Bar.
 
-
-
-
 The composition of `ruby`
 =========================
 
@@ -1244,7 +1148,6 @@ but first let's take time to do `ls` or `head` to grasp the whole picture.
 Below is the appearance of the top directory immediately after checking out from
 the CVS repository.
 What end with a slash are subdirectories.
-
 
 ```
 COPYING        compar.c       gc.c           numeric.c      sample/
@@ -1267,7 +1170,6 @@ bignum.c       ext/           mkconfig.rb    rubysig.h
 class.c        file.c         node.h         rubytest.rb
 ```
 
-
 Recently the size of a program itself has become larger,
 and there are many softwares whose subdirectories are divided into pieces,
 but `ruby` has been consistently used the top directory for a long time.
@@ -1282,7 +1184,6 @@ The files at the top level can be categorized into six:
 * standard extension libraries
 * standard Ruby libraries
 * the others
-
 
 The source code and the build tool are obviously important.
 Aside from them,
@@ -1299,15 +1200,11 @@ How to create an extension library is described,
 but in the course of it, things relating to the implementation of `ruby` itself
 are also written.
 
-
-
-
 ### Dissecting Source Code
 
 From now on, I'll further split the source code of `ruby` itself into more tiny
 pieces. As for the main files, its categorization is described in `README.EXT`,
 thus I'll follow it. Regarding what is not described, I categorized it by myself.
-
 
 #### Ruby Language Core
 
@@ -1327,14 +1224,12 @@ thus I'll follow it. Regarding what is not described, I categorized it by myself
 | `node.h`     | the definitions relating to the syntax tree nodes                      |
 | `env.h`      | the definitions of the structs to express the context of the evaluator |
 
-
 The parts to compose the core of the `ruby` interpreter.
 The most of the files which will be explained in this book are contained here.
 If you consider the number of the files of the entire `ruby`,
 it is really only a few. But if you think based on the byte size,
 50% of the entire amount is occupied by these files.
 Especially, `eval.c` is 200KB, `parse.y` is 100KB, these files are large.
-
 
 #### Utility
 
@@ -1349,8 +1244,6 @@ It means utility for `ruby`.
 However, some of them are so large that you cannot imagine it from the word
 "utility". For instance, `regex.c` is 120 KB.
 
-
-
 #### Implementation of `ruby` command
 
 | File                | Description                                                                |
@@ -1361,7 +1254,6 @@ However, some of them are so large that you cannot imagine it from the word
 | `ruby.c`            | the main part of `ruby` command (this is also necessary for `libruby` )    |
 | `version.c`         | the version of `ruby`                                                      |
 
-
 The implementation of `ruby` command,
 which is of when typing `ruby` on the command line and execute it.
 This is the part, for instance, to interpret the command line options.
@@ -1369,8 +1261,6 @@ Aside from `ruby` command, as the commands utilizing `ruby` core,
 there are `mod_ruby` and `vim`.
 These commands are functioning by linking to the `libruby` library
 (`.a`/`.so`/`.dll` and so on).
-
-
 
 #### Class Libraries
 
@@ -1404,8 +1294,6 @@ What listed here are basically implemented in the completely same way as the
 ordinary Ruby extension libraries. It means that these libraries are also
 examples of how to write an extension library.
 
-
-
 #### Files depending on a particular platform
 
 | Folder    | Description                                     |
@@ -1420,7 +1308,6 @@ examples of how to write an extension library.
 
 Each platform-specific code is stored.
 
-
 #### fallback functions
 
 ```
@@ -1429,10 +1316,6 @@ missing/
 
 Files to offset the functions which are missing on each platform.
 Mainly functions of `libc`.
-
-
-
-
 
 ### Logical Structure
 
@@ -1446,7 +1329,6 @@ parser converts a program into the internal format,
 and evaluator actuates the program.
 Let me explain them in order.
 
-
 #### Object Space
 
 The first one is object space. This is very easy to understand. It is because
@@ -1454,7 +1336,6 @@ all of what dealt with by this are basically on the memory,
 thus we can directly show or manipulate them by using functions.
 Therefore, in this book, the explanation will start with this part.
 Part 1 is from chapter 2 to chapter 7.
-
 
 #### Parser
 
@@ -1478,13 +1359,12 @@ for instance, figure 4 shows how an `if` statement is expressed.
 
 <figure>
 	<img src="images/ch_abstract_syntree.jpg" alt="figure 4: an `if` statement and its corresponding syntax tree">
-	<figcaption>figure 4: an `if` statement and its corresponding syntax tree</figcaption>
+	<figcaption>figure 4: an <code class="highlighter-rouge">if</code> statement and its corresponding syntax tree</figcaption>
 </figure>
 
 Parser will be described in Part 2 "Syntactic Analysis".
 Part 2 is from chapter 10 to chapter 12.
 Its target file is only `parse.y`.
-
 
 #### Evaluator
 

@@ -115,9 +115,7 @@ is common sense that adding new features can make holes easier to
 open. Therefore it is prudent to think that `ruby` can probably be
 dangerous.
 
-
 ### Implementation
-
 
 From now on, we'll start to look into its implementation.
 In order to wholly grasp the security system of `ruby`,
@@ -128,23 +126,18 @@ Therefore, in this chapter, I'll only describe about the
 mechanism used for security checks.
 The APIs to check are mainly these below two:
 
-
 * `rb_secure(n)` :  If more than or equal to level n, it would raise `SecurityError`.
 * `SafeStringValue()` :
   If more than or equal to level 1 and a string is tainted,
   then it would raise an exception.
 
-
 We won't read `SafeStringValue()` here.
 
-
 #### Tainted Mark
-
 
 The taint mark is, to be concrete, the `FL_TAINT` flag, which is set to
 `basic->flags`, and what is used to infect it is the `OBJ_INFECT()` macro.
 Here is its usage.
-
 
 ```c
 OBJ_TAINT(obj)            /* set FL_TAINT to obj */
@@ -152,10 +145,8 @@ OBJ_TAINTED(obj)          /* check if FL_TAINT is set to obj */
 OBJ_INFECT(dest, src)     /* infect FL_TAINT from src to dest */
 ```
 
-
 Since `OBJ_TAINT()` and `OBJ_TAINTED()` can be assumed not important,
 let's briefly look over only `OBJ_INFECT()`.
-
 
 <p class="caption">▼ `OBJ_INFECT` </p>
 
@@ -168,16 +159,11 @@ let's briefly look over only `OBJ_INFECT()`.
 (ruby.h)
 ```
 
-
 `FL_ABLE()` checks if the argument `VALUE` is a pointer or not.
 If the both objects are pointers (it means each of them has its `flags` member),
 it would propagate the flag.
 
-
-
-
-#### $SAFE
-
+#### `$SAFE`
 
 <p class="caption">▼ `ruby_safe_level` </p>
 
@@ -201,29 +187,21 @@ it would propagate the flag.
 (eval.c)
 ```
 
-
 The substance of `$SAFE` is `ruby_safe_level` in `eval.c`.
 As I previously wrote, `$SAFE` is local to each thread,
 It needs to be written in `eval.c` where the implementation of threads is located.
 In other words, it is in `eval.c` only because of the restrictions of C,
 but it can essentially be located in another place.
 
-
 `safe_setter()` is the `setter` of the `$SAFE` global variable.
 It means, because this function is the only way to access it from Ruby level,
 the security level cannot be lowered.
-
 
 However, as you can see, from C level,
 because `static` is not attached to `ruby_safe_level`,
 you can ignore the interface and modify the security level.
 
-
-
-
-
 #### `rb_secure()`
-
 
 <p class="caption">▼ `rb_secure()` </p>
 
@@ -240,7 +218,6 @@ you can ignore the interface and modify the security level.
 
 (eval.c)
 ```
-
 
 If the current safe level is more than or equal to `level`,
 this would raise `SecurityError`. It's simple.

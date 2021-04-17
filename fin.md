@@ -203,9 +203,7 @@ disappointments. Therefore, for now, let's just expect slightly.
 Firstly, the language to use. Definitely it will be C. Mr. Matsumoto said to
 `ruby-talk`, which is the English mailing list for Ruby,
 
-<blockquote>
-I hate C++.
-</blockquote>
+> I hate C++.
 
 So, C++ is most unlikely. Even if all the parts will be recreated,
 it is reasonable that the object system will remain almost the same,
