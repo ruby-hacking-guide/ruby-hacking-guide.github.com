@@ -6,11 +6,11 @@ h1. Final Chapter: Ruby's future
 
 h2. Issues to be addressed
 
-@ruby@ isn't 'completely finished' software. It's still being developed,
+`ruby` isn't 'completely finished' software. It's still being developed,
 there are still a lot of issues. Firstly, we want to try removing
 inherent problems in the current interpreter.
 
-The order of the topics is mostly in the same order as the chapters of 
+The order of the topics is mostly in the same order as the chapters of
 this book.
 
 
@@ -43,41 +43,41 @@ there might be the necessity to consider Incremental GC.
 
 h3. Implementation of parser
 
-As we saw in Part 2, the implementation of @ruby@ parser has already utilized
-@yacc@'s ability to almost its limit, thus I can't think it can endure further
+As we saw in Part 2, the implementation of `ruby` parser has already utilized
+`yacc`'s ability to almost its limit, thus I can't think it can endure further
 expansions. It's all right if there's nothing planned to expand,
 but a big name "keyword argument" is planned next
 and it's sad if we could not express another demanded grammar because of the
-limitation of @yacc@.
+limitation of `yacc`.
 
 
 h3. Reuse of parser
 
-Ruby's parser is very complex. In particular, dealing with around @lex_state@
+Ruby's parser is very complex. In particular, dealing with around `lex_state`
 seriously is very hard. Due to this, embedding a Ruby program or creating a
 program to deal with a Ruby program itself is quite difficult.
 
-For example, I'm developing a tool named @racc@,
-which is prefixed with R because it is a Ruby-version @yacc@.
-With @racc@, the syntax of grammar files are almost the same as @yacc@
+For example, I'm developing a tool named `racc`,
+which is prefixed with R because it is a Ruby-version `yacc`.
+With `racc`, the syntax of grammar files are almost the same as `yacc`
 but we can write actions in Ruby.
 To do so, it could not determine the end of an action without parsing Ruby code
 properly, but "properly" is very difficult. Since there's no other choice,
 currently I've compromised at the level that it can parse "almost all".
 
 As another example which requires analyzing Ruby program,
-I can enumerate some tools like @indent@ and @lint@,
+I can enumerate some tools like `indent` and `lint`,
 but creating such tool also requires a lot efforts.
 It would be desperate if it is something complex like a refactoring tool.
 
 Then, what can we do? If we can't recreate the same thing,
-what if @ruby@'s original parser can be used as a component?
+what if `ruby`'s original parser can be used as a component?
 In other words, making the parser itself a library.
 This is a feature we want by all means.
 
-However, what becomes problem here is, as long as @yacc@ is used,
+However, what becomes problem here is, as long as `yacc` is used,
 we cannot make parser reentrant.
-It means, say, we cannot call @yyparse()@ recursively,
+It means, say, we cannot call `yyparse()` recursively,
 and we cannot call it from multiple threads.
 Therefore, it should be implemented in the way of not returning control to Ruby
 while parsing.
@@ -86,14 +86,14 @@ while parsing.
 
 h3. Hiding Code
 
-With current @ruby@, it does not work without the source code of the program to
+With current `ruby`, it does not work without the source code of the program to
 run. Thus, people who don't want others to read their source code might have
 trouble.
 
 
 h3. Interpretor Object
 
-Currently each process cannot have multiple @ruby@ interpretors,
+Currently each process cannot have multiple `ruby` interpretors,
 this was discussed in Chapter 13.
 If having multiple interpretors is practically possible, it seems better,
 but is it possible to implement such thing?
@@ -101,18 +101,18 @@ but is it possible to implement such thing?
 
 h3. The structure of evaluator
 
-Current @eval.c@ is, above all, too complex.
+Current `eval.c` is, above all, too complex.
 Embedding Ruby's stack frames to machine stack could occasionally become the
-source of trouble, using @setjmp() longjmp()@ aggressively makes it less easy to
+source of trouble, using `setjmp() longjmp()` aggressively makes it less easy to
 understand and slows down its speed.
-Particularly with RISC machine, which has many registers, using @setjmp()@
-aggressively can easily cause slowing down because @setjmp()@ set aside all
+Particularly with RISC machine, which has many registers, using `setjmp()`
+aggressively can easily cause slowing down because `setjmp()` set aside all
 things in registers.
 
 
 h3. The performance of evaluator
 
-@ruby@ is already enough fast for ordinary use.
+`ruby` is already enough fast for ordinary use.
 But aside from it, regarding a language processor,
 definitely the faster is the better.
 To achieve better performance, in other words to optimize,
@@ -136,17 +136,17 @@ So I profiled.
 
 This is a profile when running some application but
 this is approximately the profile of a general Ruby program.
-@rb_eval()@ appeared in the overwhelming percentage being at the top,
+`rb_eval()` appeared in the overwhelming percentage being at the top,
 after that, in addition to functions of GC, evaluator core,
 functions that are specific to the program are mixed.
 For example, in the case of this application,
-it takes a lot of time for regular expression match (@ruby_re_match@).
+it takes a lot of time for regular expression match (`ruby_re_match`).
 
 However, even if we understood this, the question is how to improve it.
-To think simply, it can be archived by making @rb_eval()@ faster.
-That said, but as for @ruby@ core, there are almost not any room which can be
-easily optimized. For instance, apparently "tail recursive -> @goto@ conversion"
-used in the place of @NODE_IF@ and others has already applied almost all
+To think simply, it can be archived by making `rb_eval()` faster.
+That said, but as for `ruby` core, there are almost not any room which can be
+easily optimized. For instance, apparently "tail recursive -> `goto` conversion"
+used in the place of `NODE_IF` and others has already applied almost all
 possible places it can be applied.
 In other words, without changing the way of thinking fundamentally,
 there's no room to improve.
@@ -156,7 +156,7 @@ h3. The implementation of thread
 
 This was also discussed in Chapter 19. There are really a lot of issues about
 the implementation of the current ruby's thread. Particularly, it cannot mix
-with native threads so badly. The two great advantages of @ruby@'s thread,
+with native threads so badly. The two great advantages of `ruby`'s thread,
 (1) high portability (2) the same behavior everywhere,
 are definitely incomparable, but probably that implementation is something we
 cannot continue to use eternally, isn't it?
