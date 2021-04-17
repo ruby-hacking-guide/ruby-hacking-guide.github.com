@@ -5,7 +5,7 @@ body {
     line-height: 140%;
     margin-top:  5%;
     margin-left: 2em;
-    width: 40em;
+    width: 35em;
 }
 
 h1 {
@@ -72,13 +72,16 @@ dd {
 }
 
 p.caption {
-    margin-botton: 0px;
+    margin-bottom: 0px;
 }
 
-pre {
-    line-height: 120%;
+.highlight {
     padding: 8px;
-    background: #eee;
+    border-radius: 8px;
+}
+
+.highlight pre {
+    margin: 0;
 }
 
 span.ami {
@@ -119,6 +122,18 @@ footer {
 
 body {
   font-family: Georgia, serif;
+}
+
+figcaption {
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+/* code inlined in text */
+code.highlighter-rouge {
+    background: #33a2;
+    border-radius: 2px;
+    padding: 2px;
 }
 
 h1 code, h2 code, h3 code, h4 code, h5 code{
