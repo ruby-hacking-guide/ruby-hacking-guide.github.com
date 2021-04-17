@@ -16,10 +16,11 @@ behaviors of the variable definitions and the variable references.
 
 
 
-h2. The Ruby stack
+The Ruby stack
+==============
 
 
-h3. Context and Stack
+### Context and Stack
 
 
 With an image of a typical procedural language, each time calling a procedure,
@@ -101,7 +102,7 @@ even for just one method call.
 
 
 
-h3. @ruby_frame@
+### @ruby_frame@
 
 
 @ruby_frame@ is a stack to record method calls. The stack frame struct is
@@ -112,7 +113,7 @@ general noun and @FRAME@ when it means @struct FRAME@.
 
 <p class="caption">▼ @ruby_frame@ </p>
 
-<pre class="longlist">
+```TODO-lang
   16  extern struct FRAME {
   17      VALUE self;          /* self */
   18      int argc;            /* the argument count */
@@ -132,7 +133,7 @@ general noun and @FRAME@ when it means @struct FRAME@.
   34  #define FRAME_MALLOC 1   /* FRAME is allocated by malloc */
 
 (env.h)
-</pre>
+```
 
 
 First af all, since there's the @prev@ member, you can infer that the stack is
@@ -178,13 +179,13 @@ For instance,
 
 
 
-<pre class="emlist">
+```TODO-lang
 class C
   def orig() end
   alias ali orig
 end
 C.new.ali
-</pre>
+```
 
 
 in this case, @last_func=ali@ and @orig_func=orig@.
@@ -193,7 +194,7 @@ Not surprisingly, these members also have to do with @super@.
 
 
 
-h3. @ruby_scope@
+### @ruby_scope@
 
 
 @ruby_scope@ is the stack to represent the local variable scope. The method and
@@ -205,7 +206,7 @@ I'll call this frame @SCOPE@.
 
 <p class="caption">▼ @ruby_scope@ </p>
 
-<pre class="longlist">
+```TODO-lang
   36  extern struct SCOPE {
   37      struct RBasic super;
   38      ID *local_tbl;        /* an array of the local variable names */
@@ -219,7 +220,7 @@ I'll call this frame @SCOPE@.
   46  #define SCOPE_DONT_RECYCLE 4    /* Proc is created with this SCOPE */
 
 (env.h)
-</pre>
+```
 
 
 Since the first element is @struct RBasic@, this is a Ruby object. This is in
@@ -228,7 +229,7 @@ like this:
 
 
 
-<pre class="emlist">
+```TODO-lang
 def make_counter
   lvar = 0
   return Proc.new { lvar += 1 }
@@ -239,7 +240,7 @@ p cnt.call    # 1
 p cnt.call    # 2
 p cnt.call    # 3
 cnt = nil  # cut the reference. The created Proc finally becomes unnecessary here.
-</pre>
+```
 
 
 The @Proc@ object created by this method will persist longer than the method that
@@ -258,7 +259,7 @@ variable space is unnecessary.
 
 
 
-h3. @ruby_block@
+### @ruby_block@
 
 
 @struct BLOCK@ is the real body of a Ruby's iterator block or a @Proc@ object,
@@ -269,7 +270,7 @@ This frame will also be briefly written as @BLOCK@ as in the same manner as
 
 <p class="caption">▼ @ruby_block@ </p>
 
-<pre class="longlist">
+```TODO-lang
  580  static struct BLOCK *ruby_block;
 
  559  struct BLOCK {
@@ -301,7 +302,7 @@ This frame will also be briefly written as @BLOCK@ as in the same manner as
 
 
 (eval.c)
-</pre>
+```
 
 
 Note that @frame@ is not a pointer. This is because the entire content of
@@ -318,7 +319,7 @@ which were created from the one same block have the same @BLOCKTAG@.
 
 
 
-h3. @ruby_iter@
+### @ruby_iter@
 
 
 The stack @ruby_iter@ indicates whether currently calling method is an iterator
@@ -328,7 +329,7 @@ But for consistency I'll call it @ITER@.
 
 <p class="caption">▼ @ruby_iter@ </p>
 
-<pre class="longlist">
+```TODO-lang
  767  static struct iter *ruby_iter;
 
  763  struct iter {
@@ -340,7 +341,7 @@ But for consistency I'll call it @ITER@.
  770  #define ITER_PRE 1      /* the method which is going to be evaluated next is an iterator */
  771  #define ITER_CUR 2      /* the currently evaluated method is an iterator */
 (eval.c)
-</pre>
+```
 
 
 Although for each method we can determine whether it is an iterator or not,
@@ -358,7 +359,7 @@ This will be discussed in detail in Chapter 16: Blocks.
 
 
 
-h3. @ruby_dyna_vars@
+### @ruby_dyna_vars@
 
 
 The block local variable space. The frame struct is @struct RVarmap@ that has
@@ -367,7 +368,7 @@ already seen in Part 2. From now on, I'll call it just @VARS@.
 
 <p class="caption">▼ @struct RVarmap@</p>
 
-<pre class="longlist">
+```TODO-lang
   52  struct RVarmap {
   53      struct RBasic super;
   54      ID id;                  /* the name  of the variable */
@@ -376,7 +377,7 @@ already seen in Part 2. From now on, I'll call it just @VARS@.
   57  };
 
 (env.h)
-</pre>
+```
 
 
 Note that a frame is not a single @struct RVarmap@ but a list of the structs (Fig.3).
@@ -396,7 +397,7 @@ Fig.3: @ruby_dyna_vars@
 
 
 
-h3. @ruby_class@
+### @ruby_class@
 
 
 @ruby_class@ represents the current class to which a method is defined. Since
@@ -417,7 +418,7 @@ From now on, I'll call this frame @CLASS@.
 
 
 
-h3. @ruby_cref@
+### @ruby_cref@
 
 
 @ruby_cref@ represents the information of the nesting of a class.
@@ -427,11 +428,11 @@ Its struct is ...
 
 <p class="caption">▼ @ruby_cref@ </p>
 
-<pre class="longlist">
+```TODO-lang
  847  static NODE *ruby_cref = 0;
 
 (eval.c)
-</pre>
+```
 
 
 ... surprisingly @NODE@. This is used just as a "defined struct which can be
@@ -451,7 +452,7 @@ explain the actual appearance.
 
 
 
-<pre class="emlist">
+```TODO-lang
 class A
   class B
     class C
@@ -459,7 +460,7 @@ class A
     end
   end
 end
-</pre>
+```
 
 
 Fig.4 shows how @ruby_cref@ is when evaluating the code (A).
@@ -475,12 +476,12 @@ Therefore, the same state as Fig.4 will be expressed in the following notation:
 
 
 
-<pre class="emlist">
+```TODO-lang
 A ← B ← C
-</pre>
+```
 
 
-h3. @PUSH@ / @POP@ Macros
+### @PUSH@ / @POP@ Macros
 
 For each stack frame struct, the macros to push and pop are available.
 For instance, @PUSH_FRAME@ and @POP_FRAME@ for @FRAME@.
@@ -488,7 +489,7 @@ Because these will appear in a moment,
 I'll then explain the usage and content.
 
 
-h3. The other states
+### The other states
 
 
 While they are not so important as the main stacks, the evaluator of @ruby@ has
@@ -509,7 +510,8 @@ are not stacks. Actually, most of them are not.
 
 
 
-h2. Module Definition
+Module Definition
+=================
 
 
 The @class@ statement and the @module@ statement and the singleton class
@@ -538,20 +540,20 @@ Now, let's start to look at the codes.
 
 
 
-h3. Investigation
+### Investigation
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 module M
   a = 1
 end
-</pre>
+```
 
 
 <p class="caption">▼Its Syntax Tree</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_MODULE
 nd_cname = 9621 (M)
 nd_body:
@@ -564,7 +566,7 @@ nd_body:
         nd_value:
             NODE_LIT
             nd_lit = 1:Fixnum
-</pre>
+```
 
 
 @nd_cname@ seems the module name. @cname@ is probably either Const NAME or Class
@@ -576,7 +578,7 @@ plays an important role to create a local variable scope.
 
 
 
-h3. @NODE_MODULE@
+### @NODE_MODULE@
 
 
 Let's examine the handler of @NODE_MODULE@ of @rb_eval()@. The parts that are
@@ -587,7 +589,7 @@ it has already became unnecessary to show the original code.
 
 <p class="caption">▼ @rb_eval()@ − @NODE_MODULE@ (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 case NODE_MODULE:
   {
       VALUE module;
@@ -606,7 +608,7 @@ case NODE_MODULE:
       result = module_setup(module, node->nd_body);
   }
   break;
-</pre>
+```
 
 
 First, we'd like to make sure the module is nested and defined above (the module holded by) @ruby_class@.
@@ -622,7 +624,7 @@ we can do "additional" definitions on the same one module any number of times.
 
 
 
-<pre class="emlist">
+```TODO-lang
 module M
   def a    # M#a is deifned
   end
@@ -631,7 +633,7 @@ module M   # add a definition (not re-defining or overwriting)
   def b    # M#b is defined
   end
 end
-</pre>
+```
 
 
 In this program, the two methods, @a@ and @b@, will be defined on the module @M@.
@@ -654,7 +656,7 @@ an argument.
 
 
 
-h3. @module_setup@
+### @module_setup@
 
 
 For the module and class and singleton class statements, @module_setup()@
@@ -664,7 +666,7 @@ large amounts.
 
 <p class="caption">▼ @module_setup()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 3424  static VALUE
 3425  module_setup(module, n)
 3426      VALUE module;
@@ -726,7 +728,7 @@ large amounts.
 3481  }
 
 (eval.c)
-</pre>
+```
 
 
 This is too big to read all in one gulp.
@@ -762,7 +764,7 @@ Consequently, it could be summarized as follows:
 
 <p class="caption">▼ @module_setup@ (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 static VALUE
 module_setup(module, node)
     VALUE module;
@@ -791,7 +793,7 @@ module_setup(module, node)
     end
     return result;
 }
-</pre>
+```
 
 
 It does @rb_eval()@ with @node->nd_next@,
@@ -811,7 +813,7 @@ Let's investigate them in order.
 
 
 
-h3. Creating a local variable scope
+### Creating a local variable scope
 
 
 @PUSH_SCOPE@ pushes a local variable space and @PUSH_VARS()@ pushes a block
@@ -821,7 +823,7 @@ Let's examine the contents of these macros and what is done.
 
 <p class="caption">▼ @PUSH_SCOPE() POP_SCOPE()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  852  #define PUSH_SCOPE() do {               \
  853      volatile int _vmode = scope_vmode;  \
  854      struct SCOPE * volatile _old;       \
@@ -852,7 +854,7 @@ Let's examine the contents of these macros and what is done.
  884  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 As the same as tags, @SCOPE@ s also create a stack by being synchronized with the
@@ -875,7 +877,7 @@ Thus, these will be discussed in Chapter 16: Blocks all at once.
 
 
 
-h3. Allocating the local variable space
+### Allocating the local variable space
 
 
 As I mentioned many times, the local variable scope is represented by @struct SCOPE@.
@@ -887,7 +889,7 @@ following part of @module_setup@ prepares the array.
 
 <p class="caption">▼The preparation of the local variable slots</p>
 
-<pre class="longlist">
+```TODO-lang
 3444  if (node->nd_tbl) {
 3445      VALUE *vars = TMP_ALLOC(node->nd_tbl[0]+1);
 3446      *vars++ = (VALUE)node;
@@ -901,7 +903,7 @@ following part of @module_setup@ prepares the array.
 3454  }
 
 (eval.c)
-</pre>
+```
 
 
 The @TMP_ALLOC()@ at the beginning will be described in the next section. If I
@@ -932,7 +934,7 @@ access in @gc.c@.
 
 <p class="caption">▼ @rb_gc_mark_children()@ — @T_SCOPE@ </p>
 
-<pre class="longlist">
+```TODO-lang
  815  case T_SCOPE:
  816    if (obj->as.scope.local_vars &&
             (obj->as.scope.flags & SCOPE_MALLOC)) {
@@ -947,7 +949,7 @@ access in @gc.c@.
  825    break;
 
 (gc.c)
-</pre>
+```
 
 
 Apparently, this is a mechanism to protect @node@ from GC.
@@ -963,11 +965,11 @@ line of the next line:
 
 <p class="caption">▼ @ruby_scope->local_tbl@ </p>
 
-<pre class="longlist">
+```TODO-lang
 3449  ruby_scope->local_tbl = node->nd_tbl;
 
 (eval.c)
-</pre>
+```
 
 
 The local variable name table prepared by the parser is directly used. When is
@@ -1003,7 +1005,7 @@ initialized as @nil@.
 
 
 
-h3. @TMP_ALLOC@
+### @TMP_ALLOC@
 
 
 Next, let's read @TMP_ALLOC@ that allocates the local variable space.
@@ -1012,12 +1014,12 @@ beginning of @module_setup()@. Its typical usage is this:
 
 
 
-<pre class="emlist">
+```TODO-lang
 VALUE *ptr;
 TMP_PROTECT;
 
 ptr = TMP_ALLOC(size);
-</pre>
+```
 
 
 The reason why @TMP_PROTECT@ is in the place for the local variable definitions
@@ -1026,7 +1028,7 @@ is that ... Let's see its definition.
 
 <p class="caption">▼ @TMP_ALLOC()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1769  #ifdef C_ALLOCA
 1770  # define TMP_PROTECT NODE * volatile tmp__protect_tmp=0
 1771  # define TMP_ALLOC(n) \
@@ -1039,7 +1041,7 @@ is that ... Let's see its definition.
 1778  #endif
 
 (eval.c)
-</pre>
+```
 
 
 ... it is because it defines a local variable.
@@ -1072,7 +1074,7 @@ but because the core of the evaluator is the biggest bottleneck of @ruby@,
 
 
 
-h3. Changing the place to define methods on.
+### Changing the place to define methods on.
 
 
 The value of the stack @ruby_class@ is the place to define a method on at the
@@ -1083,13 +1085,13 @@ Here is the code for it:
 
 
 
-<pre class="emlist">
+```TODO-lang
 PUSH_CLASS();
 ruby_class = module;
      ：
      ：
 POP_CLASS();
-</pre>
+```
 
 
 Why is there the assignment to @ruby_class@ after doing @PUSH_CLASS()@.
@@ -1098,7 +1100,7 @@ We can understand it unexpectedly easily by looking at the definition.
 
 <p class="caption">▼ @PUSH_CLASS() POP_CLASS()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  841  #define PUSH_CLASS() do { \
  842      VALUE _class = ruby_class
 
@@ -1106,7 +1108,7 @@ We can understand it unexpectedly easily by looking at the definition.
  845  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 Because @ruby_class@ is not modified even though @PUSH_CLASS@ is done,
@@ -1121,7 +1123,7 @@ places we cannot obtain the class before pushing, it is in this way.
 
 
 
-h3. Nesting Classes
+### Nesting Classes
 
 @ruby_cref@ represents the class nesting information at runtime. Therefore, it's
 naturally predicted that @ruby_cref@ will be pushed on the module statements or
@@ -1130,13 +1132,13 @@ In @module_setup()@, it is pushed as follows:
 
 
 
-<pre class="emlist">
+```TODO-lang
 PUSH_CREF(module);
 ruby_frame->cbase = (VALUE)ruby_cref;
    ：
    ：
 POP_CREF();
-</pre>
+```
 
 
 Here, @module@ is the module being defined.
@@ -1145,13 +1147,13 @@ Let's also see the definitions of @PUSH_CREF()@ and @POP_CREF()@.
 
 <p class="caption">▼ @PUSH_CREF() POP_CREF()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  849  #define PUSH_CREF(c) \
           ruby_cref = rb_node_newnode(NODE_CREF,(c),0,ruby_cref)
  850  #define POP_CREF() ruby_cref = ruby_cref->nd_next
 
 (eval.c)
-</pre>
+```
 
 
 Unlike @PUSH_SCOPE@ or something, there are not any complicated techniques and
@@ -1166,7 +1168,7 @@ Details will be discussed in the last section of this chapter.
 
 
 
-h3. Replacing frames
+### Replacing frames
 
 
 Lastly, let's focus on the manipulation of @ruby_frame@. The first thing is its
@@ -1174,9 +1176,9 @@ definition:
 
 
 
-<pre class="emlist">
+```TODO-lang
 struct FRAME frame;
-</pre>
+```
 
 
 It is not a pointer. This means that the entire @FRAME@ is allocated on the stack.
@@ -1190,14 +1192,14 @@ Then next, let's look at where doing several things with @frame@.
 
 
 
-<pre class="emlist">
+```TODO-lang
 frame = *ruby_frame;      /* copy the entire struct */
 frame.tmp = ruby_frame;   /* protect the original FRAME from GC */
 ruby_frame = &frame;      /* replace ruby_frame */
        ：
        ：
 ruby_frame = frame.tmp;   /* restore */
-</pre>
+```
 
 
 That is, @ruby_frame@ seems temporarily replaced (not pushing).
@@ -1218,13 +1220,13 @@ The backtraces are things displayed like followings:
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby t.rb
 t.rb:11:in `c': some error occured (ArgumentError)
         from t.rb:7:in `b'
         from t.rb:3:in `a'
         from t.rb:14
-</pre>
+```
 
 
 But the module statements and the class statements are not method calls,
@@ -1236,27 +1238,28 @@ of "pushed".
 
 
 
-h2. The method definition
+The method definition
+=====================
 
 
 As the next topic of the module definitions, let's look at the method definitions.
 
 
-h3. Investigation
+### Investigation
 
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 def m(a, b, c)
   nil
 end
-</pre>
+```
 
 
 <p class="caption">▼Its Syntax Tree</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_DEFN
 nd_mid  = 9617 (m)
 nd_noex = 2 (NOEX_PRIVATE)
@@ -1270,7 +1273,7 @@ nd_defn:
         nd_rest = -1
         nd_opt = (null)
         NODE_NIL
-</pre>
+```
 
 
 I dumped several things and found that there's always @NODE_SCOPE@ in @nd_defn@.
@@ -1280,7 +1283,7 @@ the node to store the information to push a local variable scope.
 
 
 
-h3. @NODE_DEFN@
+### @NODE_DEFN@
 
 
 Subsequently, we will examine the corresponding code of @rb_eval()@. This part
@@ -1291,7 +1294,7 @@ indirectly call @rb_raise() rb_warn() rb_warning()@.
 
 <p class="caption">▼ @rb_eval()@ − @NODE_DEFN@ (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE *defn;
 int noex;
 
@@ -1311,7 +1314,7 @@ else {
 defn = copy_node_scope(node->nd_defn, ruby_cref);
 rb_add_method(ruby_class, node->nd_mid, defn, noex);
 result = Qnil;
-</pre>
+```
 
 
 In the first half, there are the words like @private@ or @protected@, so it is
@@ -1344,10 +1347,10 @@ part is the next two lines.
 
 
 
-<pre class="emlist">
+```TODO-lang
 defn = copy_node_scope(node->nd_defn, ruby_cref);
 rb_add_method(ruby_class, node->nd_mid, defn, noex);
-</pre>
+```
 
 
 @copy_node_scope()@ is a function to copy (only) @NODE_SCOPE@ attached to the
@@ -1361,7 +1364,7 @@ The place to define on is of course @ruby_class@.
 
 
 
-h3. @copy_node_scope()@
+### @copy_node_scope()@
 
 
 @copy_node_scope()@ is called only from the two places: the method definition
@@ -1372,7 +1375,7 @@ the usages at these two places are almost the same.
 
 <p class="caption">▼ @copy_node_scope()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1752  static NODE*
 1753  copy_node_scope(node, rval)
 1754      NODE *node;
@@ -1391,7 +1394,7 @@ the usages at these two places are almost the same.
 1767  }
 
 (eval.c)
-</pre>
+```
 
 
 I mentioned that the argument @rval@ is the information of the class nesting
@@ -1414,7 +1417,7 @@ information will be used later when referring constants or class variables.
 
 
 
-h3. @rb_add_method()@
+### @rb_add_method()@
 
 
 The next thing is @rb_add_method()@ that is the function to register a method entry.
@@ -1422,7 +1425,7 @@ The next thing is @rb_add_method()@ that is the function to register a method en
 
 <p class="caption">▼ @rb_add_method()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  237  void
  238  rb_add_method(klass, mid, node, noex)
  239      VALUE klass;
@@ -1444,7 +1447,7 @@ The next thing is @rb_add_method()@ that is the function to register a method en
  254  }
 
 (eval.c)
-</pre>
+```
 
 
 @NEW_METHOD()@ is a macro to create @NODE@.
@@ -1458,7 +1461,7 @@ I prepared @nodedump-method@ for this kind of purposes.
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -e '
 class C
   def m(a)
@@ -1486,7 +1489,7 @@ nd_body:
 ** unhandled**
 
 
-</pre>
+```
 
 
 There are @NODE_METHOD@ at the top
@@ -1513,7 +1516,8 @@ this time. It is used when having to do with @alias@.
 
 
 
-h2. Assignment and Reference
+Assignment and Reference
+========================
 
 
 Come to think of it, most of the stacks are used to realize a variety of
@@ -1523,7 +1527,7 @@ code to reference variables.
 
 
 
-h3. Local variable
+### Local variable
 
 
 The all necessary information to assign or refer local variables has appeared,
@@ -1542,7 +1546,7 @@ follows:
 
 <p class="caption">▼ @rb_eval()@ − @NODE_LVAR@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2975  case NODE_LVAR:
 2976    if (ruby_scope->local_vars == 0) {
 2977        rb_bug("unexpected local variable");
@@ -1551,7 +1555,7 @@ follows:
 2980    break;
 
 (eval.c)
-</pre>
+```
 
 
 It goes without saying but @node->nd_cnt@ is the value that @local_cnt()@ of the
@@ -1560,10 +1564,10 @@ parser returns.
 
 
 
-h3. Constant
+### Constant
 
 
-h4. Complete Specification
+#### Complete Specification
 
 
 In Chapter 6: Variables and constants,
@@ -1580,7 +1584,7 @@ Take a look at the following code:
 
 
 
-<pre class="emlist">
+```TODO-lang
 class A
   C = 5
   def A.new
@@ -1588,7 +1592,7 @@ class A
     super
   end
 end
-</pre>
+```
 
 
 @A.new@ is a singleton method of @A@, so its class is the singleton class @(A)@.
@@ -1613,7 +1617,7 @@ the outer class.
 
 
 
-h4. @cbase@
+#### @cbase@
 
 
 Then, let's look at the code to refer constants including the outer class.
@@ -1623,13 +1627,13 @@ The ordinary constant references to which @::@ is not attached, become
 
 <p class="caption">▼ @rb_eval()@ − @NODE_CONST@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2994  case NODE_CONST:
 2995    result = ev_const_get(RNODE(ruby_frame->cbase), node->nd_vid, self);
 2996    break;
 
 (eval.c)
-</pre>
+```
 
 
 First, @nd_vid@ appears to be @Variable ID@ and it probably means a constant name.
@@ -1669,7 +1673,7 @@ Fig 8. CREF Trasfer
 
 
 
-h4. @ev_const_get()@
+#### @ev_const_get()@
 
 Now, let's go back to the code of @NODE_CONST@.
 Since only @ev_const_get()@ is left, we'll look at it.
@@ -1677,7 +1681,7 @@ Since only @ev_const_get()@ is left, we'll look at it.
 
 <p class="caption">▼ @ev_const_get()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1550  static VALUE
 1551  ev_const_get(cref, id, self)
 1552      NODE *cref;
@@ -1701,7 +1705,7 @@ Since only @ev_const_get()@ is left, we'll look at it.
 1569  }
 
 (eval.c)
-</pre>
+```
 
 
 (( According to the errata, the description of @ev_const_get()@ was wrong.
@@ -1711,7 +1715,7 @@ Since only @ev_const_get()@ is left, we'll look at it.
 
 
 
-h3. Class variable
+### Class variable
 
 
 What class variables refer to is also @ruby_cref@. Needless to say,
@@ -1728,7 +1732,7 @@ Let's look at it.
 
 <p class="caption">▼ @cvar_cbase()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1571  static VALUE
 1572  cvar_cbase()
 1573  {
@@ -1745,7 +1749,7 @@ Let's look at it.
 1583  }
 
 (eval.c)
-</pre>
+```
 
 
 It traverses @cbase@ up to the class that is not the singleton class, it
@@ -1753,7 +1757,7 @@ seems. This feature is added to counter the following kind of code:
 
 
 
-<pre class="emlist">
+```TODO-lang
 class C                           class C
   @@cvar = 1                        @@cvar = 1
   class << C                        def C.m
@@ -1765,7 +1769,7 @@ class C                           class C
     end                           end
   end
 end
-</pre>
+```
 
 
 Both the left and right code ends up defining the same method,
@@ -1796,7 +1800,7 @@ first place, it is also not related.
 
 
 
-h3. Multiple Assignment
+### Multiple Assignment
 
 
 If someone asked "where is the most complicated specification of Ruby?", I
@@ -1828,14 +1832,14 @@ First, following the standard, let's start with the syntax tree.
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 a, b = 7, 8
-</pre>
+```
 
 
 <p class="caption">▼Its Syntax Tree</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_MASGN
 nd_head:
     NODE_ARRAY [
@@ -1859,7 +1863,7 @@ nd_value:
             NODE_LIT
             nd_lit = 8:Fixnum
         ]
-</pre>
+```
 
 
 Both the left-hand and right-hand sides are the lists of @NODE_ARRAY@,
@@ -1869,13 +1873,13 @@ value EXPAND". We are curious about what this node is doing. Let's see.
 
 <p class="caption">▼ @rb_eval()@ − @NODE_REXPAND@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2575  case NODE_REXPAND:
 2576    result = avalue_to_svalue(rb_eval(self, node->nd_head));
 2577    break;
 
 (eval.c)
-</pre>
+```
 
 
 You can ignore @avalue_to_svalue()@.
@@ -1886,9 +1890,9 @@ evaluated. This enables even the following code:
 
 
 
-<pre class="emlist">
+```TODO-lang
 a, b = b, a    # swap variables in oneline
-</pre>
+```
 
 
 Let's look at @NODE_MASGN@ in the left-hand side.
@@ -1896,13 +1900,13 @@ Let's look at @NODE_MASGN@ in the left-hand side.
 
 <p class="caption">▼ @rb_eval()@ − @NODE_MASGN@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2923  case NODE_MASGN:
 2924    result = massign(self, node, rb_eval(self, node->nd_value),0);
 2925    break;
 
 (eval.c)
-</pre>
+```
 
 
 Here is only the evaluation of the right-hand side, the rests are delegated to
@@ -1911,12 +1915,12 @@ Here is only the evaluation of the right-hand side, the rests are delegated to
 
 
 
-h4. @massign()@
+#### @massign()@
 
 
 <p class="caption">▼ @massi@ ……</p>
 
-<pre class="longlist">
+```TODO-lang
 3917  static VALUE
 3918  massign(self, node, val, pcall)
 3919      VALUE self;
@@ -1926,7 +1930,7 @@ h4. @massign()@
 3923  {
 
 (eval.c)
-</pre>
+```
 
 
 I'm sorry this is halfway, but I'd like you to stop and pay attention to the
@@ -1960,7 +1964,7 @@ final appearance is shown as follows:
 
 <p class="caption">▼ @massign()@ (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 static VALUE
 massign(self, node, val  /* , pcall=0 */)
     VALUE self;
@@ -2000,7 +2004,7 @@ massign(self, node, val  /* , pcall=0 */)
     }
     return val;
 }
-</pre>
+```
 
 
 @val@ is the right-hand side value. And there's the suspicious conversion called

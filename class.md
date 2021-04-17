@@ -5,12 +5,14 @@ title: Classes and modules
 
 Translated by Vincent ISAMBART
 
-h1. Chapter 4: Classes and modules
+Chapter 4: Classes and modules
+------------------------------
 
 In this chapter, we'll see the details of the data structures created
 by classes and modules.
 
-h2. Classes and methods definition
+Classes and methods definition
+==============================
 
 First, I'd like to have a look at how Ruby classes are defined at the
 C level. This chapter investigates almost only particular
@@ -30,13 +32,13 @@ There are a few other versions of these functions, but the extension
 libraries and even most of the core library is defined using just this
 API. I'll introduce to you these functions one by one.
 
-h3. Class definition
+### Class definition
 
 `rb_define_class()` defines a class at the top-level. Let's take the
 Ruby array class, `Array`, as an example.
 
 ▼ `Array` class definition
-<pre class="longlist">
+```TODO-lang
   19  VALUE rb_cArray;
 
 1809  void
@@ -45,7 +47,7 @@ Ruby array class, `Array`, as an example.
 1812      rb_cArray  = rb_define_class("Array", rb_cObject);
 
 (array.c)
-</pre>
+```
 
 `rb_cObject` and `rb_cArray` correspond respectively to `Object` and
 `Array` at the Ruby level. The added prefix `rb` shows that it belongs
@@ -58,22 +60,22 @@ the class object, it also defines the constant. That means that after this
 you can already access `Array` from a Ruby program. It corresponds to
 the following Ruby program:
 
-<pre class="emlist">
+```TODO-lang
 class Array < Object
-</pre>
+```
 
 I'd like you to note the fact that there is no `end`. It was
 written like this on purpose. It is because with `rb_define_class()`
 the body of the class has not been executed.
 
-h3. Nested class definition
+### Nested class definition
 
 After that, there's `rb_define_class_under()`. This function defines a
 class nested in an other class or module. This time the example is
 what is returned by `stat(2)`, `File::Stat`.
 
 ▼ Definition of `File::Stat`
-<pre class="longlist">
+```TODO-lang
   78  VALUE rb_cFile;
   80  static VALUE rb_cStat;
 
@@ -81,52 +83,52 @@ what is returned by `stat(2)`, `File::Stat`.
 2674      rb_cStat = rb_define_class_under(rb_cFile, "Stat", rb_cObject);
 
 (file.c)
-</pre>
+```
 
 This code corresponds to the following Ruby program;
 
-<pre class="emlist">
+```TODO-lang
 class File < IO
   class Stat < Object
-</pre>
+```
 
 This time again I omitted the `end` on purpose.
 
-h3. Module definition
+### Module definition
 
 `rb_define_module()` is simple so let's end this quickly.
 
 ▼ Definition of `Enumerable`
-<pre class="longlist">
+```TODO-lang
   17  VALUE rb_mEnumerable;
 
  492      rb_mEnumerable = rb_define_module("Enumerable");
 
 (enum.c)
-</pre>
+```
 
 The `m` in the beginning of `rb_mEnumerable` is similar to the `c` for
 classes: it shows that it is a module. The corresponding Ruby program
 is:
 
-<pre class="emlist">
+```TODO-lang
 module Enumerable
-</pre>
+```
 
 `rb_define_module_under()` is not used much so we'll skip it.
 
-h3. Method definition
+### Method definition
 
 This time the function is the one for defining methods,
 `rb_define_method()`. It's used very often. We'll take once again an
 example from `Array`.
 
 ▼ Definition of `Array#to_s`
-<pre class="longlist">
+```TODO-lang
 1818  rb_define_method(rb_cArray, "to_s", rb_ary_to_s, 0);
 
 (array.c)
-</pre>
+```
 
 With this the `to_s` method is defined in `Array`. The method body is
 given by a function pointer (`rb_ary_to_s`). The fourth parameter is
@@ -134,13 +136,13 @@ the number of parameters taken by the method. As `to_s` does not take
 any parameters, it's 0. If we write the corresponding Ruby program,
 we'll have this:
 
-<pre class="emlist">
+```TODO-lang
 class Array < Object
   def to_s
     # content of rb_ary_to_s()
   end
 end
-</pre>
+```
 
 Of course the `class` part is not included in `rb_define_method()` and
 only the `def` part is accurate. But if there is no `class` part, it
@@ -150,26 +152,26 @@ the enclosing `class` part.
 One more example, this time taking a parameter:
 
 ▼ Definition of `Array#concat`
-<pre class="longlist">
+```TODO-lang
 1835  rb_define_method(rb_cArray, "concat", rb_ary_concat, 1);
 
 (array.c)
-</pre>
+```
 
 The class for the definition is `rb_cArray`
 (`Array`), the method name is `concat`, its body
 is `rb_ary_concat()` and the number of parameters is 1. It
 corresponds to writing the corresponding Ruby program:
 
-<pre class="emlist">
+```TODO-lang
 class Array < Object
   def concat( str )
     # content of rb_ary_concat()
   end
 end
-</pre>
+```
 
-h3. Singleton methods definition
+### Singleton methods definition
 
 We can define methods that are specific to a single object instance.
 They are called singleton methods. As I used `File.unlink` as
@@ -178,17 +180,17 @@ show it here, but for a particular reason we'll look at `File.link`
 instead.
 
 ▼ Definition of `File.link`
-<pre class="longlist">
+```TODO-lang
 2624  rb_define_singleton_method(rb_cFile, "link", rb_file_s_link, 2);
 
 (file.c)
-</pre>
+```
 
 It's used like `rb_define_method()`. The only difference is that here
 the first parameter is just the "object" where the method is
 defined. In this case, it's defined in `rb_cFile`.
 
-h3. Entry point
+### Entry point
 
 Being able to make definitions like before is great, but where
 are these functions called from, and by what means are they executed?
@@ -197,7 +199,7 @@ instance, for `Array` a function `Init_Array()` like this has been
 made:
 
 ▼ `Init_Array`
-<pre class="longlist">
+```TODO-lang
 1809  void
 1810  Init_Array()
 1811  {
@@ -215,13 +217,13 @@ made:
 1822      rb_define_method(rb_cArray, "frozen?",  rb_ary_frozen_p, 0);
 
 (array.c)
-</pre>
+```
 
 The `Init` for the built-in functions are explicitly called during
 the startup of `ruby`. This is done in `inits.c`.
 
 ▼ `rb_call_inits()`
-<pre class="longlist">
+```TODO-lang
   47  void
   48  rb_call_inits()
   49  {
@@ -240,7 +242,7 @@ the startup of `ruby`. This is done in `inits.c`.
   62      Init_Array();
 
 (inits.c)
-</pre>
+```
 
 This way, `Init_Array()` is called properly.
 
@@ -248,9 +250,9 @@ That explains it for the built-in libraries, but what about extension
 libraries? In fact, for extension libraries the convention is the
 same. Take the following code:
 
-<pre class="emlist">
+```TODO-lang
 require "myextension"
-</pre>
+```
 
 With this, if the loaded extension library is `myextension.so`, at
 load time, the (`extern`) function named `Init_myextension()` is
@@ -262,7 +264,7 @@ The following example is from `stringio`, an extension library
 provided with `ruby`, that is to say not from a built-in library.
 
 ▼ `Init_stringio()` (beginning)
-<pre class="longlist">
+```TODO-lang
  895  void
  896  Init_stringio()
  897  {
@@ -276,11 +278,12 @@ provided with `ruby`, that is to say not from a built-in library.
  904      rb_define_method(StringIO, "reopen", strio_reopen, -1);
 
 (ext/stringio/stringio.c)
-</pre>
+```
 
-h2. Singleton classes
+Singleton classes
+=================
 
-h3. `rb_define_singleton_method()`
+### `rb_define_singleton_method()`
 
 You should now be able to more or less understand how normal methods are
 defined. Somehow making the body of the method, then registering it
@@ -288,7 +291,7 @@ in `m_tbl` will do. But what about singleton methods? We'll now look
 into the way singleton methods are defined.
 
 ▼ `rb_define_singleton_method()`
-<pre class="longlist">
+```TODO-lang
  721  void
  722  rb_define_singleton_method(obj, name, func, argc)
  723      VALUE obj;
@@ -300,7 +303,7 @@ into the way singleton methods are defined.
  729  }
 
 (class.c)
-</pre>
+```
 
 As I explained, `rb_define_method()` is a function used to define
 normal methods, so the difference from normal methods is only
@@ -314,13 +317,13 @@ classes are even more on the implementation side. In the Ruby language
 way, they are not formally included, and don't appear much at the Ruby
 level.
 
-h3. `rb_singleton_class()`
+### `rb_singleton_class()`
 
 Well, let's confirm what the singleton classes are made of. It's too
 simple to just show you the code of a function each time so this time
 I'll use a new weapon, a call graph.
 
-<pre class="emlist">
+```TODO-lang
 rb_define_singleton_method
     rb_define_method
     rb_singleton_class
@@ -328,7 +331,7 @@ rb_define_singleton_method
         rb_make_metaclass
             rb_class_boot
             rb_singleton_class_attached
-</pre>
+```
 
 Call graphs are graphs showing calling relationships among functions
 (or more generally procedures). The call graphs showing all the calls
@@ -363,7 +366,7 @@ We should look out for the following two points:
 * What exactly are singleton classes?
 * What is the purpose of singleton classes?
 
-h3. Normal classes and singleton classes
+### Normal classes and singleton classes
 
 Singleton classes are special classes: they're basically the same as
 normal classes, but there are a few differences. We can say that
@@ -379,7 +382,7 @@ of `rb_define_class()` itself. I have some reasons to be interested in
 something that's deeper. That's why we will first look at the call
 graph of `rb_define_class()`.
 
-<pre class="emlist">
+```TODO-lang
 rb_define_class
     rb_class_inherited
     rb_define_class_id
@@ -388,13 +391,13 @@ rb_define_class
         rb_make_metaclass
             rb_class_boot
             rb_singleton_class_attached
-</pre>
+```
 
 I'm interested by `rb_class_new()`. Doesn't this name means it creates
 a new class? Let's confirm that.
 
 ▼ `rb_class_new()`
-<pre class="longlist">
+```TODO-lang
   37  VALUE
   38  rb_class_new(super)
   39      VALUE super;
@@ -410,14 +413,14 @@ a new class? Let's confirm that.
   49  }
 
 (class.c)
-</pre>
+```
 
 `Check_Type()` is checks the type of object structure, so we can
 ignore it. `rb_raise()` is error handling so we can ignore it. Only
 `rb_class_boot()` remains. So let's look at it.
 
 ▼ `rb_class_boot()`
-<pre class="longlist">
+```TODO-lang
   21  VALUE
   22  rb_class_boot(super)
   23      VALUE super;
@@ -435,7 +438,7 @@ ignore it. `rb_raise()` is error handling so we can ignore it. Only
   35  }
 
 (class.c)
-</pre>
+```
 
 `NEWOBJ()` and `OBJSETUP()` are fixed expressions used when creating
 Ruby objects that possess one of the built-in structure types (`struct Rxxxx`).
@@ -456,13 +459,13 @@ and `rb_class_new()` is almost identical.
 
 Then, let's once more look at `rb_singleton_class()`'s call graph:
 
-<pre class="emlist">
+```TODO-lang
 rb_singleton_class
     SPECIAL_SINGLETON
     rb_make_metaclass
         rb_class_boot
         rb_singleton_class_attached
-</pre>
+```
 
 Here also `rb_class_boot()` is called. So up to that point, it's the
 same as in normal classes. What's going on after is what's different
@@ -471,13 +474,13 @@ characteristics of singleton classes. If everything's clear so
 far, we just need to read `rb_singleton_class()` and
 `rb_make_metaclass()`.
 
-h3. Compressed `rb_singleton_class()`
+### Compressed `rb_singleton_class()`
 
 `rb_singleton_class()` is a little long so we'll first remove its
 non-essential parts.
 
 ▼ `rb_singleton_class()`
-<pre class="longlist">
+```TODO-lang
  678  #define SPECIAL_SINGLETON(x,c) do {\
  679      if (obj == (x)) {\
  680          return c;\
@@ -522,7 +525,7 @@ non-essential parts.
  719  }
 
 (class.c)
-</pre>
+```
 
 The first and the second half are separated by a blank line. The first
 half handles special cases and the second half handles the general
@@ -544,10 +547,10 @@ related to signals. Because they are defined in `rubysig.h`, you can
 guess that `INTS` is the abbreviation of interrupts. You can ignore
 them.
 
-h3. Compressed `rb_make_metaclass()`
+### Compressed `rb_make_metaclass()`
 
 ▼ `rb_make_metaclass()`
-<pre class="longlist">
+```TODO-lang
  142  VALUE
  143  rb_make_metaclass(obj, super)
  144      VALUE obj, super;
@@ -568,7 +571,7 @@ h3. Compressed `rb_make_metaclass()`
  158  }
 
 (class.c)
-</pre>
+```
 
 We already saw `rb_class_boot()`. It creates a (normal) class using
 the `super` parameter as its superclass. After that, the
@@ -576,14 +579,14 @@ the `super` parameter as its superclass. After that, the
 name of the function makes us think that it is the indication of
 a singleton class.
 
-h3. What are singleton classes?
+### What are singleton classes?
 
 Finishing the above process, furthermore, we'll through away the declarations
 because parameters, return values and local variables are all `VALUE`.
 That makes us able to compress to the following:
 
 ▼ `rb_singleton_class() rb_make_metaclass()` (after compression)
-<pre class="longlist">
+```TODO-lang
 rb_singleton_class(obj)
 {
     if (FL_TEST(RBASIC(obj)->klass, FL_SINGLETON) &&
@@ -613,7 +616,7 @@ rb_make_metaclass(obj, super)
 
     return klass;
 }
-</pre>
+```
 
 The condition of the `if` statement of `rb_singleton_class()` seems
 quite complicated. However, this condition is not connected to
@@ -629,7 +632,7 @@ we'll remove it.
 With these simplifications, we get the following:
 
 ▼ `rb_singleton_class() rb_make_metaclass()` (after recompression)
-<pre class="longlist">
+```TODO-lang
 rb_singleton_class(obj)
 {
     klass = create a class with RBASIC(obj)->klass as superclass;
@@ -637,14 +640,14 @@ rb_singleton_class(obj)
     RBASIC(obj)->klass = klass;
     return klass;
 }
-</pre>
+```
 
 But there is still a quite hard to understand side to it. That's
 because `klass` is used too often. So let's rename the `klass`
 variable to `sclass`.
 
 ▼ `rb_singleton_class() rb_make_metaclass()` (variable substitution)
-<pre class="longlist">
+```TODO-lang
 rb_singleton_class(obj)
 {
     sclass = create a class with RBASIC(obj)->klass as superclass;
@@ -652,14 +655,17 @@ rb_singleton_class(obj)
     RBASIC(obj)->klass = sclass;
     return sclass;
 }
-</pre>
+```
 
 Now it should be very easy to understand. To make it even simpler,
 I've represented what is done with a diagram (figure 1). In the
 horizontal direction is the "instance - class" relation, and in the
 vertical direction is inheritance (the superclasses are above).
 
-!images/ch_class_addsclass.png(`rb_singleton_class`)!
+<figure>
+	<img src="images/ch_class_addsclass.png" alt="figure 1: `rb_singleton_class`">
+	<figcaption>figure 1: `rb_singleton_class`</figcaption>
+</figure>
 
 When comparing the first and last part of this diagram, you can
 understand that `sclass` is inserted without changing the
@@ -668,25 +674,25 @@ the inheritance is increased one step. By defining methods there,
 we can define methods which have completely nothing to do with other
 instances of `klass`.
 
-h3. Singleton classes and instances
+### Singleton classes and instances
 
 By the way, did you notice about, during the compression process,
 the call to `rb_singleton_class_attached()` was stealthily removed?
 Here:
 
-<pre class="emlist">
+```TODO-lang
 rb_make_metaclass(obj, super)
 {
     klass = create a class with super as superclass;
     FL_SET(klass, FL_SINGLETON);
     RBASIC(obj)->klass = klass;
     rb_singleton_class_attached(klass, obj);   /* THIS */
-</pre>
+```
 
 Let's have a look at what it does.
 
 ▼ `rb_singleton_class_attached()`
-<pre class="longlist">
+```TODO-lang
  130  void
  131  rb_singleton_class_attached(klass, obj)
  132      VALUE klass, obj;
@@ -701,7 +707,7 @@ Let's have a look at what it does.
  140  }
 
 (class.c)
-</pre>
+```
 
 If the `FL_SINGLETON` flag of `klass` is set... in other words if it's a
 singleton class, put the `__attached__` → `obj` relation in the
@@ -741,7 +747,7 @@ Hence, each singleton class has only one instance ...
 or rather, it must be limited to one.
 
 
-h3. Summary
+### Summary
 
 We've done a lot, maybe made a real mayhem, so let's finish and put
 everything in order with a summary.
@@ -752,16 +758,20 @@ What are singleton classes? They are classes that have the
 What are singleton methods? They are methods defined in the singleton
 class of an object.
 
-h2. Metaclasses
+Metaclasses
+===========
 
-h3. Inheritance of singleton methods
+### Inheritance of singleton methods
 
-h4. Infinite chain of classes
+#### Infinite chain of classes
 
 Even a class has a class, and it's `Class`. And the class of `Class`
 is again `Class`. We find ourselves in an infinite loop (figure 2).
 
-!images/ch_class_infloop.png(Infinite loop of classes)!
+<figure>
+	<img src="images/ch_class_infloop.png" alt="figure 2: Infinite loop of classes">
+	<figcaption>figure 2: Infinite loop of classes</figcaption>
+</figure>
 
 Up to here it's something we've already gone through. What's going
 after that is the theme of this chapter. Why do classes have to make a
@@ -792,7 +802,7 @@ I'm repeating myself, but the fact that `Class`'s class is `Class` is
 only to make the implementation easier, there's nothing important in
 this logic.
 
-h4. "Class is also an object"
+#### "Class is also an object"
 
 "Everything is an object" is often used as advertising statement when
 speaking about Ruby. And as a part of that, "Classes are also objects!"
@@ -832,15 +842,18 @@ And to implement static methods, another thing was necessary:
 singleton methods. By chain reaction, that also makes singleton
 classes necessary. Figure 3 shows these dependency relationships.
 
-!images/ch_class_reqlink.png(Requirements dependencies)!
+<figure>
+	<img src="images/ch_class_reqlink.png" alt="figure 3: Requirements dependencies">
+	<figcaption>figure 3: Requirements dependencies</figcaption>
+</figure>
 
-h4. Class methods inheritance
+#### Class methods inheritance
 
 In Ruby, singleton methods defined in a class are called class
 methods. However, their specification is a little strange.
 For some reasons, class methods are inheritable.
 
-<pre class="emlist">
+```TODO-lang
 class A
   def A.test    # defines a singleton method in A
     puts("ok")
@@ -851,14 +864,14 @@ class B < A
 end
 
 B.test()  # calls it
-</pre>
+```
 
 This can't occur with singleton methods from objects that are not
 classes. In other words, classes are the only ones handled
 specially. In the following section we'll see how class methods are
 inherited.
 
-h3. Singleton class of a class
+### Singleton class of a class
 
 Assuming that class methods are inherited, where is this operation
 done? It must be done either at class definition (creation) or at singleton
@@ -868,7 +881,7 @@ Then let's first look at the code defining classes.
 Class definition means of course `rb_define_class()`. Now
 let's take the call graph of this function.
 
-<pre class="emlist">
+```TODO-lang
 rb_define_class
     rb_class_inherited
     rb_define_class_id
@@ -877,7 +890,7 @@ rb_define_class
         rb_make_metaclass
             rb_class_boot
             rb_singleton_class_attached
-</pre>
+```
 
 If you're wondering where you've seen it before, we looked at it in
 the previous section. At that time you did not see it but if you look
@@ -888,12 +901,12 @@ Furthermore, why is the lower level `rb_make_metaclass()` used instead
 of `rb_singleton_class()`? It looks like we have to check these
 surroundings again.
 
-h4. `rb_define_class_id()`
+#### `rb_define_class_id()`
 
 Let's first start our reading with its caller, `rb_define_class_id()`.
 
 ▼ `rb_define_class_id()`
-<pre class="longlist">
+```TODO-lang
  160  VALUE
  161  rb_define_class_id(id, super)
  162      ID id;
@@ -910,7 +923,7 @@ Let's first start our reading with its caller, `rb_define_class_id()`.
  173  }
 
 (class.c)
-</pre>
+```
 
 `rb_class_new()` was a function that creates a class with `super` as
 its superclass. `rb_name_class()`'s name means it names a class, but
@@ -919,24 +932,24 @@ that there's the `rb_make_metaclass()` in question. I'm concerned by
 the fact that when called from `rb_singleton_class()`, the parameters
 were different. Last time was like this:
 
-<pre class="emlist">
+```TODO-lang
 rb_make_metaclass(obj, RBASIC(obj)->klass);
-</pre>
+```
 
 But this time is like this:
 
-<pre class="emlist">
+```TODO-lang
 rb_make_metaclass(klass, RBASIC(super)->klass);
-</pre>
+```
 
 So as you can see it's slightly different. How do the results change
 depending on that? Let's have once again a look at a simplified
 `rb_make_metaclass()`.
 
-h4. `rb_make_metaclass` (once more)
+#### `rb_make_metaclass` (once more)
 
 ▼ `rb_make_metaclass` (after first compression)
-<pre class="longlist">
+```TODO-lang
 rb_make_metaclass(obj, super)
 {
     klass = create a class with super as superclass;
@@ -953,21 +966,21 @@ rb_make_metaclass(obj, super)
 
     return klass;
 }
-</pre>
+```
 
 Last time, the `if` statement was wholly skipped, but looking once
 again, something is done only for `T_CLASS`, in other words
 classes. This clearly looks important. In `rb_define_class_id()`, as
 it's called like this:
 
-<pre class="emlist">
+```TODO-lang
 rb_make_metaclass(klass, RBASIC(super)->klass);
-</pre>
+```
 
 Let's expand `rb_make_metaclass()`'s parameter variables with the actual values.
 
 ▼ `rb_make_metaclass` (recompression)
-<pre class="longlist">
+```TODO-lang
 rb_make_metaclass(klass, super_klass /* == RBASIC(super)->klass */)
 {
     sclass = create a class with super_class as superclass;
@@ -975,7 +988,7 @@ rb_make_metaclass(klass, super_klass /* == RBASIC(super)->klass */)
     RBASIC(sclass)->klass = sclass;
     return sclass;
 }
-</pre>
+```
 
 Doing this as a diagram gives something like figure 4. In it, the
 names between parentheses are singleton classes. This notation is
@@ -984,14 +997,20 @@ that `obj`'s singleton class is written as `(obj)`. And `(klass)` is
 the singleton class for `klass`. It looks like the singleton class is
 caught between a class and this class's superclass's class.
 
-!images/ch_class_metaclass.png(Introduction of a class's singleton class)!
+<figure>
+	<img src="images/ch_class_metaclass.png" alt="figure 4: Introduction of a class's singleton class">
+	<figcaption>figure 4: Introduction of a class's singleton class</figcaption>
+</figure>
 
 By expanding our imagination further from this result,
 we can think that the superclass's class (the `c` in figure 4)
 must again be a singleton class.
 You'll understand with one more inheritance level (figure 5).
 
-!images/ch_class_multi.png(Hierarchy of multi-level inheritance)!
+<figure>
+	<img src="images/ch_class_multi.png" alt="figure 5: Hierarchy of multi-level inheritance">
+	<figcaption>figure 5: Hierarchy of multi-level inheritance</figcaption>
+</figure>
 
 As the relationship between `super` and `klass` is the same as the one
 between `klass` and `klass2`, `c` must be the singleton class
@@ -1000,21 +1019,24 @@ conclusion that `Object`'s class must be `(Object)`. And that's the
 case in practice. For example, by inheriting like in the following
 program :
 
-<pre class="emlist">
+```TODO-lang
 class A < Object
 end
 class B < A
 end
-</pre>
+```
 
 internally, a structure like figure 6 is created.
 
-!images/ch_class_metatree.png(Class hierarchy and metaclasses)!
+<figure>
+	<img src="images/ch_class_metatree.png" alt="figure 6: Class hierarchy and metaclasses">
+	<figcaption>figure 6: Class hierarchy and metaclasses</figcaption>
+</figure>
 
 As classes and their metaclasses are linked and inherit like this,
 class methods are inherited.
 
-h3. Class of a class of a class
+### Class of a class of a class
 
 You've understood the working of class methods inheritance, but by
 doing that, in the opposite some questions have appeared. What is the
@@ -1023,7 +1045,10 @@ For this, we can check it by using debuggers.
 I've made figure 7 from the results of this
 investigation.
 
-!images/ch_class_mmm.png(Class of a class's singleton class)!
+<figure>
+	<img src="images/ch_class_mmm.png" alt="figure 7: Class of a class's singleton class">
+	<figcaption>figure 7: Class of a class's singleton class</figcaption>
+</figure>
 
 A class's singleton class puts itself as its own class. Quite
 complicated.
@@ -1032,9 +1057,9 @@ The second question: the class of `Object` must be `Class`. Didn't I
 properly confirm this in chapter 1: Ruby language minimum
 by using `class()` method?
 
-<pre class="emlist">
+```TODO-lang
 p(Object.class())   # Class
-</pre>
+```
 
 Certainly, that's the case "at the Ruby level". But "at the C level",
 it's the singleton class `(Object)`. If `(Object)` does not appear at
@@ -1043,7 +1068,7 @@ classes. Let's look at the body of the method, `rb_obj_class()` to
 confirm that.
 
 ▼ `rb_obj_class()`
-<pre class="longlist">
+```TODO-lang
   86  VALUE
   87  rb_obj_class(obj)
   88      VALUE obj;
@@ -1062,7 +1087,7 @@ confirm that.
   84  }
 
 (object.c)
-</pre>
+```
 
 `CLASS_OF(obj)` returns the `basic.klass` of `obj`. While in
 `rb_class_real()`, all singleton classes are skipped (advancing
@@ -1073,9 +1098,12 @@ chain (figure 8).
 
 `I_CLASS` will appear later when we will talk about include.
 
-!images/ch_class_real.png(Singleton class and real class)!
+<figure>
+	<img src="images/ch_class_real.png" alt="figure 8: Singleton class and real class">
+	<figcaption>figure 8: Singleton class and real class</figcaption>
+</figure>
 
-h3. Singleton class and metaclass
+### Singleton class and metaclass
 
 Well, the singleton classes that were introduced in classes is also
 one type of class, it's a class's class. So it can be called
@@ -1096,7 +1124,7 @@ Then finally, even if you understood that some classes are metaclasses,
 it's not as if there was any concrete gain. I'd like you not to care
 too much about it.
 
-h3. Bootstrap
+### Bootstrap
 
 We have nearly finished our talk about classes and metaclasses. But
 there is still one problem left. It's about the 3 metaobjects
@@ -1109,7 +1137,7 @@ in `ruby`, only these 3 classes's creation is handled specially.
 Then let's look at the code:
 
 ▼ `Object`, `Module` and `Class` creation
-<pre class="longlist">
+```TODO-lang
 1243  rb_cObject = boot_defclass("Object", 0);
 1244  rb_cModule = boot_defclass("Module", rb_cObject);
 1245  rb_cClass =  boot_defclass("Class",  rb_cModule);
@@ -1119,7 +1147,7 @@ Then let's look at the code:
 1249  metaclass = rb_make_metaclass(rb_cClass, metaclass);
 
 (object.c)
-</pre>
+```
 
 First, in the first half, `boot_defclass()` is similar to
 `rb_class_boot()`, it just creates a class with its given superclass
@@ -1131,27 +1159,34 @@ And in the three lines of the second half, `(Object)`, `(Module)` and
 `rb_make_metaclass()` so there is no problem. With this, the
 metaobjects' bootstrap is finished.
 
-!images/ch_class_boot1.png(Metaobjects creation)!
+<figure>
+	<img src="images/ch_class_boot1.png" alt="figure 9: Metaobjects creation">
+	<figcaption>figure 9: Metaobjects creation</figcaption>
+</figure>
 
 After taking everything into account, it gives us the final shape
 like figure 10.
 
-!images/ch_class_metaobj.png(Ruby metaobjects)!
+<figure>
+	<img src="images/ch_class_metaobj.png" alt="figure 10: Ruby metaobjects">
+	<figcaption>figure 10: Ruby metaobjects</figcaption>
+</figure>
 
-h2. Class names
+Class names
+===========
 
 In this section, we will analyse how's formed the reciprocal
 conversion between class and class names, in other words
 constants. Concretely, we will target `rb_define_class()` and
 `rb_define_class_under()`.
 
-h3. Name → class
+### Name → class
 
 First we'll read `rb_defined_class()`. After the end of this function,
 the class can be found from the constant.
 
 ▼ `rb_define_class()`
-<pre class="longlist">
+```TODO-lang
  183  VALUE
  184  rb_define_class(name, super)
  185      const char *name;
@@ -1185,7 +1220,7 @@ the class can be found from the constant.
  213  }
 
 (class.c)
-</pre>
+```
 
 This can be clearly divided into the two parts:
 before and after `rb_define_class_id()`.
@@ -1219,9 +1254,9 @@ that's the reason of such halfway description around here.
 
 Moreover, about this coming after `rb_define_class_id()`,
 
-<pre class="emlist">
+```TODO-lang
 st_add_direct(rb_class_tbl, id, klass);
-</pre>
+```
 
 This part assigns the class to the constant. However, whichever
 way you look at it you do not see that. In fact, top-level classes and modules
@@ -1230,7 +1265,7 @@ separated from the other constants and regrouped in
 `rb_class_tbl()`. The split is slightly related to the GC. It's not
 essential.
 
-h3. Class → name
+### Class → name
 
 We understood how the class can be obtained from the class name, but
 how to do the opposite? By doing things like calling `p` or
@@ -1240,16 +1275,16 @@ implemented?
 In fact this is done by `rb_name_class()` which already appeared a long time
 ago. The call is around the following:
 
-<pre class="emlist">
+```TODO-lang
 rb_define_class
     rb_define_class_id
         rb_name_class
-</pre>
+```
 
 Let's look at its content:
 
 ▼ `rb_name_class()`
-<pre class="longlist">
+```TODO-lang
  269  void
  270  rb_name_class(klass, id)
  271      VALUE klass;
@@ -1259,7 +1294,7 @@ Let's look at its content:
  275  }
 
 (variable.c)
-</pre>
+```
 
 `__classid__` is another instance variable that can't be seen from
 Ruby. As only `VALUE`s can be put in the instance variable table, the
@@ -1267,7 +1302,7 @@ Ruby. As only `VALUE`s can be put in the instance variable table, the
 
 That's how we are able to find the constant name from the class.
 
-h3. Nested classes
+### Nested classes
 
 So, in the case of classes defined at the top-level, we know how works
 the reciprocal link between name and class. What's left is the case of
@@ -1276,7 +1311,7 @@ little more complicated. The function to define these nested classes
 is `rb_define_class_under()`.
 
 ▼ `rb_define_class_under()`
-<pre class="longlist">
+```TODO-lang
  215  VALUE
  216  rb_define_class_under(outer, name, super)
  217      VALUE outer;
@@ -1310,7 +1345,7 @@ is `rb_define_class_under()`.
  245  }
 
 (class.c)
-</pre>
+```
 
 The structure is like the one of `rb_define_class()`: before the call
 to `rb_define_class_id()` is the redefinition check, after is the
@@ -1319,7 +1354,7 @@ half is pretty boringly similar to `rb_define_class()` so we'll skip
 it. In the second half, `rb_set_class_path()` is new. We're going to look
 at it.
 
-h4. `rb_set_class_path()`
+#### `rb_set_class_path()`
 
 This function gives the name `name` to the class `klass` nested in the
 class `under`. "class path" means a constant name including all the nesting
@@ -1327,7 +1362,7 @@ information starting from top-level, for example
 "`Net::NetPrivate::Socket`".
 
 ▼ `rb_set_class_path()`
-<pre class="longlist">
+```TODO-lang
  210  void
  211  rb_set_class_path(klass, under, name)
  212      VALUE klass, under;
@@ -1349,7 +1384,7 @@ information starting from top-level, for example
  226  }
 
 (variable.c)
-</pre>
+```
 
 Everything except the last line is the construction of the class path,
 and the last line makes the class remember its own
@@ -1358,25 +1393,25 @@ can't be seen from a Ruby program. In `rb_name_class()` there was
 `__classid__`, but `id` is different because it does not include
 nesting information (look at the table below).
 
-<pre class="emlist">
+```TODO-lang
 __classpath__    Net::NetPrivate::Socket
 __classid__                       Socket
-</pre>
+```
 
 It means classes defined for example in `rb_defined_class()` all have
 `__classid__` or `__classpath__` defined. So to find `under`'s
 classpath we can look up in these instance variables. This is done by
 `rb_class_path()`. We'll omit its content.
 
-h3. Nameless classes
+### Nameless classes
 
 Contrary to what I have just said, there are in fact cases in which
 neither `__classpath__` nor `__classid__` are set. That is because in
 Ruby you can use a method like the following to create a class.
 
-<pre class="emlist">
+```TODO-lang
 c = Class.new()
-</pre>
+```
 
 If a class is created like this, it won't go through
 `rb_define_class_id()` and the classpath won't be set. In this case,
@@ -1385,9 +1420,9 @@ If a class is created like this, it won't go through
 However, if later it's assigned to a constant,
 a name will be attached to the class at that moment.
 
-<pre class="emlist">
+```TODO-lang
 SomeClass = c   # the class name is SomeClass
-</pre>
+```
 
 Strictly speaking, at the first time requesting the name after assigning it to
 a constant, the name will be attached to the class.
@@ -1396,25 +1431,26 @@ For instance, when calling `p` on this
 this, a value equal to the class is searched in `rb_class_tbl`, and a
 name has to be chosen. The following case can also happen:
 
-<pre class="emlist">
+```TODO-lang
 class A
   class B
     C = tmp = Class.new()
     p(tmp)   # here we search for the name
   end
 end
-</pre>
+```
 
 so in the worst case we have to search for the whole constant
 space. However, generally, there aren't many constants so even searching
 all constants does not take too much time.
 
-h2. Include
+Include
+=======
 
 We only talked about classes so let's finish this chapter with
 something else and talk about module inclusion.
 
-h3. `rb_include_module` (1)
+### `rb_include_module` (1)
 
 Includes are done by the ordinary method `Module#include`. Its
 corresponding function in C is `rb_include_module()`. In fact, to be
@@ -1423,18 +1459,18 @@ precise, its body is `rb_mod_include()`, and there
 implementation finally calls `rb_include_module()`. Mixing what's
 happening in Ruby and C gives us the following call graph.
 
-<pre class="emlist">
+```TODO-lang
 Module#include (rb_mod_include)
     Module#append_features (rb_mod_append_features)
         rb_include_module
-</pre>
+```
 
 Anyway, the manipulations that are usually regarded as inclusions are done
 by `rb_include_module()`. This function is
 a little long so we'll look at it a half at a time.
 
 ▼ `rb_include_module` (first half)
-<pre class="longlist">
+```TODO-lang
       /* include module in class */
  347  void
  348  rb_include_module(klass, module)
@@ -1461,13 +1497,13 @@ a little long so we'll look at it a half at a time.
  369      }
 
 (class.c)
-</pre>
+```
 
 For the moment it's only security and type checking, therefore we can
 ignore it. The process itself is below:
 
 ▼ `rb_include_module` (second half)
-<pre class="longlist">
+```TODO-lang
  371      OBJ_INFECT(klass, module);
  372      c = klass;
  373      while (module) {
@@ -1501,19 +1537,19 @@ ignore it. The process itself is below:
  400  }
 
 (class.c)
-</pre>
+```
 
 First, what the (A) block does is written in the comment. It seems to
 be a special condition so let's first skip reading it for now. By
 extracting the important parts from the rest we get the following:
 
-<pre class="emlist">
+```TODO-lang
 c = klass;
 while (module) {
     c = RCLASS(c)->super = include_class_new(module, RCLASS(c)->super);
     module = RCLASS(module)->super;
 }
-</pre>
+```
 
 In other words, it's a repetition of `module`'s `super`. What is in
 `module`'s `super` must be a module included by `module` (because our
@@ -1523,9 +1559,9 @@ what, but at the moment I saw that I felt "Ah, doesn't this look the
 addition of elements to a list (like LISP's cons)?" and it suddenly
 make the story faster. In other words it's the following form:
 
-<pre class="emlist">
+```TODO-lang
 list = new(item, list)
-</pre>
+```
 
 Thinking about this, it seems we can expect that module is inserted
 between `c` and `c->super`. If it's like this, it fits module's
@@ -1533,10 +1569,10 @@ specification.
 
 But to be sure of this we have to look at `include_class_new()`.
 
-h3. `include_class_new()`
+### `include_class_new()`
 
 ▼ `include_class_new()`
-<pre class="longlist">
+```TODO-lang
  319  static VALUE
  320  include_class_new(module, super)
  321      VALUE module, super;
@@ -1566,7 +1602,7 @@ h3. `include_class_new()`
  345  }
 
 (class.c)
-</pre>
+```
 
 We're lucky there's nothing we do not know.
 
@@ -1585,7 +1621,10 @@ on, without duplicating the table. Later, if a method is added, the
 module's body and the include class will still have exactly the
 same methods (figure 11).
 
-!images/ch_class_symbolic.png(Include class)!
+<figure>
+	<img src="images/ch_class_symbolic.png" alt="figure 11: Include class">
+	<figcaption>figure 11: Include class</figcaption>
+</figure>
 
 If you look closely at (A), the structure type flag is set to
 T_ICLASS. This seems to be the mark of an include class. This
@@ -1597,7 +1636,10 @@ And if you think about joining what this function and
 wrong. In brief, including is inserting the include class of a
 module between a class and its superclass (figure 12).
 
-!images/ch_class_include.png(Include)!
+<figure>
+	<img src="images/ch_class_include.png" alt="figure 12: Include">
+	<figcaption>figure 12: Include</figcaption>
+</figure>
 
 At (D-2) the module is stored in the include class's `klass`. At
 (D-1), the module's body is taken out... I'd like to say so if possible,
@@ -1613,21 +1655,24 @@ example calling a method on the include class would be very bad. So
 include classes must not be seen from Ruby programs. And in
 practice all methods skip include classes, with no exception.
 
-h3. Simulation
+### Simulation
 
 It was complicated so let's look at a concrete example. I'd like you
 to look at figure 13 (1). We have the `c1` class and the `m1` module
 that includes `m2`. From there, the changes made to include `m1` in
 `c1` are (2) and (3). `im`s are of course include classes.
 
-!images/ch_class_simulate.png(Include)!
+<figure>
+	<img src="images/ch_class_simulate.png" alt="figure 13: Include">
+	<figcaption>figure 13: Include</figcaption>
+</figure>
 
-h3. `rb_include_module` (2)
+### `rb_include_module` (2)
 
 Well, now we can explain the part of `rb_include_module()` we skipped.
 
 ▼ `rb_include_module` (avoiding double inclusion)
-<pre class="longlist">
+```TODO-lang
  378  /* (A) skip if the superclass already includes module */
  379  for (p = RCLASS(klass)->super; p; p = RCLASS(p)->super) {
  380      switch (BUILTIN_TYPE(p)) {
@@ -1646,7 +1691,7 @@ Well, now we can explain the part of `rb_include_module()` we skipped.
  393  }
 
 (class.c)
-</pre>
+```
 
 Among the superclasses of the +klass+ (`p`),
 if a `p` is `T_ICLASS` (an include class) and has the same method table as the
@@ -1662,7 +1707,7 @@ the modules included by it must also already be
 included... that's what I thought for a moment, but we can have the
 following context:
 
-<pre class="emlist">
+```TODO-lang
 module M
 end
 module M2
@@ -1677,7 +1722,7 @@ end
 class C
   include M   # I would like here to only add M2
 end
-</pre>
+```
 
 To say this conversely, there are cases that a result of `include` is not
 propagated soon.
@@ -1687,4 +1732,3 @@ but in the case of module there is no such thing. Therefore the
 singleton methods of the module are not inherited by the including
 class (or module). When you want to also inherit singleton methods,
 the usual way is to override `Module#append_features`.
-

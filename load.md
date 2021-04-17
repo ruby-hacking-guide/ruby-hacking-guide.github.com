@@ -6,17 +6,18 @@ Translated by Vincent ISAMBART
 
 h1(#chapter). Chapter 18: Loading
 
-h2. Outline
+Outline
+=======
 
-h3. Interface
+### Interface
 
 At the Ruby level, there are two procedures that can be used for
 loading: `require` and `load`.
 
-<pre class="emlist">
+```TODO-lang
 require 'uri'            # load the uri library
 load '/home/foo/.myrc'   # read a resource file
-</pre>
+```
 
 They are both normal methods, compiled and evaluated exactly like any
 other code. It means loading occurs after compilation gave control to
@@ -26,7 +27,7 @@ These two function each have their own use. 'require' is to load
 libraries, and `load` is to load an arbitrary file. Let's see this in
 more details.
 
-h4. `require`
+#### `require`
 
 `require` has four features:
 
@@ -39,7 +40,7 @@ Ruby's load path is in the global variable `$:`, which contains an
 array of strings. For example, displaying the content of the `$:` in
 the environment I usually use would show:
 
-<pre class="screen">
+```TODO-lang
 % ruby -e 'puts $:'
 /usr/lib/ruby/site_ruby/1.7
 /usr/lib/ruby/site_ruby/1.7/i686-linux
@@ -47,7 +48,7 @@ the environment I usually use would show:
 /usr/lib/ruby/1.7
 /usr/lib/ruby/1.7/i686-linux
 .
-</pre>
+```
 
 Calling `puts` on an array displays one element on each line so it's easy
 to read.
@@ -60,9 +61,9 @@ In a Windows environment, there will also be a drive letter.
 Then, let's try to `require` the standard library `nkf.so` from the
 load path.
 
-<pre class="emlist">
+```TODO-lang
 require 'nkf'
-</pre>
+```
 
 If the `require`d name has no extension, `require` silently
 compensates. First, it tries with `.rb`, then with `.so`. On some
@@ -73,7 +74,7 @@ extension libraries, for example `.dll` in a Windows environment or
 Let's do a simulation on my environment. `ruby` checks the following
 paths in sequential order.
 
-<pre class="emlist">
+```TODO-lang
 /usr/lib/ruby/site_ruby/1.7/nkf.rb
 /usr/lib/ruby/site_ruby/1.7/nkf.so
 /usr/lib/ruby/site_ruby/1.7/i686-linux/nkf.rb
@@ -84,7 +85,7 @@ paths in sequential order.
 /usr/lib/ruby/1.7/nkf.so
 /usr/lib/ruby/1.7/i686-linux/nkf.rb
 /usr/lib/ruby/1.7/i686-linux/nkf.so    found!
-</pre>
+```
 
 `nkf.so` has been found in `/usr/lib/ruby/1.7/i686-linux`. Once the
 file has been found, `require`'s last feature (not loading the file
@@ -93,13 +94,13 @@ global variable `$"`. In our case the string `"nkf.so"` has been put
 there. Even if the extension has been omitted when calling `require`,
 the file name in `$"` has the extension.
 
-<pre class="emlist">
+```TODO-lang
 require 'nkf'   # after loading nkf...
 p $"            # ["nkf.so"]  the file is locked
 
 require 'nkf'   # nothing happens if we require it again
 p $"            # ["nkf.so"]  the content of the lock array does not change
-</pre>
+```
 
 There are two reasons for adding the missing extension. The first one is
 not to load it twice if the same file is later `require`d with its
@@ -114,22 +115,22 @@ By the way, `$"` can be freely modified even at the Ruby level so we
 cannot say it's a strong lock. You can for example load an extension
 library multiple times if you clear `$"`.
 
-h4. `load`
+#### `load`
 
 `load` is a lot easier than `require`. Like `require`, it searches the
 file in `$:`. But it can only load Ruby programs. Furthermore, the
 extension cannot be omitted: the complete file name must always be
 given.
 
-<pre class="emlist">
+```TODO-lang
 load 'uri.rb'   # load the URI library that is part of the standard library
-</pre>
+```
 
 In this simple example we try to load a library, but the proper way to
 use `load` is for example to load a resource file giving its full
 path.
 
-h3. Flow of the whole process
+### Flow of the whole process
 
 If we roughly split it, "loading a file" can be split in:
 
@@ -145,7 +146,7 @@ programs are basically evaluated at the top-level. It means the
 defined constants will be top-level constants and the defined methods
 will be function-style methods.
 
-<pre class="emlist">
+```TODO-lang
 ### mylib.rb
 MY_OBJECT = Object.new
 def my_p(obj)
@@ -155,7 +156,7 @@ end
 ### first.rb
 require 'mylib'
 my_p MY_OBJECT   # we can use the constants and methods defined in an other file
-</pre>
+```
 
 Only the local variable scope of the top-level changes when the file
 changes. In other words, local variables cannot be shared between
@@ -169,14 +170,14 @@ the `module` statement, it does not serve any purpose, as everything
 that is at the top-level of the loaded file is put at the Ruby
 top-level.
 
-<pre class="emlist">
+```TODO-lang
 require 'mylib'     # whatever the place you require from, be it at the top-level
 module SandBox
   require 'mylib'   # or in a module, the result is the same
 end
-</pre>
+```
 
-h3. Highlights of this chapter
+### Highlights of this chapter
 
 With the above knowledge in our mind, we are going to read.
 But because this time its specification is defined very particularly,
@@ -200,9 +201,10 @@ currently popular trend of execution time loading, more commonly
 referred to as plug-ins, works. This is the most interesting part of this
 chapter, so I'd like to use as many pages as possible to talk about it.
 
-h2. Searching the library
+Searching the library
+=====================
 
-h3. `rb_f_require()`
+### `rb_f_require()`
 
 The body of `require` is `rb_f_require`. First, we will only look at
 the part concerning the file search. Having many different cases is
@@ -210,7 +212,7 @@ bothersome so we will limit ourselves to the case when no file
 extension is given.
 
 ▼ `rb_f_require()` (simplified version)
-<pre class="longlist">
+```TODO-lang
 5527  VALUE
 5528  rb_f_require(obj, fname)
 5529      VALUE obj, fname;
@@ -262,7 +264,7 @@ extension is given.
 5497  };
 
 (eval.c)
-</pre>
+```
 
 In this function the `goto` labels `load_rb` and `load_dyna` are
 actually like subroutines, and the two variables `feature` and `fname`
@@ -286,7 +288,7 @@ that it takes as a second parameter a list of extensions
 Below we will first look entirely at the file searching code, then we
 will look at the code of the `require` lock in `load_rb`.
 
-h3. `rb_find_file()`
+### `rb_find_file()`
 
 First the file search continues in `rb_find_file()`. This function
 searches the file `path` in the global load path `$'`
@@ -294,7 +296,7 @@ searches the file `path` in the global load path `$'`
 only look at the main part.
 
 ▼ `rb_find_file()` (simplified version)
-<pre class="longlist">
+```TODO-lang
 2494  VALUE
 2495  rb_find_file(path)
 2496      VALUE path;
@@ -332,11 +334,11 @@ only look at the main part.
 2565  }
 
 (file.c)
-</pre>
+```
 
 If we write what happens in Ruby we get the following:
 
-<pre class="emlist">
+```TODO-lang
 tmp = []                     # make an array
 $:.each do |path|            # repeat on each element of the load path
   tmp.push path if path.length > 0 # check the path and push it
@@ -344,7 +346,7 @@ end
 lpath = tmp.join(PATH_SEP)   # concatenate all elements in one string separated by PATH_SEP
 
 dln_find_file(f, lpath)      # main processing
-</pre>
+```
 
 `PATH_SEP` is the `path separator`: `':'` under UNIX, `';'` under
 Windows. `rb_ary_join()` creates a string by putting it between the
@@ -364,14 +366,14 @@ objects as parameters or read `ruby` global variables.
 but in fact this is already done in the omitted part of
 `rb_find_file()`. So in `ruby`'s case it's not necessary.
 
-h3. Loading wait
+### Loading wait
 
 Here, file search is finished quickly. Then comes is the loading
 code. Or more accurately, it is "up to just before the load". The code
 of `rb_f_require()`'s `load_rb` has been put below.
 
 ▼ `rb_f_require():load_rb`
-<pre class="longlist">
+```TODO-lang
 5625    load_rb:
 5626      if (rb_feature_p(RSTRING(feature)->ptr, Qtrue))
 5627          return Qfalse;
@@ -390,7 +392,7 @@ of `rb_f_require()`'s `load_rb` has been put below.
 5645      ruby_safe_level = safe;
 
 (eval.c)
-</pre>
+```
 
 Like mentioned above, `rb_feature_p()` checks if a lock has been put
 in `$"`. And `rb_provide_feature()` pushes a string in `$"`, in other
@@ -402,13 +404,13 @@ from one thread, and if during the loading another thread tries to load the
 same file, that thread will wait for the first loading to be finished.
 If it were not the case:
 
-<pre class="emlist">
+```TODO-lang
 Thread.fork {
     require 'foo'   # At the beginning of require, foo.rb is added to $"
 }                   # However the thread changes during the evaluation of foo.rb
 require 'foo'   # foo.rb is already in $" so the function returns immediately
 # (A) the classes of foo are used...
-</pre>
+```
 
 By doing something like this, even though the `foo` library is not
 really loaded, the code at (A) ends up being executed.
@@ -426,7 +428,7 @@ thread.  That makes an exclusive lock. And in `rb_feature_p()`, we
 wait for the loading thread to end like the following.
 
 ▼ `rb_feature_p()` (second half)
-<pre class="longlist">
+```TODO-lang
 5477  rb_thread_t th;
 5478
 5479  while (st_lookup(loading_tbl, f, &th)) {
@@ -438,7 +440,7 @@ wait for the loading thread to end like the following.
 5485  }
 
 (eval.c)
-</pre>
+```
 
 When `rb_thread_schedule()` is called, the control is transferred to
 an other thread, and this function only returns after the control
@@ -451,15 +453,16 @@ can end. The `curr_thread` check is not to lock itself (figure 1).
 Figure 1: Serialisation of loads
 </div>
 
-h2. Loading of Ruby programs
+Loading of Ruby programs
+========================
 
-h3. `rb_load()`
+### `rb_load()`
 
 We will now look at the loading process itself. Let's start by the
 part inside `rb_f_require()`'s `load_rb` loading Ruby programs.
 
 ▼ `rb_f_require()-load_rb-` loading
-<pre class="longlist">
+```TODO-lang
 5638      PUSH_TAG(PROT_NONE);
 5639      if ((state = EXEC_TAG()) == 0) {
 5640          rb_load(fname, 0);
@@ -467,7 +470,7 @@ part inside `rb_f_require()`'s `load_rb` loading Ruby programs.
 5642      POP_TAG();
 
 (eval.c)
-</pre>
+```
 
 The `rb_load()` which is called here is actually the "meat" of the
 Ruby-level `load`.
@@ -479,7 +482,7 @@ And the second argument `wrap` is folded with 0
 because it is 0 in the above calling code.
 
 ▼ `rb_load()` (simplified edition)
-<pre class="longlist">
+```TODO-lang
 void
 rb_load(fname, /* wrap=0 */)
     VALUE fname;
@@ -536,7 +539,7 @@ rb_load(fname, /* wrap=0 */)
     if (!NIL_P(ruby_errinfo))   /* an exception was raised during the loading */
         rb_exc_raise(ruby_errinfo);
 }
-</pre>
+```
 
 Just after we thought we've been through the storm of stack manipulations
 we entered again. Although this is tough,
@@ -567,7 +570,7 @@ Or, it's possible it indicates `eval.c`.
 
 
 
-h3. `rb_load_file()`
+### `rb_load_file()`
 
 Then, all of a sudden, the source file is `ruby.c` here.
 Or to put it more accurately,
@@ -580,7 +583,7 @@ all of them would be put in `eval.c` in the first place.
 Then, it is `rb_load_file()`.
 
 ▼ `rb_load_file()`
-<pre class="longlist">
+```TODO-lang
  865  void
  866  rb_load_file(fname)
  867      char *fname;
@@ -589,7 +592,7 @@ Then, it is `rb_load_file()`.
  870  }
 
 (ruby.c)
-</pre>
+```
 
 Delegated entirely. The second argument `script` of `load_file()` is a boolean
 value and it indicates whether it is loading the file of the argument of the
@@ -600,7 +603,7 @@ non essential things have already been removed.
 
 
 <p class="caption">▼ `load_file()` (simplified edition)</p>
-<pre class="longlist">
+```TODO-lang
 static void
 load_file(fname, /* script=0 */)
     char *fname;
@@ -617,7 +620,7 @@ load_file(fname, /* script=0 */)
     rb_compile_file(fname, f, 1);       (C)
     rb_io_close(f);
 }
-</pre>
+```
 
 (A) The call to `fopen()` is to check if the
 file can be opened. If there is no problem, it's immediately closed.
@@ -640,7 +643,7 @@ result.
 That's all for the loading code. Finally, the calls were quite deep so
 the callgraph of `rb_f_require()` is shown bellow.
 
-<pre class="emlist">
+```TODO-lang
 rb_f_require           ....eval.c
     rb_find_file            ....file.c
         dln_find_file           ....dln.c
@@ -650,14 +653,14 @@ rb_f_require           ....eval.c
             load_file
                 rb_compile_file     ....parse.y
         eval_node
-</pre>
+```
 
 
 You must bring callgraphs on a long trip. It's common knowledge.
 
 
 
-h4. The number of `open` required for loading
+#### The number of `open` required for loading
 
 Previously, there was `open` used just to check if a file can be open,
 but in fact, during the loading process of `ruby`, additionally other functions
@@ -674,7 +677,7 @@ If you're using Windows, probably your IDE will have a tracer built in. Well, as
 
 The output is done on `stderr` so it was redirected using `2>&1`.
 
-<pre class="screen">
+```TODO-lang
 % strace ruby -e 'require "rational"' 2>&1 | grep '^open'
 open("/etc/ld.so.preload", O_RDONLY)    = -1 ENOENT
 open("/etc/ld.so.cache", O_RDONLY)      = 3
@@ -686,22 +689,23 @@ open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
 open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
 open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
 open("/usr/lib/ruby/1.7/rational.rb", O_RDONLY|O_LARGEFILE) = 3
-</pre>
+```
 
 Until the `open` of `libc.so.6`, it is the `open` used in the implementation of
 dynamic links, and there are the other four `open`s.
 Thus it seems the three of them are useless.
 
-h2. Loading of extension libraries
+Loading of extension libraries
+==============================
 
-h3. `rb_f_require()`-`load_dyna`
+### `rb_f_require()`-`load_dyna`
 
 This time we will see the loading of extension libraries. We will
 start with `rb_f_require()`'s `load_dyna`. However, we do not need the
 part about locking anymore so it was removed.
 
 ▼ `rb_f_require()`-`load_dyna`
-<pre class="longlist">
+```TODO-lang
 5607  {
 5608      int volatile old_vmode = scope_vmode;
 5609
@@ -719,7 +723,7 @@ part about locking anymore so it was removed.
 5621  if (state) JUMP_TAG(state);
 
 (eval.c)
-</pre>
+```
 
 By now, there is very little here which is novel.
 The tags are used only in the way of the idiom,
@@ -727,7 +731,7 @@ and to save/restore the visibility scope is done in the way we get used to see.
 All that remains is `dln_load()`. What on earth is that for? For the answer, continue to the next section.
 
 
-h3. Brush up about links
+### Brush up about links
 
 `dln_load()` is loading an extension library,
 but what does loading an extension library mean?
@@ -739,29 +743,29 @@ Since I'm using `gcc` on Linux, I can create a runnable program in the following
 manner.
 
 
-<pre class="screen">
+```TODO-lang
 % gcc hello.c
-</pre>
+```
 
 
 According to the file name, this is probably an "Hello, World!" program.
 In UNIX, `gcc` outputs a program into a file named `a.out` by default,
 so you can subsequently execute it in the following way:
 
-<pre class="screen">
+```TODO-lang
 % ./a.out
 Hello, World!
-</pre>
+```
 
 It is created properly.
 
 By the way, what is `gcc` actually doing here?
 Usually we just say "compile" or "compile", but actually
 
-# preprocess (`cpp`)
-# compile C into assembly (`cc`)
-# assemble the assembly language into machine code (`as`)
-# link (`ld`)
+* preprocess (`cpp`)
+* compile C into assembly (`cc`)
+* assemble the assembly language into machine code (`as`)
+* link (`ld`)
 
 there are these four steps. Among them, preprocessing and compiling and
 assembling are described in a lot of places, but the description often ends
@@ -840,7 +844,7 @@ I recommend to read these books.
 
 
 
-h3. Linking that is truly dynamic
+### Linking that is truly dynamic
 
 And finally we get into our main topic. The "dynamic" in "dynamic linking" naturally means it "occurs at execution time", but what people usually refer to as "dynamic linking" is pretty much decided already at compile time. For example, the names of the needed functions, and which library they can be found in, are already known. For instance, if you need `cos()`, you know it's in `libm`, so you use `gcc -lm`. If you didn't specify the correct library at compile time, you'd get a link error.
 
@@ -856,7 +860,7 @@ is usually called "dynamic load".
 
 
 
-h3. Dynamic load API
+### Dynamic load API
 
 I've finished to explain the concept. The rest is how to do that dynamic loading.
 This is not a difficult thing. Usually there's a specific API prepared in the
@@ -883,22 +887,22 @@ Where dynamic loading APIs are totally different each other,
 the only saving is the usage pattern of API is completely the same.
 Whichever platform you are on,
 
-# map the library to the address space of the process
-# take the pointers to the functions contained in the library
-# unmap the library
+* map the library to the address space of the process
+* take the pointers to the functions contained in the library
+* unmap the library
 
 it consists of these three steps.
 For example, if it is `dlopen`-based API,
 
-# `dlopen`
-# `dlsym`
-# `dlclose`
+* `dlopen`
+* `dlsym`
+* `dlclose`
 
 are the correspondences. If it is Win32 API,
 
-# `LoadLibrary` (or `LoadLibraryEx`)
-# `GetProcAddress`
-# `FreeLibrary`
+* `LoadLibrary` (or `LoadLibraryEx`)
+* `GetProcAddress`
+* `FreeLibrary`
 
 are the correspondences.
 
@@ -915,7 +919,7 @@ and it means loading and linking and finally calling `Init_xxxx()`
 if it is an extension library.
 
 
-h3. `dln_load()`
+### `dln_load()`
 
 Finally, we've reached the content of `dln_load()`.
 `dln_load()` is also a long function,
@@ -923,7 +927,7 @@ but its structure is simple because of some reasons.
 Take a look at the outline first.
 
 ▼ `dln_load()` (outline)
-<pre class="longlist">
+```TODO-lang
 void*
 dln_load(file)
     const char *file;
@@ -942,7 +946,7 @@ dln_load(file)
 #endif
     return 0;                   /* dummy return */
 }
-</pre>
+```
 
 This way, the part connecting to the main is completely separated based on each
 platform. When thinking, we only have to think about one platform at a time.
@@ -959,12 +963,12 @@ Supported APIs are as follows:
 * `load` (a bit old AIX)
 
 
-h3. `dln_load()`-`dlopen()`
+### `dln_load()`-`dlopen()`
 
 First, let's start with the API code for the `dlopen` series.
 
 ▼ `dln_load()`-`dlopen()`
-<pre class="longlist">
+```TODO-lang
 1254  void*
 1255  dln_load(file)
 1256      const char *file;
@@ -1012,7 +1016,7 @@ First, let's start with the API code for the `dlopen` series.
 1580  }
 
 (dln.c)
-</pre>
+```
 
 
 (A) the `RTLD_LAZY` as the argument of `dlopen()` indicates "resolving the
@@ -1037,14 +1041,14 @@ Thus, we can't call `dlclose()` until the process will be finished.
 
 
 
-h3. `dln_load()` -- Win32
+### `dln_load()` -- Win32
 
 
 As for Win32, `LoadLibrary()` and `GetProcAddress()` are used.
 It is very general Win32 API which also appears on MSDN.
 
 ▼ `dln_load()`-Win32
-<pre class="longlist">
+```TODO-lang
 1254  void*
 1255  dln_load(file)
 1256      const char *file;
@@ -1081,7 +1085,7 @@ It is very general Win32 API which also appears on MSDN.
 1580  }
 
 (dln.c)
-</pre>
+```
 
 Doing `LoadLibrary()` then `GetProcAddress()`.
 The pattern is so equivalent that nothing is left to say,

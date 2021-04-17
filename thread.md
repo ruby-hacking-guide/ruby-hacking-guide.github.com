@@ -2,12 +2,14 @@
 layout: default
 title: "Chapter 19: Threads"
 ---
-h1. Chapter 19: Threads
+Chapter 19: Threads
+-------------------
 
-h2. Outline
+Outline
+=======
 
 
-h3. Ruby Interface
+### Ruby Interface
 
 
 Come to think of it, I feel I have not introduced an actual code to use Ruby threads.
@@ -15,7 +17,7 @@ This is not so special, but here I'll introduce it just in case.
 
 
 
-<pre class="emlist">
+```TODO-lang
 Thread.fork {
     while true
       puts 'forked thread'
@@ -24,7 +26,7 @@ Thread.fork {
 while true
   puts 'main thread'
 end
-</pre>
+```
 
 
 When executing this program,
@@ -49,7 +51,7 @@ and the below APIs can be used to control a thread itself.
 
 
 
-h3. `ruby` Thread
+### `ruby` Thread
 
 
 Threads are supposed to "run all together",
@@ -75,7 +77,7 @@ limited to one.
 
 
 
-h3. Is it preemptive?
+### Is it preemptive?
 
 
 I'll describe about the traits of `ruby` threads in more detail.
@@ -130,7 +132,7 @@ Therefore, non-preemptive at C level is a reasonable choice for `ruby`.
 
 
 
-h3. Management System
+### Management System
 
 
 We've understand `ruby` thread is non-preemptive at C level.
@@ -144,7 +146,7 @@ Let's look at the variables and the data types to manage threads.
 
 <p class="caption">▼ the structure to manage threads</p>
 
-<pre class="longlist">
+```TODO-lang
  864  typedef struct thread * rb_thread_t;
  865  static rb_thread_t curr_thread = 0;
  866  static rb_thread_t main_thread;
@@ -153,7 +155,7 @@ Let's look at the variables and the data types to manage threads.
 7302      struct thread *next, *prev;
 
 (eval.c)
-</pre>
+```
 
 
 
@@ -189,7 +191,7 @@ Only by this, we can run all threads equally to some extent.
 
 
 
-h3. What does switching threads mean?
+### What does switching threads mean?
 
 
 By the way, what is a thread in the first place?
@@ -218,7 +220,7 @@ Or, it is called "context-switch".
 
 
 
-h3. The way of context-switching
+### The way of context-switching
 
 
 The rest talk is how to switch contexts.
@@ -232,7 +234,7 @@ The spaces for both purposes are respectively prepared in `rb_thread_t`.
 
 <p class="caption">▼ `struct thread`  (partial)</p>
 
-<pre class="longlist">
+```TODO-lang
 7301  struct thread {
 7302      struct thread *next, *prev;
 7303      jmp_buf context;
@@ -260,7 +262,7 @@ The spaces for both purposes are respectively prepared in `rb_thread_t`.
 7335      int safe;                   /* ruby_safe_level */
 
 (eval.c)
-</pre>
+```
 
 
 As shown above, there are the members that seem to correspond to `ruby_frame`
@@ -293,19 +295,19 @@ The place to store the stack properly exists in `struct thread`.
 
 <p class="caption">▼ `struct thread`  (partial)</p>
 
-<pre class="longlist">
+```TODO-lang
 7310      int   stk_len;      /* the stack length */
 7311      int   stk_max;      /* the size of memory allocated for stk_ptr */
 7312      VALUE*stk_ptr;      /* the copy of the stack */
 7313      VALUE*stk_pos;      /* the position of the stack */
 
 (eval.c)
-</pre>
+```
 
 
 
 
-h3. How the explanation goes
+### How the explanation goes
 
 
 So far, I've talked about various things, but the important points can be
@@ -324,14 +326,15 @@ respectively.
 
 
 
-h2. Trigger
+Trigger
+=======
 
 
 To begin with, it's the first point, when to switch threads.
 In other words, what is the cause of switching threads.
 
 
-h3. Waiting I/O
+### Waiting I/O
 
 
 For example, when trying to read in something by calling `IO#gets` or `IO#read`,
@@ -343,7 +346,7 @@ Below is the interface of `getc`.
 
 <p class="caption">▼ `rb_getc()` </p>
 
-<pre class="longlist">
+```TODO-lang
 1185  int
 1186  rb_getc(f)
 1187      FILE *f;
@@ -361,7 +364,7 @@ Below is the interface of `getc`.
 1199  }
 
 (io.c)
-</pre>
+```
 
 
 `READ_DATA_PENDING(f)` is a macro to check if the content of the buffer of the
@@ -379,7 +382,7 @@ What is it? Let's see the inside of `rb_thread_wait_fd()`.
 
 <p class="caption">▼ `rb_thread_wait_fd()` </p>
 
-<pre class="longlist">
+```TODO-lang
 8047  void
 8048  rb_thread_wait_fd(fd)
 8049      int fd;
@@ -395,7 +398,7 @@ What is it? Let's see the inside of `rb_thread_wait_fd()`.
 8059  }
 
 (eval.c)
-</pre>
+```
 
 There's `rb_thread_schedule()` at the last line.
 This function is the "direct cause".
@@ -421,7 +424,7 @@ respectively.
 
 
 
-h3. Waiting the other thread
+### Waiting the other thread
 
 
 After understanding threads are switched at the timing of `rb_thread_schedule()`,
@@ -432,7 +435,7 @@ Then by scanning, I found it in the function named `rb_thread_join()`.
 
 <p class="caption">▼ `rb_thread_join()`  (partial)</p>
 
-<pre class="longlist">
+```TODO-lang
 8227  static int
 8228  rb_thread_join(th, limit)
 8229      rb_thread_t th;
@@ -447,7 +450,7 @@ Then by scanning, I found it in the function named `rb_thread_join()`.
 8248          rb_thread_schedule();
 
 (eval.c)
-</pre>
+```
 
 
 
@@ -459,7 +462,7 @@ Because of this, the second reason to switch is found.
 
 
 
-h3. Waiting For Time
+### Waiting For Time
 
 
 Moreover, also in the function named `rb_thread_wait_for()`,
@@ -469,7 +472,7 @@ This is the substance of (Ruby's) `sleep` and such.
 
 <p class="caption">▼ `rb_thread_wait_for` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 8080  void
 8081  rb_thread_wait_for(time)
 8082      struct timeval time;
@@ -485,7 +488,7 @@ This is the substance of (Ruby's) `sleep` and such.
 8129  }
 
 (eval.c)
-</pre>
+```
 
 
 `timeofday()` returns the current time.
@@ -497,7 +500,7 @@ specific time".
 
 
 
-h3. Switch by expirations
+### Switch by expirations
 
 
 In the above all cases,
@@ -512,7 +515,7 @@ Then, how long a thread can run by the time when it will have to stop,
 is what I'll talk about next.
 
 
-h4. `setitimer`
+#### `setitimer`
 
 
 Since it is the same every now and then,
@@ -524,7 +527,7 @@ It is here.
 
 <p class="caption">▼ `catch_timer()` </p>
 
-<pre class="longlist">
+```TODO-lang
 8574  static void
 8575  catch_timer(sig)
 8576      int sig;
@@ -541,7 +544,7 @@ It is here.
 8587  }
 
 (eval.c)
-</pre>
+```
 
 
 This seems something relating to signals.
@@ -552,7 +555,7 @@ then it was used around here:
 
 <p class="caption">▼ `rb_thread_start_0()` (partial)</p>
 
-<pre class="longlist">
+```TODO-lang
 8620  static VALUE
 8621  rb_thread_start_0(fn, arg, th_arg)
 8622      VALUE (*fn)();
@@ -574,7 +577,7 @@ then it was used around here:
 8643  #endif
 
 (eval.c)
-</pre>
+```
 
 
 This means, `catch_timer` is a signal handler of `SIGVTALRM`.
@@ -604,12 +607,12 @@ Then, I'd like you to see the code of `catch_timer()` again.
 
 
 
-<pre class="emlist">
+```TODO-lang
 if (rb_trap_immediate) {
     rb_thread_schedule();
 }
 else rb_thread_pending = 1;
-</pre>
+```
 
 
 There's a required condition that is doing `rb_thread_schedule()` only when
@@ -627,7 +630,7 @@ This variable is used in the following place.
 
 <p class="caption">▼ `CHECK_INTS` − `HAVE_SETITIMER` </p>
 
-<pre class="longlist">
+```TODO-lang
   73  #if defined(HAVE_SETITIMER) && !defined(__BOW__)
   74  EXTERN int rb_thread_pending;
   75  # define CHECK_INTS do {\
@@ -639,7 +642,7 @@ This variable is used in the following place.
   81  } while (0)
 
 (rubysig.h)
-</pre>
+```
 
 
 This way, inside of `CHECK_INTS`, `rb_thread_pending` is checked and
@@ -657,7 +660,7 @@ Therefore, it is natural to exist in the important functions.
 
 
 
-h4. `tick`
+#### `tick`
 
 
 We understood the case when there's `setitimer`.
@@ -668,7 +671,7 @@ It is the definition of the `#else` side.
 
 <p class="caption">▼ `CHECK_INTS` − `not HAVE_SETITIMER` </p>
 
-<pre class="longlist">
+```TODO-lang
   84  EXTERN int rb_thread_tick;
   85  #define THREAD_TICK 500
   86  #define CHECK_INTS do {\
@@ -684,7 +687,7 @@ It is the definition of the `#else` side.
   96  } while (0)
 
 (rubysig.h)
-</pre>
+```
 
 
 Every time going through `CHECK_INTS`, decrement `rb_thread_tick`.
@@ -695,7 +698,8 @@ after `THREAD_TICK` (=500) times going through `CHECK_INTS`.
 
 
 
-h2. Scheduling
+Scheduling
+==========
 
 
 The second point is to which thread to switch.
@@ -704,7 +708,7 @@ What solely responsible for this decision is  `rb_thread_schedule()`.
 
 
 
-h3. `rb_thread_schedule()`
+### `rb_thread_schedule()`
 
 
 The important functions of `ruby` are always huge.
@@ -714,7 +718,7 @@ Let's exhaustively divide it into portions.
 
 <p class="caption">▼ `rb_thread_schedule()` (outline)</p>
 
-<pre class="longlist">
+```TODO-lang
 7819  void
 7820  rb_thread_schedule()
 7821  {
@@ -751,7 +755,7 @@ Let's exhaustively divide it into portions.
 8045  }
 
 (eval.c)
-</pre>
+```
 
 
 (A) When there's only one thread, this does not do anything and returns immediately.
@@ -775,7 +779,7 @@ let's first study about `select` in advance here.
 
 
 
-h3. `select`
+### `select`
 
 `select` is a system call to wait until the preparation for reading or writing a
 certain file will be completed.
@@ -783,11 +787,11 @@ Its prototype is this:
 
 
 
-<pre class="emlist">
+```TODO-lang
 int select(int max,
            fd_set *readset, fd_set *writeset, fd_set *exceptset,
            struct timeval *timeout);
-</pre>
+```
 
 
 In the variable of type `fd_set`, a set of `fd` that we want to check is stored.
@@ -805,13 +809,13 @@ I'll talk about `fd_set` in detail.
 
 <p class="caption">▼ `fd_set`  maipulation</p>
 
-<pre class="longlist">
+```TODO-lang
 fd_set set;
 
 FD_ZERO(&set)       /* initialize */
 FD_SET(fd, &set)    /* add a file descriptor fd to the set */
 FD_ISSET(fd, &set)  /* true if fd is in the set */
-</pre>
+```
 
 
 `fd_set` is typically a bit array,
@@ -829,7 +833,7 @@ I'll show a simple usage example of `select`.
 
 <p class="caption">▼ a usage exmple of  `select`  </p>
 
-<pre class="longlist">
+```TODO-lang
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -847,7 +851,7 @@ main(int argc, char **argv)
     read(STDIN_FILENO, buf, 1024);  /* success without delay */
     exit(0);
 }
-</pre>
+```
 
 
 
@@ -866,7 +870,7 @@ And a little more detailed example code is put in the attached CD-ROM
 
 
 
-h3. Preparations for `select`
+### Preparations for `select`
 
 
 Now, we'll go back to the code of `rb_thread_schedule()`.
@@ -876,7 +880,7 @@ I'll show the content in shortened form.
 
 <p class="caption">▼ `rb_thread_schedule()` − preparations for  `select` </p>
 
-<pre class="longlist">
+```TODO-lang
 7848    again:
           /* initialize the variables relating to select */
 7849      max = -1;
@@ -907,7 +911,7 @@ I'll show the content in shortened form.
 7901      END_FOREACH_FROM(curr, th);
 
 (eval.c)
-</pre>
+```
 
 
 Whether it is supposed to be or not,
@@ -917,19 +921,19 @@ These two are defined as follows:
 
 <p class="caption">▼ `FOREACH_THREAD_FROM` </p>
 
-<pre class="longlist">
+```TODO-lang
 7360  #define FOREACH_THREAD_FROM(f,x) x = f; do { x = x->next;
 7361  #define END_FOREACH_FROM(f,x) } while (x != f)
 
 (eval.c)
-</pre>
+```
 
 
 Let's extract them for better understandability.
 
 
 
-<pre class="emlist">
+```TODO-lang
 th = curr;
 do {
     th = th->next;
@@ -937,7 +941,7 @@ do {
         .....
     }
 } while (th != curr);
-</pre>
+```
 
 
 This means: follow the circular list of threads from the next of `curr`
@@ -966,7 +970,7 @@ As for its code, let's see it just in case.
 
 <p class="caption">▼ `rb_thread_schedule()` − `select`  preparation − `join`  wait</p>
 
-<pre class="longlist">
+```TODO-lang
 7861          if (th->wait_for & WAIT_JOIN) {
 7862              if (rb_thread_dead(th->join)) {
 7863                  th->status = THREAD_RUNNABLE;
@@ -975,7 +979,7 @@ As for its code, let's see it just in case.
 7866          }
 
 (eval.c)
-</pre>
+```
 
 
 The meaning of `rb_thread_dead()` is obvious because of its name.
@@ -984,7 +988,7 @@ It determines whether or not the thread of the argument has finished.
 
 
 
-h3. Calling `select`
+### Calling `select`
 
 
 By now, we've figured out whether `select` is necessary or not,
@@ -999,7 +1003,7 @@ and let it only check if I/O was completed.
 
 <p class="caption">▼ `rb_thread_schedule()` − `select` </p>
 
-<pre class="longlist">
+```TODO-lang
 7904      if (need_select) {
 7905          /* convert delay into timeval */
 7906          /* if theres immediately invocable threads, do only I/O checks */
@@ -1034,7 +1038,7 @@ and let it only check if I/O was completed.
 7994      }
 
 (eval.c)
-</pre>
+```
 
 
 The first half of the block is as written in the comment.
@@ -1051,7 +1055,7 @@ What are meaningful are the rest two.
 
 
 
-h4. Timeout
+#### Timeout
 
 
 When `select` is timeout, a thread of time wait or `select` wait may become
@@ -1059,7 +1063,7 @@ invocable. Check about it and search runnable threads.
 If it is found, set `THREAD_RUNNABLE` to it.
 
 
-h4. Completing normally
+#### Completing normally
 
 
 If `select` is normally completed,
@@ -1070,7 +1074,7 @@ If it is found, set `THREAD_RUNNABLE` to it.
 
 
 
-h3. Decide the next thread
+### Decide the next thread
 
 
 Taking all the information into considerations,
@@ -1081,7 +1085,7 @@ Since all what was invocable and all what had finished waiting and so on became
 
 <p class="caption">▼ `rb_thread_schedule()` − decide the next thread</p>
 
-<pre class="longlist">
+```TODO-lang
 7996      FOREACH_THREAD_FROM(curr, th) {
 7997          if (th->status == THREAD_TO_KILL) {              /*（A）*/
 7998              next = th;
@@ -1095,7 +1099,7 @@ Since all what was invocable and all what had finished waiting and so on became
 8006      END_FOREACH_FROM(curr, th);
 
 (eval.c)
-</pre>
+```
 
 
 (A) if there's a thread that is about to finish,
@@ -1127,7 +1131,7 @@ level, the perfect detection is nearly impossible.
 
 
 
-h3. Switching Threads
+### Switching Threads
 
 
 The next thread to invoke has been determined.
@@ -1141,7 +1145,8 @@ I'll start a new section.
 
 
 
-h2. Context Switch
+Context Switch
+==============
 
 
 The last third point is thread-switch,
@@ -1149,7 +1154,7 @@ and it is context-switch.
 This is the most interesting part of threads of `ruby`.
 
 
-h3. The Base Line
+### The Base Line
 
 
 Then we'll start with the tail of `rb_thread_schedule()`.
@@ -1159,12 +1164,12 @@ I'll go with a significantly simplified version.
 
 <p class="caption">▼ `rb_thread_schedule()`  (context switch)</p>
 
-<pre class="longlist">
+```TODO-lang
 if (THREAD_SAVE_CONTEXT(curr)) {
     return;
 }
 rb_thread_restore_context(next, RESTORE_NORMAL);
-</pre>
+```
 
 
 As for the part of `THREAD_SAVE_CONTEXT()`,
@@ -1173,7 +1178,7 @@ we need to extract the content at several places in order to understand.
 
 <p class="caption">▼ `THREAD_SAVE_CONTEXT()` </p>
 
-<pre class="longlist">
+```TODO-lang
 7619  #define THREAD_SAVE_CONTEXT(th) \
 7620      (rb_thread_save_context(th),thread_switch(setjmp((th)->context)))
 
@@ -1199,14 +1204,14 @@ we need to extract the content at several places in order to understand.
 7617  }
 
 (eval.c)
-</pre>
+```
 
 
 If I merge the three then extract it, here is the result:
 
 
 
-<pre class="emlist">
+```TODO-lang
 rb_thread_save_context(curr);
 switch (setjmp(curr->context)) {
   case 0:
@@ -1221,7 +1226,7 @@ switch (setjmp(curr->context)) {
     return;
 }
 rb_thread_restore_context(next, RESTORE_NORMAL);
-</pre>
+```
 
 
 At both of the return value of `setjmp()` and `rb_thread_restore_context()`,
@@ -1233,12 +1238,12 @@ And if we will imagine the meaning also from the function names,
 
 
 
-<pre class="emlist">
+```TODO-lang
 save the context of the current thread
 setjmp
 restore the context of the next thread
 longjmp
-</pre>
+```
 
 
 The rough main flow would probably look like this.
@@ -1264,14 +1269,14 @@ Let's look at each of them in sequential order.
 
 
 
-h3. `rb_thread_save_context()`
+### `rb_thread_save_context()`
 
 Now, we'll start with `rb_thread_save_context()`, which saves a context.
 
 
 <p class="caption">▼ `rb_thread_save_context()` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 7539  static void
 7540  rb_thread_save_context(th)
 7541      rb_thread_t th;
@@ -1296,7 +1301,7 @@ Now, we'll start with `rb_thread_save_context()`, which saves a context.
       }
 
 (eval.c)
-</pre>
+```
 
 
 
@@ -1335,7 +1340,7 @@ It must be called when the target is the entire stack.
 
 
 
-h3. `rb_thread_restore_context()`
+### `rb_thread_restore_context()`
 
 
 And finally,
@@ -1345,7 +1350,7 @@ which is the function to restore a thread.
 
 <p class="caption">▼ `rb_thread_restore_context()` </p>
 
-<pre class="longlist">
+```TODO-lang
 7635  static void
 7636  rb_thread_restore_context(th, exit)
 7637      rb_thread_t th;
@@ -1385,7 +1390,7 @@ which is the function to restore a thread.
 7690  }
 
 (eval.c)
-</pre>
+```
 
 
 
@@ -1417,7 +1422,7 @@ This is done by the `stack_extend()` in the first half.
 
 <p class="caption">▼ `stack_extend()` </p>
 
-<pre class="longlist">
+```TODO-lang
 7624  static void
 7625  stack_extend(th, exit)
 7626      rb_thread_t th;
@@ -1430,7 +1435,7 @@ This is done by the `stack_extend()` in the first half.
 7633  }
 
 (eval.c)
-</pre>
+```
 
 
 By allocating a local variable (which will be put at the machine stack space)
@@ -1451,7 +1456,7 @@ such as possible procedures after returning from `stack_extend()`.
 
 
 
-h3. Issues
+### Issues
 
 
 This is the implementation of the `ruby` thread switch.

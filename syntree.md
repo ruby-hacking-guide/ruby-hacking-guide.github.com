@@ -5,10 +5,11 @@ title: "Chapter 12: Syntax tree construction"
 
 h1(#chapter). Chapter 12: Syntax tree construction
 
-h2. Node
+Node
+====
 
 
-h3. @NODE@
+### @NODE@
 
 
 As I've already described, a Ruby program is first converted to a syntax tree.
@@ -18,7 +19,7 @@ In @ruby@, all nodes are of type @NODE@.
 
 <p class="caption">▼ @NODE@ </p>
 
-<pre class="longlist">
+```TODO-lang
  128  typedef struct RNode {
  129      unsigned long flags;
  130      char *nd_file;
@@ -46,7 +47,7 @@ In @ruby@, all nodes are of type @NODE@.
  152  } NODE;
 
 (node.h)
-</pre>
+```
 
 
 Although you might be able to infer from the struct name @RNode@, nodes are Ruby objects.
@@ -76,7 +77,7 @@ And, in @node.h@, the macros to access each union member are available.
 
 <p class="caption">▼ the macros to access @NODE@ </p>
 
-<pre class="longlist">
+```TODO-lang
  166  #define nd_head  u1.node
  167  #define nd_alen  u2.argc
  168  #define nd_next  u3.node
@@ -90,16 +91,16 @@ And, in @node.h@, the macros to access each union member are available.
                  ：
 
 (node.h)
-</pre>
+```
 
 
 For example, these are used as follows:
 
 
-<pre class="emlist">
+```TODO-lang
 NODE *head, *tail;
 head->nd_next = tail;    /* head->u3.node = tail */
-</pre>
+```
 
 
 In the source code, it's almost certain that these macros are used.
@@ -121,7 +122,7 @@ and conversely we can determine the node types from the macros.
 
 
 
-h3. Node Type
+### Node Type
 
 
 I said that in the @flags@ of a @NODE@ struct its node type is stored.
@@ -131,24 +132,24 @@ A node type can be set by @nd_set_type()@ and obtained by @nd_type()@.
 
 <p class="caption">▼ @nd_type nd_set_type@ </p>
 
-<pre class="longlist">
+```TODO-lang
  156  #define nd_type(n) (((RNODE(n))->flags>>FL_USHIFT)&0xff)
  157  #define nd_set_type(n,t) \
  158      RNODE(n)->flags = ((RNODE(n)->flags & ~FL_UMASK) \
                              | (((t)<<FL_USHIFT) & FL_UMASK))
 
 (node.h)
-</pre>
+```
 
 
 <p class="caption">▼ @FL_USHIFT FL_UMASK@ </p>
 
-<pre class="longlist">
+```TODO-lang
  418  #define FL_USHIFT    11
  429  #define FL_UMASK  (0xff<<FL_USHIFT)
 
 (ruby.h)
-</pre>
+```
 
 
 It won't be so much trouble if we'll keep focus on around @nd_type@.
@@ -167,7 +168,7 @@ the @nodetype()@ function is also available.
 
 <p class="caption">▼ @nodetype@ </p>
 
-<pre class="longlist">
+```TODO-lang
 4247  static enum node_type
 4248  nodetype(node)                  /* for debug */
 4249      NODE *node;
@@ -176,12 +177,12 @@ the @nodetype()@ function is also available.
 4252  }
 
 (parse.y)
-</pre>
+```
 
 
 
 
-h3. File Name and Line Number
+### File Name and Line Number
 
 
 The @nd_file@ of a @NODE@ holds (the pointer to) the name of the file where the
@@ -193,7 +194,7 @@ could not be found around here. Actually, the line number is being embedded to
 
 <p class="caption">▼ @nd_line nd_set_line@ </p>
 
-<pre class="longlist">
+```TODO-lang
  160  #define NODE_LSHIFT (FL_USHIFT+8)
  161  #define NODE_LMASK  (((long)1<<(sizeof(NODE*)*CHAR_BIT-NODE_LSHIFT))-1)
  162  #define nd_line(n) \
@@ -203,7 +204,7 @@ could not be found around here. Actually, the line number is being embedded to
                              | (((l)&NODE_LMASK) << NODE_LSHIFT))
 
 (node.h)
-</pre>
+```
 
 
 @nd_set_line()@ is fairly spectacular.
@@ -224,9 +225,9 @@ The next thing is @NODE_LMASK@.
 
 
 
-<pre class="emlist">
+```TODO-lang
 sizeof(NODE*) * CHAR_BIT - NODE_LSHIFT
-</pre>
+```
 
 
 This is the number of the rest of the bits.
@@ -234,9 +235,9 @@ Let's assume it is  @restbits@. This makes the code a lot simpler.
 
 
 
-<pre class="emlist">
+```TODO-lang
 #define NODE_LMASK  (((long)1 << restbits) - 1)
-</pre>
+```
 
 
 Fig.2 shows what the above code seems to be doing. Note that a borrow occurs
@@ -255,9 +256,9 @@ Now, let's look at @nd_line()@ again.
 
 
 
-<pre class="emlist">
+```TODO-lang
 (RNODE(n)->flags >> NODE_LSHIFT) & NODE_LMASK
-</pre>
+```
 
 
 By the right shift, the unused space is shifted to the LSB. The bitwise AND
@@ -276,12 +277,12 @@ the line numbers should wrongly be displayed. Let's try.
 
 
 
-<pre class="emlist">
+```TODO-lang
 File.open('overflow.rb', 'w') {|f|
     10000.times { f.puts }
     f.puts 'raise'
 }
-</pre>
+```
 
 
 With my 686 machine, @ruby overflow.rb@ properly displayed 1809 as a line number.
@@ -291,7 +292,7 @@ bigger file in order to successfully fail.
 
 
 
-h3. @rb_node_newnode()@
+### @rb_node_newnode()@
 
 
 Lastly let's look at the function @rb_node_newnode()@ that creates a node.
@@ -299,7 +300,7 @@ Lastly let's look at the function @rb_node_newnode()@ that creates a node.
 
 <p class="caption">▼ @rb_node_newnode()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 4228  NODE*
 4229  rb_node_newnode(type, a0, a1, a2)
 4230      enum node_type type;
@@ -320,7 +321,7 @@ Lastly let's look at the function @rb_node_newnode()@ that creates a node.
 4245  }
 
 (parse.y)
-</pre>
+```
 
 
 We've seen @rb_newobj()@ in the Chapter 5: Garbage collection. It is the function to get a
@@ -351,7 +352,8 @@ a struct type that has the above seven members.
 
 
 
-h2. Syntax Tree Construction
+Syntax Tree Construction
+========================
 
 
 The role of the parser is to convert the source code that is a byte sequence to a
@@ -362,7 +364,7 @@ In this section, we'll look at the construction process of that syntax tree.
 
 
 
-h3. @YYSTYPE@
+### @YYSTYPE@
 
 
 Essentially this chapter is about actions,
@@ -372,7 +374,7 @@ Let's look at the @%union@ of @ruby@ first.
 
 <p class="caption">▼ @%union@  declaration</p>
 
-<pre class="longlist">
+```TODO-lang
  170  %union {
  171      NODE *node;
  172      ID id;
@@ -381,7 +383,7 @@ Let's look at the @%union@ of @ruby@ first.
  175  }
 
 (parse.y)
-</pre>
+```
 
 
 @struct RVarmap@ is a struct used by the evaluator and holds a block local variable.
@@ -390,7 +392,7 @@ You can tell the rest. The most used one is of course @node@.
 
 
 
-h3. Landscape with Syntax Trees
+### Landscape with Syntax Trees
 
 
 I mentioned that looking at the fact first is a theory of code reading.
@@ -401,7 +403,7 @@ we should start with looking at the answer (the syntax tree).
 It's also nice using debuggers to observe every time,
 but you can visualize the syntax tree more handily
 by using the tool @nodedump@ contained in the attached CD-ROM,
-This tool is originally the NodeDump made by "Pragmatic Programmers":http://www.pragmaticprogrammers.com
+This tool is originally the NodeDump made by [Pragmatic Programmers](http://www.pragmaticprogrammers.com)
 and remodeled for this book.
 The original version shows quite explanatory output,
 but this remodeled version deeply and directly displays the appearance of the
@@ -412,7 +414,7 @@ For example, in order to dump the simple expression @m(a)@, you can do as follow
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -rnodedump -e 'm(a)'
 NODE_NEWLINE
 nd_file = "-e"
@@ -427,7 +429,7 @@ nd_next:
             NODE_VCALL
             nd_mid = 9625 (a)
         nd_next = (null)
-</pre>
+```
 
 
 The @-r@ option is used to specify the library to be load,
@@ -477,7 +479,7 @@ tree in other words.
 
 
 
-h3. Leaf
+### Leaf
 
 
 First, let's start with the edges that are the leaves of the syntax tree.
@@ -486,11 +488,11 @@ belong to @primary@ and are particularly simple even among the @primary@ rules.
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -rnodedump-short -e '1'
 NODE_LIT
 nd_lit = 1:Fixnum
-</pre>
+```
 
 
 1 as a numeric value. There's not any twist. However, notice that what is
@@ -498,11 +500,11 @@ stored in the node is not 1 of C but 1 of Ruby (1 of @Fixnum@). This is because 
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -rnodedump-short -e ':sym'
 NODE_LIT
 nd_lit = 9617:Symbol
-</pre>
+```
 
 
 This way, @Symbol@ is represented by the same @NODE_LIT@ when it becomes a syntax tree.
@@ -516,11 +518,11 @@ designing it so that it becomes convenient when executing is the right thing to 
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -rnodedump-short -e '"a"'
 NODE_STR
 nd_lit = "a":String
-</pre>
+```
 
 
 A string. This is also a Ruby string.
@@ -528,7 +530,7 @@ String literals are copied when actually used.
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -rnodedump -e '[0,1]'
 NODE_NEWLINE
 nd_file = "-e"
@@ -546,7 +548,7 @@ nd_next:
             NODE_LIT
             nd_lit = 1:Fixnum
         nd_next = (null)
-</pre>
+```
 
 
 Array. I can't say this is a leaf, but let's allow this to be here because it's
@@ -557,14 +559,14 @@ you will understand after finishing to read this section.
 
 
 
-h3. Branch
+### Branch
 
 
 Next, we'll focus on "combinations" that are branches.
 @if@ will be taken as an example.
 
 
-h4. @if@
+#### @if@
 
 
 I feel like @if@ is always used as an example, that's because its structure is
@@ -578,18 +580,18 @@ For example, let's convert this code to a syntax tree.
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 if true
   'true expr'
 else
   'false expr'
 end
-</pre>
+```
 
 
 <p class="caption">▼Its syntax tree expression</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_IF
 nd_cond:
     NODE_TRUE
@@ -599,7 +601,7 @@ nd_body:
 nd_else:
     NODE_STR
     nd_lit = "false expr":String
-</pre>
+```
 
 
 Here, the previously described @nodedump-short@ is used, so @NODE_NEWLINE@
@@ -613,7 +615,7 @@ Then, let's look at the code to build this.
 
 <p class="caption">▼ @if@  rule</p>
 
-<pre class="longlist">
+```TODO-lang
 1373                  | kIF expr_value then
 1374                    compstmt
 1375                    if_tail
@@ -624,7 +626,7 @@ Then, let's look at the code to build this.
 1380                      }
 
 (parse.y)
-</pre>
+```
 
 
 It seems that @NEW_IF()@ is the macro to create @NODE_IF@. Among the values of
@@ -634,11 +636,11 @@ of the rule and @$n@ are:
 
 
 
-<pre class="emlist">
+```TODO-lang
 kIF    expr_value  then  compstmt  if_tail  kEND
  $1          $2      $3        $4       $5    $6
 NEW_IF(expr_value,       compstmt, if_tail)
-</pre>
+```
 
 
 this way. In other words, @expr_value@ is the condition expression, @compstmt@
@@ -652,11 +654,11 @@ are defined @node.h@. Let's look at @NEW_IF()@.
 
 <p class="caption">▼ @NEW_IF()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  243  #define NEW_IF(c,t,e) rb_node_newnode(NODE_IF,c,t,e)
 
 (node.h)
-</pre>
+```
 
 
 As for the parameters,
@@ -678,9 +680,9 @@ untouched. Therefore, it needs to be corrected by @fixpos()@.
 
 
 
-<pre class="emlist">
+```TODO-lang
 fixpos(dest, src)
-</pre>
+```
 
 
 This way, the line number of the node @dest@ is set to the one of the node @src@.
@@ -691,7 +693,7 @@ of the whole @if@ expression.
 
 
 
-h4. @elsif@
+#### @elsif@
 
 
 Subsequently, let's look at the rule of @if_tail@.
@@ -699,7 +701,7 @@ Subsequently, let's look at the rule of @if_tail@.
 
 <p class="caption">▼ @if_tail@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1543  if_tail         : opt_else
 1544                  | kELSIF expr_value then
 1545                    compstmt
@@ -716,7 +718,7 @@ Subsequently, let's look at the rule of @if_tail@.
 1557                      }
 
 (parse.y)
-</pre>
+```
 
 
 First, this rule expresses "a list ends with @opt_else@ after zero or more
@@ -726,13 +728,13 @@ understand this by extracting arbitrary times.
 
 
 
-<pre class="emlist">
+```TODO-lang
 if_tail: kELSIF .... if_tail
 if_tail: kELSIF .... kELSIF .... if_tail
 if_tail: kELSIF .... kELSIF .... kELSIF .... if_tail
 if_tail: kELSIF .... kELSIF .... kELSIF .... opt_else
 if_tail: kELSIF .... kELSIF .... kELSIF .... kELSE compstmt
-</pre>
+```
 
 
 Next, let's focus on the actions, surprisingly, @elsif@ uses the same @NEW_IF()@ as @if@.
@@ -740,7 +742,7 @@ It means, the below two programs will lose the difference after they become synt
 
 
 
-<pre class="emlist">
+```TODO-lang
 if cond1                  if cond1
   body1                     body1
 elsif cond2               else
@@ -754,7 +756,7 @@ end                           else
                               end
                             end
                           end
-</pre>
+```
 
 
 Come to think of it, in C language and such, there's no distinction between
@@ -779,7 +781,7 @@ and so on. These pairs also become equal to each other.
 
 
 
-h4. Left Recursive and Right Recursive
+#### Left Recursive and Right Recursive
 
 
 By the way, the symbol of a list was always written at the left side when expressing a list
@@ -788,10 +790,10 @@ I'll show only the crucial part again.
 
 
 
-<pre class="emlist">
+```TODO-lang
 if_tail: opt_else
        | kELSIF ... if_tail
-</pre>
+```
 
 
 Surely, it is opposite of the previous examples. @if_tail@ which is the symbol
@@ -802,10 +804,10 @@ In fact, there's another established way of expressing lists,
 
 
 
-<pre class="emlist">
+```TODO-lang
 list: END_ITEM
     | ITEM list
-</pre>
+```
 
 
 when you write in this way, it becomes the list that contains continuous zero
@@ -857,7 +859,7 @@ writing a book of @yacc@.
 
 
 
-h3. Trunk
+### Trunk
 
 
 Leaf, branch, and finally, it's trunk.
@@ -866,11 +868,11 @@ Let's look at how the list of statements are joined.
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 7
 8
 9
-</pre>
+```
 
 
 The dump of the corresponding syntax tree is shown below.
@@ -879,7 +881,7 @@ This is not @nodedump-short@ but in the perfect form.
 
 <p class="caption">▼Its Syntax Tree</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_BLOCK
 nd_head:
     NODE_NEWLINE
@@ -907,7 +909,7 @@ nd_next:
                 NODE_LIT
                 nd_lit = 9:Fixnum
         nd_next = (null)
-</pre>
+```
 
 
 We can see the list of @NODE_BLOCK@ is created and @NODE_NEWLINE@ are attached
@@ -927,7 +929,7 @@ Let's also see the code.
 
 <p class="caption">▼ @stmts@ </p>
 
-<pre class="longlist">
+```TODO-lang
  354  stmts           : none
  355                  | stmt
  356                      {
@@ -939,7 +941,7 @@ Let's also see the code.
  362                      }
 
 (parse.y)
-</pre>
+```
 
 
 @newline_node()@ caps @NODE_NEWLINE@, @block_append()@ appends it to the list.
@@ -949,7 +951,7 @@ Let's look at the content only of the @block_append()@.
 
 
 
-h4. @block_append()@
+#### @block_append()@
 
 
 It this function, the error checks are in the very middle and obstructive.
@@ -958,7 +960,7 @@ Thus I'll show the code without that part.
 
 <p class="caption">▼ @block_append()@  (omitted)</p>
 
-<pre class="longlist">
+```TODO-lang
 4285  static NODE*
 4286  block_append(head, tail)
 4287      NODE *head, *tail;
@@ -990,7 +992,7 @@ Thus I'll show the code without that part.
 4332  }
 
 (parse.y)
-</pre>
+```
 
 
 According to the previous syntax tree dump, @NEW_BLOCK@ was a linked list uses @nd_next@.
@@ -1013,7 +1015,7 @@ Fig.6: Appending is easy.
 
 
 
-h3. The two types of lists
+### The two types of lists
 
 
 Now, I've explained the outline so far.
@@ -1055,7 +1057,8 @@ I'd like you to recall this and think "Oh, this uses the length".
 
 
 
-h2. Semantic Analysis
+Semantic Analysis
+=================
 
 
 As I briefly mentioned at the beginning of Part 2, there are two types of analysis
@@ -1066,7 +1069,7 @@ analysis inside actions.
 
 
 
-h3. Errors inside actions
+### Errors inside actions
 
 
 What does the semantic analysis precisely mean?
@@ -1127,12 +1130,12 @@ Comparing to it, the current
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -e 'self = 1'
 -e:1: Can't change the value of self
 self = 1
       ^
-</pre>
+```
 
 this error is much more friendly.
 
@@ -1160,9 +1163,9 @@ Therefore, for example, the next expression is odd,
 
 
 
-<pre class="emlist">
+```TODO-lang
 i = return(1)
-</pre>
+```
 
 
 Since this kind of expressions are clearly due to misunderstanding or simple mistakes,
@@ -1170,7 +1173,7 @@ it's better to reject when compiling.
 Next, we'll look at @value_expr@ which is one of the functions to check if it takes a value.
 
 
-h3. @value_expr()@
+### @value_expr()@
 
 
 @value_expr()@ is the function to check if it is an @expr@ that has a value.
@@ -1178,7 +1181,7 @@ h3. @value_expr()@
 
 <p class="caption">▼ @value_expr()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 4754  static int
 4755  value_expr(node)
 4756      NODE *node;
@@ -1235,10 +1238,10 @@ h3. @value_expr()@
 4807  }
 
 (parse.y)
-</pre>
+```
 
 
-h4. Algorithm
+#### Algorithm
 
 Summary: It sequentially checks the nodes of the tree, if it hits "an expression
 certainly not having its value", it means the tree does not have any value.
@@ -1254,7 +1257,7 @@ Here:
 
 <p class="caption">▼ check the value of  @arg@  by using  @value_expr()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1055  arg_value       : arg
 1056                      {
 1057                          value_expr($1);
@@ -1262,7 +1265,7 @@ Here:
 1059                      }
 
 (parse.y)
-</pre>
+```
 
 
 Inside of this argument @$1@, there can also be other nesting method calls again.
@@ -1283,7 +1286,7 @@ For example, in the next case:
 
 
 
-<pre class="emlist">
+```TODO-lang
 def method
   if true
     return 1
@@ -1292,14 +1295,14 @@ def method
   end
   5
 end
-</pre>
+```
 
 This @if@ statement does not need a value.<br>
 But in the next case, its value is necessary.
 
 
 
-<pre class="emlist">
+```TODO-lang
 def method( arg )
   tmp = if arg
         then 3
@@ -1307,7 +1310,7 @@ def method( arg )
         end
   tmp * tmp / 3.5
 end
-</pre>
+```
 
 
 So, in this case, the @if@ statement must be checked when checking the entire
@@ -1317,7 +1320,7 @@ statement of @value_expr()@.
 
 
 
-h4. Removing Tail Recursion
+#### Removing Tail Recursion
 
 
 By the way, when looking over the whole @value_expr@, we can see that there's
@@ -1325,7 +1328,7 @@ the following pattern appears frequently:
 
 
 
-<pre class="emlist">
+```TODO-lang
 while (node) {
     switch (nd_type(node)) {
       case NODE_XXXX:
@@ -1335,16 +1338,16 @@ while (node) {
          ：
     }
 }
-</pre>
+```
 
 
 This expression will also carry the same meaning after being modified to the below:
 
 
 
-<pre class="emlist">
+```TODO-lang
 return value_expr(node->nd_xxxx)
-</pre>
+```
 
 
 A code like this which does a recursive call just before @return@ is called a
@@ -1360,11 +1363,11 @@ For example, take a look at the @NODE_IF@ of @value_expr()@,
 
 
 
-<pre class="emlist">
+```TODO-lang
 if (!value_expr(node->nd_body)) return Qfalse;
 node = node->nd_else;
 break;
-</pre>
+```
 
 
 As shown above, the first time is a recursive call.
@@ -1372,9 +1375,9 @@ Rewriting this to the form of using @return@,
 
 
 
-<pre class="emlist">
+```TODO-lang
 return value_expr(node->nd_body) && value_expr(node->nd_else);
-</pre>
+```
 
 
 If the left @value_expr()@ is false, the right @value_expr()@ is also executed.
@@ -1385,7 +1388,7 @@ Hence, it can't be extracted to @goto@.
 
 
 
-h3. The whole picture of the value check
+### The whole picture of the value check
 
 
 As for value checks, we won't read the functions further.
@@ -1406,10 +1409,11 @@ Fig.7: the call graph of the value check functions
 
 
 
-h2. Local Variables
+Local Variables
+===============
 
 
-h3. Local Variable Definitions
+### Local Variable Definitions
 
 
 The variable definitions in Ruby are really various.
@@ -1426,10 +1430,10 @@ For example, as follows:
 
 
 
-<pre class="emlist">
+```TODO-lang
 lvar = nil
 p lvar      # being defined
-</pre>
+```
 
 
 In this case, as the assignment to @lvar@ is written at the first line,
@@ -1438,11 +1442,11 @@ When it is undefined, it ends up with a runtime exception @NameError@ as follows
 
 
 
-<pre class="emlist">
+```TODO-lang
 % ruby lvar.rb
 lvar.rb:1: undefined local variable or method `lvar'
 for #<Object:0x40163a9c> (NameError)
-</pre>
+```
 
 
 Why does it say @"local variable or method"@?
@@ -1458,12 +1462,12 @@ though it was not assigned. The initial value of a defined variable is nil.
 
 
 
-<pre class="emlist">
+```TODO-lang
 if false
   lvar = "this assigment will never be executed"
 end
 p lvar   # shows nil
-</pre>
+```
 
 
 Moreover, since it is defined "when" it "appears", the definition has to be
@@ -1472,10 +1476,10 @@ For example, in the next case, it is not defined.
 
 
 
-<pre class="emlist">
+```TODO-lang
 p lvar       # not defined !
 lvar = nil   # although appearing here ...
-</pre>
+```
 
 
 Be careful about the point of "in the symbol sequence".
@@ -1487,9 +1491,9 @@ Therefore, this produces @NameError@.
 
 
 
-<pre class="emlist">
+```TODO-lang
 p(lvar) if lvar = true
-</pre>
+```
 
 
 What we've learned by now is that the local variables are extremely influenced
@@ -1502,7 +1506,7 @@ And in fact, it is true. In @ruby@, the parser defines local variables.
 
 
 
-h3. Block Local Variables
+### Block Local Variables
 
 
 The local variables newly defined in an iterator block are called block local
@@ -1514,7 +1518,7 @@ We'll look at how is the difference from now on.
 
 
 
-h3. The data structure
+### The data structure
 
 
 We'll start with the local variable table @struct local_vars@.
@@ -1522,7 +1526,7 @@ We'll start with the local variable table @struct local_vars@.
 
 <p class="caption">▼ @struct local_vars@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5174  static struct local_vars {
 5175      ID *tbl;                    /* the table of local variable names */
 5176      int nofree;                 /* whether it is used from outside */
@@ -1533,7 +1537,7 @@ We'll start with the local variable table @struct local_vars@.
 5181  } *lvtbl;
 
 (parse.y)
-</pre>
+```
 
 
 The member name @prev@ indicates that the @struct local_vars@ is a
@@ -1549,7 +1553,7 @@ This is used to store the block local variables.
 
 <p class="caption">▼ @struct RVarmap@ </p>
 
-<pre class="longlist">
+```TODO-lang
   52  struct RVarmap {
   53      struct RBasic super;
   54      ID id;                  /* the variable name */
@@ -1558,7 +1562,7 @@ This is used to store the block local variables.
   57  };
 
 (env.h)
-</pre>
+```
 
 
 
@@ -1579,7 +1583,7 @@ Fig.8: The image of local variable tables at runtime
 
 
 
-h3. Local Variable Scope
+### Local Variable Scope
 
 
 When looking over the list of function names of @parse.y@,
@@ -1591,7 +1595,7 @@ So first, let's find out the places where using these functions.
 
 <p class="caption">▼ @local_push() local_pop()@  used examples</p>
 
-<pre class="longlist">
+```TODO-lang
 1475                  | kDEF fname
 1476                      {
 1477                          $<id>$ = cur_mid;
@@ -1615,7 +1619,7 @@ So first, let's find out the places where using these functions.
 1493                      }
 
 (parse.y)
-</pre>
+```
 
 
 At @def@, I could find the place where it is used. It can also be found in class
@@ -1633,11 +1637,11 @@ Moreover, I also searched @local_cnt()@.
 
 <p class="caption">▼ @NEW_LASGN()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  269  #define NEW_LASGN(v,val) rb_node_newnode(NODE_LASGN,v,val,local_cnt(v))
 
 (node.h)
-</pre>
+```
 
 
 This is found in @node.h@. Even though there are also the places where using in @parse.y@,
@@ -1665,12 +1669,12 @@ Fig.9: the flow of the local variable management
 Then, let's look at the content of the function.
 
 
-h3. @push@ and @pop@
+### @push@ and @pop@
 
 
 <p class="caption">▼ @local_push()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5183  static void
 5184  local_push(top)
 5185      int top;
@@ -1693,7 +1697,7 @@ h3. @push@ and @pop@
 5202  }
 
 (parse.y)
-</pre>
+```
 
 
 As we expected, it seems that @struct local_vars@ is used as a stack.
@@ -1706,7 +1710,7 @@ Subsequently, we'll look at @local_pop()@ and @local_tbl()@ at the same time.
 
 <p class="caption">▼ @local_tbl local_pop@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5218  static ID*
 5219  local_tbl()
 5220  {
@@ -1729,7 +1733,7 @@ Subsequently, we'll look at @local_pop()@ and @local_tbl()@ at the same time.
 5216  }
 
 (parse.y)
-</pre>
+```
 
 
 I'd like you to look at @local_tbl()@.
@@ -1757,7 +1761,7 @@ at the index 0 of the @lvtbl->tbl@.
 
 
 
-h3. Adding variables
+### Adding variables
 
 
 The function (which seems) to add a local variable is @local_cnt()@.
@@ -1765,7 +1769,7 @@ The function (which seems) to add a local variable is @local_cnt()@.
 
 <p class="caption">▼ @local_cnt()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5246  static int
 5247  local_cnt(id)
 5248      ID id;
@@ -1781,7 +1785,7 @@ The function (which seems) to add a local variable is @local_cnt()@.
 5258  }
 
 (parse.y)
-</pre>
+```
 
 
 This scans @lvtbl->tbl@ and searches what is equals to @id@.
@@ -1824,7 +1828,7 @@ It is shown below, let's make sure.
 
 <p class="caption">▼ @local_append()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5225  static int
 5226  local_append(id)
 5227      ID id;
@@ -1847,7 +1851,7 @@ It is shown below, let's make sure.
 5244  }
 
 (parse.y)
-</pre>
+```
 
 
 It seems definitely true. @lvtbl->tbl@ is an array of the local variable names,
@@ -1875,7 +1879,7 @@ thus it's necessary that the spaces are always allocated.
 
 
 
-h3. Summary of local variables
+### Summary of local variables
 
 
 Since the description of local variables were complex in various ways,
@@ -1903,7 +1907,7 @@ Fig.11: correspondences between local variable names and the return values
 
 
 
-h3. Block Local Variables
+### Block Local Variables
 
 
 The rest is @dyna_vars@ which is a member of @struct local_vars@.
@@ -1917,7 +1921,7 @@ Moreover, here is the place where these are used.
 
 <p class="caption">▼ an example using  @dyna_push dyna_pop@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1651  brace_block     : '{'
 1652                      {
 1653                          $<vars>$ = dyna_push();
@@ -1931,7 +1935,7 @@ Moreover, here is the place where these are used.
 1661                      }
 
 (parse.y)
-</pre>
+```
 
 
 @push@ at the beginning of an iterator block, @pop@ at the end.
@@ -1942,7 +1946,7 @@ Now, we are going to look at the functions.
 
 <p class="caption">▼ @dyna_push()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5331  static struct RVarmap*
 5332  dyna_push()
 5333  {
@@ -1954,7 +1958,7 @@ Now, we are going to look at the functions.
 5339  }
 
 (parse.y)
-</pre>
+```
 
 
 Increasing @lvtbl->dlev@ seems the mark indicates the existence of the block
@@ -1964,7 +1968,7 @@ Meanwhile, @rb_dvar_push()@ is ...
 
 <p class="caption">▼ @rb_dvar_push()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  691  void
  692  rb_dvar_push(id, value)
  693      ID id;
@@ -1974,7 +1978,7 @@ Meanwhile, @rb_dvar_push()@ is ...
  697  }
 
 (eval.c)
-</pre>
+```
 
 
 It creates a @struct RVarmap@ that has the variable name @id@ and the value
@@ -1998,7 +2002,7 @@ Next, @dyna_pop()@.
 
 <p class="caption">▼ @dyna_pop()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 5341  static void
 5342  dyna_pop(vars)
 5343      struct RVarmap* vars;
@@ -2008,7 +2012,7 @@ Next, @dyna_pop()@.
 5347  }
 
 (parse.y)
-</pre>
+```
 
 
 By reducing @lvtbl->dlev@, it writes down the fact that the block local
@@ -2024,7 +2028,7 @@ So, I did plenty of @grep@ with @dvar@ and @dyna@, and this code was found.
 
 <p class="caption">▼ @assignable()@  (partial)</p>
 
-<pre class="longlist">
+```TODO-lang
 4599  static NODE*
 4600  assignable(id, val)
 4601      ID id;
@@ -2035,7 +2039,7 @@ So, I did plenty of @grep@ with @dvar@ and @dyna@, and this code was found.
 4635              return NEW_DASGN_CURR(id, val);
 
 (parse.y)
-</pre>
+```
 
 
 @assignable()@ is the function to create a node relates to assignments,
@@ -2047,7 +2051,7 @@ by using @rb_dvar_push()@ that we've just seen.
 
 
 
-h3. @ruby_dyna_vars@ in the parser
+### @ruby_dyna_vars@ in the parser
 
 
 Now, taking the above all into considerations, let's imagine the appearance of
@@ -2066,12 +2070,12 @@ I'd like you to focus on this part:
 
 
 
-<pre class="emlist">
+```TODO-lang
 $<vars>$ = dyna_push();    /* what assigned into $<vars>$ is ... */
         ：
         ：
 dyna_pop($<vars>2);        /* …… appears at $<vars>2 */
-</pre>
+```
 
 
 @dyna_push()@ returns the @ruby_dyna_vars@ at the moment.
@@ -2082,7 +2086,7 @@ Therefore, when parsing the following program,
 
 
 
-<pre class="emlist">
+```TODO-lang
 iter {
     a = nil
     iter {
@@ -2099,7 +2103,7 @@ iter {
     }
     # nesting level 1
 }
-</pre>
+```
 
 
 Fig.12 shows the @ruby_dyna_vars@ in this situation.

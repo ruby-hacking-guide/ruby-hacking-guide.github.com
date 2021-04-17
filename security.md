@@ -4,9 +4,10 @@ title: Security
 ---
 Translated by Clifford Escobar CAOILE & ocha-
 
-h1. Chapter 7: Security
+Chapter 7: Security
+-------------------
 
-h3. Fundamentals
+### Fundamentals
 
 I say security but I don't mean passwords or encryption. The Ruby security
 feature is used for handling untrusted objects in a environment like CGI
@@ -47,7 +48,7 @@ We can skip 0 and move on to explain in detail levels 2 and 4.
 "Level 2 has no use currently" is right.))
 
 
-h4. Level 1
+#### Level 1
 
 This level is for dangerous data, for example, in normal CGI
 applications, etc.
@@ -60,7 +61,7 @@ exception to be raised and the attempt will be stopped.
 This tainted mark is "infectious". For example, when taking a part of a
 tainted string, that part is also tainted.
 
-h4. Level 4
+#### Level 4
 
 This level is for dangerous programs, for example, running external
 (unknown) programs, etc.
@@ -71,7 +72,7 @@ I/O, thread manipulation, redefining methods, etc. Of course, the
 tainted mark information is used, but basically the operations are the
 criteria.
 
-h4. Unit of Security
+#### Unit of Security
 
 `$SAFE` looks like a global variable but is in actuality a thread
 local variable. In other words, Ruby's security system works on units
@@ -84,7 +85,7 @@ program, then it should be made into a different thread and have its
 security level raised. I haven't yet explained how to create a thread,
 but I will show an example here:
 
-<pre class="emlist">
+```TODO-lang
 # Raise the security level in a different thread
 p($SAFE)   # 0 is the default
 Thread.fork {    # Start a different thread
@@ -92,9 +93,9 @@ Thread.fork {    # Start a different thread
     eval(str)    # Run the dangerous program
 }
 p($SAFE)   # Outside of the block, the level is still 0
-</pre>
+```
 
-h4. Reliability of `$SAFE`
+#### Reliability of `$SAFE`
 
 Even with implementing the spreading of tainted marks, or restricting
 operations, ultimately it is still handled manually. In other words,
@@ -115,7 +116,7 @@ open. Therefore it is prudent to think that `ruby` can probably be
 dangerous.
 
 
-h3. Implementation
+### Implementation
 
 
 From now on, we'll start to look into its implementation.
@@ -137,7 +138,7 @@ The APIs to check are mainly these below two:
 We won't read `SafeStringValue()` here.
 
 
-h4. Tainted Mark
+#### Tainted Mark
 
 
 The taint mark is, to be concrete, the `FL_TAINT` flag, which is set to
@@ -145,11 +146,11 @@ The taint mark is, to be concrete, the `FL_TAINT` flag, which is set to
 Here is its usage.
 
 
-<pre class="emlist">
+```TODO-lang
 OBJ_TAINT(obj)            /* set FL_TAINT to obj */
 OBJ_TAINTED(obj)          /* check if FL_TAINT is set to obj */
 OBJ_INFECT(dest, src)     /* infect FL_TAINT from src to dest */
-</pre>
+```
 
 
 Since `OBJ_TAINT()` and `OBJ_TAINTED()` can be assumed not important,
@@ -157,14 +158,14 @@ let's briefly look over only `OBJ_INFECT()`.
 
 
 <p class="caption">▼ `OBJ_INFECT` </p>
-<pre class="longlist">
+```TODO-lang
  441  #define OBJ_INFECT(x,s) do {                             \
           if (FL_ABLE(x) && FL_ABLE(s))                        \
               RBASIC(x)->flags |= RBASIC(s)->flags & FL_TAINT; \
       } while (0)
 
 (ruby.h)
-</pre>
+```
 
 
 `FL_ABLE()` checks if the argument `VALUE` is a pointer or not.
@@ -174,11 +175,11 @@ it would propagate the flag.
 
 
 
-h4. $SAFE
+#### $SAFE
 
 
 <p class="caption">▼ `ruby_safe_level` </p>
-<pre class="longlist">
+```TODO-lang
  124  int ruby_safe_level = 0;
 
 7401  static void
@@ -196,7 +197,7 @@ h4. $SAFE
 7413  }
 
 (eval.c)
-</pre>
+```
 
 
 The substance of `$SAFE` is `ruby_safe_level` in `eval.c`.
@@ -219,11 +220,11 @@ you can ignore the interface and modify the security level.
 
 
 
-h4. `rb_secure()`
+#### `rb_secure()`
 
 
 <p class="caption">▼ `rb_secure()` </p>
-<pre class="longlist">
+```TODO-lang
  136  void
  137  rb_secure(level)
  138      int level;
@@ -235,7 +236,7 @@ h4. `rb_secure()`
  144  }
 
 (eval.c)
-</pre>
+```
 
 
 If the current safe level is more than or equal to `level`,

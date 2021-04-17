@@ -4,19 +4,21 @@ title: Introduction
 ---
 
 
-h1. Introduction
+Introduction
+------------
 
-h2. Characteristics of Ruby
+Characteristics of Ruby
+=======================
 
 Some of the readers may have already been familiar with Ruby,
 but (I hope) there are also many readers who have not. First let's go though a
-rough summary of the characteristics of Ruby for such people. 
+rough summary of the characteristics of Ruby for such people.
 
 
 Hereafter capital "Ruby" refers to Ruby as a language specification, and lowercase
 "@ruby@" refers to @ruby@ command as an implementation.
 
-h4. Development style
+#### Development style
 
 Ruby is a language that is being developed by the hand of Yukihiro Matsumoto as
 an individual. Unlike C or Java or Scheme, it does not have any standard.
@@ -41,7 +43,7 @@ following things:
 * You can redistribute a copy of source code with your modification
 
 
-There is no need for special permission and payment in all these cases. 
+There is no need for special permission and payment in all these cases.
 
 
 By the way, the purpose of this book is to read the original @ruby@,
@@ -50,7 +52,7 @@ specified. However, white spaces, new lines and comments were added or removed
 without asking.
 
 
-h4. It's conservative
+#### It's conservative
 
 Ruby is a very conservative language. It is equipped with only carefully chosen
 features that have been tested and washed out in a variety of languages.
@@ -67,9 +69,9 @@ been taken from them. For example, @printf@, @getpwent@, @sub@, and @tr@.
 
 It is also conservative in implementation. Assembler is not its option for
 seeking speed. Portability is always considered a higher priority when it
-conflicts with speed. 
+conflicts with speed.
 
-h4. It is an object-oriented language
+#### It is an object-oriented language
 
 Ruby is an object-oriented language. It is absolutely impossible to exclude it
 from the features of Ruby.
@@ -79,12 +81,12 @@ I will not give a page to this book about what an object-oriented language is.
 To tell about an object-oriented feature about Ruby, the expression of the code
 that just going to be explained is the exact sample.
 
-h4. It is a script language
+#### It is a script language
 
 Ruby is a script language. It seems also absolutely impossible to exclude this
 from the features of Ruby. To gain agreement of
 everyone, an introduction of Ruby must include "object-oriented" and "script
-language". 
+language".
 
 
 However, what is a "script language" for example? I couldn't figure out the
@@ -92,7 +94,7 @@ definition successfully. For example, John K. Ousterhout, the author of Tcl/Tk,
 gives a definition as "executable language using @#!@ on UNIX". There are other
 definitions depending on the view points, such as one that can express a useful
 program with only one line, or that can execute the code by passing a program
-file from the command line, etc. 
+file from the command line, etc.
 
 
 However, I dare to use another definition, because I don't find much interest
@@ -100,16 +102,16 @@ in "what" a script language.
 I have the only one measure to decide to call it a script language,
 that is, whether no one would complain about calling it a script language.
 To fulfill this definition, I would define the meaning of "script language" as
-follows. 
+follows.
 
 
 A language that its author calls it a "script language".
 
 
-I'm sure this definition will have no failure. And Ruby fulfills this point. 
-Therefore I call Ruby a "script language". 
+I'm sure this definition will have no failure. And Ruby fulfills this point.
+Therefore I call Ruby a "script language".
 
-h4. It's an interpreter
+#### It's an interpreter
 
 @ruby@ is an interpreter. That's the fact. But why it's an interpreter?  For
 example, couldn't it be made as a compiler?
@@ -135,7 +137,7 @@ accurate. A language could possibly be planned so that it won't show the
 process of compilation. Actually, Delphi can compile a project by hitting just
 F5. A claim about a long time for compilation is derived from the size of the
 project or optimization of the codes. Compilation itself doesn't owe a negative
-side. 
+side.
 
 
 Well, why people perceive an interpreter and compiler so much different like
@@ -160,14 +162,14 @@ book is facing, so I emphasize it here again.
 Though I don't know about "it's handy because it is an interpreter",
 anyway @ruby@ is implemented as an interpreter.
 
-h4. High portability
+#### High portability
 
 Even with a problem that fundamentally the interfaces are Unix-centered, I
 would insist @ruby@ possesses a high portability.
 It doesn't require any extremely unfamiliar library.
 It has only a few parts written in assembler.
 Therefore porting to a new platform is comparatively easy. Namely, it works
-on the following platforms currently. 
+on the following platforms currently.
 
 
 * Linux
@@ -197,7 +199,7 @@ Thus when using Linux, you will not fail to compile any time.
 Furthermore, you can expect a stable functionality on a (typical) Unix environment.
 Considering the release cycle of packages, the primary option
 for the environment to hit around @ruby@ should fall on a branch of PC UNIX,
-  currently. 
+  currently.
 
 
 On the other hand, the Win32 environment tends to cause problems definitely.
@@ -205,25 +207,25 @@ The large gaps in the targeting OS model tend to cause problems around the
 machine stack and the linker. Yet, recently Windows hackers have contributed to
 make better support. I use a native ruby on Windows 2000 and Me. Once it gets
 successfully run, it doesn't seem to show special concerns like frequent
-crashing. The main problems on Windows may be the gaps in the specifications. 
+crashing. The main problems on Windows may be the gaps in the specifications.
 
 
 Another type of OS that many people may be interested in should probably be Mac
-OS (prior to v9) and handheld OS like Palm. 
+OS (prior to v9) and handheld OS like Palm.
 
 
 Around @ruby 1.2@ and before, it supported legacy Mac OS, but the development
 seems to be in suspension. Even a compiling can't get through. The biggest
 cause is that the compiler environment of legacy Mac OS and the decrease of
 developers. Talking about Mac OS X, there's no worries because the body is
-UNIX. 
+UNIX.
 
 
 There seem to be discussions the portability to Palm several branches, but I
 have never heard of a successful project. I guess the difficulty lies in the
 necessity of settling down the specification-level standards such as @stdio@ on
 the Palm platform, rather than the processes of actual implementation. Well I
-saw a porting to Psion has been done. ([ruby-list:36028]). 
+saw a porting to Psion has been done. ([ruby-list:36028]).
 
 
 How about hot stories about VM seen in Java and .NET?
@@ -231,49 +233,49 @@ Because I'd like to talk about them combining together with the implementation,
 this topic will be in the final chapter.
 
 
-h4. Automatic memory control
+#### Automatic memory control
 
 Functionally it's called GC, or Garbage Collection. Saying it in C-language,
 this feature allows you to skip @free()@ after @malloc()@.  Unused memory is
 detected by the system automatically, and will be released. It's so convenient
 that once you get used to GC you won't be willing to do such manual
-memory control again. 
+memory control again.
 
 
 The topics about GC have been common because of its popularity in recent
 languages with GC as a standard set, and it is fun that
 its algorithms can still be improved further.
 
-h4. Typeless variables
+#### Typeless variables
 
 The variables in Ruby don't have types. The reason is probably typeless
 variables conforms more with polymorphism, which is one of the strongest
 advantages of an object-oriented language.  Of course a language with variable
 type has a way to deal with polymorphism.  What I mean here is a typeless
-variables have better conformance. 
+variables have better conformance.
 
 
 The level of "better conformance" in this case refers to synonyms like "handy".
 It's sometimes corresponds to crucial importance, sometimes it doesn't matter
 practically. Yet, this is certainly an appealing point if a language seeks for
-"handy and easy", and Ruby does. 
+"handy and easy", and Ruby does.
 
-h4. Most of syntactic elements are expressions
+#### Most of syntactic elements are expressions
 
 This topic is probably difficult to understand instantly without a little
 supplemental explanation.  For example, the following C-language program
 results in a syntactic error.
 
-<pre class="emlist"> 
+```TODO-lang
 result = if (cond) { process(val); } else { 0; }
-</pre>
+```
 
 Because the C-language syntax defines @if@ as a statement.
 But you can write it as follows.
 
-<pre class="emlist"> 
+```TODO-lang
 result = cond ? process(val) : 0;
-</pre>
+```
 
 This rewrite is possible because the conditional operator (@a?b:c@) is defined
 as an expression.
@@ -281,9 +283,9 @@ as an expression.
 
 On the other hand, in Ruby, you can write as follows because @if@ is an expression.
 
-<pre class="emlist"> 
+```TODO-lang
 result = if cond then process(val) else nil end
-</pre>
+```
 
 Roughly speaking, if it can be an argument of a function or a method,
 you can consider it as an expression.
@@ -292,12 +294,12 @@ Of course, there are other languages whose syntactic elements are mostly express
 Lisp is the best example. Because of the characteristic around this,
 there seems many people who feel like "Ruby is similar to Lisp".
 
-h4. Iterators
+#### Iterators
 
 Ruby has iterators. What is an iterator? Before getting into iterators, I should
 mention the necessity of using an alternative term, because the word "iterator" is
 disliked recently. However, I don't have a good alternative. So let us keep calling
-it "iterator" for the time being. 
+it "iterator" for the time being.
 
 Well again, what is an iterator? If you know higher-order function,
 for the time being, you can regard it as something similar to it.
@@ -308,9 +310,9 @@ it's good to imagine something like a custom @for@ statement which we can define
 
 Yet, the above are merely examples of "similar" concepts. All of them are similar,
 but they are not identical to Ruby's iterator. I will expand the precise story
-when it's a good time later. 
+when it's a good time later.
 
-h4. Written in C-language
+#### Written in C-language
 
 Being written in C-language is not notable these days, but it's still a
 characteristic for sure.
@@ -335,10 +337,10 @@ it would warn prototype mismatch and could not compile.
 ... These kind of stories are often reported to the mailing list.
 
 
-h4. Extension library
+#### Extension library
 
 We can write a Ruby library in C and load it at runtime without recompiling Ruby.
-This type of library is called "Ruby extension library" or just "Extension library". 
+This type of library is called "Ruby extension library" or just "Extension library".
 
 Not only the fact that we can write it in C,
 but the very small difference in the code expression between Ruby-level and
@@ -347,7 +349,7 @@ As for the operations available in Ruby,
 we can also use them in C in the almost same way.
 See the following example.
 
-<pre class="emlist"> 
+```TODO-lang
 # Method call
 obj.method(arg)                                 # Ruby
 rb_funcall(obj, rb_intern("method"), 1, arg);   # C
@@ -363,17 +365,17 @@ rb_raise(rb_eArgError, "wrong number of arguments");   # C
 # Generating an object
 arr = Array.new             # Ruby
 VALUE arr = rb_ary_new();   # C
-</pre>
+```
 
 It's good because it provides easiness in composing an extension library, and actually
 it makes an indispensable prominence of @ruby@. However, it's also a burden for @ruby@
 implementation. You can see the affects of it in many places. The affects to GC and
-thread-processing is eminent. 
+thread-processing is eminent.
 
-h4. Thread
+#### Thread
 
 Ruby is equipped with thread. Assuming a very few people knowing none about thread these
-days, I will omit an explanation about the thread itself. I will start a story in detail. 
+days, I will omit an explanation about the thread itself. I will start a story in detail.
 
 `ruby`'s thread is a user-level thread that is originally written. The characteristic of
 this implementation is a very high portability in both specification and implementation.
@@ -384,9 +386,10 @@ However, as a trade off for such an extremeness of portability, @ruby@ abandons 
 It's, say, probably the slowest of all user-level thread implementations in this world.
 The tendency of @ruby@ implementation may be seen here the most clearly.
 
-h2. Technique to read source code
+Technique to read source code
+=============================
 
-Well. After an introduction of @ruby@, we are about to start reading source code. But wait. 
+Well. After an introduction of @ruby@, we are about to start reading source code. But wait.
 
 Any programmer has to read a source code somewhere, but I guess there are not many occasions
 that someone teaches you the concrete ways how to read. Why?
@@ -395,17 +398,17 @@ Does it mean you can naturally read a program if you can write a program?
 But I can't think reading the program written by other people is so easy.
 In the same way as writing programs, there must be techniques and theories in reading programs.
 And they are necessary. Therefore, before starting to ready @ruby@, I'd like to expand a general
-summary of an approach you need to take in reading a source code. 
+summary of an approach you need to take in reading a source code.
 
-h3. Principles
+### Principles
 
-At first, I mention the principle. 
+At first, I mention the principle.
 
-h4. Decide a goal
+#### Decide a goal
 
 
 <blockquote>
-An important key to reading the source code is to set a concrete goal. 
+An important key to reading the source code is to set a concrete goal.
 </blockquote>
 
 
@@ -415,23 +418,23 @@ you would get source code expanded or explanatory books ready on the desk. But n
 what to do, the studies are to be left untouched. Haven't you? On the other hand, when you
 have in mind "I'm sure there is a bug somewhere in this tool. I need to quickly fix it and
 make it work. Otherwise I will not be able to make the deadline...", you will probably be
-able to fix the code in a blink, even if it's written by someone else. Haven't you? 
+able to fix the code in a blink, even if it's written by someone else. Haven't you?
 
 The difference in these two cases is motivation you have. In order to know something,
 you at least have to know what you want to know. Therefore, the first step of all is
-to figure out what you want to know in explicit words. 
+to figure out what you want to know in explicit words.
 
 However, of course this is not all needed to make it your own "technique".
 Because "technique" needs to be a common method that anybody can make use of it by following it.
 In the following section, I will explain how to bring the first step into the landing place
-where you achieve the goal finally. 
+where you achieve the goal finally.
 
-h4. Visualising the goal
+#### Visualising the goal
 
 Now let us suppose that our final goal is set "Understand all about @ruby@". This is certainly
 considered as "one set goal", but apparently it will not be useful for reading the source code
 actually. It will not be a trigger of any concrete action. Therefore, your first job will be to
-drag down the vague goal to the level of a concrete thing. 
+drag down the vague goal to the level of a concrete thing.
 
 Then how can we do it? The first way is thinking as if you are the person who wrote
 the program. You can utilize your knowledge in writing a program, in this case. For example,
@@ -448,36 +451,36 @@ but they are often done relying on experience or intuition.
 In what way can we read source codes well?
 Thinking about the way itself and being aware of it are crucially important.
 
-Well, what are such methods like? I will explain it in the next section. 
+Well, what are such methods like? I will explain it in the next section.
 
-h3. Analysis methods
+### Analysis methods
 
 The methods to read source code can be roughly divided into two; one is a static method and
 the other is dynamic method. Static method is to read and analyze the source code without
-running the program. Dynamic method is to watch the actual behavior using tools like a debugger. 
+running the program. Dynamic method is to watch the actual behavior using tools like a debugger.
 
 It's better to start studying a program by dynamic analysis. That is because what you can see
 there is the "fact". The results from static analysis, due to the fact of not running the program
 actually, may well be "prediction" to a greater or lesser extent. If you want to know the truth,
-you should start from watching the fact. 
+you should start from watching the fact.
 
 Of course, you don't know whether the results of dynamic analysis are the fact really.
 The debugger could run with a bug, or the CPU may not be working properly due to overheat.
 The conditions of your configuration could be wrong. However, the results of static analysis
-should at least be closer to the fact than dynamic analysis. 
+should at least be closer to the fact than dynamic analysis.
 
-h3. Dynamic analysis
+### Dynamic analysis
 
-h4. Using the target program
+#### Using the target program
 
 You can't start without the target program. First of all, you need to know in advance what
-the program is like, and what are expected behaviors. 
+the program is like, and what are expected behaviors.
 
-h4. Following the behavior using the debugger
+#### Following the behavior using the debugger
 
 If you want to see the paths of code execution and the data structure produced as a result,
 it's quicker to look at the result by running the program actually than to emulate the behavior
-in your brain. In order to do so easily, use the debugger. 
+in your brain. In order to do so easily, use the debugger.
 
 I would be more happy if the data structure at runtime can be seen as a picture,
 but unfortunately we can nearly scarcely find a tool for that purpose
@@ -485,20 +488,20 @@ but unfortunately we can nearly scarcely find a tool for that purpose
 If it is about a snapshot of the comparatively simpler structure,
 we might be able to write it out as a text and convert it to a picture by using a tool like
 graphviz\footnote{graphviz……See doc/graphviz.html in the attached CD-ROM}.
-But it's very difficult to find a way for general purpose and real time analysis. 
+But it's very difficult to find a way for general purpose and real time analysis.
 
-h4. Tracer
+#### Tracer
 
-You can use the tracer if you want to trace the procedures that code goes through.  In case of C-language, there is a tool named ctrace\footnote{ctrace……http://www.vicente.org/ctrace}.  For tracing a system call, you can use tools like strace\footnote{strace……http://www.wi.leidenuniv.nl/~wichert/strace/}, truss, and ktrace. 
+You can use the tracer if you want to trace the procedures that code goes through.  In case of C-language, there is a tool named ctrace\footnote{ctrace……http://www.vicente.org/ctrace}.  For tracing a system call, you can use tools like strace\footnote{strace……http://www.wi.leidenuniv.nl/~wichert/strace/}, truss, and ktrace.
 
-h4. Print everywhere
+#### Print everywhere
 
 There is a word "printf debugging". This method also works for analysis other than debugging.
 If you are watching the history of one variable, for example, it may be easier to understand
 to look at the dump of the result of the print statements embed, than to track the variable
 with a debugger.
 
-h4. Modifying the code and running it
+#### Modifying the code and running it
 
 Say for example, in the place where it's not easy to understand its behavior,
 just make a small change in some part of the code or a particular parameter
@@ -509,9 +512,9 @@ meaning of the code from it.
 It goes without saying, you should also have an original binary
 and do the same thing on both of them.
 
-h3. Static analysis
+### Static analysis
 
-h4. The importance of names
+#### The importance of names
 
 Static analysis is simply source code analysis. And source code analysis is
 really an analysis of names. File names, function names, variable names, type names,
@@ -527,17 +530,17 @@ And in object-oriented programs, function names sometimes contain the
 information about where they belong to in prefixes,
 and it becomes valuable information (e.g. @rb_str_length@).
 
-h4. Reading documents
+#### Reading documents
 
 Sometimes a document describes the internal structure is included.
 Especially be careful of a file named @HACKING@ etc.
 
-h4. Reading the directory structure
+#### Reading the directory structure
 
 Looking at in what policy the directories are divided.
 Grasping the overview such as how the program is structured, and what the parts are.
 
-h4. Reading the file structure
+#### Reading the file structure
 
 While browsing (the names of) the functions,
 also looking at the policy of how the files are divided.
@@ -549,7 +552,7 @@ for each module the functions to compose it should be grouped together,
 so you can find out the module structure from the order of the functions.
 
 
-h4. Investigating abbreviations
+#### Investigating abbreviations
 
 As you encounter ambiguous abbreviations, make a list of them and investigate
 each of them as early as possible. For example, when it is written "GC",
@@ -562,7 +565,7 @@ popular abbreviations in the fields of the target program are used
 unconditionally, thus you should be familiar with them at an early stage.
 
 
-h4. Understanding data structure
+#### Understanding data structure
 
 If you find both data and code, you should first investigate the data structure.
 In other words, when exploring code in C, it's better to start with header files.
@@ -574,7 +577,7 @@ For example, if you find the member @next@, which points to its own type, then i
 will be a linked list. Similarly, when you find members such as @parent@, @children@,
 and @sibling@, then it must be a tree structure. When @prev@, it will be a stack.
 
-h4. Understanding the calling relationship between functions
+#### Understanding the calling relationship between functions
 
 After names, the next most important thing to understand is the relationships between
 functions. A tool to visualize the calling relationships is especially called a
@@ -587,7 +590,7 @@ When I analyzed @ruby@ to write this book,
 I wrote a small command language and a parser in Ruby and
 generated diagrams half-automatically by passing the results to the tool named @graphviz@.
 
-h4. Reading functions
+#### Reading functions
 
 Reading how it works to be able to explain things done by the function concisely.
 It's good to read it part by part as looking at the figure of the function
@@ -602,7 +605,7 @@ Additionally, when you don't like its coding style,
 you can convert it by using the tool like @indent@.
 
 
-h4. Experimenting by modifying it as you like
+#### Experimenting by modifying it as you like
 
 It's a mystery of human body,
 when something is done using a lot of parts of your body,
@@ -626,7 +629,7 @@ mistake. And since the purpose of rewriting is getting used to and not rewriting
 itself, please be careful not to be enthusiastic very much.
 
 
-h3. Reading the history
+### Reading the history
 
 A program often comes with a document which is about the history of changes.
 For example, if it is a software of GNU, there's always a file named
@@ -645,7 +648,7 @@ time because often there's the information about the exact reason of a certain
 change. Of course, if you can search online, it's also sufficient.
 
 
-h3. The tools for static analysis
+### The tools for static analysis
 
 Since various tools are available for various purposes,
 I can't describe them as a whole.
@@ -655,7 +658,7 @@ the other purposes. For instance, @gctags@, which comes with it, is actually a
 tool to create tag files, but you can use it to create a list of the function
 names contained in a file.
 
-<pre class="screen">
+```TODO-lang
 ~/src/ruby % gctags class.c | awk '{print $1}'
 SPECIAL_SINGLETON
 SPECIAL_SINGLETON
@@ -667,7 +670,7 @@ ins_methods_prot_i
 method_list
         ：
         ：
-</pre>
+```
 
 That said, but this is just a recommendation of this author,
 you as a reader can use whichever tool you like.
@@ -683,9 +686,10 @@ features.
 
 
 
-h2. Build
+Build
+=====
 
-h3. Target version
+### Target version
 
 The version of @ruby@ described in this book is 1.7 (2002-09-12).
 Regarding @ruby@,
@@ -709,32 +713,32 @@ out in the near future.
 And the last one is, investigating the edge would make our mood more pleasant.
 
 
-h3. Getting the source code
+### Getting the source code
 
 The archive of the target version is included in the attached CD-ROM.
 In the top directory of the CD-ROM,
 
 
-<pre class="emlist">
+```TODO-lang
 ruby-rhg.tar.gz
 ruby-rhg.zip
 ruby-rhg.lzh
-</pre>
+```
 
 these three versions are placed,
 so I'd like you to use whichever one that is convenient for you.
 Of course, whichever one you choose, the content is the same.
 For example, the archive of @tar.gz@ can be extracted as follows.
 
-<pre class="screen">
+```TODO-lang
 ~/src % mount /mnt/cdrom
 ~/src % gzip -dc /mnt/cdrom/ruby-rhg.tar.gz | tar xf -
 ~/src % umount /mnt/cdrom
-</pre>
+```
 
 
 
-h3. Compiling
+### Compiling
 
 Just by looking at the source code, you can "read" it.
 But in order to know about the program, you need to actually use it, remodel it
@@ -751,18 +755,18 @@ However, Cygwin is on Windows but almost Unix,
 thus I'd like you to read this section for it.
 
 
-h4. Building on a Unix-like OS
+#### Building on a Unix-like OS
 
 When it is a Unix-like OS, because generally it is equipped with a C
 compiler, by following the below procedures, it can pass in most cases.
 Let us suppose @~/src/ruby@ is the place where the source code is extracted.
 
-<pre class="screen">
+```TODO-lang
 ~/src/ruby % ./configure
 ~/src/ruby % make
 ~/src/ruby % su
 ~/src/ruby # make install
-</pre>
+```
 
 
 Below, I'll describe several points to be careful about.
@@ -773,9 +777,9 @@ or you'd fail to link.
 @--enable-shared@ is an option to put the most of @ruby@ out of the command
 as shared libraries (@libruby.so@).
 
-<pre class="screen">
+```TODO-lang
 ~/src/ruby % ./configure --enable-shared
-</pre>
+```
 
 The detailed tutorial about building is included in @doc/build.html@ of the
 attached CD-ROM, I'd like you to try as reading it.
@@ -783,7 +787,7 @@ attached CD-ROM, I'd like you to try as reading it.
 
 
 
-h4. Building on Windows
+#### Building on Windows
 
 
 If the thing is to build on windows, it becomes way complicated.
@@ -836,7 +840,7 @@ thus I'd like you to check it when it is necessary.
 
 
 
-h4. Visual C++
+#### Visual C++
 
 It is said Visual C++, but usually IDE is not used, we'll build from DOS prompt.
 In this case, first we need to initialize environment variables to be able to
@@ -844,31 +848,31 @@ run Visual C++ itself.
 Since a batch file for this purpose came with Visual C++,
 let's execute it first.
 
-<pre class="screen">
+```TODO-lang
 C:\> cd "\Program Files\Microsoft Visual Studio .NET\Vc7\bin"
 C:\Program Files\Microsoft Visual Studio .NET\Vc7\bin> vcvars32
-</pre>
+```
 
 
 This is the case of Visual C++ .NET.
 If it is version 6, it can be found in the following place.
 
-<pre class="emlist">
+```TODO-lang
 C:\Program Files\Microsoft Visual Studio\VC98\bin\
-</pre>
+```
 
 
 After executing @vcvars32@,
 all you have to do is to move to the @win32\@ folder of the source tree of
 @ruby@ and build. Below, let us suppose the source tree is in @C:\src@.
 
-<pre class="screen">
+```TODO-lang
 C:\> cd src\ruby
 C:\src\ruby> cd win32
 C:\src\ruby\win32> configure
 C:\src\ruby\win32> nmake
 C:\src\ruby\win32> nmake DESTDIR="C:\Program Files\ruby" install
-</pre>
+```
 
 
 Then, @ruby@ command would be installed in @C:\Program Files\ruby\bin\@,
@@ -877,7 +881,7 @@ Because @ruby@ does not use registries and such at all,
 you can uninstall it by deleting @C:\Program Files\ruby@ and below.
 
 
-h4. MinGW
+#### MinGW
 
 As described before, MinGW is only an environment to compile,
 thus the general UNIX tools like @sed@ or @sh@ are not available.
@@ -896,12 +900,12 @@ Cygwin. Both Cygwin and MinGW are also included in the attached CD-ROM.
 \footnote{Cygwin and MinGW……See also <code>doc/win.html</code> of the attached CD-ROM}
 After that, all you have to do is to type as follows from @bash@ prompt of Cygwin.
 
-<pre class="screen">
+```TODO-lang
 ~/src/ruby % ./configure --with-gcc='gcc -mno-cygwin' \
                                  --enable-shared i386-mingw32
 ~/src/ruby % make
 ~/src/ruby % make install
-</pre>
+```
 
 That's it. Here the line of @configure@ spans multi-lines but in practice
 we'd write it on one line and the backslash is not necessary.
@@ -913,7 +917,8 @@ the attached CD-ROM.
 
 
 
-h2. Building Details
+Building Details
+================
 
 Until here, it has been the @README@-like description.
 This time, let's look at exactly what is done by what we have been done.
@@ -928,7 +933,7 @@ As considering the explanation about @make install@ unnecessary,
 I'll explain the @configure@ phase and the @make@ phase.
 
 
-h3. @configure@
+### @configure@
 
 First, @configure@. Its content is a shell script, and we detect the system
 parameters by using it. For example, "whether there's the header file
@@ -948,22 +953,22 @@ If we put a @Makefile.in@ in which parameters are embedded in the form of
 with the actual values.
 For example, as follows,
 
-<pre class="emlist">
+```TODO-lang
 Makefile.in:  CFLAGS = @CFLAGS@
                      ↓
 Makefile   :  CFLAGS = -g -O2
-</pre>
+```
 
 
 Alternatively, it writes out the information about, for instance, whether
-there are certain functions or particular header files, into a header file. 
+there are certain functions or particular header files, into a header file.
 Because the output file name can be changed, it is different depending on each
 program, but it is @config.h@ in @ruby@.
 I'd like you to confirm this file is created after executing @configure@.
 Its content is something like this.
 
 <p class="caption">▼<code>config.h</code></p>
-<pre class="longlist">
+```TODO-lang
          ：
          ：
 #define HAVE_SYS_STAT_H 1
@@ -981,7 +986,7 @@ Its content is something like this.
 #define SIZEOF_SHORT 2
          ：
          ：
-</pre>
+```
 
 
 Each meaning is easy to understand.
@@ -997,19 +1002,19 @@ differences. Bridging the difference is left to each programmer.
 For example, as follows,
 
 ▼ A typical usage of the `HAVE_` macro
-<pre class="longlist">
+```TODO-lang
   24  #ifdef HAVE_STDLIB_H
   25  # include <stdlib.h>
   26  #endif
 
 (ruby.h)
-</pre>
+```
 
 
 
 
 
-h3. @autoconf@
+### @autoconf@
 
 @configure@ is not a `ruby`-specific tool.
 Whether there are functions, there are header files, ...
@@ -1028,7 +1033,10 @@ It's the same as the relationship between @Makefile@ and @Makefile.in@.
 To illustrate this talk up until here,
 it would be like Figure 1.
 
-!images/ch_abstract_build.jpg(The process until @Makefile@ is created)!
+<figure>
+	<img src="images/ch_abstract_build.jpg" alt="figure 1: The process until @Makefile@ is created">
+	<figcaption>figure 1: The process until @Makefile@ is created</figcaption>
+</figure>
 
 For the readers who want to know more details,
 I recommend "GNU Autoconf/Automake/Libtool" Gary V.Vaughan, Ben Elliston, Tom
@@ -1041,7 +1049,7 @@ can be used. Anyway, it's sufficient if ultimately there are @Makefile@ and
 @config.h@ and many others.
 
 
-h3. @make@
+### @make@
 
 At the second phase, @make@, what is done?
 Of course, it would compile the source code of @ruby@,
@@ -1049,12 +1057,12 @@ but when looking at the output of @make@,
 I feel like there are many other things it does.
 I'll briefly explain the process of it.
 
-# compile the source code composing @ruby@ itself
-# create the static library @libruby.a@ gathering the crucial parts of @ruby@
-# create "@miniruby@", which is an always statically-linked @ruby@
-# create the shared library @libruby.so@ when @--enable-shared@
-# compile the extension libraries (under @ext/@) by using @miniurby@
-# At last, generate the real @ruby@
+* compile the source code composing @ruby@ itself
+* create the static library @libruby.a@ gathering the crucial parts of @ruby@
+* create "@miniruby@", which is an always statically-linked @ruby@
+* create the shared library @libruby.so@ when @--enable-shared@
+* compile the extension libraries (under @ext/@) by using @miniurby@
+* At last, generate the real @ruby@
 
 There are two reasons why it creates @miniruby@ and @ruby@ separately.
 The first one is that compiling the extension libraries requires @ruby@.
@@ -1072,7 +1080,8 @@ In order to resolve this dilemma, it uses @miniruby@.
 
 
 
-h2. @CVS@
+@CVS@
+=====
 
 The @ruby@ archive included in the attached CD-ROM is,
 as the same as the official release package,
@@ -1083,7 +1092,7 @@ there. Then what is the way to see the entire picture including the past.
 We can do it by using CVS.
 
 
-h3. About CVS
+### About CVS
 
 CVS is shortly an undo list of editors.
 If the source code is under the management of CVS,
@@ -1116,7 +1125,10 @@ There's only one repository,
 but you can have multiple working copies. (Figure 2)
 
 
-!images/ch_abstract_repo.jpg(Repository and working copies)!
+<figure>
+	<img src="images/ch_abstract_repo.jpg" alt="figure 2: Repository and working copies">
+	<figcaption>figure 2: Repository and working copies</figcaption>
+</figure>
 
 
 When you'd like to modify the source code,
@@ -1128,7 +1140,10 @@ returning is called "checkin" or "commit" (Figure 3).
 By checking in, the change is recorded to the repository,
 then we can obtain it any time.
 
-!images/ch_abstract_ci.jpg(Checkin and Checkout)!
+<figure>
+	<img src="images/ch_abstract_ci.jpg" alt="figure 3: Checkin and Checkout">
+	<figcaption>figure 3: Checkin and Checkout</figcaption>
+</figure>
 
 
 The biggest trait of CVS is we can access it over the networks.
@@ -1137,7 +1152,7 @@ everyone can checkin/checkout over the internet any time.
 But generally the access to check in is restricted and we can't do it freely.
 
 
-h4. Revision
+#### Revision
 
 How can we do to obtain a certain version from the repository?
 One way is to specify with time. By requiring "give me the edge version of that
@@ -1158,7 +1173,7 @@ Next it would be 1.3 then 1.4.
 
 
 
-h4. A simple usage example of CVS
+#### A simple usage example of CVS
 
 Keeping in mind the above things,
 I'll talk about the usage of CVS very very briefly.
@@ -1171,11 +1186,11 @@ thus it won't be explained here.
 After installing it, let's checkout the source code of @ruby@ as an experiment.
 Type the following commands when you are online.
 
-<pre class="screen">
+```TODO-lang
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src login
 CVS Password: anonymous
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src checkout ruby
-</pre>
+```
 
 
 Any options were not specified,
@@ -1187,9 +1202,9 @@ you can use @-D@ option of @cvs checkout@.
 By typing as follows, you can obtain a working copy of the version which is
 being explained by this book.
 
-<pre class="screen">
+```TODO-lang
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src checkout -D2002-09-12 ruby
-</pre>
+```
 
 At this moment, you have to write options immediately after @checkout@.
 If you wrote "@ruby@" first, it would cause a strange error complaining "missing
@@ -1206,9 +1221,10 @@ I recommend translated "Open Source Development with CVS" Karl Fogel, Moshe Bar.
 
 
 
-h2. The composition of @ruby@
+The composition of @ruby@
+=========================
 
-h3. The physical structure
+### The physical structure
 
 Now it is time to start to read the source code,
 but what is the thing we should do first?
@@ -1225,7 +1241,7 @@ the CVS repository.
 What end with a slash are subdirectories.
 
 
-<pre class="emlist">
+```TODO-lang
 COPYING        compar.c       gc.c           numeric.c      sample/
 COPYING.ja     config.guess   hash.c         object.c       signal.c
 CVS/           config.sub     inits.c        pack.c         sprintf.c
@@ -1244,7 +1260,7 @@ array.c        error.c        missing/       ruby.h         win32/
 bcc32/         eval.c         missing.h      rubyio.h       x68/
 bignum.c       ext/           mkconfig.rb    rubysig.h
 class.c        file.c         node.h         rubytest.rb
-</pre>
+```
 
 
 Recently the size of a program itself has become larger,
@@ -1281,14 +1297,14 @@ are also written.
 
 
 
-h3. Dissecting Source Code
+### Dissecting Source Code
 
 From now on, I'll further split the source code of @ruby@ itself into more tiny
 pieces. As for the main files, its categorization is described in @README.EXT@,
 thus I'll follow it. Regarding what is not described, I categorized it by myself.
 
 
-h4. Ruby Language Core
+#### Ruby Language Core
 
 | @class.c@ | class relating API |
 | @error.c@ | exception relating API |
@@ -1310,12 +1326,12 @@ can be used from extension libraries. |
 The parts to compose the core of the @ruby@ interpreter.
 The most of the files which will be explained in this book are contained here.
 If you consider the number of the files of the entire @ruby@,
-it is really only a few. But if you think based on the byte size,  
+it is really only a few. But if you think based on the byte size,
 50% of the entire amount is occupied by these files.
 Especially, @eval.c@ is 200KB, @parse.y@ is 100KB, these files are large.
 
 
-h4. Utility
+#### Utility
 
 | dln.c | dynamic loader |
 | regex.c | regular expression engine |
@@ -1328,7 +1344,7 @@ However, some of them are so large that you cannot imagine it from the word
 
 
 
-h4. Implementation of @ruby@ command
+#### Implementation of @ruby@ command
 
 | @dmyext.c@ | dummy of the routine to initialize extension libraries ( DumMY EXTension ) |
 | @inits.c@  | the entry point for core and the routine to initialize
@@ -1350,7 +1366,7 @@ These commands are functioning by linking to the @libruby@ library
 
 
 
-h4. Class Libraries
+#### Class Libraries
 
 | @array.c@ | @class Array@ |
 | @bignum.c@ | @class Bignum@ |
@@ -1382,7 +1398,7 @@ examples of how to write an extension library.
 
 
 
-h4. Files depending on a particular platform
+#### Files depending on a particular platform
 
 | @bcc32/@ | Borland C++ (Win32) |
 | @beos/@ | BeOS |
@@ -1395,11 +1411,11 @@ h4. Files depending on a particular platform
 Each platform-specific code is stored.
 
 
-h4. fallback functions
+#### fallback functions
 
-<pre class="emlist">
+```TODO-lang
 missing/
-</pre>
+```
 
 Files to offset the functions which are missing on each platform.
 Mainly functions of @libc@.
@@ -1408,7 +1424,7 @@ Mainly functions of @libc@.
 
 
 
-h3. Logical Structure
+### Logical Structure
 
 Now, there are the above four groups and the core can be divided further into
 three:
@@ -1421,7 +1437,7 @@ and evaluator actuates the program.
 Let me explain them in order.
 
 
-h4. Object Space
+#### Object Space
 
 The first one is object space. This is very easy to understand. It is because
 all of what dealt with by this are basically on the memory,
@@ -1430,7 +1446,7 @@ Therefore, in this book, the explanation will start with this part.
 Part 1 is from chapter 2 to chapter 7.
 
 
-h4. Parser
+#### Parser
 
 The second one is parser. Probably some preliminary explanations are necessary
 for this.
@@ -1450,14 +1466,17 @@ The internal expression is called "syntax tree".
 Syntax tree expresses a program by a tree structure,
 for instance, figure 4 shows how an @if@ statement is expressed.
 
-!images/ch_abstract_syntree.jpg(an @if@ statement and its corresponding syntax tree)!
+<figure>
+	<img src="images/ch_abstract_syntree.jpg" alt="figure 4: an @if@ statement and its corresponding syntax tree">
+	<figcaption>figure 4: an @if@ statement and its corresponding syntax tree</figcaption>
+</figure>
 
 Parser will be described in Part 2 "Syntactic Analysis".
 Part 2 is from chapter 10 to chapter 12.
 Its target file is only @parse.y@.
 
 
-h4. Evaluator
+#### Evaluator
 
 Objects are easy to understand because they are tangible.
 Also regarding parser,

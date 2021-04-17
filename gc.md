@@ -4,9 +4,11 @@ title: Garbage Collection
 ---
 Translated by Sebastian Krause & ocha-
 
-h1. Chapter 5: Garbage Collection
+Chapter 5: Garbage Collection
+-----------------------------
 
-h2. A conception of an executing program
+A conception of an executing program
+====================================
 
 It's all of a sudden but at the beginning of this chapter, we'll
 learn about the memory space of an executing program. In this chapter
@@ -15,14 +17,14 @@ preliminary knowledge it'll be hard to follow. And it'll be also necessary
 for the following chapters.
 Once we finish this here, the rest will be easier.
 
-h3. Memory Segments
+### Memory Segments
 
 A general C program has the following parts in the memory space:
 
-# the text area
-# a place for static and global variables
-# the machine stack
-# the heap
+* the text area
+* a place for static and global variables
+* the machine stack
+* the heap
 
 The text area is where the code lies. Obviously the second area holds static and global variables.
 Arguments and local variables of functions are piling up in the machine stack.
@@ -41,14 +43,17 @@ is a function call, one stack frame is pushed.
 When doing `return`, one stack frame will be popped.
 Figure 1 shows the really simplified appearance of the machine stack.
 
-!images/ch_gc_macstack.jpg(Machine Stack)!
+<figure>
+	<img src="images/ch_gc_macstack.jpg" alt="figure 1: Machine Stack">
+	<figcaption>figure 1: Machine Stack</figcaption>
+</figure>
 
 In this picture, "above" is written above the top of the stack,
 but this it is not necessarily always the case that the machine stack goes
 from low addresses to high addresses. For instance, on the x86
 machine the stack goes from high to low addresses.
 
-h3. `alloca()`
+### `alloca()`
 
 By using `malloc()`, we can get an arbitrarily large memory
 area of the heap. `alloca()` is the machine stack version of it.
@@ -81,18 +86,22 @@ if there are the memories allocated for the functions already finished,
 free them by using `free()`.
 
 
-!images/ch_gc_calloca.jpg(The behavior of an `alloca()` implemented in C)!
+<figure>
+	<img src="images/ch_gc_calloca.jpg" alt="figure 2: The behavior of an `alloca(">
+	<figcaption>figure 2: The behavior of an `alloca(</figcaption>
+</figure>
 
 
 The @missing/alloca.c@ of @ruby@ is an example of an emulated @alloca()@ .
 
 
-h2. Overview
+Overview
+========
 
 From here on we can at last talk about the main subject of this chapter:
 garbage collection.
 
-h3. What is GC?
+### What is GC?
 
 Objects are normally on top of the memory. Naturally, if a lot of objects are created, a lot of memory is used. If memory
 were infinite there would be no problem, but in reality there is always a memory
@@ -135,7 +144,7 @@ Let's follow the details of `ruby`'s GC in this chapter.
 The target file is `gc.c`.
 
 
-h3. What does GC do?
+### What does GC do?
 
 Before explaining the GC algorithm, I should explain "what garbage collection
 is".
@@ -145,7 +154,10 @@ To make descriptions more concrete,
 let's simplify the structure by assuming that there are only objects and links.
 This would look as shown in Figure 3.
 
-!images/ch_gc_objects.jpg(Objects)!
+<figure>
+	<img src="images/ch_gc_objects.jpg" alt="figure 3: Objects">
+	<figcaption>figure 3: Objects</figcaption>
+</figure>
 
 
 The objects pointed to by global variables and the objects on the stack of a
@@ -163,7 +175,10 @@ These objects colored black are the
 necessary objects. The rest of the objects can be released.
 
 
-!images/ch_gc_gcimage.jpg(necessary objects and unnecessary objects)!
+<figure>
+	<img src="images/ch_gc_gcimage.jpg" alt="figure 4: necessary objects and unnecessary objects">
+	<figcaption>figure 4: necessary objects and unnecessary objects</figcaption>
+</figure>
 
 
 In technical terms, "the surely necessary objects" are called "the roots of GC".
@@ -171,7 +186,7 @@ That's because they are the roots of tree structures that emerges as a
 consequence of tracing necessary objects.
 
 
-h3. Mark and Sweep
+### Mark and Sweep
 
 GC was first implemented in Lisp.
 The GC implemented in Lisp at first,
@@ -205,14 +220,17 @@ But this point can be alleviated by modifying the algorithm (it is called increm
 
 
 
-h3. Stop and Copy
+### Stop and Copy
 
 Stop and Copy is a variation of Mark and Sweep. First, prepare several object
 areas. To simplify this description, assume there are two areas @A@ and @B@ here.
 And put an "active" mark on the one of the areas.
 When creating an object, create it only in the "active" one. (Figure 5)
 
-!images/ch_gc_stop2.jpg(Stop and Copy (1))!
+<figure>
+	<img src="images/ch_gc_stop2.jpg" alt="figure 5: Stop and Copy (1">
+	<figcaption>figure 5: Stop and Copy (1</figcaption>
+</figure>
 
 
 When the GC starts, follow links from the roots in the same manner as
@@ -220,7 +238,10 @@ mark-and-sweep. However, move objects to another area instead of marking them
 (Figure 6). When all the links have been followed, discard the all elements
 which remain in @A@, and make @B@ active next.
 
-!images/ch_gc_stop3.jpg(Stop and Copy (2))!
+<figure>
+	<img src="images/ch_gc_stop3.jpg" alt="figure 6: Stop and Copy (2">
+	<figcaption>figure 6: Stop and Copy (2</figcaption>
+</figure>
 
 
 Stop and Copy also has two advantages:
@@ -237,7 +258,7 @@ And also two disadvantages:
 It seems what exist in this world are not only positive things.
 
 
-h3. Reference counting
+### Reference counting
 
 Reference counting differs a bit from the aforementioned GCs,
 the reach-check code is distributed in several places.
@@ -249,7 +270,10 @@ increased. When quitting to refer, decrease the counter.
 When the counter of an object becomes zero, release the object.
 This is the method called reference counting (Figure 7).
 
-!images/ch_gc_refcnt.jpg(Reference counting)!
+<figure>
+	<img src="images/ch_gc_refcnt.jpg" alt="figure 7: Reference counting">
+	<figcaption>figure 7: Reference counting</figcaption>
+</figure>
 
 
 This method also has two advantages:
@@ -267,7 +291,10 @@ a cycle of references as shown in Figure 8.
 If this is the case the counters will never decrease
 and the objects will never be released.
 
-!images/ch_gc_cycle.jpg(Cycle)!
+<figure>
+	<img src="images/ch_gc_cycle.jpg" alt="figure 8: Cycle">
+	<figcaption>figure 8: Cycle</figcaption>
+</figure>
 
 
 By the way, latest Python(2.2) uses reference counting GC but it can free cycles.
@@ -278,7 +305,8 @@ but because it sometimes invokes mark and sweep GC to check.
 
 
 
-h2. Object Management
+Object Management
+=================
 
 Ruby's garbage collection is only concerned with ruby objects.
 Moreover, it only concerned with the objects created and managed by `ruby`.
@@ -289,29 +317,29 @@ For instance, the following function will cause a memory leak
 even if `ruby` is running.
 
 
-<pre class="emlist">
+```TODO-lang
 void not_ok()
 {
     malloc(1024);  /* receive memory and discard it */
 }
-</pre>
+```
 
 However, the following function does not cause a memory leak.
 
 
-<pre class="emlist">
+```TODO-lang
 void this_is_ok()
 {
     rb_ary_new();  /* create a ruby array and discard it */
 }
-</pre>
+```
 
 Since @rb_ary_new()@ uses Ruby's proper interface to allocate memory,
 the created object is under the management of the GC of `ruby`,
 thus `ruby` will take care of it.
 
 
-h3. `struct RVALUE`
+### `struct RVALUE`
 
 Since the substance of an object is a struct,
 managing objects means managing that structs.
@@ -328,7 +356,7 @@ The declaration of that union is as follows.
 
 ▼ `RVALUE`
 
-<pre class="longlist">
+```TODO-lang
  211  typedef struct RVALUE {
  212      union {
  213          struct {
@@ -355,7 +383,7 @@ The declaration of that union is as follows.
  234  } RVALUE;
 
 (gc.c)
-</pre>
+```
 
 `struct RVALUE` is a struct that has only one element.
 I've heard that the reason why `union` is not directly used is to enable to
@@ -377,14 +405,14 @@ Hence, we can confirm that setting their flags to `0`
 is necessity and sufficiency to represent "dead" objects.
 
 
-h3. Object heap
+### Object heap
 
 The memory for all the object structs has been brought together in global variable `heaps`.
 Hereafter, let's call this an object heap.
 
 ▼ Object heap
 
-<pre class="longlist">
+```TODO-lang
  239  #define HEAPS_INCREMENT 10
  240  static RVALUE **heaps;
  241  static int heaps_length = 0;
@@ -395,20 +423,26 @@ Hereafter, let's call this an object heap.
  246  static int heap_slots = HEAP_MIN_SLOTS;
 
 (gc.c)
-</pre>
+```
 
 @heaps@ is an array of arrays of @struct RVALUE@. Since it is `heapS`,
 the each contained array is probably each @heap@.
 Each element of @heap@ is each @slot@ (Figure 9).
 
-!images/ch_gc_heapitems.jpg(`heaps`, `heap`, `slot`)!
+<figure>
+	<img src="images/ch_gc_heapitems.jpg" alt="figure 9: `heaps`, `heap`, `slot`">
+	<figcaption>figure 9: `heaps`, `heap`, `slot`</figcaption>
+</figure>
 
 The length of @heaps@ is @heap_length@ and it can be changed. The number of
 the slots actually in use is @heaps_used@. The length of each heap
 is in the corresponding @heaps_limits[index]@.
 Figure 10 shows the structure of the object heap.
 
-!images/ch_gc_heaps.jpg(conceptual diagram of `heaps` in memory)!
+<figure>
+	<img src="images/ch_gc_heaps.jpg" alt="figure 10: conceptual diagram of `heaps` in memory">
+	<figcaption>figure 10: conceptual diagram of `heaps` in memory</figcaption>
+</figure>
 
 This structure has a necessity to be this way.
 For instance, if all structs are stored in an array,
@@ -442,7 +476,7 @@ and whose position and total amount are not restricted at the same time.
 
 
 
-h3. `freelist`
+### `freelist`
 
 
 Unused `RVALUE`s are managed by being linked as a single line which is a linked
@@ -452,16 +486,16 @@ The `as.free.next` of `RVALUE` is the link used for this purpose.
 
 ▼ `freelist`
 
-<pre class="longlist">
+```TODO-lang
  236  static RVALUE *freelist = 0;
 
 (gc.c)
-</pre>
+```
 
 
 
 
-h3. `add_heap()`
+### `add_heap()`
 
 
 As we understood the data structure,
@@ -472,7 +506,7 @@ I'll show the one simplified by omitting error handlings and castings.
 
 ▼ `add_heap()` (simplified)
 
-<pre class="longlist">
+```TODO-lang
 static void
 add_heap()
 {
@@ -502,7 +536,7 @@ add_heap()
         p++;
     }
 }
-</pre>
+```
 
 
 Please check the following points.
@@ -520,7 +554,7 @@ These values are used later when determining the integers "which seems `VALUE`".
 
 
 
-h3. `rb_newobj()`
+### `rb_newobj()`
 
 
 Considering all of the above points, we can tell the way to create an object
@@ -532,7 +566,7 @@ Let's confirm this by reading the `rb_newobj()` function to create an object.
 
 ▼ `rb_newobj()`
 
-<pre class="longlist">
+```TODO-lang
  297  VALUE
  298  rb_newobj()
  299  {
@@ -547,7 +581,7 @@ Let's confirm this by reading the `rb_newobj()` function to create an object.
  308  }
 
 (gc.c)
-</pre>
+```
 
 
 If `freelest` is 0, in other words, if there's not any unused structs,
@@ -557,7 +591,8 @@ there's no problem because in this case a new space is allocated in `rb_gc()`.
 And take a struct from `freelist`, zerofill it by `MEMZERO()`, and return it.
 
 
-h2. Mark
+Mark
+====
 
 
 As described, `ruby`'s GC is Mark & Sweep.
@@ -569,7 +604,7 @@ and free objects that `FL_MARK` has not been set.
 
 
 
-h3. `rb_gc_mark()`
+### `rb_gc_mark()`
 
 
 `rb_gc_mark()` is the function to mark objects recursively.
@@ -577,7 +612,7 @@ h3. `rb_gc_mark()`
 
 ▼ `rb_gc_mark()`
 
-<pre class="longlist">
+```TODO-lang
  573  void
  574  rb_gc_mark(ptr)
  575      VALUE ptr;
@@ -609,18 +644,18 @@ h3. `rb_gc_mark()`
  601  }
 
 (gc.c)
-</pre>
+```
 
 
 The definition of @RANY()@ is as follows. It is not particularly important.
 
 ▼ `RANY()`
 
-<pre class="longlist">
+```TODO-lang
  295  #define RANY(o) ((RVALUE*)(o))
 
 (gc.c)
-</pre>
+```
 
 
 There are the checks for non-pointers or already freed objects and the recursive
@@ -628,9 +663,9 @@ checks for marked objects at the beginning,
 
 
 
-<pre class="emlist">
+```TODO-lang
 obj->as.basic.flags |= FL_MARK;
-</pre>
+```
 
 and `obj` (this is the `ptr` parameter of this function) is marked.
 Then next, it's the turn to follow the references from `obj` and mark.
@@ -650,7 +685,7 @@ This code is omitted because it is not part of the main line.
 
 
 
-h3. `rb_gc_mark_children()`
+### `rb_gc_mark_children()`
 
 
 Now, as for `rb_gc_mark_children()`,
@@ -661,7 +696,7 @@ Here, it is shown but the simple enumerations are omitted:
 
 ▼ `rb_gc_mark_children()`
 
-<pre class="longlist">
+```TODO-lang
  603  void
  604  rb_gc_mark_children(ptr)
  605      VALUE ptr;
@@ -724,7 +759,7 @@ Here, it is shown but the simple enumerations are omitted:
  842  }
 
 (gc.c)
-</pre>
+```
 
 
 It calls `rb_gc_mark()` recursively, is only what I'd like you to confirm.
@@ -739,13 +774,13 @@ This code is extracted from the second `switch` statement.
 
 ▼ `rb_gc_mark_children()` - `T_DATA`
 
-<pre class="longlist">
+```TODO-lang
  789        case T_DATA:
  790          if (obj->as.data.dmark) (*obj->as.data.dmark)(DATA_PTR(obj));
  791          break;
 
 (gc.c)
-</pre>
+```
 
 
 Here, it does not use `rb_gc_mark()` or similar functions,
@@ -758,7 +793,7 @@ contain `VALUE`, there's no need to mark.
 
 
 
-h3. `rb_gc()`
+### `rb_gc()`
 
 
 By now, we've finished to talk about each object.
@@ -769,7 +804,7 @@ In other words, "the roots of GC".
 
 ▼ `rb_gc()`
 
-<pre class="longlist">
+```TODO-lang
 1110  void
 1111  rb_gc()
 1112  {
@@ -791,7 +826,7 @@ In other words, "the roots of GC".
 1184  }
 
 (gc.c)
-</pre>
+```
 
 
 The roots which should be marked will be shown one by one after this,
@@ -802,7 +837,7 @@ It means that the local variables and arguments of C are automatically marked.
 For example,
 
 
-<pre class="emlist">
+```TODO-lang
 static int
 f(void)
 {
@@ -810,7 +845,7 @@ f(void)
 
     /* …… do various things …… */
 }
-</pre>
+```
 
 
 like this way, we can protect an object just by putting it into a variable.
@@ -825,7 +860,7 @@ How to resolve this is the key when reading the implementation of GC.
 
 
 
-h3. The Ruby Stack
+### The Ruby Stack
 
 
 First, it marks the (`ruby`'s) stack frames used by the interpretor.
@@ -835,7 +870,7 @@ you don't have to think so much about it for now.
 
 ▼ Marking the Ruby Stack
 
-<pre class="longlist">
+```TODO-lang
 1130      /* mark frame stack */
 1131      for (frame = ruby_frame; frame; frame = frame->prev) {
 1132          rb_gc_mark_frame(frame);
@@ -852,7 +887,7 @@ you don't have to think so much about it for now.
 1143      rb_gc_mark((VALUE)ruby_dyna_vars);
 
 (gc.c)
-</pre>
+```
 
 `ruby_frame ruby_class ruby_scope ruby_dyna_vars` are the variables to point to
 each top of the stacks of the evaluator. These hold the frame, the class scope,
@@ -860,13 +895,13 @@ the local variable scope, and the block local variables at that time
 respectively.
 
 
-h3. Register
+### Register
 
 Next, it marks the CPU registers.
 
 ▼ marking the registers
 
-<pre class="longlist">
+```TODO-lang
 1148      FLUSH_REGISTER_WINDOWS;
 1149      /* Here, all registers must be saved into jmp_buf. */
 1150      setjmp(save_regs_gc_mark);
@@ -874,7 +909,7 @@ Next, it marks the CPU registers.
                                sizeof(save_regs_gc_mark) / sizeof(VALUE *));
 
 (gc.c)
-</pre>
+```
 
 `FLUSH_REGISTER_WINDOWS` is special. We will see it later.
 
@@ -896,7 +931,7 @@ to explicitly write out the registers.
 
 <p class="caption">▼ the original version of  `setjmp` </p>
 
-<pre class="longlist">
+```TODO-lang
 1072  #ifdef __GNUC__
 1073  #if defined(__human68k__) || defined(DJGPP)
 1074  #if defined(__human68k__)
@@ -936,7 +971,7 @@ to explicitly write out the registers.
 1108  #endif /* __GNUC__ */
 
 (gc.c)
-</pre>
+```
 
 
 Alignment is the constraint when putting variables on memories.
@@ -965,12 +1000,12 @@ it will be marked in the next code:
 
 <p class="caption">▼ mark the registers (shown again)</p>
 
-<pre class="longlist">
+```TODO-lang
 1151      mark_locations_array((VALUE*)save_regs_gc_mark,
                                sizeof(save_regs_gc_mark) / sizeof(VALUE *));
 
 (gc.c)
-</pre>
+```
 
 
 This is the first time that `mark_locations_array()` appears.
@@ -979,12 +1014,12 @@ I'll describe it in the next section.
 
 
 
-h4. `mark_locations_array()`
+#### `mark_locations_array()`
 
 
 <p class="caption">▼ `mark_locations_array()` </p>
 
-<pre class="longlist">
+```TODO-lang
  500  static void
  501  mark_locations_array(x, n)
  502      register VALUE *x;
@@ -999,7 +1034,7 @@ h4. `mark_locations_array()`
  511  }
 
 (gc.c)
-</pre>
+```
 
 
 This function is to mark the all elements of an array,
@@ -1020,12 +1055,12 @@ it is `is_pointer_to_heap()`.
 
 
 
-h4. `is_pointer_to_heap()`
+#### `is_pointer_to_heap()`
 
 
 <p class="caption">▼ `is_pointer_to_heap()` </p>
 
-<pre class="longlist">
+```TODO-lang
  480  static inline int
  481  is_pointer_to_heap(ptr)
  482      void *ptr;
@@ -1047,7 +1082,7 @@ h4. `is_pointer_to_heap()`
  498  }
 
 (gc.c)
-</pre>
+```
 
 
 
@@ -1070,7 +1105,7 @@ to compromise.
 
 
 
-h4. Register Window
+#### Register Window
 
 
 This section is about `FLUSH_REGISTER_WINDOWS()` which has been deferred.
@@ -1089,7 +1124,7 @@ The content of the macro is like this:
 
 <p class="caption">▼ `FLUSH_REGISTER_WINDOWS` </p>
 
-<pre class="longlist">
+```TODO-lang
  125  #if defined(sparc) || defined(__sparc__)
  126  # if defined(linux) || defined(__linux__)
  127  #define FLUSH_REGISTER_WINDOWS  asm("ta  0x83")
@@ -1101,7 +1136,7 @@ The content of the macro is like this:
  133  #endif
 
 (defines.h)
-</pre>
+```
 
 
 `asm(...)` is a built-in assembler.
@@ -1121,7 +1156,7 @@ that is also convenient when debugging.
 
 
 
-h3. Machine Stack
+### Machine Stack
 
 
 Then, let's go back to the rest of `rb_gc()`.
@@ -1130,7 +1165,7 @@ This time, it marks `VALUES`s in the machine stack.
 
 <p class="caption">▼ mark the machine stack</p>
 
-<pre class="longlist">
+```TODO-lang
 1152      rb_gc_mark_locations(rb_gc_stack_start, (VALUE*)STACK_END);
 1153  #if defined(__human68k__)
 1154      rb_gc_mark_locations((VALUE*)((char*)rb_gc_stack_start + 2),
@@ -1138,7 +1173,7 @@ This time, it marks `VALUES`s in the machine stack.
 1156  #endif
 
 (gc.c)
-</pre>
+```
 
 
 `rb_gc_stack_start` seems the start address (the end of the stack) and
@@ -1159,7 +1194,7 @@ let's examine these three in this order.
 
 
 
-h4. `Init_stack()`
+#### `Init_stack()`
 
 
 The first thing is `rb_gc_starck_start`.
@@ -1170,7 +1205,7 @@ initializing the `ruby` interpretor.
 
 <p class="caption">▼ `Init_stack()` </p>
 
-<pre class="longlist">
+```TODO-lang
 1193  void
 1194  Init_stack(addr)
 1195      VALUE *addr;
@@ -1199,7 +1234,7 @@ initializing the `ruby` interpretor.
 1218  }
 
 (gc.c)
-</pre>
+```
 
 
 What is important is only the part in the middle.
@@ -1219,7 +1254,7 @@ We can ignore this.
 
 
 
-h4. `STACK_END`
+#### `STACK_END`
 
 
 Next, we'll look at the `STACK_END` which is the macro to detect the end of the stack.
@@ -1227,7 +1262,7 @@ Next, we'll look at the `STACK_END` which is the macro to detect the end of the 
 
 <p class="caption">▼ `STACK_END` </p>
 
-<pre class="longlist">
+```TODO-lang
  345  #ifdef C_ALLOCA
  346  # define SET_STACK_END VALUE stack_end; alloca(0);
  347  # define STACK_END (&stack_end)
@@ -1241,7 +1276,7 @@ Next, we'll look at the `STACK_END` which is the macro to detect the end of the 
  355  #endif
 
 (gc.c)
-</pre>
+```
 
 
 As there are three variations of `SET_STACK_END`, let's start with the bottom one.
@@ -1278,7 +1313,7 @@ As for `__builtin_frame_adress(0)`, it provides the address of the current frame
 
 
 
-h4. `rb_gc_mark_locations()`
+#### `rb_gc_mark_locations()`
 
 
 The last one is the `rb_gc_mark_locations()` function that actually marks the stack.
@@ -1286,7 +1321,7 @@ The last one is the `rb_gc_mark_locations()` function that actually marks the st
 
 <p class="caption">▼ `rb_gc_mark_locations()` </p>
 
-<pre class="longlist">
+```TODO-lang
  513  void
  514  rb_gc_mark_locations(start, end)
  515      VALUE *start, *end;
@@ -1304,7 +1339,7 @@ The last one is the `rb_gc_mark_locations()` function that actually marks the st
  527  }
 
 (gc.c)
-</pre>
+```
 
 
 Basically, delegating to the function `mark_locations_array()` which marks a
@@ -1318,7 +1353,7 @@ Therefore, so that the smaller one becomes `start`, they are adjusted here.
 
 
 
-h3. The other root objects
+### The other root objects
 
 
 Finally, it marks the built-in `VALUE` containers of the interpretor.
@@ -1326,7 +1361,7 @@ Finally, it marks the built-in `VALUE` containers of the interpretor.
 
 <p class="caption">▼ The other roots</p>
 
-<pre class="longlist">
+```TODO-lang
 1159      /* mark the registered global variables */
 1160      for (list = global_List; list; list = list->next) {
 1161          rb_gc_mark(*list->varptr);
@@ -1344,7 +1379,7 @@ Finally, it marks the built-in `VALUE` containers of the interpretor.
 1172      rb_gc_mark_parser();
 
 (gc.c)
-</pre>
+```
 
 
 When putting a `VALUE` into a global variable of C,
@@ -1385,10 +1420,11 @@ Until here, the mark phase has been finished.
 
 
 
-h2. Sweep
+Sweep
+=====
 
 
-h3. The special treatment for `NODE`
+### The special treatment for `NODE`
 
 
 The sweep phase is the procedures to find out and free the not-marked objects.
@@ -1398,7 +1434,7 @@ Take a look at the next part:
 
 <p class="caption">▼ at the beggining of `gc_sweep()` </p>
 
-<pre class="longlist">
+```TODO-lang
  846  static void
  847  gc_sweep()
  848  {
@@ -1421,7 +1457,7 @@ Take a look at the next part:
  864      }
 
 (gc.c)
-</pre>
+```
 
 
 `NODE` is a object to express a program in the parser.
@@ -1436,7 +1472,7 @@ protected from being collected while compiling (`ruby_in_compile`) .
 
 
 
-h3. Finalizer
+### Finalizer
 
 
 After it has reached here, all not-marked objects can be freed.
@@ -1447,7 +1483,7 @@ This hook is called "finalizer".
 
 <p class="caption">▼ `gc_sweep()` Middle</p>
 
-<pre class="longlist">
+```TODO-lang
  869      freelist = 0;
  870      final_list = deferred_final_list;
  871      deferred_final_list = 0;
@@ -1489,7 +1525,7 @@ This hook is called "finalizer".
  907      during_gc = 0;
 
 (gc.c)
-</pre>
+```
 
 
 This checks all over the object heap from the edge,
@@ -1518,7 +1554,7 @@ It means that while executing the finalizers, one cannot use the hooked objects.
 
 <p class="caption">▼ `gc_sweep()` the rest</p>
 
-<pre class="longlist">
+```TODO-lang
  910      if (final_list) {
  911          RVALUE *tmp;
  912
@@ -1538,7 +1574,7 @@ It means that while executing the finalizers, one cannot use the hooked objects.
  926  }
 
 (gc.c)
-</pre>
+```
 
 
 The `for` in the last half is the main finalizing procedure.
@@ -1550,7 +1586,7 @@ the previous list.
 
 
 
-h3. `rb_gc_force_recycle()`
+### `rb_gc_force_recycle()`
 
 
 I'll talk about a little different thing at the end.
@@ -1561,7 +1597,7 @@ It's `rb_gc_force_recycle()`.
 
 <p class="caption">▼ `rb_gc_force_recycle()` </p>
 
-<pre class="longlist">
+```TODO-lang
  928  void
  929  rb_gc_force_recycle(p)
  930      VALUE p;
@@ -1572,7 +1608,7 @@ It's `rb_gc_force_recycle()`.
  935  }
 
 (gc.c)
-</pre>
+```
 
 
 Its mechanism is not so special, but I introduced this because you'll see it
@@ -1582,10 +1618,11 @@ several times in Part 2 and Part 3.
 
 
 
-h2. Discussions
+Discussions
+===========
 
 
-h3. To free spaces
+### To free spaces
 
 
 The space allocated by an individual object, say, `char[]` of `String`, is
@@ -1618,7 +1655,7 @@ The attached CD-ROM also contains the edge `ruby`, so please check by `diff`.
 
 
 
-h3. Generational GC
+### Generational GC
 
 
 Mark & Sweep has an weak point, it is "it needs to touch the entire object space
@@ -1684,7 +1721,10 @@ However, when there are links from old-generation to new-generation,
 the new-generation objects will not be marked. (Figure 11)
 
 
-!images/ch_gc_gengc.jpg(reference over generations)!
+<figure>
+	<img src="images/ch_gc_gengc.jpg" alt="figure 11: reference over generations">
+	<figcaption>figure 11: reference over generations</figcaption>
+</figure>
 
 
 This is not good, so at the moment when an old-generational object refers to a new-generational object,
@@ -1701,7 +1741,7 @@ but the precise cause has not figured out.
 
 
 
-h3. Compaction
+### Compaction
 
 
 Could the `ruby`'s GC do compaction?
@@ -1725,7 +1765,10 @@ But as trade-offs, accessing speed slows down and the compatibility of
 extension libraries is lost.
 
 
-!images/ch_gc_objid.jpg(reference through the object ID)!
+<figure>
+	<img src="images/ch_gc_objid.jpg" alt="figure 12: reference through the object ID">
+	<figcaption>figure 12: reference through the object ID</figcaption>
+</figure>
 
 
 Then, the next way is to allow moving the struct only when they are pointed
@@ -1736,7 +1779,10 @@ In the ordinary programs, there are not so many objects that
 object structs is quite high.
 
 
-!images/ch_gc_mostcopy.jpg(Mostly-copying garbage collection)!
+<figure>
+	<img src="images/ch_gc_mostcopy.jpg" alt="figure 13: Mostly-copying garbage collection">
+	<figcaption>figure 13: Mostly-copying garbage collection</figcaption>
+</figure>
 
 
 Moreover and moreover, by enabling to move the struct,
@@ -1746,7 +1792,7 @@ It seems to be worth to challenge.
 
 
 
-h3. `volatile` to protect from GC
+### `volatile` to protect from GC
 
 
 I wrote that GC takes care of `VALUE` on the stack,
@@ -1757,11 +1803,11 @@ For example, there's a possibility of disappearing in the following case:
 
 
 
-<pre class="emlist">
+```TODO-lang
 VALUE str;
 str = rb_str_new2("...");
 printf("%s\n", RSTRING(str)->ptr);
-</pre>
+```
 
 
 Because this code does not access the `str` itself,
@@ -1771,9 +1817,9 @@ There's no choice in this case
 
 
 
-<pre class="emlist">
+```TODO-lang
 volatile VALUE str;
-</pre>
+```
 
 
 we need to write this way. `volatile` is a reserved word of C,
@@ -1793,10 +1839,11 @@ but it seems it could not be applied to `ruby` because its algorithm has a hole.
 
 
 
-h2. When to invoke
+When to invoke
+==============
 
 
-h3. Inside `gc.c`
+### Inside `gc.c`
 
 
 When to invoke GC?
@@ -1815,7 +1862,7 @@ Doing GC may free memories and it's possible that a space becomes available agai
 
 
 
-h3. Inside the interpritor
+### Inside the interpritor
 
 
 There's several places except for `gc.c` where calling `rb_gc()` in the interpretor.
@@ -1836,7 +1883,8 @@ that `NODE` cannot be garbage collected while compiling.
 
 
 
-h2. Object Creation
+Object Creation
+===============
 
 
 We've finished about GC and come to be able to deal with the Ruby objects from
@@ -1846,18 +1894,18 @@ This is not so related to GC, rather, it is related a little to the discussion
 about classes in the previous chapter.
 
 
-h3. Allocation Framework
+### Allocation Framework
 
 
 We've created objects many times. For example, in this way:
 
 
 
-<pre class="emlist">
+```TODO-lang
 class C
 end
 C.new()
-</pre>
+```
 
 
 At this time, how does `C.new` create a object?
@@ -1868,7 +1916,7 @@ First, `C.new` is actually `Class#new`. Its actual body is this:
 
 <p class="caption">▼ `rb_class_new_instance()` </p>
 
-<pre class="longlist">
+```TODO-lang
  725  VALUE
  726  rb_class_new_instance(argc, argv, klass)
  727      int argc;
@@ -1884,7 +1932,7 @@ First, `C.new` is actually `Class#new`. Its actual body is this:
  737  }
 
 (object.c)
-</pre>
+```
 
 
 `rb_obj_alloc()` calls the `allocate` method against the `klass`.
@@ -1894,7 +1942,7 @@ It is `Class#allocate` by default and its actual body is `rb_class_allocate_inst
 
 <p class="caption">▼ `rb_class_allocate_instance()` </p>
 
-<pre class="longlist">
+```TODO-lang
  708  static VALUE
  709  rb_class_allocate_instance(klass)
  710      VALUE klass;
@@ -1914,7 +1962,7 @@ It is `Class#allocate` by default and its actual body is `rb_class_allocate_inst
  723  }
 
 (object.c)
-</pre>
+```
 
 
 `rb_newobj()` is a function that returns a `RVALUE` by taking from the `freelist`.
@@ -1932,11 +1980,11 @@ This is summarized as follows:
 
 
 
-<pre class="emlist">
+```TODO-lang
 SomeClass.new            = Class#new (rb_class_new_instance)
     SomeClass.allocate       = Class#allocate (rb_class_allocate_instance)
     SomeClass#initialize     = Object#initialize (rb_obj_dummy)
-</pre>
+```
 
 
 I could say that the `allocate` class method is to physically initialize,
@@ -1948,7 +1996,7 @@ the "allocation framework".
 
 
 
-h3. Creating User Defined Objects
+### Creating User Defined Objects
 
 
 Next, we'll examine about the instance creations of the classes defined in
@@ -1958,7 +2006,7 @@ how to allocate it, `ruby` don't understand how to create its object.
 Let's look at how to tell it.
 
 
-h4. `Data_Wrap_Struct()`
+#### `Data_Wrap_Struct()`
 
 
 Whichever it is user-defined or not, its creation mechanism itself can follow
@@ -1977,10 +2025,10 @@ This is how to use:
 
 
 
-<pre class="emlist">
+```TODO-lang
 struct my *ptr = malloc(sizeof(struct my));  /* arbitrarily allocate in the heap */
 VALUE val = Data_Wrap_Struct(data_class, mark_f, free_f, ptr);
-</pre>
+```
 
 
 `data_class` is the class that `val` belongs to, `ptr` is the pointer to be wrapped.
@@ -1998,7 +2046,7 @@ Let's also look at the content of `Data_Wrap_Struct()`.
 
 <p class="caption">▼ `Data_Wrap_Struct()` </p>
 
-<pre class="longlist">
+```TODO-lang
  369  #define Data_Wrap_Struct(klass, mark, free, sval) \
  370      rb_data_object_alloc(klass, sval,             \
                                (RUBY_DATA_FUNC)mark,    \
@@ -2007,7 +2055,7 @@ Let's also look at the content of `Data_Wrap_Struct()`.
  365  typedef void (*RUBY_DATA_FUNC) _((void*));
 
 (ruby.h)
-</pre>
+```
 
 
 Most of it is delegated to `rb_object_alloc()`.
@@ -2015,7 +2063,7 @@ Most of it is delegated to `rb_object_alloc()`.
 
 <p class="caption">▼ `rb_data_object_alloc()` </p>
 
-<pre class="longlist">
+```TODO-lang
  310  VALUE
  311  rb_data_object_alloc(klass, datap, dmark, dfree)
  312      VALUE klass;
@@ -2033,7 +2081,7 @@ Most of it is delegated to `rb_object_alloc()`.
  324  }
 
 (gc.c)
-</pre>
+```
 
 
 This is not complicated. As the same as the ordinary objects, it prepares a
@@ -2049,7 +2097,7 @@ and defining the function on a class by `rb_define_singleton_method()`.
 
 
 
-h4. `Data_Get_Struct()`
+#### `Data_Get_Struct()`
 
 
 The next thing is `initialize`. Not only for `initialize`, the methods need a
@@ -2059,7 +2107,7 @@ to do it, you can use the `Data_Get_Struct()` macro.
 
 <p class="caption">▼ `Data_Get_Struct()` </p>
 
-<pre class="longlist">
+```TODO-lang
  378  #define Data_Get_Struct(obj,type,sval) do {\
  379      Check_Type(obj, T_DATA); \
  380      sval = (type*)DATA_PTR(obj);\
@@ -2068,7 +2116,7 @@ to do it, you can use the `Data_Get_Struct()` macro.
  360  #define DATA_PTR(dta) (RDATA(dta)->data)
 
 (ruby.h)
-</pre>
+```
 
 
 As you see, it just takes the pointer (to `struct my`) from a member of `RData`.
@@ -2077,7 +2125,7 @@ This is simple. `Check_Type()` just checks the struct type.
 
 
 
-h3. The Issues of the Allocation Framework
+### The Issues of the Allocation Framework
 
 
 So, I've explained innocently until now, but actually the current allocation
@@ -2120,9 +2168,9 @@ So,
 
 
 
-<pre class="emlist">
+```TODO-lang
 rb_define_allocator(rb_cMy, my_allocate);
-</pre>
+```
 
 
 an alternative like this is currently in discussion.

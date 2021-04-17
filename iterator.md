@@ -3,9 +3,11 @@ layout: default
 title: "Chapter 16: Blocks"
 ---
 
-h1. Chapter 16: Blocks
+Chapter 16: Blocks
+------------------
 
-h2. Iterator
+Iterator
+========
 
 
 In this chapter, `BLOCK`, which is the last big name among the seven Ruby stacks,
@@ -14,7 +16,7 @@ After finishing this, the internal state of the evaluator is virtually understoo
 
 
 
-h3. The Whole Picture
+### The Whole Picture
 
 
 What is the mechanism of iterators?
@@ -23,11 +25,11 @@ First, let's think about a small program as below:
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 iter_method() do
   9   # a mark to find this block
 end
-</pre>
+```
 
 
 Let's check the terms just in case.
@@ -38,7 +40,7 @@ Here is the syntax tree of this program being dumped.
 
 <p class="caption">▼Its Syntax Tree</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_ITER
 nd_iter:
     NODE_FCALL
@@ -48,7 +50,7 @@ nd_var = (null)
 nd_body:
     NODE_LIT
     nd_lit = 9:Fixnum
-</pre>
+```
 
 
 
@@ -65,16 +67,16 @@ I found that the invocation of an iterator is separated into 3 steps:
 `NODE_ITER NODE_CALL` and `NODE_YIELD`.
 This means,
 
-#1 push a block (`NODE_ITER`)
-#2 call the method which is an iterator (`NODE_CALL`)
-#3 `yield` (`NODE_YEILD`)
+* push a block (`NODE_ITER`)
+* call the method which is an iterator (`NODE_CALL`)
+* `yield` (`NODE_YEILD`)
 
 
 that's all.
 
 
 
-h3. Push a block
+### Push a block
 
 
 First, let's start with the first step, that is `NODE_ITER`, which is the node
@@ -83,7 +85,7 @@ to push a block.
 
 <p class="caption">▼ `rb_eval()` − `NODE_ITER` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 case NODE_ITER:
   {
     iter_retry:
@@ -122,7 +124,7 @@ case NODE_ITER:
       }
   }
   break;
-</pre>
+```
 
 
 Since the original code contains the support of the `for` statement, it is
@@ -143,7 +145,10 @@ the existence of a block does not mean the block is pushed for that method.
 It's possible that the block is pushed for the previous method. (Figure 1)
 
 
-!images/ch_iterator_stacks.jpg(no one-to-one correspondence between `FRAME` and `BLOCK`)!
+<figure>
+	<img src="images/ch_iterator_stacks.jpg" alt="figure 1: no one-to-one correspondence between `FRAME` and `BLOCK`">
+	<figcaption>figure 1: no one-to-one correspondence between `FRAME` and `BLOCK`</figcaption>
+</figure>
 
 
 So, in order to determine for which method the block is pushed, `ITER` is used.
@@ -155,7 +160,7 @@ let's check it in practice.
 
 
 
-h4. `PUSH_BLOCK()`
+#### `PUSH_BLOCK()`
 
 
 The argument of `PUSH_BLOCK()` is (the syntax tree of) the block parameter and
@@ -164,7 +169,7 @@ the block body.
 
 <p class="caption">▼ `PUSH_BLOCK() POP_BLOCK()` </p>
 
-<pre class="longlist">
+```TODO-lang
  592  #define PUSH_BLOCK(v,b) do { \
  593      struct BLOCK _block;                  \
  594      _block.tag = new_blktag();            \
@@ -192,7 +197,7 @@ the block body.
  616  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 Let's make sure that a `BLOCK` is "the snapshot of the environment of the moment
@@ -220,12 +225,12 @@ But let's defer the final judge until after looking at and comparing with `PUSH_
 
 
 
-h4. `PUSH_ITER()`
+#### `PUSH_ITER()`
 
 
 <p class="caption">▼ `PUSH_ITER() POP_ITER()` </p>
 
-<pre class="longlist">
+```TODO-lang
  773  #define PUSH_ITER(i) do {               \
  774      struct iter _iter;                  \
  775      _iter.prev = ruby_iter;             \
@@ -237,7 +242,7 @@ h4. `PUSH_ITER()`
  781  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 On the contrary, this is apparently light.
@@ -248,7 +253,7 @@ it would probably matter little.
 
 
 
-h3. Iterator Method Call
+### Iterator Method Call
 
 
 After pushing a block, the next thing is to call an iterator method (a method
@@ -260,7 +265,7 @@ Here.
 
 <p class="caption">▼ `rb_call0()` − moving to  `ITER_CUR` </p>
 
-<pre class="longlist">
+```TODO-lang
 4498      switch (ruby_iter->iter) {
 4499        case ITER_PRE:
 4500          itr = ITER_CUR;
@@ -272,7 +277,7 @@ Here.
 4506      }
 
 (eval.c)
-</pre>
+```
 
 
 Since `ITER_PRE` is pushed previously at `NODE_TER`, this code makes
@@ -281,7 +286,10 @@ At this moment, a method finally "becomes" an iterator.
 Figure 2 shows the state of the stacks.
 
 
-!images/ch_iterator_itertrans.jpg(the state of the Ruby stacks on an iterator call.)!
+<figure>
+	<img src="images/ch_iterator_itertrans.jpg" alt="figure 2: the state of the Ruby stacks on an iterator call.">
+	<figcaption>figure 2: the state of the Ruby stacks on an iterator call.</figcaption>
+</figure>
 
 
 The possible value of `ruby_iter` is not the one of two boolean values
@@ -309,12 +317,12 @@ This is where making use of the third step `ITER`.
 Let's go back a little and try to see it.
 
 
-h4. `BEGIN_CALLARGS END_CALLARGS`
+#### `BEGIN_CALLARGS END_CALLARGS`
 
 
 <p class="caption">▼ `BEGIN_CALLARGS END_CALLARGS` </p>
 
-<pre class="longlist">
+```TODO-lang
 1812  #define BEGIN_CALLARGS do {\
 1813      struct BLOCK *tmp_block = ruby_block;\
 1814      if (ruby_iter->iter == ITER_PRE) {\
@@ -328,7 +336,7 @@ h4. `BEGIN_CALLARGS END_CALLARGS`
 1822  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 When `ruby_iter` is `ITER_PRE`, a `ruby_block` is set aside.
@@ -336,18 +344,18 @@ This code is important, for instance, in the below case:
 
 
 
-<pre class="emlist">
+```TODO-lang
 obj.m1 { yield }.m2 { nil }
-</pre>
+```
 
 
 The evaluation order of this expression is:
 
 
-#1 push the block of `m2`
-#2 push the block of `m1`
-#3 call the method `m1`
-#4 call the method `m2`
+* push the block of `m2`
+* push the block of `m1`
+* call the method `m1`
+* call the method `m2`
 
 
 Therefore, if there was not `BEGIN_CALLARGS`,
@@ -361,7 +369,7 @@ so there's no problem.
 
 
 
-h3. Block Invocation
+### Block Invocation
 
 
 The third phase of iterator invocation, it means the last phase,
@@ -370,7 +378,7 @@ is block invocation.
 
 <p class="caption">▼ `rb_eval()` − `NODE_YIELD` </p>
 
-<pre class="longlist">
+```TODO-lang
 2579        case NODE_YIELD:
 2580          if (node->nd_stts) {
 2581              result = avalue_to_yvalue(rb_eval(self, node->nd_stts));
@@ -383,7 +391,7 @@ is block invocation.
 2588          break;
 
 (eval.c)
-</pre>
+```
 
 
 `nd_stts` is the parameter of `yield`.
@@ -419,7 +427,7 @@ it becomes very shorter.
 
 <p class="caption">▼ `rb_yield_0()` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 static VALUE
 rb_yield_0(val, self, klass, /* pcall=0 */)
     VALUE val, self, klass;
@@ -468,7 +476,7 @@ rb_yield_0(val, self, klass, /* pcall=0 */)
 
     return result;
 }
-</pre>
+```
 
 
 As you can see, the most stack frames are replaced with what saved at `ruby_block`.
@@ -476,17 +484,17 @@ Things to simple save/restore are easy to understand,
 so let's see the handling of the other frames we need to be careful about.
 
 
-h4. `FRAME`
+#### `FRAME`
 
 
 
-<pre class="emlist">
+```TODO-lang
 struct FRAME frame;
 
 frame = block->frame;     /* copy the entire struct */
 frame.prev = ruby_frame;  /* by these two lines…… */
 ruby_frame = &(frame);    /* ……frame is pushed */
-</pre>
+```
 
 
 Differing from the other frames, a `FRAME` is not used in the saved state,
@@ -494,7 +502,10 @@ but a new `FRAME` is created by duplicating.
 This would look like Figure 3.
 
 
-!images/ch_iterator_framepush.jpg(push a copied frame)!
+<figure>
+	<img src="images/ch_iterator_framepush.jpg" alt="figure 3: push a copied frame">
+	<figcaption>figure 3: push a copied frame</figcaption>
+</figure>
 
 
 As we've seen the code until here,
@@ -504,17 +515,17 @@ When pushing `FRAME`, a new `FRAME` will always be created.
 
 
 
-h4. `BLOCK`
+#### `BLOCK`
 
 
 
-<pre class="emlist">
+```TODO-lang
 block = ruby_block;
          ：
 ruby_block = block->prev;
          ：
 ruby_block = block;
-</pre>
+```
 
 
 
@@ -551,7 +562,7 @@ Therefore, it is purposefully checked and set aside.
 
 
 
-h4. `VARS`
+#### `VARS`
 
 
 Come to think of it,
@@ -561,7 +572,7 @@ Let's see them here.
 
 <p class="caption">▼ `PUSH_VARS() POP_VARS()` </p>
 
-<pre class="longlist">
+```TODO-lang
  619  #define PUSH_VARS() do { \
  620      struct RVarmap * volatile _old; \
  621      _old = ruby_dyna_vars;          \
@@ -576,7 +587,7 @@ Let's see them here.
  630  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 This is also not pushing a new struct, to say "set aside/restore" is closer.
@@ -585,9 +596,9 @@ What actually prepares `ruby_dyna_vars` is this line.
 
 
 
-<pre class="emlist">
+```TODO-lang
 ruby_dyna_vars = new_dvar(0, 0, block->dyna_vars);
-</pre>
+```
 
 
 This takes the `dyna_vars` saved in `BLOCK` and sets it.
@@ -605,7 +616,7 @@ variable at the current block.
 
 <p class="caption">▼ `dvar_asgn_curr()` </p>
 
-<pre class="longlist">
+```TODO-lang
  737  static inline void
  738  dvar_asgn_curr(id, value)
  739      ID id;
@@ -645,7 +656,7 @@ variable at the current block.
  727  }
 
 (eval.c)
-</pre>
+```
 
 
 The last `if` statement is to add a variable.
@@ -653,7 +664,10 @@ If we focus on there, we can see a link is always pushed in at the "next" to
 `ruby_dyna_vars`. This means, it would look like Figure 4.
 
 
-!images/ch_iterator_dynavarseval.jpg(the structure of `ruby_dyna_vars`)!
+<figure>
+	<img src="images/ch_iterator_dynavarseval.jpg" alt="figure 4: the structure of `ruby_dyna_vars`">
+	<figcaption>figure 4: the structure of `ruby_dyna_vars`</figcaption>
+</figure>
 
 
 This differs from the case of the parser in one point:
@@ -665,12 +679,15 @@ a single straight link.
 But according to the errata, it was wrong. That part and relevant descriptions
 are removed.))
 
-!images/ch_iterator_insert.jpg(The entry cannot be inserted properly.)!
+<figure>
+	<img src="images/ch_iterator_insert.jpg" alt="figure 5: The entry cannot be inserted properly.">
+	<figcaption>figure 5: The entry cannot be inserted properly.</figcaption>
+</figure>
 
 
 
 
-h3. Target Specified Jump
+### Target Specified Jump
 
 
 The code relates to jump tags are omitted in the previously shown code,
@@ -680,12 +697,12 @@ I'll tell the reason in advance. I'd like you to see the below program:
 
 
 
-<pre class="emlist">
+```TODO-lang
 [0].each do
   break
 end
 # the place to reach by break
-</pre>
+```
 
 
 like this way, in the case when doing `break` from inside of a block,
@@ -696,13 +713,13 @@ Let's think by looking at the (dynamic) call graph when invoking an iterator.
 
 
 
-<pre class="emlist">
+```TODO-lang
 rb_eval(NODE_ITER)                   .... catch(TAG_BREAK)
     rb_eval(NODE_CALL)               .... catch(TAG_BREAK)
         rb_eval(NODE_YIELD)
             rb_yield_0
                 rb_eval(NODE_BREAK)  .... throw(TAG_BREAK)
-</pre>
+```
 
 
 Since what pushed the block is `NODE_ITER`,
@@ -725,7 +742,7 @@ Then, let's see how this is resolved.
 
 <p class="caption">▼ `rb_yield_0()` − the parts relates to tags</p>
 
-<pre class="longlist">
+```TODO-lang
 3826      PUSH_TAG(PROT_NONE);
 3827      if ((state = EXEC_TAG()) == 0) {
               /* ……evaluate the body…… */
@@ -753,7 +770,7 @@ Then, let's see how this is resolved.
 3859      POP_TAG();
 
 (eval.c)
-</pre>
+```
 
 
 The parts of `TAG_BREAK` and `TAG_RETURN` are crucial.
@@ -775,7 +792,10 @@ Therefore, if `0x10` did not exist, `state` would be the same value as `TAG_xxxx
 (See also Figure 6).
 
 
-!images/ch_iterator_dst.jpg(`block->tag->dst`)!
+<figure>
+	<img src="images/ch_iterator_dst.jpg" alt="figure 6: `block->tag->dst`">
+	<figcaption>figure 6: `block->tag->dst`</figcaption>
+</figure>
 
 
 Now, `tag->dst` became the value which differs from `TAG_xxxx` and is unique for each call.
@@ -786,7 +806,7 @@ The place where making an effort is this place of `rb_eval:NODE_ITER`:
 
 <p class="caption">▼ `rb_eval()` − `NODE_ITER`  (to stop jumps)</p>
 
-<pre class="longlist">
+```TODO-lang
 case NODE_ITER:
   {
       state = EXEC_TAG();
@@ -800,7 +820,7 @@ case NODE_ITER:
           }
       }
   }
-</pre>
+```
 
 
 In corresponding `NODE_ITER` and `rb_yield_0`, `block` should point to the same thing,
@@ -810,7 +830,7 @@ Because of this, only the corresponding `NODE_ITER` can properly stop the jump.
 
 
 
-h3. Check of a block
+### Check of a block
 
 
 Whether or not a currently being evaluated method is an iterator,
@@ -821,7 +841,7 @@ After reading the above all, we can tell its implementation.
 
 <p class="caption">▼ `rb_block_given_p()` </p>
 
-<pre class="longlist">
+```TODO-lang
 3726  int
 3727  rb_block_given_p()
 3728  {
@@ -831,7 +851,7 @@ After reading the above all, we can tell its implementation.
 3732  }
 
 (eval.c)
-</pre>
+```
 
 
 I think there's no problem. What I'd like to talk about this time is actually
@@ -840,7 +860,7 @@ another function to check, it is `rb_f_block_given_p()`.
 
 <p class="caption">▼ `rb_f_block_given_p()` </p>
 
-<pre class="longlist">
+```TODO-lang
 3740  static VALUE
 3741  rb_f_block_given_p()
 3742  {
@@ -850,7 +870,7 @@ another function to check, it is `rb_f_block_given_p()`.
 3746  }
 
 (eval.c)
-</pre>
+```
 
 
 This is the substance of Ruby's `block_given?`.
@@ -869,7 +889,8 @@ Hence, we need to check the previous one.
 
 
 
-h2. `Proc`
+`Proc`
+======
 
 
 To describe a `Proc` object from the viewpoint of implementing,
@@ -879,7 +900,7 @@ but it also means when and where it will be used becomes completely unpredictabl
 Focusing on how the influence of this fact is, let's look at the implementation.
 
 
-h3. `Proc` object creation
+### `Proc` object creation
 
 
 A `Proc` object is created with `Proc.new`.
@@ -888,7 +909,7 @@ Its substance is `proc_new()`.
 
 <p class="caption">▼ `proc_new()` </p>
 
-<pre class="longlist">
+```TODO-lang
 6418  static VALUE
 6419  proc_new(klass)
 6420      VALUE klass;
@@ -934,7 +955,7 @@ Its substance is `proc_new()`.
 6456  }
 
 (eval.c)
-</pre>
+```
 
 
 The creation of a `Proc` object itself is unexpectedly simple.
@@ -988,7 +1009,7 @@ Indeed, it has become a good time.
 
 
 
-h3. Floating Frame
+### Floating Frame
 
 
 Previously, I mentioned it just in one phrase "duplicate all frames",
@@ -1038,7 +1059,7 @@ so let's see it first.
 
 <p class="caption">▼ `scope_dup()`  only the beginning</p>
 
-<pre class="longlist">
+```TODO-lang
 6187  static void
 6188  scope_dup(scope)
 6189      struct SCOPE *scope;
@@ -1049,7 +1070,7 @@ so let's see it first.
 6194      scope->flags |= SCOPE_DONT_RECYCLE;
 
 (eval.c)
-</pre>
+```
 
 
 As you can see, `SCOPE_DONT_RECYCLE` is set.
@@ -1058,14 +1079,14 @@ Then next, take a look at the definition of `POP_SCOPE()`:
 
 <p class="caption">▼ `POP_SCOPE()`  only the beginning</p>
 
-<pre class="longlist">
+```TODO-lang
  869  #define POP_SCOPE()                                      \
  870      if (ruby_scope->flags & SCOPE_DONT_RECYCLE) {        \
  871         if (_old) scope_dup(_old);                        \
  872      }                                                    \
 
 (eval.c)
-</pre>
+```
 
 
 When it pops, if `SCOPE_DONT_RECYCLE` flag was set to the current `SCOPE` (`ruby_scope`),
@@ -1075,7 +1096,10 @@ In this way, one by one, the flag is propagated at the time when it pops.
 (Figure 7)
 
 
-!images/ch_iterator_dst.jpg(flag propagation)!
+<figure>
+	<img src="images/ch_iterator_dst.jpg" alt="figure 7: flag propagation">
+	<figcaption>figure 7: flag propagation</figcaption>
+</figure>
 
 
 Since `VARS` also does not have any `prev` pointer,
@@ -1095,14 +1119,14 @@ I've just got the answer. Take a look at the next program:
 
 
 
-<pre class="emlist">
+```TODO-lang
 def get_proc
   Proc.new { nil }
 end
 
 env = get_proc { p 'ok' }
 eval("yield", env)
-</pre>
+```
 
 
 I have not explained this feature, but by passing a `Proc` object as the second
@@ -1124,7 +1148,7 @@ the reason in this way.)
 <br>))
 
 
-h3. Invocation of `Proc`
+### Invocation of `Proc`
 
 
 Next, we'll look at the invocation of a created `Proc`.
@@ -1137,7 +1161,7 @@ The substance of `Proc#call` is `proc_call()`:
 
 <p class="caption">▼ `proc_call()` </p>
 
-<pre class="longlist">
+```TODO-lang
 6570  static VALUE
 6571  proc_call(proc, args)
 6572      VALUE proc, args;           /* OK */
@@ -1146,7 +1170,7 @@ The substance of `Proc#call` is `proc_call()`:
 6575  }
 
 (eval.c)
-</pre>
+```
 
 
 Delegate to `proc_invoke()`. When I look up `invoke` in a dictionary,
@@ -1159,9 +1183,9 @@ The prototype of the `proc_invoke()` is,
 
 
 
-<pre class="emlist">
+```TODO-lang
 proc_invoke(VALUE proc, VALUE args, int pcall, VALUE self)
-</pre>
+```
 
 
 However, according to the previous code, `pcall=Qtrue` and `self=Qundef` in this case,
@@ -1170,7 +1194,7 @@ so these two can be removed by constant foldings.
 
 <p class="caption">▼ `proc_invoke` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 static VALUE
 proc_invoke(proc, args, /* pcall=Qtrue */, /* self=Qundef */)
     VALUE proc, args;
@@ -1236,7 +1260,7 @@ proc_invoke(proc, args, /* pcall=Qtrue */, /* self=Qundef */)
     }
     return result;
 }
-</pre>
+```
 
 
 
@@ -1269,7 +1293,7 @@ you can determine it has finished.
 
 
 
-h3. Block and `Proc`
+### Block and `Proc`
 
 
 In the previous chapter, various things about arguments and parameters of
@@ -1278,10 +1302,10 @@ Although it is brief, here I'll perform the final part of that series.
 
 
 
-<pre class="emlist">
+```TODO-lang
 def m(&block)
 end
-</pre>
+```
 
 
 This is a "block parameter". The way to enable this is very simple.
@@ -1303,9 +1327,9 @@ Next, it is the side to pass a block.
 
 
 
-<pre class="emlist">
+```TODO-lang
 m(&block)
-</pre>
+```
 
 This is a "block argument". This is also simple,
 take a `BLOCK` from (a `Proc` object stored in) `block` and push it.

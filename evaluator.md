@@ -5,10 +5,11 @@ title: "Chapter 13: Structure of the evaluator"
 
 h1(#chapter). Chapter 13: Structure of the evaluator
 
-h2. Outline
+Outline
+=======
 
 
-h3. Interface
+### Interface
 
 
 We are not familiar with the word "Hyo-ka-ki" (evaluator). Literally, it must
@@ -57,7 +58,7 @@ I'd like you to remember.
 
 
 
-h3. The characteristics of @ruby's@ evaluator.
+### The characteristics of @ruby's@ evaluator.
 
 
 The biggest characteristic of `ruby`'s evaluator is that, as this is also of
@@ -84,10 +85,10 @@ it is named after "evaluate". By using it, you can even do something like this:
 
 
 
-<pre class="emlist">
+```TODO-lang
 lvar = 1
 answer = eval("lvar + lvar")    # the answer is 2
-</pre>
+```
 
 
 There are also @Module#module_eval@ and @Object#instance_eval@, each method
@@ -95,7 +96,7 @@ behaves slightly differently. I'll describe about them in detail in Chapter 17: 
 
 
 
-h3. @eval.c@
+### @eval.c@
 
 
 The evaluator is implemented in @eval.c@. However, this @eval.c@ is a
@@ -169,10 +170,10 @@ The below table shows the corresponding chapter of each of them:
 
 
 
-h3. From @main@ by way of @ruby_run@ to @rb_eval@
+### From @main@ by way of @ruby_run@ to @rb_eval@
 
 
-h3. Call Graph
+### Call Graph
 
 
 The true core of the evaluator is a function called @rb_eval()@.
@@ -180,7 +181,7 @@ In this chapter, we will follow the path from @main()@ to that @rb_eval()@.
 First of all, here is a rough call graph around @rb_eval@ :
 
 
-<pre class="emlist">
+```TODO-lang
 main                     ....main.c
     ruby_init                ....eval.c
         ruby_prog_init           ....ruby.c
@@ -191,7 +192,7 @@ main                     ....main.c
             rb_eval
                 *
         ruby_stop
-</pre>
+```
 
 
 I put the file names on the right side when moving to another file.
@@ -220,11 +221,11 @@ Actually, @PUSH_TAG@ can only be used as a pair with @POP_TAG@ as follows:
 
 
 
-<pre class="emlist">
+```TODO-lang
 PUSH_TAG();
 /* do lots of things */
 POP_TAG();
-</pre>
+```
 
 Because of its implementation, the two macros should be put into the same function.
 It's possible to implement in a way to be able to divide them into different functions,
@@ -264,7 +265,7 @@ the official interfaces of @ruby@ interpretor.
 
 
 
-h3. @main()@
+### @main()@
 
 
 First, straightforwardly, I'll start with @main()@.
@@ -273,7 +274,7 @@ It is nice that this is very short.
 
 <p class="caption">▼ @main()@ </p>
 
-<pre class="longlist">
+```TODO-lang
   36  int
   37  main(argc, argv, envp)
   38      int argc;
@@ -293,7 +294,7 @@ It is nice that this is very short.
   52  }
 
 (main.c)
-</pre>
+```
 
 
 @#if def NT@ is obviously the NT of Windows NT. But somehow NT is also
@@ -326,7 +327,7 @@ Now, I'll start to briefly explain about the built-in Ruby interfaces.
 
 
 
-h3. @ruby_init()@
+### @ruby_init()@
 
 
 @ruby_init()@ initializes the Ruby interpretor.
@@ -355,7 +356,7 @@ The code of @ruby_init()@ is omitted because it's unnecessary to read.
 
 
 
-h3. @ruby_options()@
+### @ruby_options()@
 
 
 What to parse command-line options for the Ruby interpreter is @ruby_options()@.
@@ -380,7 +381,7 @@ things one by one and not interesting.
 
 
 
-h3. @ruby_run()@
+### @ruby_run()@
 
 
 Finally, @ruby_run()@ starts to evaluate the syntax tree which was set to @ruby_eval_tree@.
@@ -390,7 +391,7 @@ for instance, we can evaluate a string by using a function named @rb_eval_string
 
 <p class="caption">▼ @ruby_run()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1257  void
 1258  ruby_run()
 1259  {
@@ -414,7 +415,7 @@ for instance, we can evaluate a string by using a function named @rb_eval_string
 1277  }
 
 (eval.c)
-</pre>
+```
 
 
 We can see the macros @PUSH_xxxx()@, but we can ignore them for now. I'll
@@ -424,7 +425,7 @@ is only @eval_node()@. Its content is:
 
 <p class="caption">▼ @eval_node()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 1112  static VALUE
 1113  eval_node(self, node)
 1114      VALUE self;
@@ -442,7 +443,7 @@ is only @eval_node()@. Its content is:
 1126  }
 
 (eval.c)
-</pre>
+```
 
 This calls @rb_eval()@ on @ruby_eval_tree@. The @ruby_eval_tree_begin@ is
 storing the statements registered by @BEGIN@. But, this is also not important.
@@ -455,10 +456,11 @@ This is also not important, so we won't see this.
 
 
 
-h2. @rb_eval()@
+@rb_eval()@
+===========
 
 
-h3. Outline
+### Outline
 
 
 Now, @rb_eval()@. This function is exactly the real core of @ruby@.
@@ -478,7 +480,7 @@ branching by each type of the nodes. First, let's look at the outline.
 
 <p class="caption">▼ @rb_eval()@ Outline</p>
 
-<pre class="longlist">
+```TODO-lang
 2221  static VALUE
 2222  rb_eval(self, n)
 2223      VALUE self;
@@ -517,7 +519,7 @@ branching by each type of the nodes. First, let's look at the outline.
 3422  }
 
 (eval.c)
-</pre>
+```
 
 
 In the omitted part, plenty of the codes to process all nodes are listed.
@@ -536,7 +538,7 @@ And finally, the local variables @result@ and @node@ are @volatile@ for GC.
 
 
 
-h3. @NODE_IF@
+### @NODE_IF@
 
 
 Now, taking the @if@ statement as an example, let's look at the process of
@@ -552,18 +554,18 @@ these three will be listed at the beginning.
 
 <p class="caption">▼source program</p>
 
-<pre class="longlist">
+```TODO-lang
 if true
   'true expr'
 else
   'false expr'
 end
-</pre>
+```
 
 
 <p class="caption">▼ its corresponding syntax tree ( @nodedump@ ) </p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_NEWLINE
 nd_file = "if"
 nd_nth  = 1
@@ -585,7 +587,7 @@ nd_next:
         nd_next:
             NODE_STR
             nd_lit = "false expr":String
-</pre>
+```
 
 
 As we've seen in Part 2, @elsif@ and @unless@ can be, by contriving the ways to assemble,
@@ -594,7 +596,7 @@ bundled to a single @NODE_IF@ type, so we don't have to treat them specially.
 
 <p class="caption">▼ @rb_eval()@ − @NODE_IF@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2324  case NODE_IF:
 2325    if (trace_func) {
 2326        call_trace_func("line", node, self,
@@ -610,7 +612,7 @@ bundled to a single @NODE_IF@ type, so we don't have to treat them specially.
 2336    goto again;
 
 (eval.c)
-</pre>
+```
 
 
 Only the last @if@ statement is important.
@@ -618,14 +620,14 @@ If rewriting it without any change in its meaning, it becomes this:
 
 
 
-<pre class="emlist">
+```TODO-lang
 if (RTEST(rb_eval(self, node->nd_cond))) {     (A)
     RETURN(rb_eval(self, node->nd_body));      (B)
 }
 else {
     RETURN(rb_eval(self, node->nd_else));      (C)
 }
-</pre>
+```
 
 
 First, at (A), evaluating (the node of) the Ruby's condition statement and
@@ -649,7 +651,7 @@ in the previous chapter "Syntax tree construction".
 
 
 
-h3. @NODE_NEW_LINE@
+### @NODE_NEW_LINE@
 
 
 Since there was @NODE_NEWLINE@ at the node for a @if@ statement,
@@ -658,7 +660,7 @@ let's look at the code for it.
 
 <p class="caption">▼ @rb_eval()@ - @NODE_NEWLINE@ </p>
 
-<pre class="longlist">
+```TODO-lang
 3404  case NODE_NEWLINE:
 3405    ruby_sourcefile = node->nd_file;
 3406    ruby_sourceline = node->nd_nth;
@@ -671,7 +673,7 @@ let's look at the code for it.
 3413    goto again;
 
 (eval.c)
-</pre>
+```
 
 
 There's nothing particularly difficult.
@@ -698,7 +700,7 @@ challenge after finishing the Chapter 16: Blocks.
 
 
 
-h3. Pseudo-local Variables
+### Pseudo-local Variables
 
 
 @NODE_IF@ and such are interior nodes in a syntax tree.
@@ -707,7 +709,7 @@ Let's look at the leaves, too.
 
 <p class="caption">▼ @rb_eval()@ Ppseudo-Local Variable Nodes</p>
 
-<pre class="longlist">
+```TODO-lang
 2312  case NODE_SELF:
 2313    RETURN(self);
 2314
@@ -721,7 +723,7 @@ Let's look at the leaves, too.
 2322    RETURN(Qfalse);
 
 (eval.c)
-</pre>
+```
 
 
 We've seen @self@ as the argument of @rb_eval()@. I'd like you to make sure it
@@ -731,7 +733,7 @@ The others are probably not needed to be explained.
 
 
 
-h3. Jump Tag
+### Jump Tag
 
 
 Next, I'd like to explain @NODE_WHILE@ which is corresponding to @while@,
@@ -751,7 +753,7 @@ The entry point is @parent()@.
 
 <p class="caption">▼ @setjmp()@ and @longjmp()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 jmp_buf buf;
 
 void child2(void) {
@@ -775,7 +777,7 @@ void parent(void) {
         printf("%d\n", result);   /* shows 34 */
     }
 }
-</pre>
+```
 
 
 First, when @setjmp()@ is called at @parent()@,
@@ -828,7 +830,7 @@ Let's look at it.
 
 <p class="caption">▼ @struct tag@</p>
 
-<pre class="longlist">
+```TODO-lang
  783  struct tag {
  784      jmp_buf buf;
  785      struct FRAME *frame;   /* FRAME when PUSH_TAG */
@@ -841,7 +843,7 @@ Let's look at it.
  792  };
 
 (eval.c)
-</pre>
+```
 
 
 Because there's the member @prev@, we can infer that @struct tag@ is probably
@@ -851,7 +853,7 @@ find the macros @PUSH_TAG()@ and @POP_TAG@, thus it definitely seems a stack.
 
 <p class="caption">▼ @PUSH_TAG() POP_TAG()@</p>
 
-<pre class="longlist">
+```TODO-lang
  793  static struct tag *prot_tag;   /* the pointer to the head of the machine stack */
 
  795  #define PUSH_TAG(ptag) do {             \
@@ -872,7 +874,7 @@ find the macros @PUSH_TAG()@ and @POP_TAG@, thus it definitely seems a stack.
  822  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 I'd like you to be flabbergasted here because the actual tag is fully allocated
@@ -883,7 +885,7 @@ Here is the macros @PUSH@ / @POP@ coupled and extracted to make it easy to read.
 
 
 
-<pre class="emlist">
+```TODO-lang
 do {
     struct tag _tag;
     _tag.prev = prot_tag;   /* save the previous tag */
@@ -891,7 +893,7 @@ do {
     /* do several things */
     prot_tag = _tag.prev;   /* restore the previous tag */
 } while (0);
-</pre>
+```
 
 
 This method does not have any overhead of function calls,
@@ -918,7 +920,7 @@ Additionally, let's also take a look at @EXEC_TAG()@ and @JUMP_TAG()@.
 
 <p class="caption">▼ @EXEC_TAG() JUMP_TAG()@</p>
 
-<pre class="longlist">
+```TODO-lang
  810  #define EXEC_TAG()    setjmp(prot_tag->buf)
 
  812  #define JUMP_TAG(st) do {               \
@@ -928,7 +930,7 @@ Additionally, let's also take a look at @EXEC_TAG()@ and @JUMP_TAG()@.
  816  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 In this way, @setjmp@ and @longjmp@ are wrapped by @EXEC_TAG()@ and @JUMP_TAG()@ respectively.
@@ -967,7 +969,7 @@ of @longjmp()@, thus we can use this. The types are expressed by the following f
 
 <p class="caption">▼tag type</p>
 
-<pre class="longlist">
+```TODO-lang
  828  #define TAG_RETURN      0x1    /* return */
  829  #define TAG_BREAK       0x2    /* break */
  830  #define TAG_NEXT        0x3    /* next */
@@ -979,7 +981,7 @@ of @longjmp()@, thus we can use this. The types are expressed by the following f
  836  #define TAG_MASK        0xf
 
 (eval.c)
-</pre>
+```
 
 
 The meanings are written as each comment. The last @TAG_MASK@ is the bitmask to
@@ -990,7 +992,7 @@ return value of @setjmp()@ can also include information which is not about a
 
 
 
-h3. @NODE_WHILE@
+### @NODE_WHILE@
 
 
 Now, by examining the code of @NODE_WHILE@, let's check the actual usage of tags.
@@ -998,16 +1000,16 @@ Now, by examining the code of @NODE_WHILE@, let's check the actual usage of tags
 
 <p class="caption">▼ The Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 while true
   'true_expr'
 end
-</pre>
+```
 
 
 <p class="caption">▼ Its corresponding syntax tree（ @nodedump-short@ ）</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_WHILE
 nd_state = 1 (while)
 nd_cond:
@@ -1015,12 +1017,12 @@ nd_cond:
 nd_body:
     NODE_STR
     nd_lit = "true_expr":String
-</pre>
+```
 
 
 <p class="caption">▼ @rb_eval@ - @NODE_WHILE@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2418  case NODE_WHILE:
 2419    PUSH_TAG(PROT_NONE);
 2420    result = Qnil;
@@ -1054,14 +1056,14 @@ nd_body:
 2448    RETURN(result);
 
 (eval.c)
-</pre>
+```
 
 
 The idiom which will appear over and over again appeared in the above code.
 
 
 
-<pre class="emlist">
+```TODO-lang
 PUSH_TAG(PROT_NONE);
 switch (state = EXEC_TAG()) {
   case 0:
@@ -1080,7 +1082,7 @@ switch (state = EXEC_TAG()) {
 }
 POP_TAG();
 if (state) JUMP_TAG(state);   /* .. jump again here */
-</pre>
+```
 
 
 First, as @PUSH_TAG()@ and @POP_TAG()@ are the previously described mechanism,
@@ -1101,14 +1103,14 @@ The below code is the handler of the node of @redo@.
 
 <p class="caption">▼ @rb_eval()@ - @NODE_REDO@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2560  case NODE_REDO:
 2561    CHECK_INTS;
 2562    JUMP_TAG(TAG_REDO);
 2563    break;
 
 (eval.c)
-</pre>
+```
 
 
 As a result of jumping via @JUMP_TAG()@, it goes back to the last @EXEC_TAG()@.
@@ -1123,14 +1125,14 @@ Additionally, I moved some labels to enhance readability.
 
 
 
-<pre class="emlist">
+```TODO-lang
   if (node->nd_state && !RTEST(rb_eval(self, node->nd_cond)))
       goto while_out;
   do {
       rb_eval(self, node->nd_body);
   } while (RTEST(rb_eval(self, node->nd_cond)));
 while_out:
-</pre>
+```
 
 
 There are the two places calling @rb_eval()@ on @node->nd_state@ which
@@ -1148,10 +1150,10 @@ So, I've actually tried it.
 
 
 
-<pre class="screen">
+```TODO-lang
 % ruby -e 'while next do nil end'
 -e:1: void value expression
-</pre>
+```
 
 
 It's simply rejected at the time of parsing.
@@ -1161,7 +1163,7 @@ What produces this error is @value_expr()@ of @parse.y@.
 
 
 
-h3. The value of an evaluation of @while@
+### The value of an evaluation of @while@
 
 
 @while@ had not had its value for a long time, but it has been able to return
@@ -1172,7 +1174,7 @@ return value of @rb_eval()@, I'd like you to look at the following code:
 
 
 
-<pre class="emlist">
+```TODO-lang
         result = Qnil;
         switch (state = EXEC_TAG()) {
           case 0:
@@ -1188,7 +1190,7 @@ return value of @rb_eval()@, I'd like you to look at the following code:
             break;
         }
         RETURN(result);
-</pre>
+```
 
 
 What we should focus on is only (A). The return value of the jump seems to be
@@ -1198,7 +1200,7 @@ Here is the passing side:
 
 <p class="caption">▼ @rb_eval()@ - @NODE_BREAK@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2219  #define return_value(v) prot_tag->retval = (v)
 
 2539  case NODE_BREAK:
@@ -1212,7 +1214,7 @@ Here is the passing side:
 2547    break;
 
 (eval.c)
-</pre>
+```
 
 
 In this way, by using the macro @return_value()@, it assigns the value to the
@@ -1225,14 +1227,14 @@ For example, @rescue@ of an exception handling can exist between them.
 
 
 
-<pre class="emlist">
+```TODO-lang
 while cond       # EXEC_TAG() for NODE_WHILE
   begin          # EXEC_TAG() again for rescue
     break 1
   rescue
   end
 end
-</pre>
+```
 
 
 Therefore, it's hard to determine whether or not the @strict tag@ of when doing
@@ -1243,7 +1245,7 @@ the return value can be passed to the next tag without particular thought.
 
 <p class="caption">▼ @POP_TAG()@ </p>
 
-<pre class="longlist">
+```TODO-lang
  818  #define POP_TAG()                       \
  819      if (_tag.prev)                      \
  820          _tag.prev->retval = _tag.retval;\
@@ -1251,7 +1253,7 @@ the return value can be passed to the next tag without particular thought.
  822  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 
@@ -1268,14 +1270,15 @@ Fig.6: Transferring the return value
 
 
 
-h2. Exception
+Exception
+=========
 
 
 As the second example of the usage of "tag jump", we'll look at how exceptions
 are dealt with.
 
 
-h3. @raise@
+### @raise@
 
 
 When I explained @while@, we looked at the @setjmp()@ side first. This time,
@@ -1285,7 +1288,7 @@ which is the substance of @raise@.
 
 <p class="caption">▼ @rb_exc_raise()@ </p>
 
-<pre class="longlist">
+```TODO-lang
 3645  void
 3646  rb_exc_raise(mesg)
 3647      VALUE mesg;
@@ -1294,7 +1297,7 @@ which is the substance of @raise@.
 3650  }
 
 (eval.c)
-</pre>
+```
 
 
 @mesg@ is an exception object (an instance of @Exception@ or one of its subclass).
@@ -1304,7 +1307,7 @@ And the below code is very simplified @rb_longjmp()@.
 
 <p class="caption">▼ @rb_longjmp()@ (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 static void
 rb_longjmp(tag, mesg)
     int tag;
@@ -1316,7 +1319,7 @@ rb_longjmp(tag, mesg)
     ruby_errinfo = mesg;
     JUMP_TAG(tag);
 }
-</pre>
+```
 
 
 Well, though this can be considered as a matter of course, this is just to jump
@@ -1331,12 +1334,12 @@ naturally its substance @ruby_errinfo@ should have the same meaning as well.
 
 
 
-h3. The Big Picture
+### The Big Picture
 
 
 <p class="caption">▼the source program</p>
 
-<pre class="longlist">
+```TODO-lang
 begin
   raise('exception raised')
 rescue
@@ -1344,12 +1347,12 @@ rescue
 ensure
   'ensure clause'
 end
-</pre>
+```
 
 
 <p class="caption">▼the syntax tree（ @nodedump-short@ ）</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_BEGIN
 nd_body:
     NODE_ENSURE
@@ -1375,7 +1378,7 @@ nd_body:
     nd_ensr:
         NODE_STR
         nd_lit = "ensure clause":String
-</pre>
+```
 
 
 As the right order of @rescue@ and @ensure@ is decided at parser level,
@@ -1395,7 +1398,7 @@ accurate to say.
 
 
 
-h3. @ensure@
+### @ensure@
 
 
 We are going to look at the handler of @NODE_ENSURE@ which is the node of @ensure@.
@@ -1403,7 +1406,7 @@ We are going to look at the handler of @NODE_ENSURE@ which is the node of @ensur
 
 <p class="caption">▼ @rb_eval()@ - @NODE_ENSURE@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2634  case NODE_ENSURE:
 2635    PUSH_TAG(PROT_NONE);
 2636    if ((state = EXEC_TAG()) == 0) {
@@ -1422,7 +1425,7 @@ We are going to look at the handler of @NODE_ENSURE@ which is the node of @ensur
 2649    break;
 
 (eval.c)
-</pre>
+```
 
 
 This branch using @if@ is another idiom to deal with tag.
@@ -1435,13 +1438,13 @@ To check the specification first,
 
 
 
-<pre class="emlist">
+```TODO-lang
 begin
   expr0
 ensure
   expr1
 end
-</pre>
+```
 
 
 for the above statement, the value of the whole @begin@ will be the value of
@@ -1462,7 +1465,7 @@ When any jump has not occurred, @state==0@ in this case,
 
 
 
-h3. @rescue@
+### @rescue@
 
 
 It's been a little while, I'll show the syntax tree of @rescue@ again just in case.
@@ -1470,18 +1473,18 @@ It's been a little while, I'll show the syntax tree of @rescue@ again just in ca
 
 <p class="caption">▼Source Program</p>
 
-<pre class="longlist">
+```TODO-lang
 begin
   raise()
 rescue ArgumentError, TypeError
   'error raised'
 end
-</pre>
+```
 
 
 <p class="caption">▼ Its Syntax Tree ( @nodedump-short@ )</p>
 
-<pre class="longlist">
+```TODO-lang
 NODE_BEGIN
 nd_body:
     NODE_RESCUE
@@ -1505,7 +1508,7 @@ nd_body:
             nd_lit = "error raised":String
         nd_head = (null)
     nd_else = (null)
-</pre>
+```
 
 
 I'd like you to make sure that (the syntax tree of) the statement to be
@@ -1514,7 +1517,7 @@ I'd like you to make sure that (the syntax tree of) the statement to be
 
 <p class="caption">▼ @rb_eval()@ - @NODE_RESCUE@ </p>
 
-<pre class="longlist">
+```TODO-lang
 2590  case NODE_RESCUE:
 2591  retry_entry:
 2592    {
@@ -1560,7 +1563,7 @@ I'd like you to make sure that (the syntax tree of) the statement to be
 2632    break;
 
 (eval.c)
-</pre>
+```
 
 
 Even though the size is not small, it's not difficult because it only simply
@@ -1572,9 +1575,9 @@ I'll explain only its effects here. Its prototype is this,
 
 
 
-<pre class="emlist">
+```TODO-lang
 static int handle_rescue(VALUE self, NODE *resq)
-</pre>
+```
 
 
 and it determines whether the currently occurring exception (@ruby_errinfo@) is

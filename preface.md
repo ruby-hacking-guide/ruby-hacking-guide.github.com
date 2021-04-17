@@ -2,7 +2,8 @@
 layout: default
 ---
 
-h2. Preface
+Preface
+=======
 
 
 This book explores several themes with the following goals in mind:
@@ -81,7 +82,8 @@ the book that lets you practice such idealism exhaustively.
 "It's interesting because it's difficult." I'm glad if the number of people
 who think so will increase because of this book.
 
-h2. Target audience
+Target audience
+===============
 
 Firstly, knowledge about the Ruby language isn't required. However, since the
 knowledge of the Ruby language is absolutely necessary to understand certain
@@ -99,7 +101,8 @@ seriously, without having any experience of using at least one of
 object-oriented languages, you will probably have a difficult time.
 In this book, I tried to use many examples in Java and C++.
 
-h2. Structure of this book
+Structure of this book
+======================
 
 This book has four main parts:
 
@@ -119,7 +122,7 @@ Now, we are going through the overview of the four main parts. The symbol in
 parentheses after the explanation indicates the difficulty gauge. They are ==(C)==,
 (B), (A) in order of easy to hard, (S) being the highest.
 
-h4. Part 1: Object
+#### Part 1: Object
 
 | Chapter1 | Focuses the basics of Ruby to get ready to accomplish Part 1. ==(C)== |
 | Chapter2 | Gives concrete inner structure of Ruby objects. ==(C)== |
@@ -129,7 +132,7 @@ h4. Part 1: Object
 | Chapter6 | Describes the implementation of global variables, class variables, and constants. ==(C)== |
 | Chapter7 | Outline of the security features of Ruby. ==(C)== |
 
-h4. Part 2: Syntactic analysis
+#### Part 2: Syntactic analysis
 
 | Chapter8 | Talks about almost complete specification of the Ruby language, in order to prepare for Part 2 and Part 3. ==(C)== |
 | Chapter9 | Introduction to @yacc@ required to read the syntax file at least. (B) |
@@ -137,7 +140,7 @@ h4. Part 2: Syntactic analysis
 | Chapter11 | Explore around the peripherals of @lex_state@, which is the most difficult part of the parser. The most difficult part of this book. (S) |
 | Chapter12 | Finalization of Part 2 and connection to Part 3. ==(C)== |
 
-h4. Part 3: Evaluator
+#### Part 3: Evaluator
 
 | Chapter13 | Describe the basic mechanism of the evaluator. ==(C)== |
 | Chapter14 | Reads the evaluation stack that creates the main context of Ruby. (A) |
@@ -145,12 +148,13 @@ h4. Part 3: Evaluator
 | Chapter16 | Defies the implementation of the iterator, the most characteristic feature of Ruby. (A) |
 | Chapter17 | Describe the implementation of the eval methods. (B) |
 
-h4. Part 4: Peripheral around the evaluator
+#### Part 4: Peripheral around the evaluator
 
 | Chapter18 | Run-time loading of libraries in C and Ruby. (B) |
 | Chapter19 | Describes the implementation of thread at the end of the core part. (A) |
 
-h2. Environment
+Environment
+===========
 
 This book describes on @ruby@ 1.7.3 2002-09-12 version. It's attached on the
 CD-ROM. Choose any one of @ruby-rhg.tar.gz@, @ruby-rhg.lzh@, or @ruby-rhg.zip@
@@ -227,7 +231,8 @@ However, the author owes the responsibility for this test. Please refrain from
 attempting to contact these people directly.  If there's any flaw in execution,
 please be advised to contact the author by e-mail: `aamine@loveruby.net`.
 
-h2. Web site
+Web site
+========
 
 The web site for this book is `http://i.loveruby.net/ja/rhg/`.
 I will add information about related programs and additional documentation, as
@@ -236,7 +241,8 @@ this book at the same time of the release. I will look for a certain
 circumstance to publicize more chapters, and the whole contents of the book
 will be at this website at the end.
 
-h2. Acknowledgment
+Acknowledgment
+==============
 
 First of all, I would like to thank Mr. Yukihiro Matsumoto. He is the author of
 Ruby, and he made it in public as an open source software.  Not only he
@@ -292,10 +298,10 @@ p(right). Minero Aoki
 
 
 If you want to send remarks, suggestions and reports of typographcal errors,
-please address to "Minero Aoki &lt;aamine@loveruby.net&gt;":mailto:aamine@loveruby.net .
+please address to [Minero Aoki &lt;aamine@loveruby.net&gt;](mailto:aamine@loveruby.net).
 
 
 "Rubyソースコード完全解説" can be reserved/ordered at ImpressDirect.
-"(Jump to the introduction page)":http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721
+[(Jump to the introduction page)](http://direct.ips.co.jp/directsys/go_x_TempChoice.cfm?sh_id=EE0040&spm_id=1&GM_ID=1721)
 
 Copyright (c) 2002-2004 Minero Aoki, All rights reserved.

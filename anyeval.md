@@ -2,9 +2,11 @@
 layout: default
 title: "Chapter 17: Dynamic evaluation"
 ---
-h1. Chapter 17: Dynamic evaluation
+Chapter 17: Dynamic evaluation
+------------------------------
 
-h2. Overview
+Overview
+========
 
 I have already finished to describe about the mechanism of the evaluator by the
 previous chapter.
@@ -14,7 +16,7 @@ There are three targets: `eval`, `Module#module_eval` and
 `Object#instance_eval`.
 
 
-h3. `eval`
+### `eval`
 
 
 I've already described about `eval`,
@@ -26,20 +28,20 @@ Its return value is the value of the last expression of the program.
 
 
 
-<pre class="emlist">
+```TODO-lang
 p eval("1 + 1")   # 2
-</pre>
+```
 
 
 You can also refer to a variable in its scope from inside of a string to `eval`.
 
 
 
-<pre class="emlist">
+```TODO-lang
 lvar = 5
 @ivar = 6
 p eval("lvar + @ivar")   # 11
-</pre>
+```
 
 
 Readers who have been reading until here cannot simply read and pass over the
@@ -52,14 +54,14 @@ And you can also define methods and define classes.
 
 
 
-<pre class="emlist">
+```TODO-lang
 def a
   eval('class C;  def test() puts("ok") end   end')
 end
 
 a()          # define class C and C#test
 C.new.test   # shows ok
-</pre>
+```
 
 
 Moreover, as mentioned a little in the previous chapter,
@@ -68,20 +70,20 @@ its environment.
 
 
 
-<pre class="emlist">
+```TODO-lang
 def new_env
   n = 5
   Proc.new { nil }   # turn the environment of this method into an object and return it
 end
 
 p eval('n * 3', new_env())   # 15
-</pre>
+```
 
 
 
 
 
-h3. `module_eval` and `instance_eval`
+### `module_eval` and `instance_eval`
 
 
 When a `Proc` is passed as the second argument of `eval`, the evaluations can be
@@ -91,7 +93,7 @@ is as if in a module statement or a class statement.
 
 
 
-<pre class="emlist">
+```TODO-lang
 lvar = "toplevel lvar"   # a local variable to confirm this scope
 
 module M
@@ -103,7 +105,7 @@ M.module_eval(<<'EOS')   # a suitable situation to use here-document
       puts 'ok'
     end
 EOS
-</pre>
+```
 
 
 With `instance_eval`, you can evaluate in an environment whose `self` of the
@@ -111,7 +113,7 @@ singleton class statement is the object.
 
 
 
-<pre class="emlist">
+```TODO-lang
 lvar = "toplevel lvar"   # a local variable to confirm this scope
 
 obj = Object.new
@@ -122,7 +124,7 @@ obj.instance_eval(<<'EOS')
       puts 'ok'
     end
 EOS
-</pre>
+```
 
 
 Additionally, these `module_eval` and `instance_eval` can also be used as
@@ -131,13 +133,13 @@ For instance,
 
 
 
-<pre class="emlist">
+```TODO-lang
 obj = Object.new
 p obj                 # #<Object:0x40274fac>
 obj.instance_eval {
     p self            # #<Object:0x40274fac>
 }
-</pre>
+```
 
 
 Like this.
@@ -155,10 +157,11 @@ compiled when loading files.
 
 
 
-h2. `eval`
+`eval`
+======
 
 
-h3. `eval()`
+### `eval()`
 
 
 The `eval` of Ruby branches many times based on the presence and absence of the
@@ -166,9 +169,9 @@ parameters. Let's assume the form of call is limited to the below:
 
 
 
-<pre class="emlist">
+```TODO-lang
 eval(prog_string, some_block)
-</pre>
+```
 
 
 Then, since this makes the actual interface function `rb_f_eval()` almost
@@ -177,10 +180,10 @@ The function prototype of `eval()` is:
 
 
 
-<pre class="emlist">
+```TODO-lang
 static VALUE
 eval(VALUE self, VALUE src, VALUE scope, char *file, int line);
-</pre>
+```
 
 
 `scope` is the `Proc` of the second parameter.
@@ -190,7 +193,7 @@ is supposed to be located. Then, let's see the content:
 
 <p class="caption">▼ `eval()` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 4984  static VALUE
 4985  eval(self, src, scope, file, line)
 4986      VALUE self, src, scope;
@@ -281,7 +284,7 @@ is supposed to be located. Then, let's see the content:
 5127  }
 
 (eval.c)
-</pre>
+```
 
 
 If this function is shown without any preamble, you probably feel "oww!".
@@ -307,7 +310,7 @@ Here is `compile()`.
 
 <p class="caption">▼ `compile()` </p>
 
-<pre class="longlist">
+```TODO-lang
 4968  static NODE*
 4969  compile(src, file, line)
 4970      VALUE src;
@@ -325,7 +328,7 @@ Here is `compile()`.
 4982  }
 
 (eval.c)
-</pre>
+```
 
 
 `ruby_nerrs` is the variable incremented in `yyerror()`.
@@ -346,7 +349,7 @@ Let's go back to `parse.y` again and complete this investigation.
 
 
 
-h3. `top_local`
+### `top_local`
 
 
 I've mentioned that the functions named `local_push() local_pop()` are used
@@ -359,11 +362,11 @@ They are called in this sort of way.
 
 <p class="caption">▼ How  `top_local_init()`  is called </p>
 
-<pre class="longlist">
+```TODO-lang
 program :   { top_local_init(); }
           compstmt
             { top_local_setup(); }
-</pre>
+```
 
 
 Of course, in actuality various other things are also done,
@@ -373,7 +376,7 @@ And this is the content of it:
 
 <p class="caption">▼ `top_local_init()` </p>
 
-<pre class="longlist">
+```TODO-lang
 5273  static void
 5274  top_local_init()
 5275  {
@@ -393,7 +396,7 @@ And this is the content of it:
 5289  }
 
 (parse.y)
-</pre>
+```
 
 
 This means that `local_tbl` is copied from `ruby_scope` to `lvtbl`.
@@ -404,7 +407,7 @@ Next, here is `top_local_setup()`.
 
 <p class="caption">▼ `top_local_setup()` </p>
 
-<pre class="longlist">
+```TODO-lang
 5291  static void
 5292  top_local_setup()
 5293  {
@@ -447,7 +450,7 @@ Next, here is `top_local_setup()`.
 5329  }
 
 (parse.y)
-</pre>
+```
 
 
 Since `local_vars` can be either in the stack or in the heap, it makes the code
@@ -458,7 +461,7 @@ it is forced to change its allocation method to `malloc`.
 
 
 
-h3. Block Local Variable
+### Block Local Variable
 
 
 By the way, how about block local variables?
@@ -468,7 +471,7 @@ it is `yycompile()`.
 
 <p class="caption">▼ setting  `ruby_dyna_vars`  aside</p>
 
-<pre class="longlist">
+```TODO-lang
 static NODE*
 yycompile(f, line)
 {
@@ -478,7 +481,7 @@ yycompile(f, line)
          :
     ruby_dyna_vars = vars;
 }
-</pre>
+```
 
 
 This looks like a mere save-restore, but the point is that this does not clear
@@ -515,7 +518,7 @@ I'd like the readers who noticed this to be relieved by reading the next part.
 
 <p class="caption">▼ `yycompile()` − freeing  `ruby_dyna_vars` </p>
 
-<pre class="longlist">
+```TODO-lang
 2386      vp = ruby_dyna_vars;
 2387      ruby_dyna_vars = vars;
 2388      lex_strterm = 0;
@@ -526,7 +529,7 @@ I'd like the readers who noticed this to be relieved by reading the next part.
 2393      }
 
 (parse.y)
-</pre>
+```
 
 
 It is designed so that the loop would stop
@@ -536,10 +539,11 @@ when it reaches the link created at the evaluator (`vars`).
 
 
 
-h2. `instance_eval`
+`instance_eval`
+===============
 
 
-h3. The Whole Picture
+### The Whole Picture
 
 
 The substance of `Module#module_eval` is `rb_mod_module_eval()`,
@@ -548,7 +552,7 @@ and the substance of `Object#instance_eval` is `rb_obj_instance_eval()`.
 
 <p class="caption">▼ `rb_mod_module_eval() rb_obj_instance_eval()` </p>
 
-<pre class="longlist">
+```TODO-lang
 5316  VALUE
 5317  rb_mod_module_eval(argc, argv, mod)
 5318      int argc;
@@ -577,7 +581,7 @@ and the substance of `Object#instance_eval` is `rb_obj_instance_eval()`.
 5314  }
 
 (eval.c)
-</pre>
+```
 
 
 These two methods have a common part as "a method to replace `self` with `class`",
@@ -603,8 +607,8 @@ But for those who reading, one have to simultaneously face at 2 times 2 = 4 ways
 it is not a good plan. Therefore, here we assume only the case when
 
 
-#1 it is an `instance_eval`
-#2 which takes a string as its argument
+* it is an `instance_eval`
+* which takes a string as its argument
 
 
 . And extracting all functions under `rb_obj_instance_eval()` in-line,
@@ -612,7 +616,7 @@ folding constants, we'll read the result.
 
 
 
-h3. After Absorbed
+### After Absorbed
 
 
 After all,
@@ -622,7 +626,7 @@ it becomes very comprehensible in comparison to the one before being absorbed.
 <p
 class="caption">▼<tt>specific_eval()</tt>−<tt>instance_eval</tt>, <tt>eval</tt>, string</p>
 
-<pre class="longlist">
+```TODO-lang
 static VALUE
 instance_eval_string(self, src, file, line)
     VALUE self, src;
@@ -666,7 +670,7 @@ instance_eval_string(self, src, file, line)
 
     return result;
 }
-</pre>
+```
 
 
 It seems that this pushes the singleton class of the object to `CLASS` and
@@ -678,7 +682,7 @@ missing, but this is also not create so much difference.
 
 
 
-h3. Before being absorbed
+### Before being absorbed
 
 
 Though the author said it becomes more friendly to read,
@@ -693,7 +697,7 @@ Here is the result of cutting them all.
 
 <p class="caption">▼ `specific_eval()` (simplified)</p>
 
-<pre class="longlist">
+```TODO-lang
 5258  static VALUE
 5259  specific_eval(argc, argv, klass, self)
 5260      int argc;
@@ -711,7 +715,7 @@ Here is the result of cutting them all.
 5296  }
 
 (eval.c)
-</pre>
+```
 
 
 As you can see, this is perfectly branches in two ways based on whether there's
@@ -731,7 +735,7 @@ Next, we'll look at `eval_under()` and `eval_under_i()`.
 
 <p class="caption">▼ `eval_under()` </p>
 
-<pre class="longlist">
+```TODO-lang
 5222  static VALUE
 5223  eval_under(under, self, src, file, line)
 5224      VALUE under, self, src;
@@ -761,7 +765,7 @@ Next, we'll look at `eval_under()` and `eval_under_i()`.
 5219  }
 
 (eval.c)
-</pre>
+```
 
 
 In this function, in order to make its arguments single,
@@ -793,10 +797,10 @@ Also in the previous absorbed version, for only this point,
 
 
 
-<pre class="emlist">
+```TODO-lang
 VALUE sclass = .....;
 VALUE cbase = sclass;
-</pre>
+```
 
 
 I thought that I would write this way,
