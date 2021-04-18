@@ -22,7 +22,7 @@ confusing, let's strictly define terms here:
 
 
 
-```TODO-lang
+```ruby
 m(a)          # a is a "normal argument"
 m(*list)      # list is an "array argument"
 m(&block)     # block is a "block argument"
@@ -49,14 +49,14 @@ parameters" will be discussed in the next chapter.
 
 <p class="caption">▼The Source Program</p>
 
-```TODO-lang
+```ruby
 obj.method(7,8)
 ```
 
 
 <p class="caption">▼Its Syntax Tree</p>
 
-```TODO-lang
+```
 NODE_CALL
 nd_mid = 9049 (method)
 nd_recv:
@@ -92,7 +92,7 @@ Now, let's look at the handler of `NODE_CALL` in `rb_eval()`.
 
 <p class="caption">▼ `rb_eval()` − `NODE_CALL` </p>
 
-```TODO-lang
+```c
 2745  case NODE_CALL:
 2746    {
 2747        VALUE recv;
@@ -136,7 +136,7 @@ Therefore, something like the following is a boilerplate:
 
 
 
-```TODO-lang
+```c
 int argc; VALUE *argv;   /* used in SETUP_ARGS */
 TMP_PROTECT;
 
@@ -152,7 +152,7 @@ Let's look at it:
 
 <p class="caption">▼ `SETUP_ARGS()` </p>
 
-```TODO-lang
+```c
 1780  #define SETUP_ARGS(anode) do {\
 1781      NODE *n = anode;\
 1782      if (!n) {\                             no arguments
@@ -207,7 +207,7 @@ If I write in the code (and tidy up a little), it becomes as follows.
 
 
 
-```TODO-lang
+```c
 /***** else if clause、argc!=0 *****/
 int i;
 n = anode;
@@ -266,7 +266,7 @@ of them.
 
 <p class="caption">▼ `rb_call()` (simplified)</p>
 
-```TODO-lang
+```c
 static VALUE
 rb_call(klass, recv, mid, argc, argv, scope)
     VALUE klass, recv;
@@ -319,7 +319,7 @@ What is looking up the cache is the first half of `rb_call()`. Only with
 
 
 
-```TODO-lang
+```c
 ent = cache + EXPR1(klass, mid);
 ```
 
@@ -349,7 +349,7 @@ Next, let's examine the structure of the method cache in detail.
 
 <p class="caption">▼Method Cache</p>
 
-```TODO-lang
+```c
  180  #define CACHE_SIZE 0x800
  181  #define CACHE_MASK 0x7ff
  182  #define EXPR1(c,m) ((((c)>>3)^(m))&CACHE_MASK)
@@ -431,7 +431,7 @@ look at it by dividing into small portions. Starting with the outline:
 
 <p class="caption">▼ `rb_call0()` (Outline)</p>
 
-```TODO-lang
+```c
 4482  static VALUE
 4483  rb_call0(klass, recv, id, oid, argc, argv, body, nosuper)
 4484      VALUE klass, recv;
@@ -521,7 +521,7 @@ could be ignored.  The important things are only `NODE_CFUNC`, `NODE_SCOPE` and
 
 <p class="caption">▼ `PUSH_FRAME() POP_FRAME()` </p>
 
-```TODO-lang
+```c
  536  #define PUSH_FRAME() do {               \
  537      struct FRAME _frame;                \
  538      _frame.prev = ruby_frame;           \
@@ -564,7 +564,7 @@ following line:
 
 <p class="caption">▼ `rb_call0()` − `NODE_CFUNC` (simplified)</p>
 
-```TODO-lang
+```c
 case NODE_CFUNC:
   result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
   break;
@@ -576,7 +576,7 @@ Then, as for `call_cfunc()` ...
 
 <p class="caption">▼ `call_cfunc()` (simplified)</p>
 
-```TODO-lang
+```c
 4394  static VALUE
 4395  call_cfunc(func, recv, len, argc, argv)
 4396      VALUE (*func)();
@@ -639,7 +639,7 @@ This part forms the foundation of Ruby.
 
 <p class="caption">▼ `rb_call0()` − `NODE_SCOPE` (outline)</p>
 
-```TODO-lang
+```c
 4568  case NODE_SCOPE:
 4569    {
 4570        int state;
@@ -747,7 +747,7 @@ But before that, I'd like you to first check the syntax tree of the method again
 
 
 
-```TODO-lang
+```
 % ruby -rnodedump -e 'def m(a) nil end'
 NODE_SCOPE
 nd_rval = (null)
@@ -793,7 +793,7 @@ For example, if you write a definition as below,
 
 
 
-```TODO-lang
+```ruby
 def m(a, b, c = nil, *rest)
   lvar1 = nil
 end
@@ -804,7 +804,7 @@ local variable IDs are assigned as follows.
 
 
 
-```TODO-lang
+```
 0   1   2   3   4   5      6
 $_  $~  a   b   c   rest   lvar1
 ```
@@ -816,7 +816,7 @@ Taking this into considerations, let's look at the code.
 
 <p class="caption">▼ `rb_call0()` − `NODE_SCOPE` −assignments of arguments</p>
 
-```TODO-lang
+```c
 4601  if (nd_type(body) == NODE_ARGS) { /* no body */
 4602      node = body;           /* NODE_ARGS */
 4603      body = 0;              /* the method body */
@@ -904,7 +904,7 @@ It means the following form:
 
 
 
-```TODO-lang
+```ruby
 super
 ```
 
@@ -919,7 +919,7 @@ If there's not, the one after option parameters are assigned seems better.
 
 
 
-```TODO-lang
+```ruby
 def m(a, b, *rest)
   super     # probably 5, 6, 7, 8 should be passed
 end
@@ -956,7 +956,7 @@ and `NODE_ZSUPER` is `super` without arguments.
 
 <p class="caption">▼ `rb_eval()` − `NODE_SUPER` </p>
 
-```TODO-lang
+```c
 2780        case NODE_SUPER:
 2781        case NODE_ZSUPER:
 2782          {
@@ -1044,7 +1044,7 @@ What happens if `String.new` is replaced by new definition and `super` is called
 
 
 
-```TODO-lang
+```ruby
 def String.new
   super
 end

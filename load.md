@@ -15,7 +15,7 @@ Outline
 At the Ruby level, there are two procedures that can be used for
 loading: `require` and `load`.
 
-```TODO-lang
+```ruby
 require 'uri'            # load the uri library
 load '/home/foo/.myrc'   # read a resource file
 ```
@@ -41,7 +41,7 @@ Ruby's load path is in the global variable `$:`, which contains an
 array of strings. For example, displaying the content of the `$:` in
 the environment I usually use would show:
 
-```TODO-lang
+```
 % ruby -e 'puts $:'
 /usr/lib/ruby/site_ruby/1.7
 /usr/lib/ruby/site_ruby/1.7/i686-linux
@@ -62,7 +62,7 @@ In a Windows environment, there will also be a drive letter.
 Then, let's try to `require` the standard library `nkf.so` from the
 load path.
 
-```TODO-lang
+```ruby
 require 'nkf'
 ```
 
@@ -75,7 +75,7 @@ extension libraries, for example `.dll` in a Windows environment or
 Let's do a simulation on my environment. `ruby` checks the following
 paths in sequential order.
 
-```TODO-lang
+```
 /usr/lib/ruby/site_ruby/1.7/nkf.rb
 /usr/lib/ruby/site_ruby/1.7/nkf.so
 /usr/lib/ruby/site_ruby/1.7/i686-linux/nkf.rb
@@ -95,7 +95,7 @@ global variable `$"`. In our case the string `"nkf.so"` has been put
 there. Even if the extension has been omitted when calling `require`,
 the file name in `$"` has the extension.
 
-```TODO-lang
+```ruby
 require 'nkf'   # after loading nkf...
 p $"            # ["nkf.so"]  the file is locked
 
@@ -123,7 +123,7 @@ file in `$:`. But it can only load Ruby programs. Furthermore, the
 extension cannot be omitted: the complete file name must always be
 given.
 
-```TODO-lang
+```ruby
 load 'uri.rb'   # load the URI library that is part of the standard library
 ```
 
@@ -147,7 +147,7 @@ programs are basically evaluated at the top-level. It means the
 defined constants will be top-level constants and the defined methods
 will be function-style methods.
 
-```TODO-lang
+```ruby
 ### mylib.rb
 MY_OBJECT = Object.new
 def my_p(obj)
@@ -171,7 +171,7 @@ the `module` statement, it does not serve any purpose, as everything
 that is at the top-level of the loaded file is put at the Ruby
 top-level.
 
-```TODO-lang
+```ruby
 require 'mylib'     # whatever the place you require from, be it at the top-level
 module SandBox
   require 'mylib'   # or in a module, the result is the same
@@ -213,7 +213,7 @@ bothersome so we will limit ourselves to the case when no file
 extension is given.
 
 ▼ `rb_f_require()` (simplified version)
-```TODO-lang
+```c
 5527  VALUE
 5528  rb_f_require(obj, fname)
 5529      VALUE obj, fname;
@@ -272,9 +272,10 @@ actually like subroutines, and the two variables `feature` and `fname`
 are more or less their parameters. These variables have the following
 meaning.
 
-|_. variable|_. meaning|_. example|
-|`feature`|the library file name that will be put in `$"`|`uri.rb`、`nkf.so`|
-|`fname`|the full path to the library|`/usr/lib/ruby/1.7/uri.rb`|
+| variable  | meaning                                        | example                    |
+| --------- | ---------------------------------------------- | -------------------------- |
+| `feature` | the library file name that will be put in `$"` | `uri.rb`、`nkf.so`         |
+| `fname`   | the full path to the library                   | `/usr/lib/ruby/1.7/uri.rb` |
 
 The name `feature` can be found in the function `rb_feature_p()`. This
 function checks if a file has been locked (we will look at it just
@@ -297,7 +298,7 @@ searches the file `path` in the global load path `$'`
 only look at the main part.
 
 ▼ `rb_find_file()` (simplified version)
-```TODO-lang
+```c
 2494  VALUE
 2495  rb_find_file(path)
 2496      VALUE path;
@@ -339,7 +340,7 @@ only look at the main part.
 
 If we write what happens in Ruby we get the following:
 
-```TODO-lang
+```ruby
 tmp = []                     # make an array
 $:.each do |path|            # repeat on each element of the load path
   tmp.push path if path.length > 0 # check the path and push it
@@ -374,7 +375,7 @@ code. Or more accurately, it is "up to just before the load". The code
 of `rb_f_require()`'s `load_rb` has been put below.
 
 ▼ `rb_f_require():load_rb`
-```TODO-lang
+```c
 5625    load_rb:
 5626      if (rb_feature_p(RSTRING(feature)->ptr, Qtrue))
 5627          return Qfalse;
@@ -405,7 +406,7 @@ from one thread, and if during the loading another thread tries to load the
 same file, that thread will wait for the first loading to be finished.
 If it were not the case:
 
-```TODO-lang
+```ruby
 Thread.fork {
     require 'foo'   # At the beginning of require, foo.rb is added to $"
 }                   # However the thread changes during the evaluation of foo.rb
@@ -429,7 +430,7 @@ thread.  That makes an exclusive lock. And in `rb_feature_p()`, we
 wait for the loading thread to end like the following.
 
 ▼ `rb_feature_p()` (second half)
-```TODO-lang
+```c
 5477  rb_thread_t th;
 5478
 5479  while (st_lookup(loading_tbl, f, &th)) {
@@ -463,7 +464,7 @@ We will now look at the loading process itself. Let's start by the
 part inside `rb_f_require()`'s `load_rb` loading Ruby programs.
 
 ▼ `rb_f_require()-load_rb-` loading
-```TODO-lang
+```c
 5638      PUSH_TAG(PROT_NONE);
 5639      if ((state = EXEC_TAG()) == 0) {
 5640          rb_load(fname, 0);
@@ -483,7 +484,7 @@ And the second argument `wrap` is folded with 0
 because it is 0 in the above calling code.
 
 ▼ `rb_load()` (simplified edition)
-```TODO-lang
+```c
 void
 rb_load(fname, /* wrap=0 */)
     VALUE fname;
@@ -584,7 +585,7 @@ all of them would be put in `eval.c` in the first place.
 Then, it is `rb_load_file()`.
 
 ▼ `rb_load_file()`
-```TODO-lang
+```c
  865  void
  866  rb_load_file(fname)
  867      char *fname;
@@ -605,7 +606,7 @@ non essential things have already been removed.
 
 <p class="caption">▼ `load_file()` (simplified edition)</p>
 
-```TODO-lang
+```c
 static void
 load_file(fname, /* script=0 */)
     char *fname;
@@ -645,7 +646,7 @@ result.
 That's all for the loading code. Finally, the calls were quite deep so
 the callgraph of `rb_f_require()` is shown bellow.
 
-```TODO-lang
+```
 rb_f_require           ....eval.c
     rb_find_file            ....file.c
         dln_find_file           ....dln.c
@@ -679,7 +680,7 @@ If you're using Windows, probably your IDE will have a tracer built in. Well, as
 
 The output is done on `stderr` so it was redirected using `2>&1`.
 
-```TODO-lang
+```
 % strace ruby -e 'require "rational"' 2>&1 | grep '^open'
 open("/etc/ld.so.preload", O_RDONLY)    = -1 ENOENT
 open("/etc/ld.so.cache", O_RDONLY)      = 3
@@ -707,7 +708,7 @@ start with `rb_f_require()`'s `load_dyna`. However, we do not need the
 part about locking anymore so it was removed.
 
 ▼ `rb_f_require()`-`load_dyna`
-```TODO-lang
+```c
 5607  {
 5608      int volatile old_vmode = scope_vmode;
 5609
@@ -745,7 +746,7 @@ Since I'm using `gcc` on Linux, I can create a runnable program in the following
 manner.
 
 
-```TODO-lang
+```
 % gcc hello.c
 ```
 
@@ -754,7 +755,7 @@ According to the file name, this is probably an "Hello, World!" program.
 In UNIX, `gcc` outputs a program into a file named `a.out` by default,
 so you can subsequently execute it in the following way:
 
-```TODO-lang
+```
 % ./a.out
 Hello, World!
 ```
@@ -928,7 +929,7 @@ but its structure is simple because of some reasons.
 Take a look at the outline first.
 
 ▼ `dln_load()` (outline)
-```TODO-lang
+```c
 void*
 dln_load(file)
     const char *file;
@@ -969,7 +970,7 @@ Supported APIs are as follows:
 First, let's start with the API code for the `dlopen` series.
 
 ▼ `dln_load()`-`dlopen()`
-```TODO-lang
+```c
 1254  void*
 1255  dln_load(file)
 1256      const char *file;
@@ -1049,7 +1050,7 @@ As for Win32, `LoadLibrary()` and `GetProcAddress()` are used.
 It is very general Win32 API which also appears on MSDN.
 
 ▼ `dln_load()`-Win32
-```TODO-lang
+```c
 1254  void*
 1255  dln_load(file)
 1256      const char *file;

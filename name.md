@@ -24,7 +24,7 @@ However, data structures other than hash tables can, of course, record
 one-to-one relations. For example, a list of the following structs will suffice
 for this purpose.
 
-```TODO-lang
+```c
 struct entry {
     ID key;
     VALUE val;
@@ -44,7 +44,7 @@ created by Matsumoto, rather:
 
 ▼ `st.c` credits
 
-```TODO-lang
+```c
    1  /* This is a public domain general purpose hash table package
          written by Peter Moore @ UCB. */
 
@@ -125,7 +125,7 @@ The following is the data type of `st_table`.
 
 ▼ `st_table`
 
-```TODO-lang
+```c
    9  typedef struct st_table st_table;
 
   16  struct st_table {
@@ -140,7 +140,7 @@ The following is the data type of `st_table`.
 
 ▼ `struct st_table_entry`
 
-```TODO-lang
+```c
   16  struct st_table_entry {
   17      unsigned int hash;
   18      char *key;
@@ -167,7 +167,7 @@ So, let us comment on `st_hash_type`.
 
 ▼ `struct st_hash_type`
 
-```TODO-lang
+```c
   11  struct st_hash_type {
   12      int (*compare)();   /* comparison function */
   13      int (*hash)();      /* hash function */
@@ -178,7 +178,7 @@ So, let us comment on `st_hash_type`.
 
 This is still Chapter 3 so let us examine it attentively.
 
-```TODO-lang
+```c
 int (*compare)()
 ```
 
@@ -186,7 +186,7 @@ This part shows, of course, the member `compare` which has a data type of
 "a pointer to a function that returns an `int`". `hash` is also of the same type.
 This variable is substituted in the following way:
 
-```TODO-lang
+```c
 int
 great_function(int n)
 {
@@ -201,7 +201,7 @@ great_function(int n)
 
 And it is called like this:
 
-```TODO-lang
+```c
     (*f)(7);
 }
 ```
@@ -244,7 +244,7 @@ integer data type keys.
 
 ▼ `st_init_numtable()`
 
-```TODO-lang
+```c
  182  st_table*
  183  st_init_numtable()
  184  {
@@ -260,7 +260,7 @@ Regarding this `type_numhash`:
 
 ▼ `type_numhash`
 
-```TODO-lang
+```c
   37  static struct st_hash_type type_numhash = {
   38      numcmp,
   39      numhash,
@@ -294,7 +294,7 @@ function that searches the hash table, `st_lookup()`.
 
 ▼ `st_lookup()`
 
-```TODO-lang
+```c
  247  int
  248  st_lookup(table, key, value)
  249      st_table *table;
@@ -324,7 +324,7 @@ look at them in order.
 
 ▼ `do_hash()`
 
-```TODO-lang
+```c
   68  #define do_hash(key,table) (unsigned int)(*(table)->type->hash)((key))
 
 (st.c)
@@ -332,7 +332,7 @@ look at them in order.
 
 Just in case, let us write down the macro body that is difficult to understand:
 
-```TODO-lang
+```c
 (table)->type->hash
 ```
 
@@ -345,7 +345,7 @@ Next, let us examine `FIND_ENTRY()`.
 
 ▼ `FIND_ENTRY()`
 
-```TODO-lang
+```c
  235  #define FIND_ENTRY(table, ptr, hash_val, bin_pos) do {\
  236      bin_pos = hash_val%(table)->num_bins;\
  237      ptr = (table)->bins[bin_pos];\
@@ -386,7 +386,7 @@ end.
 
 Also, there is no semicolon added after the `while(0)`.
 
-```TODO-lang
+```c
 FIND_ENTRY();
 ```
 
@@ -402,7 +402,7 @@ in the function name.
 
 ▼ `st_add_direct()`
 
-```TODO-lang
+```c
  308  void
  309  st_add_direct(table, key, value)
  310      st_table *table;
@@ -428,7 +428,7 @@ Since the name is all uppercase, we can anticipate that is a macro.
 
 ▼ `ADD_DIRECT()`
 
-```TODO-lang
+```c
  268  #define ADD_DIRECT(table, key, value, hash_val, bin_pos) \
  269  do {                                                     \
  270      st_table_entry *entry;                               \
@@ -460,7 +460,7 @@ The first `if` is an exception case so I will explain it afterwards.
 (B) Insert the `entry` into the start of the list.
 This is the idiom for handling the list. In other words,
 
-```TODO-lang
+```c
 entry->next = list_beg;
 list_beg = entry;
 ```
@@ -473,7 +473,7 @@ Now, let me explain the code I left aside.
 
 ▼ `ADD_DIRECT()`-`rehash`
 
-```TODO-lang
+```c
  271      if (table->num_entries / (table->num_bins)           \
                               > ST_DEFAULT_MAX_DENSITY) {      \
  272          rehash(table);                                   \
@@ -493,7 +493,7 @@ The current `ST_DEFAULT_MAX_DENSITY` is
 
 ▼ `ST_DEFAULT_MAX_DENSITY`
 
-```TODO-lang
+```c
   23  #define ST_DEFAULT_MAX_DENSITY 5
 
 (st.c)
@@ -509,7 +509,7 @@ then the size will be increased.
 
 ▼ `st_insert()`
 
-```TODO-lang
+```c
  286  int
  287  st_insert(table, key, value)
  288      register st_table *table;
@@ -553,7 +553,9 @@ is rather long, so let's omit the middle.
 
 ▼ `rb_intern()` (simplified)
 
-```TODO-lang
+<!-- TODO: is it yacc? -->
+
+```yacc
 5451  static st_table *sym_tbl;       /*  char* to ID   */
 5452  static st_table *sym_rev_tbl;   /*  ID to char*   */
 
@@ -604,7 +606,7 @@ simplify it.
 
 ▼ `rb_id2name()` (simplified)
 
-```TODO-lang
+```c
 char *
 rb_id2name(id)
     ID id;
@@ -639,7 +641,7 @@ And it can be obtained like so: `"string".intern`. The implementation of
 
 ▼ `rb_str_intern()`
 
-```TODO-lang
+```c
 2996  static VALUE
 2997  rb_str_intern(str)
 2998      VALUE str;
@@ -671,7 +673,7 @@ The implementation is in `sym_to_s`.
 
 ▼ `sym_to_s()`
 
-```TODO-lang
+```c
  522  static VALUE
  523  sym_to_s(sym)
  524      VALUE sym;

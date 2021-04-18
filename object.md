@@ -44,7 +44,7 @@ Here is the definition of `VALUE`:
 
 ▼ `VALUE`
 
-```TODO-lang
+```c
   71  typedef unsigned long VALUE;
 
 (ruby.h)
@@ -60,19 +60,19 @@ but some time ago it seems there were quite a few of them.
 The structs, on the other hand, have several variations,
 a different struct is used based on the class of the object.
 
-| `struct RObject`		| all things for which none of the following
-						  applies |
-| `struct RClass`		| class object |
-| `struct RFloat`		| small numbers |
-| `struct RString`		| string |
-| `struct RArray`		| array |
-| `struct RRegexp`		| regular expression |
-| `struct RHash`		| hash table |
-| `struct RFile`		| `IO`, `File`, `Socket`, etc... |
-| `struct RData`		| all the classes defined at C level, except the
-						  ones mentioned above |
-| `struct RStruct`		| Ruby's `Struct` class |
-| `struct RBignum`		| big integers |
+| `struct`         | variation                                                           |
+| ---------------- | ------------------------------------------------------------------- |
+| `struct RObject` | all things for which none of the following applies                  |
+| `struct RClass`  | class object                                                        |
+| `struct RFloat`  | small numbers                                                       |
+| `struct RString` | string                                                              |
+| `struct RArray`  | array                                                               |
+| `struct RRegexp` | regular expression                                                  |
+| `struct RHash`   | hash table                                                          |
+| `struct RFile`   | `IO`, `File`, `Socket`, etc...                                      |
+| `struct RData`   | all the classes defined at C level, except the ones mentioned above |
+| `struct RStruct` | Ruby's `Struct` class                                               |
+| `struct RBignum` | big integers                                                        |
 
 For example, for an string object, `struct RString` is used, so we will have
 something like the following.
@@ -86,7 +86,7 @@ Let's look at the definition of a few object structs.
 
 ▼ Examples of object struct
 
-```TODO-lang
+```c
       /* struct for ordinary objects */
  295  struct RObject {
  296      struct RBasic basic;
@@ -127,7 +127,7 @@ That's why `Rxxxx()` macros have been made for each object
 struct. For example, for `struct RString` there is `RSTRING()`, for
 `struct RArray` there is `RARRAY()`, etc... These macros are used like this:
 
-```TODO-lang
+```c
 
 VALUE str = ....;
 VALUE arr = ....;
@@ -152,7 +152,7 @@ for `struct RBasic`:
 
 ▼ `struct RBasic`
 
-```TODO-lang
+```c
  290  struct RBasic {
  291      unsigned long flags;
  292      VALUE klass;
@@ -165,7 +165,7 @@ for `struct RBasic`:
 (for instance `struct RObject`). The type flags are named `T_xxxx`, and can be
 obtained from a `VALUE` using the macro `TYPE()`. Here is an example:
 
-```TODO-lang
+```c
 VALUE str;
 str = rb_str_new();    /* creates a Ruby string (its struct is RString) */
 TYPE(str);             /* the return value is T_STRING */
@@ -273,7 +273,7 @@ to a `Fixnum`, and confirm that `Fixnum` are directly embedded in `VALUE`.
 
 ▼ `INT2FIX`
 
-```TODO-lang
+```c
  123  #define INT2FIX(i) ((VALUE)(((long)(i))<<1 | FIXNUM_FLAG))
  122  #define FIXNUM_FLAG 0x01
 
@@ -308,7 +308,7 @@ In the first place, there's a type named `ID` used inside `ruby`. Here it is.
 
 ▼ `ID`
 
-```TODO-lang
+```c
   72  typedef unsigned long ID;
 
 (ruby.h)
@@ -342,7 +342,7 @@ why `Symbol`, like `Fixnum`, was made embedded in `VALUE`. Let's look at the
 
 ▼ `ID2SYM`
 
-```TODO-lang
+```c
  158  #define SYMBOL_FLAG 0x0e
  160  #define ID2SYM(x) ((VALUE)(((long)(x))<<8|SYMBOL_FLAG))
 
@@ -359,7 +359,7 @@ Finally, let's see the reverse conversion of `ID2SYM()`, `SYM2ID()`.
 
 ▼ `SYM2ID()`
 
-```TODO-lang
+```c
  161  #define SYM2ID(x) RSHIFT((long)x,8)
 
 (ruby.h)
@@ -376,7 +376,7 @@ values at the C level are defined like this:
 
 ▼ `true false nil`
 
-```TODO-lang
+```c
  164  #define Qfalse 0        /* Ruby's false */
  165  #define Qtrue  2        /* Ruby's true */
  166  #define Qnil   4        /* Ruby's nil */
@@ -397,7 +397,7 @@ For `Qnil`, there is a macro dedicated to check if a `VALUE` is `Qnil` or not,
 
 ▼ `NIL_P()`
 
-```TODO-lang
+```c
  170  #define NIL_P(v) ((VALUE)(v) == Qnil)
 
 (ruby.h)
@@ -415,7 +415,7 @@ That's why there's the `RTEST()` macro to do Ruby-style test in C.
 
 ▼ `RTEST()`
 
-```TODO-lang
+```c
  169  #define RTEST(v) (((VALUE)(v) & ~Qnil) != 0)
 
 (ruby.h)
@@ -436,7 +436,7 @@ not have the fun answer I was expecting...
 
 ▼ `Qundef`
 
-```TODO-lang
+```c
  167  #define Qundef 6                /* undefined value for placeholder */
 
 (ruby.h)
@@ -465,7 +465,7 @@ differentiated by the `T_MODULE` struct flag.
 
 ▼ `struct RClass`
 
-```TODO-lang
+```c
  300  struct RClass {
  301      struct RBasic basic;
  302      struct st_table *iv_tbl;
@@ -518,7 +518,7 @@ The sequential search process in `m_tbl` is done by `search_method()`.
 
 ▼ `search_method()`
 
-```TODO-lang
+```c
  256  static NODE*
  257  search_method(klass, id, origin)
  258      VALUE klass, *origin;
@@ -543,7 +543,7 @@ This function searches the method named `id` in the class object `klass`.
 
 `RCLASS(value)` is the macro doing:
 
-```TODO-lang
+```c
 ((struct RClass*)(value))
 ```
 
@@ -572,7 +572,7 @@ but is it really so? Let's look at the function
 
 ▼ `rb_ivar_set()`
 
-```TODO-lang
+```c
       /* assign val to the id instance variable of obj */
  984  VALUE
  985  rb_ivar_set(obj, id, val)
@@ -610,7 +610,7 @@ Therefore, we should wholly ignore them at first read.
 
 After removing the error handling, only the `switch` remains, but
 
-```TODO-lang
+```c
 switch (TYPE(obj)) {
   case T_aaaa:
   case T_bbbb:
@@ -631,7 +631,7 @@ the basis that their second member is `iv_tbl`. Let's confirm it in practice.
 
 ▼ Structs whose second member is `iv_tbl`
 
-```TODO-lang
+```c
       /* TYPE(val) == T_OBJECT */
  295  struct RObject {
  296      struct RBasic basic;
@@ -655,7 +655,7 @@ It records the correspondences between the instance variable names and their val
 In `rb_ivar_set()`, let's look again the code for the structs having
 `iv_tbl`.
 
-```TODO-lang
+```c
 if (!ROBJECT(obj)->iv_tbl)
     ROBJECT(obj)->iv_tbl = st_init_numtable();
 st_insert(ROBJECT(obj)->iv_tbl, id, val);
@@ -678,7 +678,7 @@ its instance variable table is for the class object itself.
 In Ruby programs, it corresponds to
 something like the following:
 
-```TODO-lang
+```ruby
 class C
   @ivar = "content"
 end
@@ -691,7 +691,7 @@ an object whose struct is not one of `T_OBJECT T_MODULE T_CLASS`?
 
 ▼ `rb_ivar_set()` in the case there is no `iv_tbl`
 
-```TODO-lang
+```c
 1000  default:
 1001    generic_ivar_set(obj, id, val);
 1002    break;
@@ -719,7 +719,7 @@ Let's see this in practice.
 
 ▼ `generic_ivar_set()`
 
-```TODO-lang
+```c
  801  static st_table *generic_iv_tbl;
 
  830  static void
@@ -840,7 +840,7 @@ how to get them.
 
 ▼ `rb_ivar_get()`
 
-```TODO-lang
+```c
  960  VALUE
  961  rb_ivar_get(obj, id)
  962      VALUE obj;
@@ -911,7 +911,7 @@ its subclasses.
 
 ▼ `struct RString`
 
-```TODO-lang
+```c
  314  struct RString {
  315      struct RBasic basic;
  316      long len;
@@ -956,7 +956,7 @@ characteristics.
 Ruby's strings can be modified (are mutable). By mutable I mean after the
 following code:
 
-```TODO-lang
+```ruby
 s = "str"        # create a string and assign it to s
 s.concat("ing")  # append "ing" to this string object
 p(s)             # show "string"
@@ -980,7 +980,7 @@ additional memory.
 So what is this other `aux.shared`? It's to speed up the creation of literal
 strings. Have a look at the following Ruby program.
 
-```TODO-lang
+```ruby
 while true do  # repeat indefinitely
   a = "str"        # create a string with "str" as content and assign it to a
   a.concat("ing")  # append "ing" to the object pointed by a
@@ -1014,7 +1014,7 @@ modifying strings created as litterals, `aux.shared` has to be separated.
 Before ending this section, I'll write some examples of dealing with `RString`.
 I'd like you to regard `str` as a `VALUE` that points to `RString` when reading this.
 
-```TODO-lang
+```c
 RSTRING(str)->len;               /* length */
 RSTRING(str)->ptr[0];            /* first character */
 str = rb_str_new("content", 7);  /* create a string with "content" as its content
@@ -1031,7 +1031,7 @@ rb_str_cat2(str, "end");         /* Concatenate a C string to a Ruby string */
 
 ▼ `struct RArray`
 
-```TODO-lang
+```c
  324  struct RArray {
  325      struct RBasic basic;
  326      long len;
@@ -1063,7 +1063,7 @@ With `RARRAY(arr)->ptr` and `RARRAY(arr)->len`, you can refer to the members,
 and it is allowed, but you must not assign to them,
 etc. We'll only look at simple examples:
 
-```TODO-lang
+```c
 /* manage an array from C */
 VALUE ary;
 ary = rb_ary_new();             /* create an empty array */
@@ -1084,7 +1084,7 @@ It's the struct for the instances of the regular expression class `Regexp`.
 
 ▼ `struct RRegexp`
 
-```TODO-lang
+```c
  334  struct RRegexp {
  335      struct RBasic basic;
  336      struct re_pattern_buffer *ptr;
@@ -1110,7 +1110,7 @@ which is Ruby's hash table.
 
 ▼ `struct RHash`
 
-```TODO-lang
+```c
  341  struct RHash {
  342      struct RBasic basic;
  343      struct st_table *tbl;
@@ -1134,7 +1134,7 @@ its subclasses.
 
 ▼ `struct RFile`
 
-```TODO-lang
+```c
  348  struct RFile {
  349      struct RBasic basic;
  350      struct OpenFile *fptr;
@@ -1145,7 +1145,7 @@ its subclasses.
 
 ▼ `OpenFile`
 
-```TODO-lang
+```c
   19  typedef struct OpenFile {
   20      FILE *f;                    /* stdio ptr for read/write */
   21      FILE *f2;                   /* additional ptr for rw pipes */
@@ -1176,7 +1176,7 @@ for managing a pointer to a user defined struct" has been created on
 
 ▼ `struct RData`
 
-```TODO-lang
+```c
  353  struct RData {
  354      struct RBasic basic;
  355      void (*dmark) _((void*));

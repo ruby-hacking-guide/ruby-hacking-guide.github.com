@@ -114,7 +114,7 @@ general noun and `FRAME` when it means `struct FRAME`.
 
 <p class="caption">▼ `ruby_frame` </p>
 
-```TODO-lang
+```c
   16  extern struct FRAME {
   17      VALUE self;          /* self */
   18      int argc;            /* the argument count */
@@ -179,7 +179,7 @@ For instance,
 
 
 
-```TODO-lang
+```ruby
 class C
   def orig() end
   alias ali orig
@@ -206,7 +206,7 @@ I'll call this frame `SCOPE`.
 
 <p class="caption">▼ `ruby_scope` </p>
 
-```TODO-lang
+```c
   36  extern struct SCOPE {
   37      struct RBasic super;
   38      ID *local_tbl;        /* an array of the local variable names */
@@ -229,7 +229,7 @@ like this:
 
 
 
-```TODO-lang
+```ruby
 def make_counter
   lvar = 0
   return Proc.new { lvar += 1 }
@@ -270,7 +270,7 @@ This frame will also be briefly written as `BLOCK` as in the same manner as
 
 <p class="caption">▼ `ruby_block` </p>
 
-```TODO-lang
+```c
  580  static struct BLOCK *ruby_block;
 
  559  struct BLOCK {
@@ -329,7 +329,7 @@ But for consistency I'll call it `ITER`.
 
 <p class="caption">▼ `ruby_iter` </p>
 
-```TODO-lang
+```c
  767  static struct iter *ruby_iter;
 
  763  struct iter {
@@ -368,7 +368,7 @@ already seen in Part 2. From now on, I'll call it just `VARS`.
 
 <p class="caption">▼ `struct RVarmap`</p>
 
-```TODO-lang
+```c
   52  struct RVarmap {
   53      struct RBasic super;
   54      ID id;                  /* the name  of the variable */
@@ -425,7 +425,7 @@ Its struct is ...
 
 <p class="caption">▼ `ruby_cref` </p>
 
-```TODO-lang
+```c
  847  static NODE *ruby_cref = 0;
 
 (eval.c)
@@ -450,7 +450,7 @@ explain the actual appearance.
 
 
 
-```TODO-lang
+```ruby
 class A
   class B
     class C
@@ -474,7 +474,7 @@ Therefore, the same state as Fig.4 will be expressed in the following notation:
 
 
 
-```TODO-lang
+```
 A ← B ← C
 ```
 
@@ -543,7 +543,7 @@ Now, let's start to look at the codes.
 
 <p class="caption">▼The Source Program</p>
 
-```TODO-lang
+```ruby
 module M
   a = 1
 end
@@ -552,7 +552,7 @@ end
 
 <p class="caption">▼Its Syntax Tree</p>
 
-```TODO-lang
+```
 NODE_MODULE
 nd_cname = 9621 (M)
 nd_body:
@@ -588,7 +588,7 @@ it has already became unnecessary to show the original code.
 
 <p class="caption">▼ `rb_eval()` − `NODE_MODULE` (simplified)</p>
 
-```TODO-lang
+```c
 case NODE_MODULE:
   {
       VALUE module;
@@ -623,7 +623,7 @@ we can do "additional" definitions on the same one module any number of times.
 
 
 
-```TODO-lang
+```ruby
 module M
   def a    # M#a is deifned
   end
@@ -665,7 +665,7 @@ large amounts.
 
 <p class="caption">▼ `module_setup()` </p>
 
-```TODO-lang
+```c
 3424  static VALUE
 3425  module_setup(module, n)
 3426      VALUE module;
@@ -763,7 +763,7 @@ Consequently, it could be summarized as follows:
 
 <p class="caption">▼ `module_setup` (simplified)</p>
 
-```TODO-lang
+```c
 static VALUE
 module_setup(module, node)
     VALUE module;
@@ -822,7 +822,7 @@ Let's examine the contents of these macros and what is done.
 
 <p class="caption">▼ `PUSH_SCOPE() POP_SCOPE()` </p>
 
-```TODO-lang
+```c
  852  #define PUSH_SCOPE() do {               \
  853      volatile int _vmode = scope_vmode;  \
  854      struct SCOPE * volatile _old;       \
@@ -887,7 +887,7 @@ following part of `module_setup` prepares the array.
 
 <p class="caption">▼The preparation of the local variable slots</p>
 
-```TODO-lang
+```c
 3444  if (node->nd_tbl) {
 3445      VALUE *vars = TMP_ALLOC(node->nd_tbl[0]+1);
 3446      *vars++ = (VALUE)node;
@@ -931,7 +931,7 @@ access in `gc.c`.
 
 <p class="caption">▼ `rb_gc_mark_children()` — `T_SCOPE` </p>
 
-```TODO-lang
+```c
  815  case T_SCOPE:
  816    if (obj->as.scope.local_vars &&
             (obj->as.scope.flags & SCOPE_MALLOC)) {
@@ -962,7 +962,7 @@ line of the next line:
 
 <p class="caption">▼ `ruby_scope->local_tbl` </p>
 
-```TODO-lang
+```c
 3449  ruby_scope->local_tbl = node->nd_tbl;
 
 (eval.c)
@@ -1011,7 +1011,7 @@ beginning of `module_setup()`. Its typical usage is this:
 
 
 
-```TODO-lang
+```c
 VALUE *ptr;
 TMP_PROTECT;
 
@@ -1025,7 +1025,7 @@ is that ... Let's see its definition.
 
 <p class="caption">▼ `TMP_ALLOC()` </p>
 
-```TODO-lang
+```c
 1769  #ifdef C_ALLOCA
 1770  # define TMP_PROTECT NODE * volatile tmp__protect_tmp=0
 1771  # define TMP_ALLOC(n) \
@@ -1081,7 +1081,7 @@ Here is the code for it:
 
 
 
-```TODO-lang
+```c
 PUSH_CLASS();
 ruby_class = module;
      ：
@@ -1096,7 +1096,7 @@ We can understand it unexpectedly easily by looking at the definition.
 
 <p class="caption">▼ `PUSH_CLASS() POP_CLASS()` </p>
 
-```TODO-lang
+```c
  841  #define PUSH_CLASS() do { \
  842      VALUE _class = ruby_class
 
@@ -1128,7 +1128,7 @@ In `module_setup()`, it is pushed as follows:
 
 
 
-```TODO-lang
+```TODO
 PUSH_CREF(module);
 ruby_frame->cbase = (VALUE)ruby_cref;
    ：
@@ -1143,7 +1143,7 @@ Let's also see the definitions of `PUSH_CREF()` and `POP_CREF()`.
 
 <p class="caption">▼ `PUSH_CREF() POP_CREF()` </p>
 
-```TODO-lang
+```c
  849  #define PUSH_CREF(c) \
           ruby_cref = rb_node_newnode(NODE_CREF,(c),0,ruby_cref)
  850  #define POP_CREF() ruby_cref = ruby_cref->nd_next
@@ -1246,7 +1246,7 @@ As the next topic of the module definitions, let's look at the method definition
 
 <p class="caption">▼The Source Program</p>
 
-```TODO-lang
+```ruby
 def m(a, b, c)
   nil
 end
@@ -1255,7 +1255,7 @@ end
 
 <p class="caption">▼Its Syntax Tree</p>
 
-```TODO-lang
+```
 NODE_DEFN
 nd_mid  = 9617 (m)
 nd_noex = 2 (NOEX_PRIVATE)
@@ -1290,7 +1290,7 @@ indirectly call `rb_raise() rb_warn() rb_warning()`.
 
 <p class="caption">▼ `rb_eval()` − `NODE_DEFN` (simplified)</p>
 
-```TODO-lang
+```c
 NODE *defn;
 int noex;
 
@@ -1343,7 +1343,7 @@ part is the next two lines.
 
 
 
-```TODO-lang
+```c
 defn = copy_node_scope(node->nd_defn, ruby_cref);
 rb_add_method(ruby_class, node->nd_mid, defn, noex);
 ```
@@ -1371,7 +1371,7 @@ the usages at these two places are almost the same.
 
 <p class="caption">▼ `copy_node_scope()` </p>
 
-```TODO-lang
+```c
 1752  static NODE*
 1753  copy_node_scope(node, rval)
 1754      NODE *node;
@@ -1421,7 +1421,7 @@ The next thing is `rb_add_method()` that is the function to register a method en
 
 <p class="caption">▼ `rb_add_method()` </p>
 
-```TODO-lang
+```c
  237  void
  238  rb_add_method(klass, mid, node, noex)
  239      VALUE klass;
@@ -1457,7 +1457,7 @@ I prepared `nodedump-method` for this kind of purposes.
 
 
 
-```TODO-lang
+```
 % ruby -e '
 class C
   def m(a)
@@ -1542,7 +1542,7 @@ follows:
 
 <p class="caption">▼ `rb_eval()` − `NODE_LVAR` </p>
 
-```TODO-lang
+```c
 2975  case NODE_LVAR:
 2976    if (ruby_scope->local_vars == 0) {
 2977        rb_bug("unexpected local variable");
@@ -1580,7 +1580,7 @@ Take a look at the following code:
 
 
 
-```TODO-lang
+```ruby
 class A
   C = 5
   def A.new
@@ -1623,7 +1623,7 @@ The ordinary constant references to which `::` is not attached, become
 
 <p class="caption">▼ `rb_eval()` − `NODE_CONST` </p>
 
-```TODO-lang
+```c
 2994  case NODE_CONST:
 2995    result = ev_const_get(RNODE(ruby_frame->cbase), node->nd_vid, self);
 2996    break;
@@ -1673,7 +1673,7 @@ Since only `ev_const_get()` is left, we'll look at it.
 
 <p class="caption">▼ `ev_const_get()` </p>
 
-```TODO-lang
+```c
 1550  static VALUE
 1551  ev_const_get(cref, id, self)
 1552      NODE *cref;
@@ -1724,7 +1724,7 @@ Let's look at it.
 
 <p class="caption">▼ `cvar_cbase()` </p>
 
-```TODO-lang
+```c
 1571  static VALUE
 1572  cvar_cbase()
 1573  {
@@ -1749,7 +1749,7 @@ seems. This feature is added to counter the following kind of code:
 
 
 
-```TODO-lang
+```ruby
 class C                           class C
   @@cvar = 1                        @@cvar = 1
   class << C                        def C.m
@@ -1824,14 +1824,14 @@ First, following the standard, let's start with the syntax tree.
 
 <p class="caption">▼The Source Program</p>
 
-```TODO-lang
+```ruby
 a, b = 7, 8
 ```
 
 
 <p class="caption">▼Its Syntax Tree</p>
 
-```TODO-lang
+```
 NODE_MASGN
 nd_head:
     NODE_ARRAY [
@@ -1865,7 +1865,7 @@ value EXPAND". We are curious about what this node is doing. Let's see.
 
 <p class="caption">▼ `rb_eval()` − `NODE_REXPAND` </p>
 
-```TODO-lang
+```c
 2575  case NODE_REXPAND:
 2576    result = avalue_to_svalue(rb_eval(self, node->nd_head));
 2577    break;
@@ -1882,7 +1882,7 @@ evaluated. This enables even the following code:
 
 
 
-```TODO-lang
+```ruby
 a, b = b, a    # swap variables in oneline
 ```
 
@@ -1892,7 +1892,7 @@ Let's look at `NODE_MASGN` in the left-hand side.
 
 <p class="caption">▼ `rb_eval()` − `NODE_MASGN` </p>
 
-```TODO-lang
+```c
 2923  case NODE_MASGN:
 2924    result = massign(self, node, rb_eval(self, node->nd_value),0);
 2925    break;
@@ -1912,7 +1912,7 @@ Here is only the evaluation of the right-hand side, the rests are delegated to
 
 <p class="caption">▼ `massi` ……</p>
 
-```TODO-lang
+```c
 3917  static VALUE
 3918  massign(self, node, val, pcall)
 3919      VALUE self;
@@ -1956,7 +1956,7 @@ final appearance is shown as follows:
 
 <p class="caption">▼ `massign()` (simplified)</p>
 
-```TODO-lang
+```c
 static VALUE
 massign(self, node, val  /* , pcall=0 */)
     VALUE self;

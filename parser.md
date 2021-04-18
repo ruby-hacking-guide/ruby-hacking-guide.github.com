@@ -712,7 +712,7 @@ is to deal with the methods without parentheses.
 For example, it is to distinguish the next two from each other:
 
 
-```TODO-lang
+```ruby
 p Net::HTTP    # p(Net::HTTP)
 p Net  ::HTTP  # p(Net(::HTTP))
 ```
@@ -791,7 +791,7 @@ surrounding the multiple arguments of a `return` with parentheses
 as in the following code should be impossible.
 
 
-```TODO-lang
+```ruby
 return(1, 2, 3)   # interpreted as return  (1,2,3) and results in parse error
 ```
 
@@ -840,7 +840,7 @@ Because `primary` is also `arg`,
 we can also do something like this.
 
 
-```TODO-lang
+```ruby
 p(if true then 'ok' end)   # shows "ok"
 ```
 
@@ -1096,7 +1096,7 @@ First, I'll start with `nextc()` that seems the most orthodox.
 
 <p class="caption">▼ `nextc()` </p>
 
-```TODO-lang
+```yacc
 2468  static inline int
 2469  nextc()
 2470  {
@@ -1193,7 +1193,7 @@ I searched the place where setting `lex_gets` and this is what I found:
 
 <p class="caption">▼ set `lex_gets` </p>
 
-```TODO-lang
+```yacc
 2430  NODE*
 2431  rb_compile_string(f, s, line)
 2432      const char *f;
@@ -1228,7 +1228,7 @@ On the other hand, `lex_get_str()` is defined as follows:
 
 <p class="caption">▼ `lex_get_str()` </p>
 
-```TODO-lang
+```yacc
 2398  static int lex_gets_ptr;
 
 2400  static VALUE
@@ -1279,7 +1279,7 @@ we can understand the rest easily.
 
 <p class="caption">▼ `pushback()` </p>
 
-```TODO-lang
+```yacc
 2501  static void
 2502  pushback(c)
 2503      int c;
@@ -1300,7 +1300,7 @@ we can understand the rest easily.
 
 <p class="caption">▼ `peek()` </p>
 
-```TODO-lang
+```yacc
 2509  #define peek(c) (lex_p != lex_pend && (c) == *lex_p)
 
 (parse.y)
@@ -1329,7 +1329,7 @@ Now, we'll start with the data structures.
 
 <p class="caption">▼ The Token Buffer </p>
 
-```TODO-lang
+```yacc
 2271  static char *tokenbuf = NULL;
 2272  static int   tokidx, toksiz = 0;
 
@@ -1356,7 +1356,7 @@ read `newtok()`, which starts a new token.
 
 <p class="caption">▼ `newtok()` </p>
 
-```TODO-lang
+```yacc
 2516  static char*
 2517  newtok()
 2518  {
@@ -1394,7 +1394,7 @@ Next, let's look at the `tokadd()` to add a character to token buffer.
 
 <p class="caption">▼ `tokadd()` </p>
 
-```TODO-lang
+```yacc
 2531  static void
 2532  tokadd(c)
 2533      char c;
@@ -1421,7 +1421,7 @@ The rest interfaces are summarized below.
 
 <p class="caption">▼ `tokfix() tok() toklen() toklast()` </p>
 
-```TODO-lang
+```yacc
 2511  #define tokfix() (tokenbuf[tokidx]='\0')
 2512  #define tok() tokenbuf
 2513  #define toklen() tokidx
@@ -1446,7 +1446,7 @@ First, I'll show the whole structure that some parts of it are left out.
 
 <p class="caption">▼ `yylex` outline </p>
 
-```TODO-lang
+```yacc
 3106  static int
 3107  yylex()
 3108  {
@@ -1534,7 +1534,7 @@ Let's start with what is simple first.
 
 <p class="caption">▼ `yylex` - `'!'` </p>
 
-```TODO-lang
+```yacc
 3205        case '!':
 3206          lex_state = EXPR_BEG;
 3207          if ((c = nextc()) == '=') {
@@ -1550,11 +1550,11 @@ Let's start with what is simple first.
 ```
 
 
-I wroute out the meaning of the code,
+I wrote out the meaning of the code,
 so I'd like you to read them by comparing each other.
 
 
-```TODO-lang
+```
 case '!':
   move to EXPR_BEG
   if (the next character is '=' then) {
@@ -1595,7 +1595,7 @@ Next, we'll try to look at `'<'` as an example of using `yylval` (the value of a
 
 <p class="caption">▼ `yylex`−`'&gt;'`</p>
 
-```TODO-lang
+```yacc
 3296        case '>':
 3297          switch (lex_state) {
 3298            case EXPR_FNAME: case EXPR_DOT:
@@ -1657,7 +1657,7 @@ The code of `':'` shown below is an example that a space changes the behavior.
 
 <p class="caption">▼ `yylex`−`':'`</p>
 
-```TODO-lang
+```yacc
 3761        case ':':
 3762          c = nextc();
 3763          if (c == ':') {
@@ -1705,7 +1705,7 @@ It is the scanning pattern of identifiers.
 
 First, the outline of `yylex` was as follows:
 
-```TODO-lang
+```yacc
 yylex(...)
 {
     switch (c = nextc()) {
@@ -1727,7 +1727,7 @@ This is relatively long, so I'll show it with comments.
 
 <p class="caption">▼ `yylex`  -- identifiers </p>
 
-```TODO-lang
+```yacc
 4081        case '@':                 /* an instance variable or a class variable */
 4082          c = nextc();
 4083          newtok();
@@ -1791,7 +1791,7 @@ at the place where adding `!` or `?`.
 This part is to interpret in the next way.
 
 
-```TODO-lang
+```ruby
 obj.m=1       # obj.m  =   1       (not obj.m=)
 obj.m!=1      # obj.m  !=  1       (not obj.m!)
 ```
@@ -1830,7 +1830,7 @@ Usually, only the data would be separated to a list or a hash
 in order to keep the code short.
 
 
-```TODO-lang
+```c
 /* convert the code to data */
 struct entry {char *name; int symbol;};
 struct entry *table[] = {
@@ -1888,7 +1888,7 @@ The definition of `struct kwtable` is as follows:
 
 <p class="caption">▼ `kwtable` </p>
 
-```TODO-lang
+```
    1  struct kwtable {char *name; int id[2]; enum lex_state state;};
 
 (keywords)
@@ -1906,7 +1906,7 @@ This is the place where actually looking up.
 
 <p class="caption">▼ `yylex()`  -- identifier -- call  `rb_reserved_word()` </p>
 
-```TODO-lang
+```yacc
 4173                  struct kwtable *kw;
 4174
 4175                  /* See if it is a reserved word.  */
@@ -1927,7 +1927,7 @@ The double quote (`"`) part of `yylex()` is this.
 
 <p class="caption">▼ `yylex` − `'"'` </p>
 
-```TODO-lang
+```yacc
 3318        case '"':
 3319          lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
 3320          return tSTRING_BEG;
@@ -1943,7 +1943,7 @@ Then, this time, when taking a look at the rule,
 
 <p class="caption">▼ rules for strings </p>
 
-```TODO-lang
+```yacc
 string1         : tSTRING_BEG string_contents tSTRING_END
 
 string_contents :
@@ -1968,7 +1968,7 @@ These rules are the part introduced to deal with embedded expressions inside of 
 `tSTRING_DVAR` represents "`#` that in front of a variable". For example,
 
 
-```TODO-lang
+```ruby
 ".....#$gvar...."
 ```
 
@@ -1995,7 +1995,7 @@ the next `yylex()`.
 What plays an important role there is ...
 
 
-```TODO-lang
+```yacc
       case '"':
         lex_strterm = NEW_STRTERM(str_dquote, '"', 0);
         return tSTRING_BEG;
@@ -2007,7 +2007,7 @@ What plays an important role there is ...
 
 <p class="caption">▼ the beginning of  `yylex()` </p>
 
-```TODO-lang
+```yacc
 3106  static int
 3107  yylex()
 3108  {
@@ -2040,7 +2040,7 @@ This is done in the following part:
 
 <p class="caption">▼ `string_content` </p>
 
-```TODO-lang
+```yacc
 1916  string_content  : ....
 1917                  | tSTRING_DBEG term_push
 1918                      {
@@ -2099,7 +2099,7 @@ First, let's look at its type.
 
 <p class="caption">▼ `lex_strterm`</p>
 
-```TODO-lang
+```yacc
   72  static NODE *lex_strterm;
 
 (parse.y)
@@ -2116,7 +2116,7 @@ you should remember only these two points.
 
 <p class="caption">▼ `NEW_STRTERM()`</p>
 
-```TODO-lang
+```yacc
 2865  #define NEW_STRTERM(func, term, paren) \
 2866          rb_node_newnode(NODE_STRTERM, (func), (term), (paren))
 
@@ -2133,7 +2133,7 @@ and if it is a `'` string, it is `'`.
 `paren` is used to store the corresponding parenthesis when it is a `%` string.
 For example,
 
-```TODO-lang
+```ruby
 %Q(..........)
 ```
 
@@ -2148,7 +2148,7 @@ The available types are decided as follows:
 
 <p class="caption">▼ `func`</p>
 
-```TODO-lang
+```yacc
 2775  #define STR_FUNC_ESCAPE 0x01  /* backslash notations such as \n are in effect  */
 2776  #define STR_FUNC_EXPAND 0x02  /* embedded expressions are in effect */
 2777  #define STR_FUNC_REGEXP 0x04  /* it is a regular expression */
@@ -2170,13 +2170,14 @@ The available types are decided as follows:
 
 Each meaning of `enum string_type` is as follows:
 
-
-| `str_squote` | `'` string / `%q` |
-| `str_dquote` | `"` string / `%Q` |
+| Type         | Meaning                                        |
+| ------------ | ---------------------------------------------- |
+| `str_squote` | `'` string / `%q`                              |
+| `str_dquote` | `"` string / `%Q`                              |
 | `str_xquote` | command string (not be explained in this book) |
-| `str_regexp` | regular expression |
-| `str_sword`  | `%w` |
-| `str_dword`  | `%W` |
+| `str_regexp` | regular expression                             |
+| `str_sword`  | `%w`                                           |
+| `str_dword`  | `%W`                                           |
 
 
 
@@ -2189,7 +2190,7 @@ in other words, the `if` at the beginning.
 
 <p class="caption">▼ `yylex`− string</p>
 
-```TODO-lang
+```yacc
 3114      if (lex_strterm) {
 3115          int token;
 3116          if (nd_type(lex_strterm) == NODE_HEREDOC) {
@@ -2242,7 +2243,7 @@ First, I'll show the code of `yylex()` to scan the starting symbol of a here doc
 
 <p class="caption">▼ `yylex`−`'&lt;'`</p>
 
-```TODO-lang
+```yacc
 3260        case '<':
 3261          c = nextc();
 3262          if (c == '<' &&
@@ -2267,7 +2268,7 @@ Therefore, here is `heredoc_identifier()`.
 
 <p class="caption">▼ `heredoc_identifier()`</p>
 
-```TODO-lang
+```yacc
 2926  static int
 2927  heredoc_identifier()
 2928  {
@@ -2292,8 +2293,8 @@ Until now, the input buffer probably has become as depicted as Figure 10.
 Let's recall that the input buffer reads a line at a time.
 
 <figure>
-	<img src="images/ch_parser_lexparams.jpg" alt="figure 10: scanning `"printf\(<<EOS,n\">
-	<figcaption>figure 10: scanning `"printf\(<<EOS,n\</figcaption>
+	<img src="images/ch_parser_lexparams.jpg" alt="scanning `&quot;printf(<<EOS,n)&quot;`">
+	<figcaption>scanning <code class=inline>"printf(<<EOS,n)"</code></figcaption>
 </figure>
 
 
@@ -2309,7 +2310,7 @@ read line) and `len` (the length that has already read) are saved.
 Then, the dynamic call graph before and after `heredoc_identifier` is simply
 shown below:
 
-```TODO-lang
+```
 yyparse
     yylex(case '<')
         heredoc_identifier(lex_strterm = ....)
@@ -2326,7 +2327,7 @@ Notice that `lex_strterm` remains unchanged after it was set at `heredoc_identif
 
 <p class="caption">▼ `here_document()`(simplified)</p>
 
-```TODO-lang
+```yacc
 here_document(NODE *here)
 {
     VALUE line;                      /* the line currently being scanned */
@@ -2371,7 +2372,7 @@ And finally, leaving the `do` ~ `while` loop, it is `heredoc_restore()`.
 
 <p class="caption">▼ `heredoc_restore()` </p>
 
-```TODO-lang
+```yacc
 2990  static void
 2991  heredoc_restore(here)
 2992      NODE *here;

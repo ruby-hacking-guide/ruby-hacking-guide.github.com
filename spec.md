@@ -261,7 +261,7 @@ by a `b` followed by a `c`. It matches "abc" or "fffffffabc" or
 
 One can designate more special patterns.
 
-```TODO-lang
+```ruby
 /^From:/
 ```
 
@@ -299,7 +299,7 @@ Also as with strings, regular expressions also have a syntax for changing
 delimiters. In this case it is `%r`. To understand this, looking at some
 examples are enough to understand.
 
-```TODO-lang
+```ruby
 %r(regexp)
 %r[/\*.*?\*/]            # matches a C comment
 %r("(?:[^"\\]+|\\.)*")   # matches a string in C
@@ -310,7 +310,7 @@ examples are enough to understand.
 
 A comma-separated list enclosed in brackets `[]` is an array literal.
 
-```TODO-lang
+```ruby
 [1, 2, 3]
 ['This', 'is', 'an', 'array', 'of', 'string']
 
@@ -331,7 +331,7 @@ together can also be written straightforwardly.
 Note that this is "an expression which generates an array object" as with the
 other literals.
 
-```TODO-lang
+```ruby
 i = 0
 while i < 5
   p([1,2,3].id)    # Each time another object id is shown.
@@ -345,7 +345,7 @@ When writing scripts one uses arrays of strings a lot, hence
 there is a special notation only for arrays of strings.
 That is `%w`. With an example it's immediately obvious.
 
-```TODO-lang
+```ruby
 %w( alpha beta gamma delta )   # ['alpha','beta','gamma','delta']
 %w( 月 火 水 木 金 土 日 )
 %w( Jan Feb Mar Apr May Jun
@@ -355,7 +355,7 @@ That is `%w`. With an example it's immediately obvious.
 There's also `%W` where expressions can be embedded.
 It's a feature implemented fairly recently.
 
-```TODO-lang
+```ruby
 n = 5
 %w( list0 list#{n} )   # ['list0', 'list#{n}']
 %W( list0 list#{n} )   # ['list0', 'list5']
@@ -369,7 +369,7 @@ Hash tables are data structure which store a one-to-one relation between
 arbitrary objects.
 By writing as follows, they will be expressions to generate tables.
 
-```TODO-lang
+```ruby
 { 'key' => 'value', 'key2' => 'value2' }
 { 3 => 0, 'string' => 5, ['array'] => 9 }
 { Object.new() => 3, Object.new() => 'string' }
@@ -389,14 +389,14 @@ Furthermore, when used as an argument of a method call,
 the `{...}` can be omitted under a certain condition.
 
 
-```TODO-lang
+```ruby
   some_method(arg, key => value, key2 => value2)
 # some_method(arg, {key => value, key2 => value2}) # same as above
 ```
 
 With this we can imitate named (keyword) arguments.
 
-```TODO-lang
+```ruby
 button.set_geometry('x' => 80, 'y' => '240')
 ```
 
@@ -409,7 +409,7 @@ it's not the case for this because this is just a "imitation".
 Range literals are oddballs which don't appear in most other languages.
 Here are some expressions which generate Range objects.
 
-```TODO-lang
+```ruby
 0..5          # from 0 to 5 containing 5
 0...5         # from 0 to 5 not containing 5
 1+2 .. 9+0    # from 3 to 9 containing 9
@@ -430,7 +430,7 @@ it would be a runtime error.
 By the way, because the precedence of `..` and `...` is quite low,
 sometimes it is interpreted in a surprising way.
 
-```TODO-lang
+```ruby
 1..5.to_a()   # 1..(5.to_a())
 ```
 
@@ -443,7 +443,7 @@ In Part 1, we talked about symbols at length.
 It's something corresponds one-to-one to an arbitrary string.
 In Ruby symbols are expressed with a `:` in front.
 
-```TODO-lang
+```ruby
 :identifier
 :abcde
 ```
@@ -452,7 +452,7 @@ These examples are pretty normal.
 Actually, besides them, all variable names and method names
 can become symbols with a `:` in front. Like this:
 
-```TODO-lang
+```ruby
 :$gvar
 :@ivar
 :@@cvar
@@ -463,7 +463,7 @@ Moreover, though we haven't talked this yet,
 `[]` or `attr=` can be used as method names,
 so naturally they can also be used as symbols.
 
-```TODO-lang
+```ruby
 :[]
 :attr=
 ```
@@ -477,7 +477,7 @@ This is the least interesting.
 One possible thing I can introduce here is that,
 when writing a million,
 
-```TODO-lang
+```ruby
 1_000_000
 ```
 
@@ -493,7 +493,7 @@ Let's talk about the definition and calling of methods.
 
 ### Definition and Calls
 
-```TODO-lang
+```ruby
 def some_method( arg )
   ....
 end
@@ -510,7 +510,7 @@ they become function style methods, inside a class they become
 methods of this class. To call a method which was defined in a class,
 one usually has to create an instance with `new` as shown below.
 
-```TODO-lang
+```ruby
 C.new().some_method(0)
 ```
 
@@ -520,7 +520,7 @@ The return value of a method is,
 if a `return` is executed in the middle, its value.
 Otherwise, it's the value of the statement which was executed last.
 
-```TODO-lang
+```ruby
 def one()     # 1 is returned
   return 1
   999
@@ -551,7 +551,7 @@ Optional arguments can also be defined. If the number of arguments
 doesn't suffice, the parameters are automatically assigned to
 default values.
 
-```TODO-lang
+```ruby
 def some_method( arg = 9 )  # default value is 9
   p arg
 end
@@ -565,7 +565,7 @@ But in that case they must all come at the end of the argument list.
 If elements in the middle of the list were optional,
 how the correspondences of the arguments would be very unclear.
 
-```TODO-lang
+```ruby
 def right_decl( arg1, arg2, darg1 = nil, darg2 = nil )
   ....
 end
@@ -580,7 +580,7 @@ end
 
 In fact, the parentheses of a method call can be omitted.
 
-```TODO-lang
+```ruby
 puts 'Hello, World!'   # puts("Hello, World")
 obj = Object.new       # obj = Object.new()
 ```
@@ -590,14 +590,14 @@ but there is no such thing in Ruby.
 
 If you'd like to, you can omit more parentheses.
 
-```TODO-lang
+```ruby
   puts(File.basename fname)
 # puts(File.basename(fname)) same as the above
 ```
 
 If we like we can even leave out more
 
-```TODO-lang
+```ruby
   puts File.basename fname
 # puts(File.basename(fname))  same as the above
 ```
@@ -607,7 +607,7 @@ It's likely that this will not pass anymore in Ruby 2.0.
 
 Actually even the parentheses of the parameters definition can also be omitted.
 
-```TODO-lang
+```ruby
 def some_method param1, param2, param3
 end
 
@@ -626,7 +626,7 @@ there's nothing odd if we can do something converse: extracting a list (an
 array) as arguments,
 as the following example.
 
-```TODO-lang
+```ruby
 def delegate(a, b, c)
   p(a, b, c)
 end
@@ -640,7 +640,7 @@ Let's call this device a `*`argument now. Here we used a local variable
 for demonstration, but of course there is no limitation.
 We can also directly put a literal or a method call instead.
 
-```TODO-lang
+```ruby
 m(*[1,2,3])    # We could have written the expanded form in the first place...
 m(*mcall())
 ```
@@ -653,7 +653,7 @@ single way.
 In the definition on the other hand we can handle the arguments in
 bulk when we put a `*` in front of the parameter variable.
 
-```TODO-lang
+```ruby
 def some_method( *args )
   p args
 end
@@ -666,7 +666,7 @@ some_method(0, 1)      # prints [0,1]
 The surplus arguments are gathered in an array. Only one `*`parameter
 can be declared. It must also come after the default arguments.
 
-```TODO-lang
+```ruby
 def some_method0( arg, *rest )
 end
 def some_method1( arg, darg = nil, *rest )
@@ -677,7 +677,7 @@ If we combine list expansion and bulk reception together, the arguments
 of one method can be passed as a whole to another method. This might
 be the most practical use of the `*`parameter.
 
-```TODO-lang
+```ruby
 # a method which passes its arguments to other_method
 def delegate(*args)
   other_method(*args)
@@ -699,7 +699,7 @@ In Ruby there is a ton of it,
 and they are really attractive for a person who has a fetish for parsers.
 For instance the examples below are all method calls.
 
-```TODO-lang
+```ruby
 1 + 2                   # 1.+(2)
 a == b                  # a.==(b)
 ~/regexp/               # /regexp/.~
@@ -713,7 +713,7 @@ It's hard to believe until you get used to it, but `attr=`, `[]=`, `\``
 are (indeed) all method names. They can appear as names in a method definition
 and can also be used as symbols.
 
-```TODO-lang
+```ruby
 class C
   def []( index )
   end
@@ -734,7 +734,7 @@ Let's see some more details.
 
 #### Symbol Appendices
 
-```TODO-lang
+```ruby
 obj.name?
 obj.name!
 ```
@@ -748,7 +748,7 @@ of characters can be used in procedure names.
 
 #### Binary Operators
 
-```TODO-lang
+```ruby
 1 + 2    # 1.+(2)
 ```
 
@@ -758,7 +758,7 @@ As listed below there are many of them. There are the general operators
 `+` and `-`, also the equivalence operator `==` and the spaceship operator
 `<=>' as in Perl, all sorts. They are listed in order of their precedence.
 
-```TODO-lang
+```ruby
 **
 * / %
 + -
@@ -774,7 +774,7 @@ are built-in operators. Remember how it is in C.
 
 #### Unary Operators
 
-```TODO-lang
+```ruby
 +2
 -1.0
 ~/regexp/
@@ -795,7 +795,7 @@ part of the literal. This is a kind of optimizations.))
 
 #### Attribute Assignment
 
-```TODO-lang
+```ruby
 obj.attr = val   # obj.attr=(val)
 ```
 
@@ -803,7 +803,7 @@ This is an attribute assignment fashion. The above will be translated
 into the method call `attr=`. When using this together with method calls whose
 parentheses are omitted, we can write code which looks like attribute access.
 
-```TODO-lang
+```ruby
 class C
   def i() @i end          # We can write the definition in one line
   def i=(n) @i = n end
@@ -822,14 +822,14 @@ which can take another argument in the attribute assignment fashion.
 
 #### Index Notation
 
-```TODO-lang
+```ruby
 obj[i]    # obj.[](i)
 ```
 
 The above will be translated into a method call for `[]`.
 Array and hash access are also implemented with this device.
 
-```TODO-lang
+```ruby
 obj[i] = val   # obj.[]=(i, val)
 ```
 
@@ -845,7 +845,7 @@ Here a mechanism to call a method of the superclass when overwriting a method
 is required.
 In Ruby, that's `super`.
 
-```TODO-lang
+```ruby
 class A
   def test
     puts 'in A'
@@ -866,7 +866,7 @@ When using `super`, be careful about the difference between
 `super` with no arguments and `super` whose arguments are omitted.
 The `super` whose arguments are omitted passes all the given parameter variables.
 
-```TODO-lang
+```ruby
 class A
   def test( *args )
     p args
@@ -912,7 +912,7 @@ Be careful.
 
 Usually we control visibility as shown below.
 
-```TODO-lang
+```ruby
 class C
   public
   def a1() end   # becomes public
@@ -949,7 +949,7 @@ then we call this a module function.
 It is not apparent why this should be useful. But let's look
 at the next example which is happily used.
 
-```TODO-lang
+```ruby
 Math.sin(5)       # If used for a few times this is more convenient
 
 include Math
@@ -971,14 +971,14 @@ are called exterior iterators, Ruby's iterators are interior iterators.
 Regarding this, it's difficult to understand from the definition so
 let's explain it with a concrete example.
 
-```TODO-lang
+```ruby
 arr = [0,2,4,6.8]
 ```
 
 This array is given and we want to access the elements in
 order. In C style we would write the following.
 
-```TODO-lang
+```ruby
 i = 0
 while i < arr.length
   print arr[i]
@@ -988,7 +988,7 @@ end
 
 Using an iterator we can write:
 
-```TODO-lang
+```ruby
 arr.each do |item|
   print item
 end
@@ -1010,7 +1010,7 @@ to the cut out piece of code.
 We can also think the other way round. The other parts except `print item`
 are being cut out and enclosed into the `each` method.
 
-```TODO-lang
+```ruby
 i = 0
 while i < arr.length
   print arr[i]
@@ -1031,7 +1031,7 @@ and higher order functions in C differ.
 Firstly, Ruby iterators can only take one block. For instance we can't
 do the following.
 
-```TODO-lang
+```ruby
 # Mistake. Several blocks cannot be passed.
 array_of_array.each do |i|
   ....
@@ -1042,7 +1042,7 @@ end
 
 Secondly, Ruby's blocks can share local variables with the code outside.
 
-```TODO-lang
+```ruby
 lvar = 'ok'
 [0,1,2].each do |i|
   p lvar    # Can acces local variable outside the block.
@@ -1061,7 +1061,7 @@ visible.
 Local variables which are assigned inside a block stay local to that block,
 it means they become block local variables. Let's check it out.
 
-```TODO-lang
+```ruby
 [0].each do
   i = 0
   p i     # 0
@@ -1076,7 +1076,7 @@ This makes `i` block local.
 It is said block local, so it should not be able to access from the outside.
 Let's test it.
 
-```TODO-lang
+```
 % ruby -e '
 [0].each do
   i = 0
@@ -1093,7 +1093,7 @@ surely an error occured. Without a doubt it stayed local to the block.
 Iterators can also be nested repeatedly. Each time
 the new block creates another scope.
 
-```TODO-lang
+```ruby
 lvar = 0
 [1].each do
   var1 = 1
@@ -1115,7 +1115,7 @@ nowadays' major languages Ruby's block local variables don't do shadowing.
 Shadowing means for instance in C that in the code below the two declared
 variables `i` are different.
 
-```TODO-lang
+```c
 {
     int i = 3;
     printf("%d\n", i);         /* 3 */
@@ -1133,7 +1133,7 @@ That's why it's called shadowing.
 But what happens with block local variables of Ruby where there's no shadowing.
 Let's look at this example.
 
-```TODO-lang
+```ruby
 i = 0
 p i           # 0
 [0].each do
@@ -1158,7 +1158,7 @@ First, there are two ways to write an iterator. One is the
 `do` ~ `end` as used above, the other one is the enclosing in braces.
 The two expressions below have exactly the same meaning.
 
-```TODO-lang
+```ruby
 arr.each do |i|
   puts i
 end
@@ -1171,7 +1171,7 @@ arr.each {|i|    # The author likes a four space indentation for
 But grammatically the precedence is different.
 The braces bind much stronger than `do`~`end`.
 
-```TODO-lang
+```ruby
 m m do .... end    # m(m) do....end
 m m { .... }       # m(m() {....})
 ```
@@ -1179,7 +1179,7 @@ m m { .... }       # m(m() {....})
 And iterators are definitely methods,
 so there are also iterators that take arguments.
 
-```TODO-lang
+```ruby
 re = /^\d/                 # regular expression to match a digit at the beginning of the line
 $stdin.grep(re) do |line|  # look repeatedly for this regular expression
   ....
@@ -1192,7 +1192,7 @@ Of course users can write their own iterators. Methods which have
 a `yield` in their definition text are iterators.
 Let's try to write an iterator with the same effect as `Array#each`:
 
-```TODO-lang
+```ruby
 # adding the definition to the Array class
 class Array
   def my_each
@@ -1220,7 +1220,7 @@ when the execution of the block finishes it returns back to the same
 location. Think about it like a characteristic function call. When the
 present method does not have a block a runtime error will occur.
 
-```TODO-lang
+```
 % ruby -e '[0,1,2].each'
 -e:1:in `each': no block given (LocalJumpError)
         from -e:1
@@ -1232,7 +1232,7 @@ I said, that iterators are like cut out code which is passed as an
 argument. But we can even more directly make code to an object
 and carry it around.
 
-```TODO-lang
+```ruby
 twice = Proc.new {|n| n * 2 }
 p twice.call(9)   # 18 will be printed
 ```
@@ -1248,7 +1248,7 @@ which turns an iterator block into an object.
 Besides there is a function style method `lambda` provided which
 has the same effect as `Proc.new`. Choose whatever suits you.
 
-```TODO-lang
+```ruby
 twice = lambda {|n| n * 2 }
 ```
 
@@ -1262,7 +1262,7 @@ That's why one can be transformed into the other.
 First, to turn an iterator block into a `Proc` object
 one has to put an `&` in front of the parameter name.
 
-```TODO-lang
+```ruby
 def print_block( &block )
   p block
 end
@@ -1278,21 +1278,21 @@ iterator (there's no block attached) `nil` is assigned.
 And in the other direction, if we want to pass a `Proc` to an iterator
 we also use `&`.
 
-```TODO-lang
+```ruby
 block = Proc.new {|i| p i }
 [0,1,2].each(&block)
 ```
 
 This code means exactly the same as the code below.
 
-```TODO-lang
+```ruby
 [0,1,2].each {|i| p i }
 ```
 
 If we combine these two, we can delegate an iterator
 block to a method somewhere else.
 
-```TODO-lang
+```ruby
 def each_item( &block )
   [0,1,2].each(&block)
 end
@@ -1319,7 +1319,7 @@ We probably do not need to explain the `if` expression. If the conditional
 expression is true, the body is executed. As explained in Part 1,
 every object except `nil` and `false` is true in Ruby.
 
-```TODO-lang
+```ruby
 if cond0 then
   ....
 elsif cond1 then
@@ -1336,7 +1336,7 @@ But there are some finer requirements concerning `then`.
 For this kind of thing, looking at some examples is the best way to understand.
 Here only thing I'd say is that the below codes are valid.
 
-```TODO-lang
+```ruby
 # 1                                    # 4
 if cond then ..... end                 if cond
                                        then .... end
@@ -1353,7 +1353,7 @@ expression. It is the value of the body where a condition expression is met.
 For example, if the condition of the first `if` is true,
 the value would be the one of its body.
 
-```TODO-lang
+```ruby
 p(if true  then 1 else 2 end)   #=> 1
 p(if false then 1 else 2 end)   #=> 2
 p(if false then 1 elsif true then 2 else 3 end)   #=> 2
@@ -1362,7 +1362,7 @@ p(if false then 1 elsif true then 2 else 3 end)   #=> 2
 If there's no match, or the matched clause is empty,
 the value would be `nil`.
 
-```TODO-lang
+```ruby
 p(if false then 1 end)    #=> nil
 p(if true  then   end)    #=> nil
 ```
@@ -1372,7 +1372,7 @@ p(if true  then   end)    #=> nil
 An `if` with a negated condition is an `unless`.
 The following two expressions have the same meaning.
 
-```TODO-lang
+```ruby
 unless cond then          if not (cond) then
   ....                      ....
 end                       end
@@ -1392,7 +1392,7 @@ the value would be `nil`.
 The most likely utilization of the `and` is probably a boolean operation.
 For instance in the conditional expression of an `if`.
 
-```TODO-lang
+```ruby
 if cond1 and cond2
   puts 'ok'
 end
@@ -1402,7 +1402,7 @@ But as in Perl, `sh` or Lisp, it can also be used as a conditional
 branch expression.
 The two following expressions have the same meaning.
 
-```TODO-lang
+```ruby
                                         if invalid?(key)
 invalid?(key) and return nil              return nil
                                         end
@@ -1410,7 +1410,7 @@ invalid?(key) and return nil              return nil
 
 `&&` and `and` have the same meaning. Different is the binding order.
 
-```TODO-lang
+```ruby
 method arg0 &&  arg1    # method(arg0 && arg1)
 method arg0 and arg1    # method(arg0) and arg1
 ```
@@ -1426,7 +1426,7 @@ the right hand side will also be evaluated.
 On the other hand `or` is the opposite of `and`. If the evaluation of the left hand
 side is false, the right hand side will also be evaluated.
 
-```TODO-lang
+```ruby
 valid?(key) or return nil
 ```
 
@@ -1437,14 +1437,14 @@ different.
 
 There is a conditional operator similar to C:
 
-```TODO-lang
+```ruby
 cond ? iftrue : iffalse
 ```
 
 The space between the symbols is important.
 If they bump together the following weirdness happens.
 
-```TODO-lang
+```ruby
 cond?iftrue:iffalse   # cond?(iftrue(:iffalse))
 ```
 
@@ -1455,7 +1455,7 @@ Either the value of the true side or the value of the false side.
 
 Here's a `while` expression.
 
-```TODO-lang
+```ruby
 while cond do
   ....
 end
@@ -1464,7 +1464,7 @@ end
 This is the simplest loop syntax. As long as `cond` is true
 the body is executed. The `do` can be omitted.
 
-```TODO-lang
+```ruby
 until io_ready?(id) do
   sleep 0.5
 end
@@ -1479,7 +1479,7 @@ Naturally there is also jump syntaxes to exit a loop.
 but `continue` is `next`.
 Perhaps `next` has come from Perl.
 
-```TODO-lang
+```ruby
 i = 0
 while true
   if i > 10
@@ -1494,7 +1494,7 @@ end
 
 And there is another Perlism: the `redo`.
 
-```TODO-lang
+```ruby
 while cond
   # (A)
   ....
@@ -1515,7 +1515,7 @@ necessary after all because I've lived happily despite of it.
 A special form of the `if` expression. It performs branching on a series of
 conditions. The following left and right expressions are identical in meaning.
 
-```TODO-lang
+```ruby
 case value
 when cond1 then                if cond1 === value
   ....                           ....
@@ -1549,7 +1549,7 @@ same.
 In Ruby exceptions come in the form of the function style method `raise`.
 `raise` is not a reserved word.
 
-```TODO-lang
+```ruby
 raise ArgumentError, "wrong number of argument"
 ```
 
@@ -1560,7 +1560,7 @@ an instance of `ArgumentError` is created and "thrown". Exception
 object would ditch the part after the `raise` and start to return upwards the
 method call stack.
 
-```TODO-lang
+```ruby
 def raise_exception
   raise ArgumentError, "wrong number of argument"
   # the code after the exception will not be executed
@@ -1574,7 +1574,7 @@ finally it will reach the top level.
 When there's no place to return any more, `ruby` gives out a message and ends
 with a non-zero exit code.
 
-```TODO-lang
+```
 % ruby raise.rb
 raise.rb:2:in `raise_exception': wrong number of argument (ArgumentError)
         from raise.rb:7
@@ -1585,7 +1585,7 @@ should be a way to set handlers.
 In Ruby, `begin`~`rescue`~`end` is used for this.
 It resembles the `try`~`catch` in C++ and Java.
 
-```TODO-lang
+```ruby
 def raise_exception
   raise ArgumentError, "wrong number of argument"
 end
@@ -1605,7 +1605,7 @@ where `ArgumentError` is targeted, so it matches this `rescue`.
 By `=>err` the exception object will be assigned to the local variable
 `err`, after that the `rescue` part is executed.
 
-```TODO-lang
+```
 % ruby rescue.rb
 exception catched
 #<ArgumentError: wrong number of argument>
@@ -1616,7 +1616,7 @@ it will start to execute the subsequent as if nothing happened,
 but we can also make it retry from the `begin`.
 To do so, `retry` is used.
 
-```TODO-lang
+```ruby
 begin    # the place to return
   ....
 rescue ArgumentError => err then
@@ -1632,7 +1632,7 @@ If we want to catch more exception classes, we can just write them in line.
 When we want to handle different errors differently, we can specify several
 `rescue` clauses.
 
-```TODO-lang
+```ruby
 begin
   raise IOError, 'port not ready'
 rescue ArgumentError, TypeError
@@ -1648,7 +1648,7 @@ For instance, only the clause of `IOError` will be executed in the above case.
 On the other hand, when there is an `else` clause, it is executed
 only when there is no exception.
 
-```TODO-lang
+```ruby
 begin
   nil    # Of course here will no error occur
 rescue ArgumentError
@@ -1661,7 +1661,7 @@ end
 Moreover an `ensure` clause will be executed in every case:
 when there is no exception, when there is an exception, rescued or not.
 
-```TODO-lang
+```ruby
 begin
   f = File.open('/etc/passwd')
   # do stuff
@@ -1682,7 +1682,7 @@ The reason why the `ensure` is not counted is probably because
 Referring a variable or a constant. The value is the object the variable points to.
 We already talked in too much detail about the various behaviors.
 
-```TODO-lang
+```ruby
 lvar
 @ivar
 @@cvar
@@ -1713,7 +1713,7 @@ Variable assignments are all performed by `=`. All variables are
 typeless. What is saved is a reference to an object.
 As its implementation, it was a `VALUE` (pointer).
 
-```TODO-lang
+```ruby
 var = 1
 obj = Object.new
 @ivar = 'string'
@@ -1727,13 +1727,13 @@ but a method call.
 
 ### Self Assignment
 
-```TODO-lang
+```ruby
 var += 1
 ```
 
 This syntax is also in C/C++/Java. In Ruby,
 
-```TODO-lang
+```ruby
 var = var + 1
 ```
 
@@ -1747,7 +1747,7 @@ In Ruby `+=` is always defined as an operation of the combination of `+` and ass
 We can also combine self assignment and an attribute-access-flavor method.
 The result more looks like an attribute.
 
-```TODO-lang
+```ruby
 class C
   def i() @i end          # A method definition can be written in one line.
   def i=(n) @i = n end
@@ -1777,7 +1777,7 @@ so I've kept silent and decided to forget about it.
 `defined?` is a syntax of a quite different color in Ruby. It tells whether an
 expression value is "defined" or not at runtime.
 
-```TODO-lang
+```ruby
 var = 1
 defined?(var)   #=> true
 ```
@@ -1812,7 +1812,7 @@ But Ruby's statement ending's aren't that straightforward.
 First a statement can be ended explicitly with a semicolon as in C.
 Of course then we can write two and more statements in one line.
 
-```TODO-lang
+```ruby
 puts 'Hello, World!'; puts 'Hello, World once more!'
 ```
 
@@ -1821,7 +1821,7 @@ when the expression apparently continues,
 such as just after opened parentheses, dyadic operators, or a comma,
 the statement continues automatically.
 
-```TODO-lang
+```ruby
 # 1 + 3 * method(6, 7 + 8)
 1 +
   3 *
@@ -1833,7 +1833,7 @@ the statement continues automatically.
 But it's also totally no problem to use a backslash to explicitly indicate the
 continuation.
 
-```TODO-lang
+```ruby
 p 1 + \
   2
 ```
@@ -1843,7 +1843,7 @@ p 1 + \
 The `if` modifier is an irregular version of the normal `if`
 The programs on the left and right mean exactly the same.
 
-```TODO-lang
+```ruby
 on_true() if cond                if cond
                                    on_true()
                                  end
@@ -1857,14 +1857,14 @@ be conveniently written with it.
 
 `while` and `until` also have a back notation.
 
-```TODO-lang
+```ruby
 process() while have_content?
 sleep(1) until ready?
 ```
 
 Combining this with `begin` and `end` gives a `do`-`while`-loop like in C.
 
-```TODO-lang
+```ruby
 begin
   res = get_response(id)
 end while need_continue?(res)
@@ -1872,7 +1872,7 @@ end while need_continue?(res)
 
 ### Class Definition
 
-```TODO-lang
+```ruby
 class C < SuperClass
   ....
 end
@@ -1888,7 +1888,7 @@ image.
 
 ### Method Definition
 
-```TODO-lang
+```ruby
 def m(arg)
 end
 ```
@@ -1905,7 +1905,7 @@ to singleton classes. We define singleton methods by putting the
 receiver in front of the method name. Parameter declaration is done
 the same way like with ordinary methods.
 
-```TODO-lang
+```ruby
 def obj.some_method
 end
 
@@ -1915,7 +1915,7 @@ end
 
 ### Definition of Singleton methods
 
-```TODO-lang
+```ruby
 class << obj
   ....
 end
@@ -1929,7 +1929,7 @@ executed.
 In all over the Ruby program,
 this is the only place where a singleton class is exposed.
 
-```TODO-lang
+```ruby
 class << obj
   p self  #=> #<Class:#<Object:0x40156fcc>>   # Singleton Class 「(obj)」
   def a() end   # def obj.a
@@ -1942,13 +1942,13 @@ end
 With a multiple assignment, several assignments can be done all at once.
 The following is the simplest case:
 
-```TODO-lang
+```ruby
 a, b, c = 1, 2, 3
 ```
 
 It's exactly the same as the following.
 
-```TODO-lang
+```ruby
 a = 1
 b = 2
 c = 3
@@ -1958,7 +1958,7 @@ Just being concise is not interesting.
 in fact, when an array comes in to be mixed,
 it becomes something fun for the first time.
 
-```TODO-lang
+```ruby
 a, b, c = [1, 2, 3]
 ```
 
@@ -1967,7 +1967,7 @@ Furthermore, the right hand side does not need to be a grammatical list or a
 literal.
 It can also be a variable or a method call.
 
-```TODO-lang
+```ruby
 tmp = [1, 2, 3]
 a, b, c = tmp
 ret1, ret2 = some_method()   # some_method might probably return several values
@@ -1987,7 +1987,7 @@ are totally independent from each other.
 
 And it goes on, both the left and right hand side can be infinitely nested.
 
-```TODO-lang
+```ruby
 a, (b, c, d) = [1, [2, 3, 4]]
 a, (b, (c, d)) = [1, [2, [3, 4]]]
 (a, b), (c, d) = [[1, 2], [3, 4]]
@@ -1998,7 +1998,7 @@ each line will be `a=1 b=2 c=3 d=4`.
 
 And it goes on. The left hand side can be index or parameter assignments.
 
-```TODO-lang
+```ruby
 i = 0
 arr = []
 arr[i], arr[i+1], arr[i+2] = 0, 2, 4
@@ -2010,7 +2010,7 @@ obj.attr0, obj.attr1, obj.attr2 = "a", "b", "c"
 And like with method parameters,
 `*` can be used to receive in a bundle.
 
-```TODO-lang
+```ruby
 first, *rest = 0, 1, 2, 3, 4
 p first  # 0
 p rest   # [1, 2, 3, 4]
@@ -2024,7 +2024,7 @@ We brushed over block parameters when we were talking about iterators.
 But there is a deep relationship between them and multiple assignment.
 For instance in the following case.
 
-```TODO-lang
+```ruby
 array.each do |i|
   ....
 end
@@ -2037,7 +2037,7 @@ But if there are two or more variables, it would a little more look like it.
 For instance, `Hash#each` is an repeated operation on the pairs of keys and values,
 so usually we call it like this:
 
-```TODO-lang
+```ruby
 hash.each do |key, value|
   ....
 end
@@ -2048,7 +2048,7 @@ from the hash.
 
 Hence we can also does the following thing by using nested multiple assignment.
 
-```TODO-lang
+```ruby
 # [[key,value],index] are yielded
 hash.each_with_index do |(key, value), index|
   ....
@@ -2057,7 +2057,7 @@ end
 
 ### `alias`
 
-```TODO-lang
+```ruby
 class C
   alias new orig
 end
@@ -2073,7 +2073,7 @@ other one still remains with the same behavior.
 
 ### `undef`
 
-```TODO-lang
+```ruby
 class C
   undef method_name
 end
@@ -2095,7 +2095,7 @@ is `Module#remove_method`. While defining a class, `self` refers
 to that class, we can call it as follows (Remember that `Class` is a
 subclass of `Module`.)
 
-```TODO-lang
+```ruby
 class C
   remove_method(:method_name)
 end
@@ -2111,7 +2111,7 @@ Some more small topics
 
 ### Comments
 
-```TODO-lang
+```ruby
 # examples of bad comments.
 1 + 1            # compute 1+1.
 alias my_id id   # my_id is an alias of id.
@@ -2122,7 +2122,7 @@ It doesn't have a meaning for the program.
 
 ### Embedded documents
 
-```TODO-lang
+```ruby
 =begin
 This is an embedded document.
 It's so called because it is embedded in the program.
@@ -2147,7 +2147,7 @@ String literals, regular expressions and even operator names
 can contain multibyte characters. Hence it is possible to do
 something like this:
 
-```TODO-lang
+```ruby
 def 表示( arg )
   puts arg
 end
