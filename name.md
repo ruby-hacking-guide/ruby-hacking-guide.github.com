@@ -160,7 +160,7 @@ and understand the roles.
 
 <figure>
 	<img src="images/ch_name_sttable.png" alt="figure 5: `st_table` data structure">
-	<figcaption>figure 5: `st_table` data structure</figcaption>
+	<figcaption>figure 5: <code class="inline">st_table</code> data structure</figcaption>
 </figure>
 
 So, let us comment on `st_hash_type`.

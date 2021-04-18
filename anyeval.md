@@ -503,11 +503,11 @@ It means, it would look like Figure 1. Now, it is assured that
 we can refer to the block local variables of the outside scope
 from inside of a string to `eval`.
 
+<figure>
+  <img src="images/ch_anyeval_dynavars.jpg" alt="figure 1: `ruby_dyna_vars` inside `eval`">
+  <figcaption>figure 1: <code class="inline">ruby_dyna_vars</code> inside <code class="inline">eval</code></figcaption>
+</figure>
 
-<div class="image">
-<img src="images/ch_anyeval_dynavars.jpg" alt="(dynavars)"><br>
-Figure 1: `ruby_dyna_vars` inside `eval`
-</div>
 
 
 Well, it's sure we can refer to,
@@ -590,12 +590,10 @@ that part is defined as `specific_eval()`.
 Figure 2 shows it and also what will be described.
 What with parentheses are calls by function pointers.
 
-
-<p class="image">
-<img src="images/ch_anyeval_speceval.jpg" alt="(speceval)"><br>
-Figure 2: Call Graph
-</p>
-
+<figure>
+  <img src="images/ch_anyeval_speceval.jpg" alt="figure 2: Call Graph">
+  <figcaption>figure 2: Call Graph</figcaption>
+</figure>
 
 Whichever `instance_eval` or `module_eval`,
 it can accept both a block and a string,

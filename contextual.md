@@ -177,7 +177,7 @@ which case suits best (see image 1)
 
 <figure>
 	<img src="images/ch_contextual_transittobeg.jpg" alt="figure 1: Transition to `EXPR_BEG`">
-	<figcaption>figure 1: Transition to `EXPR_BEG`</figcaption>
+	<figcaption>figure 1: Transition to <code class="inline">EXPR_BEG</code></figcaption>
 </figure>
 
 ((errata:<br>
@@ -1161,7 +1161,7 @@ will appear from `tLPAREN_ARG` and conflict with `method_call` (see image 3)
 
 <figure>
 	<img src="images/ch_contextual_trees.jpg" alt="figure 3: `method_call` and `command_call`">
-	<figcaption>figure 3: `method_call` and `command_call`</figcaption>
+	<figcaption>figure 3: <code class="inline">method_call</code> and <code class="inline">command_call</code></figcaption>
 </figure>
 
 ### The case of two parameters and more

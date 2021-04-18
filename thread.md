@@ -169,12 +169,10 @@ the both ends are connected. It means, it is circular.
 This is a big point. Adding the static `main_thread` and `curr_thread` variables
 to it, the whole data structure would look like Figure 1.
 
-
-<p class="image">
-<img src="images/ch_thread_thread.jpg" alt="(thread)"><br>
-Figure 1: the data structures to manage threads
-</p>
-
+<figure>
+  <img src="images/ch_thread_thread.jpg" alt="figure 1: the data structures to manage threads">
+  <figcaption>figure 1: the data structures to manage threads</figcaption>
+</figure>
 
 `main_thread` (main thread) means the thread existed at the time when a program
 started, meaning the "first" thread. `curr_thread` is obviously `current thread`,
@@ -822,10 +820,10 @@ FD_ISSET(fd, &set)  /* true if fd is in the set */
 and when we want to check  n-th file descriptor, the n-th bit is set (Figure 2).
 
 
-<div class="image">
-<img src="images/ch_thread_fdset.jpg" alt="(fdset)"><br>
-Figure 2: fd_set
-</div>
+<figure>
+  <img src="images/ch_thread_fdset.jpg" alt="figure 2: `fd_set`">
+  <figcaption>figure 2: <code class="inline">fd_set</code></figcaption>
+</figure>
 
 
 I'll show a simple usage example of `select`.
@@ -1251,10 +1249,10 @@ this pair of `setjmp()` and `longjmp()` is not completed in this thread.
 In other words, there's a chain of `setjmp`/`longjmp()` as follows. (Figure 3)
 
 
-<div class="image">
-<img src="images/ch_thread_setjmploop.jpg" alt="(setjmploop)"><br>
-Figure 3: the backstitch by chaining of `setjmp`
-</div>
+<figure>
+  <img src="images/ch_thread_setjmploop.jpg" alt="figure 3: the backstitch by chaining of `setjmp`">
+  <figcaption>figure 3: the backstitch by chaining of <code class="inline">setjmp</code></figcaption>
+</figure>
 
 
 We can restore around the CPU registers with `setjmp()`/`longjmp()`,
@@ -1317,10 +1315,10 @@ it is because both a stack extending higher and a stack extending lower are
 possible. (Figure 4)
 
 
-<div class="image">
-<img src="images/ch_thread_twodirection.jpg" alt="(twodirection)"><br>
-Fig.4: a stack extending above and a stack extending below
-</div>
+<figure>
+  <img src="images/ch_thread_twodirection.jpg" alt="figure 4: a stack extending above and a stack extending below">
+  <figcaption>figure 4: a stack extending above and a stack extending below</figcaption>
+</figure>
 
 
 After that, the rest is allocating a memory in where `th->stkptr` points to and

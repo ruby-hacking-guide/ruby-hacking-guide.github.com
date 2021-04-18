@@ -431,7 +431,7 @@ Each element of `heap` is each `slot` (Figure 9).
 
 <figure>
 	<img src="images/ch_gc_heapitems.jpg" alt="figure 9: `heaps`, `heap`, `slot`">
-	<figcaption>figure 9: `heaps`, `heap`, `slot`</figcaption>
+	<figcaption>figure 9: <code class="inline">heaps</code>, <code class="inline">heap</code>, <code class="inline">slot</code></figcaption>
 </figure>
 
 The length of `heaps` is `heap_length` and it can be changed. The number of
@@ -441,7 +441,7 @@ Figure 10 shows the structure of the object heap.
 
 <figure>
 	<img src="images/ch_gc_heaps.jpg" alt="figure 10: conceptual diagram of `heaps` in memory">
-	<figcaption>figure 10: conceptual diagram of `heaps` in memory</figcaption>
+	<figcaption>figure 10: conceptual diagram of <code class="inline">heaps</code> in memory</figcaption>
 </figure>
 
 This structure has a necessity to be this way.

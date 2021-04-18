@@ -664,7 +664,7 @@ vertical direction is inheritance (the superclasses are above).
 
 <figure>
 	<img src="images/ch_class_addsclass.png" alt="figure 1: `rb_singleton_class`">
-	<figcaption>figure 1: `rb_singleton_class`</figcaption>
+	<figcaption>figure 1: <code class="inline">rb_singleton_class</code></figcaption>
 </figure>
 
 When comparing the first and last part of this diagram, you can

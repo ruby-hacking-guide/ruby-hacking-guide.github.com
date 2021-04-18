@@ -1116,7 +1116,7 @@ call `puts` and `p` also at the toplevel.
 
 <figure>
 	<img src="images/ch_minimum_Kernel.jpg" alt="figure 10: `main`, `Object` and `Kernel`">
-	<figcaption>figure 10: `main`, `Object` and `Kernel`</figcaption>
+	<figcaption>figure 10: <code class="inline">main</code>, <code class="inline">Object</code> and <code class="inline">Kernel</code></figcaption>
 </figure>
 
 Thus `p` isn't a function, it's a method. Just because

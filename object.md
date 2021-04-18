@@ -37,7 +37,7 @@ the pointer type will always be `VALUE` (figure 1).
 
 <figure>
 	<img src="images/ch_object_value.png" alt="figure 1: `VALUE` and struct">
-	<figcaption>figure 1: `VALUE` and struct</figcaption>
+	<figcaption>figure 1: <code class="inline">VALUE</code> and struct</figcaption>
 </figure>
 
 Here is the definition of `VALUE`:
@@ -142,7 +142,7 @@ of the type of struct pointed to by `VALUE`.
 
 <figure>
 	<img src="images/ch_object_rbasic.png" alt="figure 3: `struct RBasic`">
-	<figcaption>figure 3: `struct RBasic`</figcaption>
+	<figcaption>figure 3: <code class="inline">struct RBasic</code></figcaption>
 </figure>
 
 Because it is purposefully designed this way,
@@ -228,7 +228,7 @@ because this is prepared for the time when you will be wondering about it later.
 
 <figure>
 	<img src="images/ch_object_flags.png" alt="figure 5: Use of `flags`">
-	<figcaption>figure 5: Use of `flags`</figcaption>
+	<figcaption>figure 5: Use of <code class="inline">flags</code></figcaption>
 </figure>
 
 When looking at the diagram, it looks like that 21 bits are not used on 32 bit
@@ -712,7 +712,7 @@ solved by using a global `st_table`, `generic_iv_table` (figure 7).
 
 <figure>
 	<img src="images/ch_object_givtable.png" alt="figure 7: `generic_iv_table`">
-	<figcaption>figure 7: `generic_iv_table`</figcaption>
+	<figcaption>figure 7: <code class="inline">generic_iv_table</code></figcaption>
 </figure>
 
 Let's see this in practice.
@@ -1198,5 +1198,5 @@ after we'll finish chapter 5 "Garbage collection."
 
 <figure>
 	<img src="images/ch_object_rdata.png" alt="figure 8: Representation of `struct RData`">
-	<figcaption>figure 8: Representation of `struct RData`</figcaption>
+	<figcaption>figure 8: Representation of <code class="inline">struct RData</code></figcaption>
 </figure>

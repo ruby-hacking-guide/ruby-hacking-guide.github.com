@@ -158,10 +158,10 @@ It won't be so much trouble if we'll keep focus on around `nd_type`.
 Fig.1 shows how it seems like.
 
 
-<p class="image">
-<img src="images/ch_syntree_flagUsage.jpg" alt="(flagUsage)"><br>
-Fig.1: The usage of RNode.flags
-</p>
+<figure>
+  <img src="images/ch_syntree_flagUsage.jpg" alt="figure 1: The usage of `RNode.flags`">
+  <figcaption>figure 1: The usage of <code class="inline">RNode.flags</code></figcaption>
+</figure>
 
 
 And, since macros cannot be used from debuggers,
@@ -247,10 +247,10 @@ when subtracting 1. We can eventually understand that `NODE_LMASK` is a sequence
 filled with 1 whose size is the number of the bits that are still available.
 
 
-<p class="image">
-<img src="images/ch_syntree_lmask.jpg" alt="(lmask)"><br>
-Fig.2: `NODE_LMASK`
-</p>
+<figure>
+  <img src="images/ch_syntree_lmask.jpg" alt="figure 2: `NODE_LMASK`">
+  <figcaption>figure 2: <code class="inline">NODE_LMASK</code></figcaption>
+</figure>
 
 
 
@@ -268,10 +268,10 @@ leaves only the unused space. Fig.3 shows how `flags` is used. Since `FL_USHIFT`
 is 11, in 32-bit machine 32-(11+8)=13 bits are available for the line number.
 
 
-<p class="image">
-<img src="images/ch_syntree_flags.jpg" alt="(flags)"><br>
-Fig.3: How `flags` are used at `NODE`
-</p>
+<figure>
+  <img src="images/ch_syntree_flags.jpg" alt="figure 3 How `flags` are used at `NODE`">
+  <figcaption>figure 3 How <code class="inline">flags</code> are used at <code class="inline">NODE</code></figcaption>
+</figure>
 
 
 ... This means, if the line numbers becomes beyond 2^13=8192,
@@ -449,10 +449,10 @@ But since these explanation in text are probably not intuitive,
 I recommend you to also check Fig.4 at the same time.
 
 
-<p class="image">
-<img src="images/ch_syntree_stree.jpg" alt="(stree)"><br>
-Fig.4: Syntax Tree
-</p>
+<figure>
+  <img src="images/ch_syntree_stree.jpg" alt="figure 4: Syntax Tree">
+  <figcaption>figure 4: Syntax Tree</figcaption>
+</figure>
 
 
 I'll explain the meaning of each node. `NODE_CALL` is a Function CALL.
@@ -921,10 +921,10 @@ We can see the list of `NODE_BLOCK` is created and `NODE_NEWLINE` are attached
 as headers. (Fig.5)
 
 
-<p class="image">
-<img src="images/ch_syntree_blocklist.jpg" alt="(blocklist)"><br>
-Fig.5: `NODE_BLOCK` and `NODE_NEWLINE`
-</p>
+<figure>
+  <img src="images/ch_syntree_blocklist.jpg" alt="figure 5: `NODE_BLOCK` and `NODE_NEWLINE`">
+  <figcaption>figure 5: <code class="inline">NODE_BLOCK</code> and <code class="inline">NODE_NEWLINE</code></figcaption>
+</figure>
 
 
 It means, for each statement (`stmt`) `NODE_NEWLINE` is attached,
@@ -1011,13 +1011,10 @@ because in this way we don't have to traverse all elements when adding an
 element to the tail (Fig.6).
 Conversely speaking, when you need to add elements later, `NODE_BLOCK` is suitable.
 
-
-<p class="image">
-<img src="images/ch_syntree_append.jpg" alt="(append)"><br>
-Fig.6: Appending is easy.
-</p>
-
-
+<figure>
+  <img src="images/ch_syntree_append.jpg" alt="figure 6: Appending is easy">
+  <figcaption>figure 6: Appending is easy</figcaption>
+</figure>
 
 
 ### The two types of lists
@@ -1406,13 +1403,10 @@ However, I'd like to cover the whole picture at least,
 so I finish this section by just showing the call graph of the relevant functions (Fig.7).
 
 
-<p class="image">
-<img src="images/ch_syntree_callgraph.jpg" alt="(callgraph)"><br>
-Fig.7: the call graph of the value check functions
-</p>
-
-
-
+<figure>
+  <img src="images/ch_syntree_callgraph.jpg" alt="figure 7: the call graph of the value check functions">
+  <figcaption>figure 7: the call graph of the value check functions</figcaption>
+</figure>
 
 
 
@@ -1582,11 +1576,10 @@ Based on the observation we've done and the information that will be explained,
 Fig.8 illustrates the image of both structs while executing the parser.
 
 
-<p class="image">
-<img src="images/ch_syntree_localvars.jpg" alt="(localvars)"><br>
-Fig.8: The image of local variable tables at runtime
-</p>
-
+<figure>
+  <img src="images/ch_syntree_localvars.jpg" alt="figure 8: The image of local variable tables at runtime">
+  <figcaption>figure 8: The image of local variable tables at runtime</figcaption>
+</figure>
 
 
 
@@ -1666,12 +1659,10 @@ Based on the above observations, `local_push()` is at the beginning of the local
 `local_pop()` is used when ending the scope.
 This perfect scenario comes out. (Fig.9)
 
-
-<p class="image">
-<img src="images/ch_syntree_localtbl.jpg" alt="(localtbl)"><br>
-Fig.9: the flow of the local variable management
-</p>
-
+<figure>
+  <img src="images/ch_syntree_localtbl.jpg" alt="figure 9: the flow of the local variable management">
+  <figcaption>figure 9: the flow of the local variable management</figcaption>
+</figure>
 
 Then, let's look at the content of the function.
 
@@ -1807,11 +1798,10 @@ What is the meaning of the return value of this function? `lvtbl->tbl` seems an
 array of the variables, so there're one-to-one correspondences between the
 variable names and "their index - 1 (`cnt-1`)". (Fig.10)
 
-
-<p class="image">
-<img src="images/ch_syntree_lvtbltbl.jpg" alt="(lvtbltbl)"><br>
-Fig.10: The correspondences between the variable names and the return values
-</p>
+<figure>
+  <img src="images/ch_syntree_lvtbltbl.jpg" alt="figure 10: The correspondences beween the variable names and the return values">
+  <figcaption>figure 10: The correspondences beween the variable names and the return values</figcaption>
+</figure>
 
 
 Moreover, this return value is calculated so that the start point becomes 0,
@@ -1904,13 +1894,10 @@ at `local_pop()`. In other words, it holds the number of the local variables.
 The index 1 or more hold the local variable names defined in the scope.
 Fig.11 shows the final appearance we expect.
 
-
-<p class="image">
-<img src="images/ch_syntree_tbl.jpg" alt="(tbl)"><br>
-Fig.11: correspondences between local variable names and the return values
-</p>
-
-
+<figure>
+  <img src="images/ch_syntree_tbl.jpg" alt="figure 11: correspondences beween local variable names and the return values">
+  <figcaption>figure 11: correspondences beween local variable names and the return values</figcaption>
+</figure>
 
 
 
@@ -2116,10 +2103,10 @@ iter {
 Fig.12 shows the `ruby_dyna_vars` in this situation.
 
 
-<p class="image">
-<img src="images/ch_syntree_dynavars.jpg" alt="(dynavars)"><br>
-Fig.12: `ruby_dyna_vars` when all scopes are finished to be parsed
-</p>
+<figure>
+  <img src="images/ch_syntree_dynavars.jpg" alt="figure 12: `ruby_dyna_vars` when all scopes are finished to be parsed">
+  <figcaption>figure 12: <code class="inline">ruby_dyna_vars</code> when all scopes are finished to be parsed</figcaption>
+</figure>
 
 
 This structure is fairly smart.

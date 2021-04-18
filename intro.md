@@ -965,7 +965,7 @@ it would be like Figure 1.
 
 <figure>
 	<img src="images/ch_abstract_build.jpg" alt="figure 1: The process until `Makefile` is created">
-	<figcaption>figure 1: The process until `Makefile` is created</figcaption>
+	<figcaption>figure 1: The process until <code class="inline">Makefile</code> is created</figcaption>
 </figure>
 
 For the readers who want to know more details,

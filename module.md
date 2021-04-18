@@ -43,11 +43,10 @@ consequence. This is why,
 even if a procedure is called anytime and any number of times,
 we only have to write its code once (Fig. 1).
 
-
-<p class="image">
-<img src="images/ch_module_stack.jpg" alt="(stack)"><br>
-Fig.1: What is changing is only the stack
-</p>
+<figure>
+  <img src="images/ch_module_stack.jpg" alt="figure 1: What is changing is only the stack">
+  <figcaption>figure 1: What is changing is only the stack</figcaption>
+</figure>
 
 
 The execution of Ruby is also basically nothing but chained calls of methods
@@ -141,11 +140,10 @@ general noun and `FRAME` when it means `struct FRAME`.
 First af all, since there's the `prev` member, you can infer that the stack is
 made of a linked list. (Fig.2)
 
-
-<p class="image">
-<img src="images/ch_module_framestack.jpg" alt="(framestack)"><br>
-Fig.2: `ruby_frame`
-</p>
+<figure>
+  <img src="images/ch_module_framestack.jpg" alt="figure 2: `ruby_frame`">
+  <figcaption>figure 2: <code class="inline">ruby_frame</code></figcaption>
+</figure>
 
 
 The fact that `ruby_xxxx` points to the top stack frame is common to all stacks
@@ -390,13 +388,10 @@ The break between blocks are similar to the one of the parser,
 it is expressed by a `RVarmap` (header) whose `id` is `0`.
 Details are deferred again. It will be explained in Chapter 16: Blocks.
 
-
-<p class="image">
-<img src="images/ch_module_vars.jpg" alt="(vars)"><br>
-Fig.3: `ruby_dyna_vars`
-</p>
-
-
+<figure>
+  <img src="images/ch_module_vars.jpg" alt="figure 3: `ruby_dyna_vars`">
+  <figcaption>figure 3: <code class="inline">ruby_dyna_vars</code></figcaption>
+</figure>
 
 
 ### `ruby_class`
@@ -468,10 +463,10 @@ end
 
 Fig.4 shows how `ruby_cref` is when evaluating the code (A).
 
-<p class="image">
-<img src="images/ch_module_crefstack.jpg" alt="(crefstack)"><br>
-Fig.4: `ruby_cref`
-</p>
+<figure>
+  <img src="images/ch_module_crefstack.jpg" alt="figure 4: `ruby_cref`">
+  <figcaption>figure 4: <code class="inline">ruby_cref</code></figcaption>
+</figure>
 
 
 However, illustrating this image everytime is tedious and its intention becomes unclear.
@@ -866,11 +861,10 @@ machine stack. What differentiate slightly is that the spaces of the stack
 frames are allocated in the heap, the machine stack is used in order to create
 the stack structure (Fig.5.).
 
-
-<p class="image">
-<img src="images/ch_module_scopestack.jpg" alt="(scopestack)"><br>
-Fig.5. The machine stack and the SCOPE Stack
-</p>
+<figure>
+  <img src="images/ch_module_scopestack.jpg" alt="figure 5: The machine stack and the SCOPE Stack">
+  <figcaption>figure 5: The machine stack and the SCOPE Stack</figcaption>
+</figure>
 
 
 Additionally, the flags like `SCOPE_` something repeatedly appearing in the
@@ -923,11 +917,10 @@ Because they are confusing, it's a good thing writing some comments such as
 "This is the variable name", "this is the value".
 The one with `tbl` is for the names.
 
-
-<p class="image">
-<img src="images/ch_module_localvars.jpg" alt="(localvars)"><br>
-Fig.6. `ruby_scope->local_vars`
-</p>
+<figure>
+  <img src="images/ch_module_localvars.jpg" alt="figure 6: `ruby_scope->local_vars`">
+  <figcaption>figure 6: <code class="inline">ruby_scope->local_vars</code></figcaption>
+</figure>
 
 
 Where is this `node` used?
@@ -1057,11 +1050,10 @@ However, the arguments of a method are obviously `VALUE` s and
 the GC could not find a `VALUE` if it is stored in the heap.
 Therefore, it is enforced that GC can find it through `NODE`.
 
-
-<p class="image">
-<img src="images/ch_module_tmpprotecttmp.jpg" alt="(tmpprotecttmp)"><br>
-Fig.7. anchor the space to the stack through `NODE`
-</p>
+<figure>
+  <img src="images/ch_module_tmpprotecttmp.jpg" alt="figure 7: anchor the space to the stack through `NODE`">
+  <figcaption>figure 7: anchor the space to the stack through <code class="inline">NODE</code></figcaption>
+</figure>
 
 
 On the contrary, in the environment with the true `alloca()`, we can naturally
@@ -1667,14 +1659,10 @@ and insert into the just pushed `ruby_frame->cbase`  (Fig.84)
 
 ... This is the mechanism. Complicated.
 
-
-
-<p class="image">
-<img src="images/ch_module_cbase.jpg" alt="(cbase)"><br>
-Fig 8. CREF Trasfer
-</p>
-
-
+<figure>
+  <img src="images/ch_module_cbase.jpg" alt="figure 8: CREF Transfer">
+  <figcaption>figure 8: CREF Transfer</figcaption>
+</figure>
 
 
 #### `ev_const_get()`
@@ -2033,10 +2021,10 @@ So, what it is doing here is adjusting to either `list` and `val` which is
 shorter and doing one-to-one assignments. (Fig.9)
 
 
-<p class="image">
-<img src="images/ch_module_massign.jpg" alt="(massign)"><br>
-Fig.9. assign when corresponded
-</p>
+<figure>
+  <img src="images/ch_module_massign.jpg" alt="figure 9: assign when corresponded">
+  <figcaption>figure 9: assign when corresponded</figcaption>
+</figure>
 
 
 (B) if there are remainders on the right-hand side, turn them into a Ruby

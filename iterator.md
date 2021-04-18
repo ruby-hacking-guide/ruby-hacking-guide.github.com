@@ -147,7 +147,7 @@ It's possible that the block is pushed for the previous method. (Figure 1)
 
 <figure>
 	<img src="images/ch_iterator_stacks.jpg" alt="figure 1: no one-to-one correspondence between `FRAME` and `BLOCK`">
-	<figcaption>figure 1: no one-to-one correspondence between `FRAME` and `BLOCK`</figcaption>
+	<figcaption>figure 1: no one-to-one correspondence between <code class="inline">FRAME</code> and <code class="inline">BLOCK</code></figcaption>
 </figure>
 
 
@@ -666,7 +666,7 @@ If we focus on there, we can see a link is always pushed in at the "next" to
 
 <figure>
 	<img src="images/ch_iterator_dynavarseval.jpg" alt="figure 4: the structure of `ruby_dyna_vars`">
-	<figcaption>figure 4: the structure of `ruby_dyna_vars`</figcaption>
+	<figcaption>figure 4: the structure of <code class="inline">ruby_dyna_vars</code></figcaption>
 </figure>
 
 
@@ -794,7 +794,7 @@ Therefore, if `0x10` did not exist, `state` would be the same value as `TAG_xxxx
 
 <figure>
 	<img src="images/ch_iterator_dst.jpg" alt="figure 6: `block->tag->dst`">
-	<figcaption>figure 6: `block->tag->dst`</figcaption>
+	<figcaption>figure 6: <code class="inline">block->tag->dst</code></figcaption>
 </figure>
 
 

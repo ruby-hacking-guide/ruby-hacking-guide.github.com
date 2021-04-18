@@ -264,7 +264,7 @@ reduced during parsing.
 
 <figure>
 	<img src="images/ch_parser_exprloop.jpg" alt="figure 2: `expr` demotion">
-	<figcaption>figure 2: `expr` demotion</figcaption>
+	<figcaption>figure 2: <code class="inline">expr</code> demotion</figcaption>
 </figure>
 
 The next rule is also particularly interesting.
@@ -281,7 +281,7 @@ a `primary` with this rule. The next figure illustrates this rule in action.
 
 <figure>
 	<img src="images/ch_parser_progloop.jpg" alt="figure 3: `program` demotion">
-	<figcaption>figure 3: `program` demotion</figcaption>
+	<figcaption>figure 3: <code class="inline">program</code> demotion</figcaption>
 </figure>
 
 This means that for any syntax element in Ruby, if we surround it with

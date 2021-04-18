@@ -449,10 +449,10 @@ returned back to the thread where it was called. When the file name
 disappears from `loading_tbl`, the loading is finished so the function
 can end. The `curr_thread` check is not to lock itself (figure 1).
 
-<div class="image">
-<img src="images/ch_load_loadwait.jpg" alt="(loadwait)"><br>
-Figure 1: Serialisation of loads
-</div>
+<figure>
+    <img src="images/ch_load_loadwait.jpg" alt="figure 1: Serialisation of loads">
+    <figcaption>figure 1: Serialisation of loads</figcaption>
+</figure>
 
 Loading of Ruby programs
 ------------------------
@@ -808,13 +808,12 @@ entirely, and connecting them each other.
 In other words, pulling the lines from all of "the necessary names",
 each line must be connected to one of "the providing names" of a particular
 object file. (Figure. 2)
-To put this in technical terms,
-it is resolving undefined symbols.
+To put this in technical terms, it is resolving undefined symbols.
 
-<div class="image">
-<img src="images/ch_load_link.jpg" alt="(link)"><br>
-Figure 2: object files and linking
-</div>
+<figure>
+    <img src="images/ch_load_link.jpg" alt="figure 2: object files and linking">
+    <figcaption>figure 2: object files and linking</figcaption>
+</figure>
 
 Logically this is how it is, but in reality a program can't run only because of
 this. At least, C programs cannot run without converting the names to the

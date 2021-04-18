@@ -120,8 +120,8 @@ code. This file can then be compiled as usual (figure 1 shows the full
 process).
 
 <figure>
-	<img src="images/ch_yacc_build.jpg" alt="figure 1: Figure 1: File dependencies">
-	<figcaption>figure 1: Figure 1: File dependencies</figcaption>
+	<img src="images/ch_yacc_build.jpg" alt="figure 1: File dependencies">
+	<figcaption>figure 1: File dependencies</figcaption>
 </figure>
 
 The output file name is always `y.tab.c` and can't be changed. The
@@ -855,10 +855,10 @@ I'd like you to check one by one.
 all of these variables that become the interfaces are of type `YYSTYPE`.
 
 
-<div class="image">
-<img src="images/ch_yacc_yaccvars.jpg" alt="(yaccvars)"><br>
-Figure 2: Relationships among `yacc` related variables & functions
-</div>
+<figure>
+    <img src="images/ch_yacc_yaccvars.jpg" alt="figure 2: Relationships among `yacc` related variables & functions">
+    <figcaption>figure 2: Relationships among <code class="inline">yacc</code> related variables & functions</figcaption>
+</figure>
 
 
 

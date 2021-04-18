@@ -807,24 +807,19 @@ The ordinary functions return only once for each call.
 However, it's possible `setjmp()` returns twice.
 Is it helpful to grasp the concept if I say that it is something like `fork()`?
 
-
-
-<p class="image">TODO
-<img src="images/ch_evaluator_setjmp.jpg" alt="(setjmp)"><br>
-Fig.2: `setjmp()` `longjmp()` Image
-</p>
-
+<figure>
+  <img src="images/ch_evaluator_setjmp.jpg" alt="figure 2: `setjmp()` `longjmp()` Image">
+  <figcaption>figure 2: <code class="inline">setjmp()</code> <code class="inline">longjmp()</code> Image</figcaption>
+</figure>
 
 Now, we've learned about `setjmp()` as a preparation.
 In `eval.c`, `EXEC_TAG` corresponds to `setjmp()` and `JUMP_TAG()` corresponds
 to `longjmp()` respectively. (Fig.3)
 
-
-<p class="image">
-<img src="images/ch_evaluator_jumptag.jpg" alt="(jumptag)"><br>
-Fig.3: "tag jump" image
-</p>
-
+<figure>
+  <img src="images/ch_evaluator_jumptag.jpg" alt="figure 3: &quot;tag jump&quot; image">
+  <figcaption>figure 3: "tag jump" image</figcaption>
+</figure>
 
 Take a look at this image, it seems that `EXEC_TAG()` does not have any arguments.
 Where has `jmp_buf` gone?
@@ -905,12 +900,10 @@ and its cost of the memory allocation is next to nothing.
 This technique is only possible because the `ruby` evaluator is made of
 recursive calls of `rb_eval()`.
 
-
-
-<p class="image">
-<img src="images/ch_evaluator_tagstack.jpg" alt="(tagstack)"><br>
-Fig.4: the tag stack is embedded in the machine stack
-</p>
+<figure>
+  <img src="images/ch_evaluator_tagstack.jpg" alt="figure 4: the tag stack is embedded in the machine stack">
+  <figcaption>figure 4: the tag stack is embedded in the machine stack</figcaption>
+</figure>
 
 
 Because of this implementation, it's necessary that `PUSH_TAG` and `POP_TAG`
@@ -948,11 +941,10 @@ After that, it executes the main body by calling `rb_eval()`
 recursively. If there's `break` or `next`, it does `JUMP_TAG()` (`longjmp`).
 Then, it can go back to the start point of the `while` loop. (Fig.5)
 
-
-<p class="image">TODO
-<img src="images/ch_evaluator_whilejmp.jpg" alt="(whilejmp)"><br>
-Fig.5: the implementation of `while` by using "tag jump"
-</p>
+<figure>
+  <img src="images/ch_evaluator_whilejmp.jpg" alt="figure 5: the implementation of `while` by using &quot;tag jump&quot;">
+  <figcaption>figure 5: the implementation of <code class="inline">while</code> by using "tag jump"</figcaption>
+</figure>
 
 
 Though `break` was taken as an example here, what cannot be implemented without
@@ -1260,18 +1252,12 @@ the return value can be passed to the next tag without particular thought.
 ```
 
 
-
 This can probably be depicted as Fig.6.
 
-
-<p class="image">
-<img src="images/ch_evaluator_usetag.jpg" alt="(usetag)"><br>
-Fig.6: Transferring the return value
-</p>
-
-
-
-
+<figure>
+  <img src="images/ch_evaluator_usetag.jpg" alt="figure 6: Transferring the return value">
+  <figcaption>figure 6: Transferring the return value</figcaption>
+</figure>
 
 
 Exception
