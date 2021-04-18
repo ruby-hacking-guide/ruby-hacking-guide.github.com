@@ -645,8 +645,8 @@ m(*[1,2,3])    # We could have written the expanded form in the first place...
 m(*mcall())
 ```
 
-The @*@ argument can be used together with ordinary arguments,
-but the @*@ argument must come last.
+The `*` argument can be used together with ordinary arguments,
+but the `*` argument must come last.
 Otherwise, the correspondences to parameter variables cannot be determined in a
 single way.
 
@@ -1127,7 +1127,7 @@ variables `i` are different.
 }
 ```
 
-Inside the block the @i@ inside overshadows the @i@ outside.
+Inside the block the `i` inside overshadows the `i` outside.
 That's why it's called shadowing.
 
 But what happens with block local variables of Ruby where there's no shadowing.
@@ -1143,9 +1143,9 @@ end
 p i           # 1 the change is preserved
 ```
 
-Even when we assign @i@ inside the block,
+Even when we assign `i` inside the block,
 if there is the same name outside, it would be used.
-Therefore when we assign to inside @i@, the value of outside @i@ would be
+Therefore when we assign to inside `i`, the value of outside `i` would be
 changed. On this point there
 came many complains: "This is error prone. Please do shadowing."
 Each time there's nearly flaming but till now no conclusion was reached.
@@ -1215,7 +1215,7 @@ end
 end
 ```
 
-@yield@ calls the block. At this point control is passed to the block,
+`yield` calls the block. At this point control is passed to the block,
 when the execution of the block finishes it returns back to the same
 location. Think about it like a characteristic function call. When the
 present method does not have a block a runtime error will occur.
@@ -1238,15 +1238,15 @@ p twice.call(9)   # 18 will be printed
 ```
 
 In short, it is like a function. As might be expected from the fact it is
-created with @new@, the return value of @Proc.new@ is an instance
-of the @Proc@ class.
+created with `new`, the return value of `Proc.new` is an instance
+of the `Proc` class.
 
-@Proc.new@ looks surely like an iterator and it is indeed so.
-It is an ordinary iterator. There's only some mystic mechanism inside @Proc.new@
+`Proc.new` looks surely like an iterator and it is indeed so.
+It is an ordinary iterator. There's only some mystic mechanism inside `Proc.new`
 which turns an iterator block into an object.
 
-Besides there is a function style method @lambda@ provided which
-has the same effect as @Proc.new@. Choose whatever suits you.
+Besides there is a function style method `lambda` provided which
+has the same effect as `Proc.new`. Choose whatever suits you.
 
 ```TODO-lang
 twice = lambda {|n| n * 2 }
@@ -1254,13 +1254,13 @@ twice = lambda {|n| n * 2 }
 
 #### Iterators and `Proc`
 
-Why did we start talking all of a sudden about @Proc@? Because there
-is a deep relationship between iterators and @Proc@.
-In fact, iterator blocks and @Proc@ objects are quite the same thing.
+Why did we start talking all of a sudden about `Proc`? Because there
+is a deep relationship between iterators and `Proc`.
+In fact, iterator blocks and `Proc` objects are quite the same thing.
 That's why one can be transformed into the other.
 
-First, to turn an iterator block into a @Proc@ object
-one has to put an @&@ in front of the parameter name.
+First, to turn an iterator block into a `Proc` object
+one has to put an `&` in front of the parameter name.
 
 ```TODO-lang
 def print_block( &block )
@@ -1271,12 +1271,12 @@ print_block() do end   # Shows something like <Proc:0x40155884>
 print_block()          # Without a block nil is printed
 ```
 
-With an @&@ in front of the argument name, the block is transformed to
-a @Proc@ object and assigned to the variable. If the method is not an
-iterator (there's no block attached) @nil@ is assigned.
+With an `&` in front of the argument name, the block is transformed to
+a `Proc` object and assigned to the variable. If the method is not an
+iterator (there's no block attached) `nil` is assigned.
 
-And in the other direction, if we want to pass a @Proc@ to an iterator
-we also use @&@.
+And in the other direction, if we want to pass a `Proc` to an iterator
+we also use `&`.
 
 ```TODO-lang
 block = Proc.new {|i| p i }
@@ -1315,9 +1315,9 @@ always consists of some elements.
 
 ### `if`
 
-We probably do not need to explain the @if@ expression. If the conditional
+We probably do not need to explain the `if` expression. If the conditional
 expression is true, the body is executed. As explained in Part 1,
-every object except @nil@ and @false@ is true in Ruby.
+every object except `nil` and `false` is true in Ruby.
 
 ```TODO-lang
 if cond0 then
@@ -1332,7 +1332,7 @@ end
 ```
 
 `elsif`/`else`-clauses can be omitted. Each `then` as well.
-But there are some finer requirements concerning @then@.
+But there are some finer requirements concerning `then`.
 For this kind of thing, looking at some examples is the best way to understand.
 Here only thing I'd say is that the below codes are valid.
 
@@ -1360,7 +1360,7 @@ p(if false then 1 elsif true then 2 else 3 end)   #=> 2
 ```
 
 If there's no match, or the matched clause is empty,
-the value would be @nil@.
+the value would be `nil`.
 
 ```TODO-lang
 p(if false then 1 end)    #=> nil
@@ -1369,7 +1369,7 @@ p(if true  then   end)    #=> nil
 
 ### `unless`
 
-An @if@ with a negated condition is an @unless@.
+An `if` with a negated condition is an `unless`.
 The following two expressions have the same meaning.
 
 ```TODO-lang
@@ -1378,19 +1378,19 @@ unless cond then          if not (cond) then
 end                       end
 ```
 
-@unless@ can also have attached @else@ clauses but any @elsif@ cannot be
+`unless` can also have attached `else` clauses but any `elsif` cannot be
 attached.
-Needless to say, @then@ can be omitted.
+Needless to say, `then` can be omitted.
 
-@unless@ also has a value and its condition to decide is completely the same as
+`unless` also has a value and its condition to decide is completely the same as
 `if`. It means the entire value would be the value of the body of the matched
 clause. If there's no match or the matched clause is empty,
-the value would be @nil@.
+the value would be `nil`.
 
 ### `and && or ||`
 
-The most likely utilization of the @and@ is probably a boolean operation.
-For instance in the conditional expression of an @if@.
+The most likely utilization of the `and` is probably a boolean operation.
+For instance in the conditional expression of an `if`.
 
 ```TODO-lang
 if cond1 and cond2
@@ -1408,7 +1408,7 @@ invalid?(key) and return nil              return nil
                                         end
 ```
 
-@&&@ and @and@ have the same meaning. Different is the binding order.
+`&&` and `and` have the same meaning. Different is the binding order.
 
 ```TODO-lang
 method arg0 &&  arg1    # method(arg0 && arg1)
@@ -1420,17 +1420,17 @@ Basically the symbolic operator creates an expression which can be an argument
 The alphabetical operator creates an expression which cannot become
 an argument (`expr`).
 
-As for @and@, if the evaluation of the left hand side is true,
+As for `and`, if the evaluation of the left hand side is true,
 the right hand side will also be evaluated.
 
-On the other hand @or@ is the opposite of @and@. If the evaluation of the left hand
+On the other hand `or` is the opposite of `and`. If the evaluation of the left hand
 side is false, the right hand side will also be evaluated.
 
 ```TODO-lang
 valid?(key) or return nil
 ```
 
-@or@ and @||@ have the same relationship as @&&@ and @and@. Only the precedence is
+`or` and `||` have the same relationship as `&&` and `and`. Only the precedence is
 different.
 
 ### The Conditional Operator
@@ -1461,8 +1461,8 @@ while cond do
 end
 ```
 
-This is the simplest loop syntax. As long as @cond@ is true
-the body is executed. The @do@ can be omitted.
+This is the simplest loop syntax. As long as `cond` is true
+the body is executed. The `do` can be omitted.
 
 ```TODO-lang
 until io_ready?(id) do
@@ -1470,14 +1470,14 @@ until io_ready?(id) do
 end
 ```
 
-@until@ creates a loop whose condition definition is opposite.
+`until` creates a loop whose condition definition is opposite.
 As long as the condition is false it is executed.
-The @do@ can be omitted.
+The `do` can be omitted.
 
 Naturally there is also jump syntaxes to exit a loop.
-@break@ as in C/C++/Java is also @break@,
-but @continue@ is @next@.
-Perhaps @next@ has come from Perl.
+`break` as in C/C++/Java is also `break`,
+but `continue` is `next`.
+Perhaps `next` has come from Perl.
 
 ```TODO-lang
 i = 0
@@ -1492,7 +1492,7 @@ while true
 end
 ```
 
-And there is another Perlism: the @redo@.
+And there is another Perlism: the `redo`.
 
 ```TODO-lang
 while cond
@@ -1504,15 +1504,15 @@ end
 ```
 
 It will return to (A) and repeat from there.
-What differs from @next@ is it does not check the condition.
+What differs from `next` is it does not check the condition.
 
 I might come into the world top 100, if the amount of Ruby programs
-would be counted, but I haven't used @redo@ yet. It does not seem to be
+would be counted, but I haven't used `redo` yet. It does not seem to be
 necessary after all because I've lived happily despite of it.
 
 ### `case`
 
-A special form of the @if@ expression. It performs branching on a series of
+A special form of the `if` expression. It performs branching on a series of
 conditions. The following left and right expressions are identical in meaning.
 
 ```TODO-lang
@@ -1528,12 +1528,12 @@ else                           else
 end                            end
 ```
 
-The threefold equals @===@ is, as the same as the @==@, actually a method call.
+The threefold equals `===` is, as the same as the `==`, actually a method call.
 Notice that the receiver is the object on the left hand side. Concretely,
 if it is the `===` of an `Array`, it would check if it contains the `value`
 as its element.
 If it is a `Hash`, it tests whether it has the `value` as its key.
-If its is an regular expression, it tests if the @value@ matches.
+If its is an regular expression, it tests if the `value` matches.
 And so on.
 Since `case` has many grammatical elements,
 to list them all would be tedious, thus we will not cover them in this book.
@@ -1553,11 +1553,11 @@ In Ruby exceptions come in the form of the function style method `raise`.
 raise ArgumentError, "wrong number of argument"
 ```
 
-In Ruby exception are instances of the @Exception@ class and it's
+In Ruby exception are instances of the `Exception` class and it's
 subclasses. This form takes an exception class as its first argument
 and an error message as its second argument. In the above case
-an instance of @ArgumentError@ is created and "thrown". Exception
-object would ditch the part after the @raise@ and start to return upwards the
+an instance of `ArgumentError` is created and "thrown". Exception
+object would ditch the part after the `raise` and start to return upwards the
 method call stack.
 
 ```TODO-lang
@@ -1571,7 +1571,7 @@ raise_exception()
 
 If nothing blocks the exception it will move on and on and
 finally it will reach the top level.
-When there's no place to return any more, @ruby@ gives out a message and ends
+When there's no place to return any more, `ruby` gives out a message and ends
 with a non-zero exit code.
 
 ```TODO-lang
@@ -1580,10 +1580,10 @@ raise.rb:2:in `raise_exception': wrong number of argument (ArgumentError)
         from raise.rb:7
 ```
 
-However an @exit@ would be sufficient for this, and for an exception there
+However an `exit` would be sufficient for this, and for an exception there
 should be a way to set handlers.
-In Ruby, @begin@~@rescue@~@end@ is used for this.
-It resembles the @try@~@catch@ in C++ and Java.
+In Ruby, `begin`~`rescue`~`end` is used for this.
+It resembles the `try`~`catch` in C++ and Java.
 
 ```TODO-lang
 def raise_exception
@@ -1598,12 +1598,12 @@ rescue ArgumentError => err then
 end
 ```
 
-@rescue@ is a control structure which captures exceptions, it catches
+`rescue` is a control structure which captures exceptions, it catches
 exception objects of the specified class and its subclasses. In the
-above example, an instance of @ArgumentError@ comes flying into the place
-where @ArgumentError@ is targeted, so it matches this @rescue@.
-By @=>err@ the exception object will be assigned to the local variable
-@err@, after that the @rescue@ part is executed.
+above example, an instance of `ArgumentError` comes flying into the place
+where `ArgumentError` is targeted, so it matches this `rescue`.
+By `=>err` the exception object will be assigned to the local variable
+`err`, after that the `rescue` part is executed.
 
 ```TODO-lang
 % ruby rescue.rb
@@ -1624,9 +1624,9 @@ rescue ArgumentError => err then
 end
 ```
 
-We can omit the @=>err@ and the @then@ after @rescue@. We can also leave
+We can omit the `=>err` and the `then` after `rescue`. We can also leave
 out the exception class. In this case, it means as the same as when the
-@StandardError@ class is specified.
+`StandardError` class is specified.
 
 If we want to catch more exception classes, we can just write them in line.
 When we want to handle different errors differently, we can specify several
@@ -1643,9 +1643,9 @@ end
 
 When written in this way, a `rescue` clause that matches the exception class is
 searched in order from the top. Only the matched clause will be executed.
-For instance, only the clause of @IOError@ will be executed in the above case.
+For instance, only the clause of `IOError` will be executed in the above case.
 
-On the other hand, when there is an @else@ clause, it is executed
+On the other hand, when there is an `else` clause, it is executed
 only when there is no exception.
 
 ```TODO-lang
@@ -1658,7 +1658,7 @@ else
 end
 ```
 
-Moreover an @ensure@ clause will be executed in every case:
+Moreover an `ensure` clause will be executed in every case:
 when there is no exception, when there is an exception, rescued or not.
 
 ```TODO-lang
@@ -1670,12 +1670,12 @@ ensure   # this part will be executed anyway
 end
 ```
 
-By the way, this @begin@ expression also has a value. The value of the
-whole @begin@~@end@ expression is the value of the part which was executed
-last among @begin@/@rescue@/@else@ clauses.
+By the way, this `begin` expression also has a value. The value of the
+whole `begin`~`end` expression is the value of the part which was executed
+last among `begin`/`rescue`/`else` clauses.
 It means the last statement of the clauses aside from `ensure`.
-The reason why the @ensure@ is not counted is probably because
-@ensure@ is usually used for cleanup (thus it is not a main line).
+The reason why the `ensure` is not counted is probably because
+`ensure` is usually used for cleanup (thus it is not a main line).
 
 ### Variables and Constants
 
@@ -1691,20 +1691,20 @@ $gvar
 ```
 
 I want to add one more thing.
-Among the variables starting with @$@,
+Among the variables starting with `$`,
 there are special kinds.
 They are not necessarily global variables and
 some have strange names.
 
-First the Perlish variables @$_@ and @$~@. @$_@ saves the return
-value of @gets@ and other methods, @$~@ contains the last match
+First the Perlish variables `$_` and `$~`. `$_` saves the return
+value of `gets` and other methods, `$~` contains the last match
 of a regular expression.
 They are incredible variables which are local variables and simultaneously
 thread local variables.
 
-And the @$!@ to hold the exception object when an error is occured,
-the @$?@ to hold the status of a child process,
-the @$SAFE@ to represent the security level,
+And the `$!` to hold the exception object when an error is occured,
+the `$?` to hold the status of a child process,
+the `$SAFE` to represent the security level,
 they are all thread local.
 
 ### Assignment
@@ -1738,11 +1738,11 @@ var = var + 1
 ```
 
 it is a shortcut of this code.
-Differing from C, the Ruby @+@ is a method and thus part of the library.
-In C, the whole meaning of @+=@ is built in the language processor itself.
-And in `C++`, @+=@ and @*=@ can be wholly overwritten,
+Differing from C, the Ruby `+` is a method and thus part of the library.
+In C, the whole meaning of `+=` is built in the language processor itself.
+And in `C++`, `+=` and `*=` can be wholly overwritten,
 but we cannot do this in Ruby.
-In Ruby @+=@ is always defined as an operation of the combination of @+@ and assignment.
+In Ruby `+=` is always defined as an operation of the combination of `+` and assignment.
 
 We can also combine self assignment and an attribute-access-flavor method.
 The result more looks like an attribute.
@@ -1763,18 +1763,18 @@ If there is `+=` there might also be `++` but this is not the case.
 Why is that so? In Ruby assignment is dealt with on the language level.
 But on the other hand methods are in the library. Keeping these two,
 the world of variables and the world of objects, strictly apart is an
-important peculiarity of Ruby. If @++@ were introduced the separation
-might easily be broken. That's why there's no @++@
+important peculiarity of Ruby. If `++` were introduced the separation
+might easily be broken. That's why there's no `++`
 
-Some people don't want to go without the brevity of @++@. It has been
+Some people don't want to go without the brevity of `++`. It has been
 proposed again and again in the mailing list but was always turned down.
-I am also in favor of @++@ but not as much as I can't do without,
-and I have not felt so much needs of @++@ in Ruby in the first place,
+I am also in favor of `++` but not as much as I can't do without,
+and I have not felt so much needs of `++` in Ruby in the first place,
 so I've kept silent and decided to forget about it.
 
 ### `defined?`
 
-@defined?@ is a syntax of a quite different color in Ruby. It tells whether an
+`defined?` is a syntax of a quite different color in Ruby. It tells whether an
 expression value is "defined" or not at runtime.
 
 ```TODO-lang
@@ -1788,7 +1788,7 @@ evaluated. That said but of course you can't write an expression causing a parse
 error, and it could not detect if the expression is something containing a
 method call which raises an error in it.
 
-I would have loved to tell you more about @defined?@
+I would have loved to tell you more about `defined?`
 but it will not appear again in this book. What a pity.
 
 Statements
@@ -1882,7 +1882,7 @@ Defines the class `C` which inherits from `SuperClass`
 
 We talked quite extensively about classes in Part 1.
 This statement will be executed, the class to be defined will
-become @self@ within the statement, arbitrary expressions can be written within. Class
+become `self` within the statement, arbitrary expressions can be written within. Class
 definitions can be nested. They form the foundation of Ruby execution
 image.
 
@@ -1974,7 +1974,7 @@ ret1, ret2 = some_method()   # some_method might probably return several values
 ```
 
 Precisely speaking it is as follows.
-Here we'll assume @obj@ is (the object of) the value of the left hand side,
+Here we'll assume `obj` is (the object of) the value of the left hand side,
 
 * `obj` if it is an array
 * if its `to_ary` method is defined, it is used to convert `obj` to an array.
@@ -2008,7 +2008,7 @@ obj.attr0, obj.attr1, obj.attr2 = "a", "b", "c"
 ```
 
 And like with method parameters,
-@*@ can be used to receive in a bundle.
+`*` can be used to receive in a bundle.
 
 ```TODO-lang
 first, *rest = 0, 1, 2, 3, 4
@@ -2034,7 +2034,7 @@ Every time when the block is called,
 the `yield`ed arguments are multi-assigned to `i`.
 Here there's only one variable on the left hand side, so it does not look like multi assignment.
 But if there are two or more variables, it would a little more look like it.
-For instance, @Hash#each@ is an repeated operation on the pairs of keys and values,
+For instance, `Hash#each` is an repeated operation on the pairs of keys and values,
 so usually we call it like this:
 
 ```TODO-lang
@@ -2137,11 +2137,11 @@ The program ignores it as a mere comment.
 
 ### Multi-byte strings
 
-When the global variable @$KCODE@ is set to either @EUC@, @SJIS@
-or @UTF8@, strings encoded in euc-jp, shift_jis, or utf8 respectively can be
+When the global variable `$KCODE` is set to either `EUC`, `SJIS`
+or `UTF8`, strings encoded in euc-jp, shift_jis, or utf8 respectively can be
 used in a string of a data.
 
-And if the option @-Ke@, @-Ks@ or @-Ku@ is given to the @ruby@
+And if the option `-Ke`, `-Ks` or `-Ku` is given to the `ruby`
 command multibyte strings can be used within the Ruby code.
 String literals, regular expressions and even operator names
 can contain multibyte characters. Hence it is possible to do
