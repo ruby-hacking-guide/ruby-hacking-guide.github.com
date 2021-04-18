@@ -130,7 +130,7 @@ figcaption {
 }
 
 /* code inlined in text */
-code.highlighter-rouge {
+code.highlighter-rouge, code.inline {
     background: #33a2;
     border-radius: 2px;
     padding: 2px;

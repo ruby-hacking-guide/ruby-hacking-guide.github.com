@@ -76,12 +76,12 @@ But in that case, only the feature that we don't have to free it by ourselves
 is implemented and it does not necessarily allocate the memory on the machine
 stack. In fact, it often does not.
 If it were possible, a native
-@alloca()@ could have been implemented in the first place.
+`alloca()` could have been implemented in the first place.
 
-How can one implement @alloca()@ in C? The simplest implementation is:
-first allocate memory normally with @malloc()@. Then remember the pair of the function
-which called @alloca()@ and the assigned addresses in a global list.
-After that, check this list whenever @alloca()@ is called,
+How can one implement `alloca()` in C? The simplest implementation is:
+first allocate memory normally with `malloc()`. Then remember the pair of the function
+which called `alloca()` and the assigned addresses in a global list.
+After that, check this list whenever `alloca()` is called,
 if there are the memories allocated for the functions already finished,
 free them by using `free()`.
 
@@ -92,7 +92,7 @@ free them by using `free()`.
 </figure>
 
 
-The @missing/alloca.c@ of @ruby@ is an example of an emulated @alloca()@ .
+The `missing/alloca.c` of `ruby` is an example of an emulated `alloca()` .
 
 
 Overview
@@ -106,8 +106,8 @@ garbage collection.
 Objects are normally on top of the memory. Naturally, if a lot of objects are created, a lot of memory is used. If memory
 were infinite there would be no problem, but in reality there is always a memory
 limit. That's why the memory which is not
-used anymore must be collected and recycled. More concretely the memory received through @malloc()@ must be returned with
-@free()@.
+used anymore must be collected and recycled. More concretely the memory received through `malloc()` must be returned with
+`free()`.
 
 However, it would require a lot of efforts if the management of `malloc()` and
 `free()` were entirely left to programmers.
@@ -214,7 +214,7 @@ There are also two disadvantages.
 * In order to sweep every object must be touched at least once.
 * The load of the GC is concentrated at one point.
 
-When using the emacs editor, there sometimes appears " @Garbage collecting...@ "
+When using the emacs editor, there sometimes appears _Garbage collecting..._
 and it completely stops reacting. That is an example of the second disadvantage.
 But this point can be alleviated by modifying the algorithm (it is called incremental GC).
 
@@ -223,12 +223,12 @@ But this point can be alleviated by modifying the algorithm (it is called increm
 ### Stop and Copy
 
 Stop and Copy is a variation of Mark and Sweep. First, prepare several object
-areas. To simplify this description, assume there are two areas @A@ and @B@ here.
+areas. To simplify this description, assume there are two areas `A` and `B` here.
 And put an "active" mark on the one of the areas.
 When creating an object, create it only in the "active" one. (Figure 5)
 
 <figure>
-	<img src="images/ch_gc_stop2.jpg" alt="figure 5: Stop and Copy (1">
+	<img src="images/ch_gc_stop2.jpg" alt="figure 5: Stop and Copy (1)">
 	<figcaption>figure 5: Stop and Copy (1</figcaption>
 </figure>
 
@@ -236,10 +236,10 @@ When creating an object, create it only in the "active" one. (Figure 5)
 When the GC starts, follow links from the roots in the same manner as
 mark-and-sweep. However, move objects to another area instead of marking them
 (Figure 6). When all the links have been followed, discard the all elements
-which remain in @A@, and make @B@ active next.
+which remain in `A`, and make `B` active next.
 
 <figure>
-	<img src="images/ch_gc_stop3.jpg" alt="figure 6: Stop and Copy (2">
+	<img src="images/ch_gc_stop3.jpg" alt="figure 6: Stop and Copy (2)">
 	<figcaption>figure 6: Stop and Copy (2</figcaption>
 </figure>
 
@@ -317,7 +317,7 @@ For instance, the following function will cause a memory leak
 even if `ruby` is running.
 
 
-```TODO-lang
+```c
 void not_ok()
 {
     malloc(1024);  /* receive memory and discard it */
@@ -327,14 +327,14 @@ void not_ok()
 However, the following function does not cause a memory leak.
 
 
-```TODO-lang
+```c
 void this_is_ok()
 {
     rb_ary_new();  /* create a ruby array and discard it */
 }
 ```
 
-Since @rb_ary_new()@ uses Ruby's proper interface to allocate memory,
+Since `rb_ary_new()` uses Ruby's proper interface to allocate memory,
 the created object is under the management of the GC of `ruby`,
 thus `ruby` will take care of it.
 
@@ -343,7 +343,7 @@ thus `ruby` will take care of it.
 
 Since the substance of an object is a struct,
 managing objects means managing that structs.
-Of course the non-pointer objects like @Fixnum Symbol nil true false@ are
+Of course the non-pointer objects like `Fixnum Symbol nil true false` are
 exceptions, but I won't always describe about it to prevent descriptions
 from being redundant.
 
@@ -356,7 +356,7 @@ The declaration of that union is as follows.
 
 ▼ `RVALUE`
 
-```TODO-lang
+```c
  211  typedef struct RVALUE {
  212      union {
  213          struct {
@@ -412,7 +412,7 @@ Hereafter, let's call this an object heap.
 
 ▼ Object heap
 
-```TODO-lang
+```c
  239  #define HEAPS_INCREMENT 10
  240  static RVALUE **heaps;
  241  static int heaps_length = 0;
@@ -425,18 +425,18 @@ Hereafter, let's call this an object heap.
 (gc.c)
 ```
 
-@heaps@ is an array of arrays of @struct RVALUE@. Since it is `heapS`,
-the each contained array is probably each @heap@.
-Each element of @heap@ is each @slot@ (Figure 9).
+`heaps` is an array of arrays of `struct RVALUE`. Since it is `heapS`,
+the each contained array is probably each `heap`.
+Each element of `heap` is each `slot` (Figure 9).
 
 <figure>
 	<img src="images/ch_gc_heapitems.jpg" alt="figure 9: `heaps`, `heap`, `slot`">
 	<figcaption>figure 9: `heaps`, `heap`, `slot`</figcaption>
 </figure>
 
-The length of @heaps@ is @heap_length@ and it can be changed. The number of
-the slots actually in use is @heaps_used@. The length of each heap
-is in the corresponding @heaps_limits[index]@.
+The length of `heaps` is `heap_length` and it can be changed. The number of
+the slots actually in use is `heaps_used`. The length of each heap
+is in the corresponding `heaps_limits[index]`.
 Figure 10 shows the structure of the object heap.
 
 <figure>
@@ -473,9 +473,6 @@ According to these requirements, it is good that the object heap form a
 structure that the addresses are cohesive to some extent
 and whose position and total amount are not restricted at the same time.
 
-
-
-
 ### `freelist`
 
 
@@ -486,7 +483,7 @@ The `as.free.next` of `RVALUE` is the link used for this purpose.
 
 ▼ `freelist`
 
-```TODO-lang
+```c
  236  static RVALUE *freelist = 0;
 
 (gc.c)
@@ -506,7 +503,7 @@ I'll show the one simplified by omitting error handlings and castings.
 
 ▼ `add_heap()` (simplified)
 
-```TODO-lang
+```c
 static void
 add_heap()
 {
@@ -566,7 +563,7 @@ Let's confirm this by reading the `rb_newobj()` function to create an object.
 
 ▼ `rb_newobj()`
 
-```TODO-lang
+```c
  297  VALUE
  298  rb_newobj()
  299  {
@@ -612,7 +609,7 @@ and free objects that `FL_MARK` has not been set.
 
 ▼ `rb_gc_mark()`
 
-```TODO-lang
+```c
  573  void
  574  rb_gc_mark(ptr)
  575      VALUE ptr;
@@ -647,11 +644,11 @@ and free objects that `FL_MARK` has not been set.
 ```
 
 
-The definition of @RANY()@ is as follows. It is not particularly important.
+The definition of `RANY()` is as follows. It is not particularly important.
 
 ▼ `RANY()`
 
-```TODO-lang
+```c
  295  #define RANY(o) ((RVALUE*)(o))
 
 (gc.c)
@@ -663,7 +660,7 @@ checks for marked objects at the beginning,
 
 
 
-```TODO-lang
+```c
 obj->as.basic.flags |= FL_MARK;
 ```
 
@@ -683,8 +680,6 @@ and later it marks them once again.
 This code is omitted because it is not part of the main line.
 
 
-
-
 ### `rb_gc_mark_children()`
 
 
@@ -696,7 +691,7 @@ Here, it is shown but the simple enumerations are omitted:
 
 ▼ `rb_gc_mark_children()`
 
-```TODO-lang
+```c
  603  void
  604  rb_gc_mark_children(ptr)
  605      VALUE ptr;
@@ -774,7 +769,7 @@ This code is extracted from the second `switch` statement.
 
 ▼ `rb_gc_mark_children()` - `T_DATA`
 
-```TODO-lang
+```c
  789        case T_DATA:
  790          if (obj->as.data.dmark) (*obj->as.data.dmark)(DATA_PTR(obj));
  791          break;
@@ -804,7 +799,7 @@ In other words, "the roots of GC".
 
 ▼ `rb_gc()`
 
-```TODO-lang
+```c
 1110  void
 1111  rb_gc()
 1112  {
@@ -837,7 +832,7 @@ It means that the local variables and arguments of C are automatically marked.
 For example,
 
 
-```TODO-lang
+```c
 static int
 f(void)
 {
@@ -870,7 +865,7 @@ you don't have to think so much about it for now.
 
 ▼ Marking the Ruby Stack
 
-```TODO-lang
+```c
 1130      /* mark frame stack */
 1131      for (frame = ruby_frame; frame; frame = frame->prev) {
 1132          rb_gc_mark_frame(frame);
@@ -901,7 +896,7 @@ Next, it marks the CPU registers.
 
 ▼ marking the registers
 
-```TODO-lang
+```c
 1148      FLUSH_REGISTER_WINDOWS;
 1149      /* Here, all registers must be saved into jmp_buf. */
 1150      setjmp(save_regs_gc_mark);
@@ -931,7 +926,7 @@ to explicitly write out the registers.
 
 <p class="caption">▼ the original version of  `setjmp` </p>
 
-```TODO-lang
+```c
 1072  #ifdef __GNUC__
 1073  #if defined(__human68k__) || defined(DJGPP)
 1074  #if defined(__human68k__)
@@ -1000,7 +995,7 @@ it will be marked in the next code:
 
 <p class="caption">▼ mark the registers (shown again)</p>
 
-```TODO-lang
+```c
 1151      mark_locations_array((VALUE*)save_regs_gc_mark,
                                sizeof(save_regs_gc_mark) / sizeof(VALUE *));
 
@@ -1019,7 +1014,7 @@ I'll describe it in the next section.
 
 <p class="caption">▼ `mark_locations_array()` </p>
 
-```TODO-lang
+```c
  500  static void
  501  mark_locations_array(x, n)
  502      register VALUE *x;
@@ -1060,7 +1055,7 @@ it is `is_pointer_to_heap()`.
 
 <p class="caption">▼ `is_pointer_to_heap()` </p>
 
-```TODO-lang
+```c
  480  static inline int
  481  is_pointer_to_heap(ptr)
  482      void *ptr;
@@ -1124,7 +1119,7 @@ The content of the macro is like this:
 
 <p class="caption">▼ `FLUSH_REGISTER_WINDOWS` </p>
 
-```TODO-lang
+```c
  125  #if defined(sparc) || defined(__sparc__)
  126  # if defined(linux) || defined(__linux__)
  127  #define FLUSH_REGISTER_WINDOWS  asm("ta  0x83")
@@ -1165,7 +1160,7 @@ This time, it marks `VALUES`s in the machine stack.
 
 <p class="caption">▼ mark the machine stack</p>
 
-```TODO-lang
+```c
 1152      rb_gc_mark_locations(rb_gc_stack_start, (VALUE*)STACK_END);
 1153  #if defined(__human68k__)
 1154      rb_gc_mark_locations((VALUE*)((char*)rb_gc_stack_start + 2),
@@ -1205,7 +1200,7 @@ initializing the `ruby` interpretor.
 
 <p class="caption">▼ `Init_stack()` </p>
 
-```TODO-lang
+```c
 1193  void
 1194  Init_stack(addr)
 1195      VALUE *addr;
@@ -1262,7 +1257,7 @@ Next, we'll look at the `STACK_END` which is the macro to detect the end of the 
 
 <p class="caption">▼ `STACK_END` </p>
 
-```TODO-lang
+```c
  345  #ifdef C_ALLOCA
  346  # define SET_STACK_END VALUE stack_end; alloca(0);
  347  # define STACK_END (&stack_end)
@@ -1321,7 +1316,7 @@ The last one is the `rb_gc_mark_locations()` function that actually marks the st
 
 <p class="caption">▼ `rb_gc_mark_locations()` </p>
 
-```TODO-lang
+```c
  513  void
  514  rb_gc_mark_locations(start, end)
  515      VALUE *start, *end;
@@ -1361,7 +1356,7 @@ Finally, it marks the built-in `VALUE` containers of the interpretor.
 
 <p class="caption">▼ The other roots</p>
 
-```TODO-lang
+```c
 1159      /* mark the registered global variables */
 1160      for (list = global_List; list; list = list->next) {
 1161          rb_gc_mark(*list->varptr);
@@ -1434,7 +1429,7 @@ Take a look at the next part:
 
 <p class="caption">▼ at the beggining of `gc_sweep()` </p>
 
-```TODO-lang
+```c
  846  static void
  847  gc_sweep()
  848  {
@@ -1483,7 +1478,7 @@ This hook is called "finalizer".
 
 <p class="caption">▼ `gc_sweep()` Middle</p>
 
-```TODO-lang
+```c
  869      freelist = 0;
  870      final_list = deferred_final_list;
  871      deferred_final_list = 0;
@@ -1554,7 +1549,7 @@ It means that while executing the finalizers, one cannot use the hooked objects.
 
 <p class="caption">▼ `gc_sweep()` the rest</p>
 
-```TODO-lang
+```c
  910      if (final_list) {
  911          RVALUE *tmp;
  912
@@ -1597,7 +1592,7 @@ It's `rb_gc_force_recycle()`.
 
 <p class="caption">▼ `rb_gc_force_recycle()` </p>
 
-```TODO-lang
+```c
  928  void
  929  rb_gc_force_recycle(p)
  930      VALUE p;
@@ -1803,7 +1798,7 @@ For example, there's a possibility of disappearing in the following case:
 
 
 
-```TODO-lang
+```c
 VALUE str;
 str = rb_str_new2("...");
 printf("%s\n", RSTRING(str)->ptr);
@@ -1817,7 +1812,7 @@ There's no choice in this case
 
 
 
-```TODO-lang
+```c
 volatile VALUE str;
 ```
 
@@ -1901,7 +1896,7 @@ We've created objects many times. For example, in this way:
 
 
 
-```TODO-lang
+```ruby
 class C
 end
 C.new()
@@ -1916,7 +1911,7 @@ First, `C.new` is actually `Class#new`. Its actual body is this:
 
 <p class="caption">▼ `rb_class_new_instance()` </p>
 
-```TODO-lang
+```c
  725  VALUE
  726  rb_class_new_instance(argc, argv, klass)
  727      int argc;
@@ -1942,7 +1937,7 @@ It is `Class#allocate` by default and its actual body is `rb_class_allocate_inst
 
 <p class="caption">▼ `rb_class_allocate_instance()` </p>
 
-```TODO-lang
+```c
  708  static VALUE
  709  rb_class_allocate_instance(klass)
  710      VALUE klass;
@@ -1980,7 +1975,7 @@ This is summarized as follows:
 
 
 
-```TODO-lang
+```
 SomeClass.new            = Class#new (rb_class_new_instance)
     SomeClass.allocate       = Class#allocate (rb_class_allocate_instance)
     SomeClass#initialize     = Object#initialize (rb_obj_dummy)
@@ -2025,7 +2020,7 @@ This is how to use:
 
 
 
-```TODO-lang
+```c
 struct my *ptr = malloc(sizeof(struct my));  /* arbitrarily allocate in the heap */
 VALUE val = Data_Wrap_Struct(data_class, mark_f, free_f, ptr);
 ```
@@ -2046,7 +2041,7 @@ Let's also look at the content of `Data_Wrap_Struct()`.
 
 <p class="caption">▼ `Data_Wrap_Struct()` </p>
 
-```TODO-lang
+```c
  369  #define Data_Wrap_Struct(klass, mark, free, sval) \
  370      rb_data_object_alloc(klass, sval,             \
                                (RUBY_DATA_FUNC)mark,    \
@@ -2063,7 +2058,7 @@ Most of it is delegated to `rb_object_alloc()`.
 
 <p class="caption">▼ `rb_data_object_alloc()` </p>
 
-```TODO-lang
+```c
  310  VALUE
  311  rb_data_object_alloc(klass, datap, dmark, dfree)
  312      VALUE klass;
@@ -2107,7 +2102,7 @@ to do it, you can use the `Data_Get_Struct()` macro.
 
 <p class="caption">▼ `Data_Get_Struct()` </p>
 
-```TODO-lang
+```c
  378  #define Data_Get_Struct(obj,type,sval) do {\
  379      Check_Type(obj, T_DATA); \
  380      sval = (type*)DATA_PTR(obj);\
@@ -2168,7 +2163,7 @@ So,
 
 
 
-```TODO-lang
+```c
 rb_define_allocator(rb_cMy, my_allocate);
 ```
 

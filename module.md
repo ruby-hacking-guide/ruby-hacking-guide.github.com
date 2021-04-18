@@ -3,7 +3,8 @@ layout: default
 title: "Chapter 14: Context"
 ---
 
-h1(#chapter). Chapter 14: Context
+Chapter 14: Context
+===================
 
 
 The range covered by this chapter is really broad. First of all, I'll describe

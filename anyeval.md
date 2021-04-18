@@ -2,6 +2,7 @@
 layout: default
 title: "Chapter 17: Dynamic evaluation"
 ---
+
 Chapter 17: Dynamic evaluation
 ------------------------------
 

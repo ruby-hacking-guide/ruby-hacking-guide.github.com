@@ -557,7 +557,7 @@ It's at this time that the reference counter (the `counter` member of
 `struct global_variable`) is necessary. I explained the general idea of
 a reference counter in the previous section "Garbage
 collection". Reviewing it briefly, when a new reference to the
-structure is made, the counter in incremented by 1. When the reference
+structure is made, the counter is incremented by 1. When the reference
 is not used anymore, the counter is decreased by 1. When the counter
 reaches 0, the structure is no longer useful so `free()` can be
 called.

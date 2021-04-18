@@ -3,7 +3,8 @@ layout: default
 title: "Chapter 12: Syntax tree construction"
 ---
 
-h1(#chapter). Chapter 12: Syntax tree construction
+Chapter 12: Syntax tree construction
+====================================
 
 Node
 ====

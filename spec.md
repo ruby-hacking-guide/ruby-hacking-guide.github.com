@@ -2,7 +2,9 @@
 layout: default
 title: Ruby Language Details
 ---
-h1(#chapter). Chapter 8 : Ruby Language Details
+
+Chapter 8 : Ruby Language Details
+=================================
 
 I'll talk about the details of Ruby's syntax and evaluation,
 which haven't been covered yet. I didn't intend a complete exposition,

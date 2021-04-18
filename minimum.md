@@ -4,7 +4,8 @@ title: A Minimal Introduction to Ruby
 ---
 Translated by Sebastian Krause
 
-h1(#chapter). Chapter 1: Introduction
+Chapter 1: Introduction
+=======================
 
 A Minimal Introduction to Ruby
 ==============================
