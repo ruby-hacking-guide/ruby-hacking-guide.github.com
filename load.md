@@ -8,7 +8,7 @@ Chapter 18: Loading
 ===================
 
 Outline
-=======
+-------
 
 ### Interface
 
@@ -203,7 +203,7 @@ referred to as plug-ins, works. This is the most interesting part of this
 chapter, so I'd like to use as many pages as possible to talk about it.
 
 Searching the library
-=====================
+---------------------
 
 ### `rb_f_require()`
 
@@ -455,7 +455,7 @@ Figure 1: Serialisation of loads
 </div>
 
 Loading of Ruby programs
-========================
+------------------------
 
 ### `rb_load()`
 
@@ -698,7 +698,7 @@ dynamic links, and there are the other four `open`s.
 Thus it seems the three of them are useless.
 
 Loading of extension libraries
-==============================
+------------------------------
 
 ### `rb_f_require()`-`load_dyna`
 

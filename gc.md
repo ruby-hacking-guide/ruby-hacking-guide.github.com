@@ -5,10 +5,10 @@ title: Garbage Collection
 Translated by Sebastian Krause & ocha-
 
 Chapter 5: Garbage Collection
------------------------------
+=============================
 
 A conception of an executing program
-====================================
+------------------------------------
 
 It's all of a sudden but at the beginning of this chapter, we'll
 learn about the memory space of an executing program. In this chapter
@@ -96,7 +96,7 @@ The `missing/alloca.c` of `ruby` is an example of an emulated `alloca()` .
 
 
 Overview
-========
+--------
 
 From here on we can at last talk about the main subject of this chapter:
 garbage collection.
@@ -306,7 +306,7 @@ but because it sometimes invokes mark and sweep GC to check.
 
 
 Object Management
-=================
+-----------------
 
 Ruby's garbage collection is only concerned with ruby objects.
 Moreover, it only concerned with the objects created and managed by `ruby`.
@@ -589,7 +589,7 @@ And take a struct from `freelist`, zerofill it by `MEMZERO()`, and return it.
 
 
 Mark
-====
+----
 
 
 As described, `ruby`'s GC is Mark & Sweep.
@@ -1416,7 +1416,7 @@ Until here, the mark phase has been finished.
 
 
 Sweep
-=====
+-----
 
 
 ### The special treatment for `NODE`
@@ -1614,7 +1614,7 @@ several times in Part 2 and Part 3.
 
 
 Discussions
-===========
+-----------
 
 
 ### To free spaces
@@ -1835,7 +1835,7 @@ but it seems it could not be applied to `ruby` because its algorithm has a hole.
 
 
 When to invoke
-==============
+--------------
 
 
 ### Inside `gc.c`
@@ -1879,7 +1879,7 @@ that `NODE` cannot be garbage collected while compiling.
 
 
 Object Creation
-===============
+---------------
 
 
 We've finished about GC and come to be able to deal with the Ruby objects from

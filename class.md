@@ -6,13 +6,13 @@ title: Classes and modules
 Translated by Vincent ISAMBART
 
 Chapter 4: Classes and modules
-------------------------------
+==============================
 
 In this chapter, we'll see the details of the data structures created
 by classes and modules.
 
 Classes and methods definition
-==============================
+------------------------------
 
 First, I'd like to have a look at how Ruby classes are defined at the
 C level. This chapter investigates almost only particular
@@ -281,7 +281,7 @@ provided with `ruby`, that is to say not from a built-in library.
 ```
 
 Singleton classes
-=================
+-----------------
 
 ### `rb_define_singleton_method()`
 
@@ -759,7 +759,7 @@ What are singleton methods? They are methods defined in the singleton
 class of an object.
 
 Metaclasses
-===========
+-----------
 
 ### Inheritance of singleton methods
 
@@ -1173,7 +1173,7 @@ like figure 10.
 </figure>
 
 Class names
-===========
+-----------
 
 In this section, we will analyse how's formed the reciprocal
 conversion between class and class names, in other words
@@ -1445,7 +1445,7 @@ space. However, generally, there aren't many constants so even searching
 all constants does not take too much time.
 
 Include
-=======
+-------
 
 We only talked about classes so let's finish this chapter with
 something else and talk about module inclusion.

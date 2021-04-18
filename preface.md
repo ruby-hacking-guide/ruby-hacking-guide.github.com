@@ -74,7 +74,7 @@ the book that lets you practice such idealism exhaustively.
 who think so will increase because of this book.
 
 Target audience
-===============
+---------------
 
 Firstly, knowledge about the Ruby language isn't required. However, since the
 knowledge of the Ruby language is absolutely necessary to understand certain
@@ -91,7 +91,7 @@ object-oriented languages, you will probably have a difficult time.
 In this book, I tried to use many examples in Java and C++.
 
 Structure of this book
-======================
+----------------------
 
 This book has four main parts:
 
@@ -140,7 +140,7 @@ parentheses after the explanation indicates the difficulty gauge. They are ==(C)
 * Chapter19 — Describes the implementation of thread at the end of the core part. (A)
 
 Environment
-===========
+-----------
 
 This book describes on `ruby` 1.7.3 2002-09-12 version. It's attached on the
 CD-ROM. Choose any one of `ruby-rhg.tar.gz`, `ruby-rhg.lzh`, or `ruby-rhg.zip`
@@ -213,7 +213,7 @@ attempting to contact these people directly.  If there's any flaw in execution,
 please be advised to contact the author by e-mail: `aamine@loveruby.net`.
 
 Web site
-========
+--------
 
 The web site for this book is `http://i.loveruby.net/ja/rhg/`.
 I will add information about related programs and additional documentation, as
@@ -223,7 +223,7 @@ circumstance to publicize more chapters, and the whole contents of the book
 will be at this website at the end.
 
 Acknowledgment
-==============
+--------------
 
 First of all, I would like to thank Mr. Yukihiro Matsumoto. He is the author of
 Ruby, and he made it in public as an open source software.  Not only he

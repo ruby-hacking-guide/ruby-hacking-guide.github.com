@@ -4,10 +4,10 @@ title: "Chapter 16: Blocks"
 ---
 
 Chapter 16: Blocks
-------------------
+==================
 
 Iterator
-========
+--------
 
 
 In this chapter, `BLOCK`, which is the last big name among the seven Ruby stacks,
@@ -890,7 +890,7 @@ Hence, we need to check the previous one.
 
 
 `Proc`
-======
+------
 
 
 To describe a `Proc` object from the viewpoint of implementing,

@@ -6,10 +6,10 @@ title: Variables and constants
 Translated by Vincent ISAMBART
 
 Chapter 6: Variables and constants
-----------------------------------
+==================================
 
 Outline of this chapter
-=======================
+-----------------------
 
 ### Ruby variables
 
@@ -99,7 +99,7 @@ like "It behaves like this in this situation so its implementation
 couldn't be other then this!"
 
 Class variables
-===============
+---------------
 
 Class variables are variables that belong to classes. In Java or C++
 they are called static variables. They can be accessed from both the
@@ -169,7 +169,7 @@ level, the variable type is determined only by the prefix so there's
 no way to access a class variable called `@var` from Ruby.
 
 Constants
-=========
+---------
 
 It's a little abrupt but I'd like you to remember the members of
 `struct RClass`. If we exclude the `basic` member, `struct RClass`
@@ -438,7 +438,7 @@ evaluator is handled. Specifically, this search in other classes is done in the
 with the constants in the third part of the book.
 
 Global variables
-================
+----------------
 
 ### General remarks
 

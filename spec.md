@@ -16,7 +16,7 @@ reading this. A complete exposition can be found in the
 Readers who know Ruby can skip over this chapter.
 
 Literals
-========
+--------
 
 The expressiveness of Ruby's literals is extremely high.
 In my opinion, what makes Ruby a script language
@@ -487,7 +487,7 @@ From here on in this book,
 we'll completely forget about numerical values.
 
 Methods
-=======
+-------
 
 Let's talk about the definition and calling of methods.
 
@@ -963,7 +963,7 @@ Hence such method is very likely a method in which only procedures are written
 (like `sin`). That's why they are called module "functions".
 
 Iterators
-=========
+---------
 
 Ruby's iterators differ a bit from Java's or C++'s iterator classes
 or 'Iterator' design pattern. Precisely speaking, those iterators
@@ -1303,7 +1303,7 @@ end
 ```
 
 Expressions
-===========
+-----------
 
 "Expressions" in Ruby are things with which we can create other expressions or
 statements by combining with the others.
@@ -1792,7 +1792,7 @@ I would have loved to tell you more about @defined?@
 but it will not appear again in this book. What a pity.
 
 Statements
-==========
+----------
 
 A statement is what basically cannot be combined with the other syntaxes,
 in other words, they are lined vertically.
@@ -2107,7 +2107,7 @@ It's because the sign put up by `undef` prohibits any kind of searches.
 ((errata: It can be redefined by using `def`))
 
 Some more small topics
-======================
+----------------------
 
 ### Comments
 

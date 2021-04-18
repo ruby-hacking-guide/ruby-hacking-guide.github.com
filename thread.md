@@ -3,10 +3,10 @@ layout: default
 title: "Chapter 19: Threads"
 ---
 Chapter 19: Threads
--------------------
+===================
 
 Outline
-=======
+-------
 
 
 ### Ruby Interface
@@ -327,7 +327,7 @@ respectively.
 
 
 Trigger
-=======
+-------
 
 
 To begin with, it's the first point, when to switch threads.
@@ -699,7 +699,7 @@ after `THREAD_TICK` (=500) times going through `CHECK_INTS`.
 
 
 Scheduling
-==========
+----------
 
 
 The second point is to which thread to switch.
@@ -1146,7 +1146,7 @@ I'll start a new section.
 
 
 Context Switch
-==============
+--------------
 
 
 The last third point is thread-switch,

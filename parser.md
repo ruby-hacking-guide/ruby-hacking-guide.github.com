@@ -5,10 +5,10 @@ title: Parser
 Translated by Robert GRAVINA & ocha-
 
 Chapter 10: Parser
-------------------
+==================
 
 Outline of this chapter
-=======================
+-----------------------
 
 ### Parser construction
 
@@ -78,7 +78,7 @@ explained in this book.
 |`ID` implementation|Chapter 3 "Names and name tables"|Section 2 "`ID` and symbols"|
 
 General remarks about grammar rules
-===================================
+-----------------------------------
 
 ### Coding rules
 
@@ -1003,7 +1003,7 @@ That's why `yacc` could not be used for ordinary HTML at all.
 
 
 Scanner
-=======
+-------
 
 
 ### Parser Outline

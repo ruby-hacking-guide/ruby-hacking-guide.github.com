@@ -10,10 +10,10 @@ more effort in this translation than I could ever wish for. Without them,
 I would be still figuring out what `COND_LEXPOP()` actually does._
 
 Chapter 11 Finite-state scanner
--------------------------------
+===============================
 
 Outline
-=======
+-------
 
 In theory, the scanner and the parser are completely independent of each other
 – the scanner is supposed to recognize tokens, while the parser is supposed to
@@ -275,7 +275,7 @@ only appears in a limited number of places, not warranting any special
 attention.
 
 Line-break handling
-===================
+-------------------
 
 ### The problem
 
@@ -423,7 +423,7 @@ Note that `class` becomes `tIDENTIFIER` despite being a reserved word.
 This is discussed in the next section.
 
 Reserved words and identical method names
-=========================================
+-----------------------------------------
 
 ### The problem
 
@@ -585,7 +585,7 @@ danger to parsing here, but if this is forgotten, the scanner will not pass
 values to reserved words and value calculation will be disrupted.
 
 Modifiers
-=========
+---------
 
 ### The problem
 
@@ -726,7 +726,7 @@ if      rescue  unless  until   while
 ```
 
 The `do` conflict
-=================
+-----------------
 
 ### The problem
 
@@ -986,7 +986,7 @@ and `LEXPOP`. Basically, at this time it would be correct to say that
 `COND_LEXPOP()` has no meaning.
 
 `tLPAREN_ARG`(1)
-================
+----------------
 
 ### The problem
 
@@ -1343,7 +1343,7 @@ passing of arrays or passing of blocks. With this, the scope is now
 sufficiently broad.
 
 `tLPAREN_ARG`(2)
-================
+----------------
 
 ### The problem
 

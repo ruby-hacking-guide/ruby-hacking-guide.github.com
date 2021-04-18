@@ -4,10 +4,10 @@ title: Introduction
 ---
 
 Introduction
-------------
+============
 
 Characteristics of Ruby
-=======================
+-----------------------
 
 Some of the readers may have already been familiar with Ruby,
 but (I hope) there are also many readers who have not. First let's go though a
@@ -356,7 +356,7 @@ It's, say, probably the slowest of all user-level thread implementations in this
 The tendency of `ruby` implementation may be seen here the most clearly.
 
 Technique to read source code
-=============================
+-----------------------------
 
 Well. After an introduction of `ruby`, we are about to start reading source code. But wait.
 
@@ -643,7 +643,7 @@ features.
 * function cross-reference
 
 Build
-=====
+-----
 
 ### Target version
 
@@ -853,7 +853,7 @@ would be fairly long, so I'll explain it comprehensively in `doc/build.html` of
 the attached CD-ROM.
 
 Building Details
-================
+----------------
 
 Until here, it has been the `README`-like description.
 This time, let's look at exactly what is done by what we have been done.
@@ -1007,7 +1007,7 @@ libraries, but the extension libraries cannot be compiled without `ruby`.
 In order to resolve this dilemma, it uses `miniruby`.
 
 `CVS`
-=====
+-----
 
 The `ruby` archive included in the attached CD-ROM is,
 as the same as the official release package,
@@ -1131,7 +1131,7 @@ Regarding books which you can read in Japanese,
 I recommend translated "Open Source Development with CVS" Karl Fogel, Moshe Bar.
 
 The composition of `ruby`
-=========================
+-------------------------
 
 ### The physical structure
 

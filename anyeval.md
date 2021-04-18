@@ -4,10 +4,10 @@ title: "Chapter 17: Dynamic evaluation"
 ---
 
 Chapter 17: Dynamic evaluation
-------------------------------
+==============================
 
 Overview
-========
+--------
 
 I have already finished to describe about the mechanism of the evaluator by the
 previous chapter.
@@ -159,7 +159,7 @@ compiled when loading files.
 
 
 `eval`
-======
+------
 
 
 ### `eval()`
@@ -541,7 +541,7 @@ when it reaches the link created at the evaluator (`vars`).
 
 
 `instance_eval`
-===============
+---------------
 
 
 ### The Whole Picture

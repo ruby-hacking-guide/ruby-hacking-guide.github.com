@@ -5,10 +5,10 @@ title: YACC crash course
 Translated by Vincent ISAMBART & ocha-
 
 Chapter 9: `yacc` crash course
-------------------------------
+==============================
 
 Outline
-=======
+-------
 
 ### Parser and scanner
 
@@ -109,7 +109,7 @@ book" because of the dragon on its cover) by Alfred V. Aho, Ravi Sethi
 and Jeffrey D. Ullman.
 
 Grammar
-=======
+-------
 
 ### Grammar file
 
@@ -496,7 +496,7 @@ list:
 ```
 
 Construction of values
-======================
+----------------------
 
 This abstract talk lasted long enough so in this section I'd really
 like to go on with a more concrete talk.
@@ -900,7 +900,7 @@ the value of the embedded action will come out as `$3`.
 
 
 Practical Topics
-================
+----------------
 
 
 ### Conflicts

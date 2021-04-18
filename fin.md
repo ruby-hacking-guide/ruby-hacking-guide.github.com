@@ -3,10 +3,10 @@ layout: default
 ---
 
 Final Chapter: Ruby's future
-----------------------------
+============================
 
 Issues to be addressed
-======================
+----------------------
 
 `ruby` isn't 'completely finished' software. It's still being developed,
 there are still a lot of issues. Firstly, we want to try removing
@@ -167,7 +167,7 @@ cannot continue to use eternally, isn't it?
 
 
 `ruby` 2
-========
+--------
 
 Subsequently, on the other hand, I'll introduce the trend of the original `ruby`,
 how it is trying to counter these issues.
@@ -344,7 +344,7 @@ Therefore, it seems Rite will have its own `stdio`.
 
 
 Ruby Hacking Guide
-==================
+------------------
 
 
 So far, we've always acted as observers who look at `ruby` from outside.

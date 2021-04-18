@@ -4,13 +4,13 @@ title: "Chapter 15: Methods"
 ---
 
 Chapter 15: Methods
--------------------
+===================
 
 In this chapter, I'll talk about method searching and invoking.
 
 
 Searching methods
-=================
+-----------------
 
 
 ### Terminology
@@ -418,7 +418,7 @@ This is awesome. Apparently, the effect of "it is know as ..." is outstanding.
 
 
 Invocation
-==========
+----------
 
 ### `rb_call0()`
 

@@ -5,10 +5,10 @@ title: Objects - Structure of Ruby objects
 Translated by Vincent ISAMBART
 
 Chapter 2: Objects
-------------------
+==================
 
 Structure of Ruby objects
-=========================
+-------------------------
 
 ### Guideline
 
@@ -446,7 +446,7 @@ This value is used to express an undefined value in the interpreter. It can't
 (must not) be found at all at the Ruby level.
 
 Methods
-=======
+-------
 
 I already brought up the three important points of a Ruby object: having an
 identity, being able to call a method, and keeping data for each instance. In
@@ -557,7 +557,7 @@ from the second time it will be found without following `super` one by one.
 This cache and its search will be seen in the 15th chapter "Methods."
 
 Instance variables
-==================
+------------------
 
 In this section, I will explain the implementation of the third essential
 condition, instance variables.
@@ -899,7 +899,7 @@ Thus `FL_xxxx()` is designed to always return false for such object.
 Hence, objects that are `rb_special_const_p()` should be treated specially here.
 
 Object Structs
-==============
+--------------
 
 In this section, about the important ones among object structs,
 we'll briefly see their concrete appearances and how to deal with them.

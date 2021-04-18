@@ -18,7 +18,7 @@ behaviors of the variable definitions and the variable references.
 
 
 The Ruby stack
-==============
+--------------
 
 
 ### Context and Stack
@@ -512,7 +512,7 @@ are not stacks. Actually, most of them are not.
 
 
 Module Definition
-=================
+-----------------
 
 
 The @class@ statement and the @module@ statement and the singleton class
@@ -1240,7 +1240,7 @@ of "pushed".
 
 
 The method definition
-=====================
+---------------------
 
 
 As the next topic of the module definitions, let's look at the method definitions.
@@ -1518,7 +1518,7 @@ this time. It is used when having to do with @alias@.
 
 
 Assignment and Reference
-========================
+------------------------
 
 
 Come to think of it, most of the stacks are used to realize a variety of

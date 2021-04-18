@@ -6,10 +6,10 @@ title: Names and Name Table
 Translated by Clifford Escobar CAOILE
 
 Chapter 3: Names and Name Table
--------------------------------
+===============================
 
 `st_table`
-==========
+----------
 
 `st_table` has already appeared several times as a method table and an instance
 table. In this chapter let's look at the structure of the `st_table` in detail.
@@ -540,7 +540,7 @@ not registered will it be added. If there is a insertion, return 0. If there is
 no insertion, return a 1.
 
 `ID` and Symbols
-================
+----------------
 
 I've already discussed what an `ID` is. It is a correspondence between an
 arbitrary string of characters and a value. It is used to declare various

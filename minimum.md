@@ -8,7 +8,7 @@ Chapter 1: Introduction
 =======================
 
 A Minimal Introduction to Ruby
-==============================
+------------------------------
 
 Here the Ruby prerequisites are explained, which one needs to know
 in order to understand the first section.
@@ -24,7 +24,7 @@ I won't omit things even if I can. This way the syntax becomes more simple.
 I won't always say "We can omit this".
 
 Objects
-=======
+-------
 
 ### Strings
 
@@ -149,7 +149,7 @@ Here the method `downcase` is called on the return value of `"content".upcase()`
 There are no public fields (member variables) as in Java or C++. The object interface consists of methods only.
 
 The Program
-===========
+-----------
 
 ### Top Level
 
@@ -329,7 +329,7 @@ It wouldn't be wise if there were just `false`, there is also `true`.
 And it is of course true.
 
 Classes and Methods
-===================
+-------------------
 
 ### Classes
 
@@ -927,7 +927,7 @@ it would look like Fig.9.
 </figure>
 
 The Program revisited
-=====================
+---------------------
 
 Caution. This section is extremely important and explaining the elements which are
 not easy to mix with for programmers who have only used static languages before.
@@ -1201,7 +1201,7 @@ end
 ```
 
 More about Classes
-==================
+------------------
 
 ### The talk about Constants still goes on
 
@@ -1516,7 +1516,7 @@ B.new().print_cvar()   # Shows "ok"
 ```
 
 Global Variables
-================
+----------------
 
 At last there are also global variables. They can be referenced from
 everywhere and assigned everywhere. The first letter of the name is a `$`.

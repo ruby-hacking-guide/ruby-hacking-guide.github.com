@@ -7,7 +7,7 @@ Chapter 13: Structure of the evaluator
 ======================================
 
 Outline
-=======
+-------
 
 
 ### Interface
@@ -461,7 +461,7 @@ This is also not important, so we won't see this.
 
 
 `rb_eval()`
-===========
+-----------
 
 
 ### Outline
@@ -1275,7 +1275,7 @@ Fig.6: Transferring the return value
 
 
 Exception
-=========
+---------
 
 
 As the second example of the usage of "tag jump", we'll look at how exceptions

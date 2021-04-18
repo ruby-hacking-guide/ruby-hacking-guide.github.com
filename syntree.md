@@ -7,7 +7,7 @@ Chapter 12: Syntax tree construction
 ====================================
 
 Node
-====
+----
 
 
 ### @NODE@
@@ -354,7 +354,7 @@ a struct type that has the above seven members.
 
 
 Syntax Tree Construction
-========================
+------------------------
 
 
 The role of the parser is to convert the source code that is a byte sequence to a
@@ -1059,7 +1059,7 @@ I'd like you to recall this and think "Oh, this uses the length".
 
 
 Semantic Analysis
-=================
+-----------------
 
 
 As I briefly mentioned at the beginning of Part 2, there are two types of analysis
@@ -1411,7 +1411,7 @@ Fig.7: the call graph of the value check functions
 
 
 Local Variables
-===============
+---------------
 
 
 ### Local Variable Definitions
