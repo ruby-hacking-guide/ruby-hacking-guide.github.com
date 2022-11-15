@@ -2,19 +2,21 @@
 layout: default
 ---
 
-h1. Final Chapter: Ruby's future
+Final Chapter: Ruby's future
+============================
 
-h2. Issues to be addressed
+Issues to be addressed
+----------------------
 
-@ruby@ isn't 'completely finished' software. It's still being developed,
+`ruby` isn't 'completely finished' software. It's still being developed,
 there are still a lot of issues. Firstly, we want to try removing
 inherent problems in the current interpreter.
 
-The order of the topics is mostly in the same order as the chapters of 
+The order of the topics is mostly in the same order as the chapters of
 this book.
 
 
-h3. Performance of GC
+### Performance of GC
 
 The performance of the current GC might be
 "not notably bad, but not notably good".
@@ -41,78 +43,78 @@ However, if such application will actually be created in the future,
 there might be the necessity to consider Incremental GC.
 
 
-h3. Implementation of parser
+### Implementation of parser
 
-As we saw in Part 2, the implementation of @ruby@ parser has already utilized
-@yacc@'s ability to almost its limit, thus I can't think it can endure further
+As we saw in Part 2, the implementation of `ruby` parser has already utilized
+`yacc`'s ability to almost its limit, thus I can't think it can endure further
 expansions. It's all right if there's nothing planned to expand,
 but a big name "keyword argument" is planned next
 and it's sad if we could not express another demanded grammar because of the
-limitation of @yacc@.
+limitation of `yacc`.
 
 
-h3. Reuse of parser
+### Reuse of parser
 
-Ruby's parser is very complex. In particular, dealing with around @lex_state@
+Ruby's parser is very complex. In particular, dealing with around `lex_state`
 seriously is very hard. Due to this, embedding a Ruby program or creating a
 program to deal with a Ruby program itself is quite difficult.
 
-For example, I'm developing a tool named @racc@,
-which is prefixed with R because it is a Ruby-version @yacc@.
-With @racc@, the syntax of grammar files are almost the same as @yacc@
+For example, I'm developing a tool named `racc`,
+which is prefixed with R because it is a Ruby-version `yacc`.
+With `racc`, the syntax of grammar files are almost the same as `yacc`
 but we can write actions in Ruby.
 To do so, it could not determine the end of an action without parsing Ruby code
 properly, but "properly" is very difficult. Since there's no other choice,
 currently I've compromised at the level that it can parse "almost all".
 
 As another example which requires analyzing Ruby program,
-I can enumerate some tools like @indent@ and @lint@,
+I can enumerate some tools like `indent` and `lint`,
 but creating such tool also requires a lot efforts.
 It would be desperate if it is something complex like a refactoring tool.
 
 Then, what can we do? If we can't recreate the same thing,
-what if @ruby@'s original parser can be used as a component?
+what if `ruby`'s original parser can be used as a component?
 In other words, making the parser itself a library.
 This is a feature we want by all means.
 
-However, what becomes problem here is, as long as @yacc@ is used,
+However, what becomes problem here is, as long as `yacc` is used,
 we cannot make parser reentrant.
-It means, say, we cannot call @yyparse()@ recursively,
+It means, say, we cannot call `yyparse()` recursively,
 and we cannot call it from multiple threads.
 Therefore, it should be implemented in the way of not returning control to Ruby
 while parsing.
 
 
 
-h3. Hiding Code
+### Hiding Code
 
-With current @ruby@, it does not work without the source code of the program to
+With current `ruby`, it does not work without the source code of the program to
 run. Thus, people who don't want others to read their source code might have
 trouble.
 
 
-h3. Interpretor Object
+### Interpretor Object
 
-Currently each process cannot have multiple @ruby@ interpretors,
+Currently each process cannot have multiple `ruby` interpretors,
 this was discussed in Chapter 13.
 If having multiple interpretors is practically possible, it seems better,
 but is it possible to implement such thing?
 
 
-h3. The structure of evaluator
+### The structure of evaluator
 
-Current @eval.c@ is, above all, too complex.
+Current `eval.c` is, above all, too complex.
 Embedding Ruby's stack frames to machine stack could occasionally become the
-source of trouble, using @setjmp() longjmp()@ aggressively makes it less easy to
+source of trouble, using `setjmp() longjmp()` aggressively makes it less easy to
 understand and slows down its speed.
-Particularly with RISC machine, which has many registers, using @setjmp()@
-aggressively can easily cause slowing down because @setjmp()@ set aside all
+Particularly with RISC machine, which has many registers, using `setjmp()`
+aggressively can easily cause slowing down because `setjmp()` set aside all
 things in registers.
 
 
-h3. The performance of evaluator
+### The performance of evaluator
 
-@ruby@ is already enough fast for ordinary use.
+`ruby` is already enough fast for ordinary use.
 But aside from it, regarding a language processor,
 definitely the faster is the better.
 To achieve better performance, in other words to optimize,
@@ -120,7 +122,7 @@ what can we do?
 In such case, the first thing we have to do is profiling.
 So I profiled.
 
-<pre class="emlist">
+```TODO-lang
   %   cumulative   self              self     total
  time   seconds   seconds    calls  ms/call  ms/call  name
  20.25      1.64     1.64  2638359     0.00     0.00  rb_eval
@@ -132,31 +134,31 @@ So I profiled.
   5.19      5.27     0.42   388066     0.00     0.00  st_foreach
   3.46      5.55     0.28  8605866     0.00     0.00  rb_gc_mark
   2.22      5.73     0.18  3819588     0.00     0.00  call_cfunc
-</pre>
+```
 
 This is a profile when running some application but
 this is approximately the profile of a general Ruby program.
-@rb_eval()@ appeared in the overwhelming percentage being at the top,
+`rb_eval()` appeared in the overwhelming percentage being at the top,
 after that, in addition to functions of GC, evaluator core,
 functions that are specific to the program are mixed.
 For example, in the case of this application,
-it takes a lot of time for regular expression match (@ruby_re_match@).
+it takes a lot of time for regular expression match (`ruby_re_match`).
 
 However, even if we understood this, the question is how to improve it.
-To think simply, it can be archived by making @rb_eval()@ faster.
-That said, but as for @ruby@ core, there are almost not any room which can be
-easily optimized. For instance, apparently "tail recursive -> @goto@ conversion"
-used in the place of @NODE_IF@ and others has already applied almost all
+To think simply, it can be archived by making `rb_eval()` faster.
+That said, but as for `ruby` core, there are almost not any room which can be
+easily optimized. For instance, apparently "tail recursive -> `goto` conversion"
+used in the place of `NODE_IF` and others has already applied almost all
 possible places it can be applied.
 In other words, without changing the way of thinking fundamentally,
 there's no room to improve.
 
 
-h3. The implementation of thread
+### The implementation of thread
 
 This was also discussed in Chapter 19. There are really a lot of issues about
 the implementation of the current ruby's thread. Particularly, it cannot mix
-with native threads so badly. The two great advantages of @ruby@'s thread,
+with native threads so badly. The two great advantages of `ruby`'s thread,
 (1) high portability (2) the same behavior everywhere,
 are definitely incomparable, but probably that implementation is something we
 cannot continue to use eternally, isn't it?
@@ -164,13 +166,14 @@ cannot continue to use eternally, isn't it?
 
 
 
-h2. `ruby` 2
+`ruby` 2
+--------
 
 Subsequently, on the other hand, I'll introduce the trend of the original `ruby`,
 how it is trying to counter these issues.
 
 
-h3. Rite
+### Rite
 
 At the present time, ruby's edge is 1.6.7 as the stable version and 1.7.3 as the
 development version, but perhaps the next stable version 1.8 will come out in
@@ -195,14 +198,12 @@ entirely just a "plan". If you expect so much, it's possible it will turn out
 disappointments. Therefore, for now, let's just expect slightly.
 
 
-h3. The language to write
+### The language to write
 
 Firstly, the language to use. Definitely it will be C. Mr. Matsumoto said to
 `ruby-talk`, which is the English mailing list for Ruby,
 
-<blockquote>
-I hate C++.
-</blockquote>
+> I hate C++.
 
 So, C++ is most unlikely. Even if all the parts will be recreated,
 it is reasonable that the object system will remain almost the same,
@@ -210,7 +211,7 @@ so not to increase extra efforts around this is necessary.
 However, chances are good that it will be ANSI C next time.
 
 
-h3. GC
+### GC
 
 Regarding the implementation of GC,
 the good start point would be
@@ -223,7 +224,7 @@ perpetually, but anyway it will proceed for the direction to which we can expect
 somewhat improvement on speed.
 
 
-h3. Parser
+### Parser
 
 Regarding the specification, it's very likely that the nested method calls
 without parentheses will be forbidden. As we've seen, `command_call` has a great
@@ -237,7 +238,7 @@ possible to implement such complex thing by hand? Such anxiety might left.
 Whichever way we choose, the path must be thorny.
 
 
-h3. Evaluator
+### Evaluator
 
 The evaluator will be completely recreated.
 Its aims are mainly to improve speed and to simplify the implementation.
@@ -285,7 +286,7 @@ For another example, Python is a bytecode interpretor.
 
 
 
-h3. Thread
+### Thread
 
 Regarding thread, the thing is native thread support.
 The environment around thread has been significantly improved,
@@ -308,7 +309,7 @@ and it is rarely actually used. Therefore there might be no problem.
 
 
 
-h3. M17N
+### M17N
 
 In addition, I'd like to mention a few things about class libraries.
 This is about multi-lingualization (M17N for short).
@@ -325,7 +326,7 @@ it will be absorbed at some point in the middle of 1.9.
 
 
 
-h3. IO
+### IO
 
 
 The `IO` class in current Ruby is a simple wrapper of `stdio`,
@@ -342,7 +343,8 @@ Therefore, it seems Rite will have its own `stdio`.
 
 
 
-h2. Ruby Hacking Guide
+Ruby Hacking Guide
+------------------
 
 
 So far, we've always acted as observers who look at `ruby` from outside.
@@ -353,7 +355,7 @@ I'll introduce the suggestions and activities for `ruby` from community,
 as a farewell gift for Ruby Hackers both at present and in the future.
 
 
-h3. Generational GC
+### Generational GC
 
 First, as also mentioned in Chapter 5,
 the generational GC made by Mr. Kiyama Masato.
@@ -368,7 +370,7 @@ more than anything else, it was the first large non-official patch.
 
 
 
-h3. Oniguruma
+### Oniguruma
 
 The regular expression engine used by current Ruby is a remodeled version of GNU
 regex. That GNU regex was in the first place written for Emacs. And then it was
@@ -386,13 +388,13 @@ absorbed as soon as possible.
 
 You can obtain Oniguruma from the `ruby`'s CVS repository in the following way.
 
-<pre class="screen">
+```TODO-lang
 % cvs -d :pserver:anonymous@cvs.ruby-lang.org:/src co oniguruma
-</pre>
+```
 
 
 
-h3. ripper
+### ripper
 
 Next, ripper is my product. It is an extension library made by remodeling
 `parse.y`. It is not a change applied to the `ruby`'s main body, but I
@@ -411,14 +413,14 @@ if this is accounted, I think it is constructed well.
 It took only three days or so to implement, really just a piece of cake.
 
 
-h3. A parser alternative
+### A parser alternative
 
 This product has not yet appeared in a clear form,
 there's a person who write a Ruby parser in C++ which can be used totally
 independent of `ruby`. (`[ruby-talk:50497]`).
 
 
-h3. JRuby
+### JRuby
 
 More aggressively, there's an attempt to rewrite entire the interpretor.
 For example, a Ruby written in Java,
@@ -452,7 +454,7 @@ However, the overall impression I got was, it's way better than I imagined.
 
 
 
-h3. NETRuby
+### NETRuby
 
 If it can run with Java, it should also with C#.
 Therefore, a Ruby written in C# appeared,
@@ -471,7 +473,7 @@ such things are the problems.
 But `instance_eval` is in effect (astounding!).
 
 
-h3. How to join `ruby` development
+### How to join `ruby` development
 
 `ruby`'s developer is really Mr. Matsumoto as an individual,
 regarding the final decision about the direction `ruby` will take,
@@ -523,7 +525,7 @@ I'll answer it as much as possible,
 and other people would respond to it, too.
 
 
-h3. Finale
+### Finale
 
 The long journey of this book is going to end now.
 As there was the limitation of the number of pages,

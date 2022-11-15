@@ -37,6 +37,24 @@ $ jekyll serve # this compiles files and starts a server on localhost:4000.
 [Jekyll usage](https://github.com/mojombo/jekyll/wiki/usage)
 
 
+<details>
+
+<summary>Changing code style</summary>
+
+```zsh
+function apply_style {
+	pygmentize -S $1 -f html -a .highlight > css/highlight.css
+}
+while read -r style; do
+	echo $style
+	apply_style $style
+	read -qs && echo $style >> t.preselection
+done < <(pygmentize -L styles | awk -F'[ :]' '/^\* / { print $2 }')
+```
+
+</details>
+
+
 Reading in EPUB
 =========
 

@@ -4,11 +4,13 @@ title: Objects - Structure of Ruby objects
 ---
 Translated by Vincent ISAMBART
 
-h1. Chapter 2: Objects
+Chapter 2: Objects
+==================
 
-h2. Structure of Ruby objects
+Structure of Ruby objects
+-------------------------
 
-h3. Guideline
+### Guideline
 
 From this chapter, we will begin actually exploring the `ruby` source code.
 First, as declared at the beginning of this book,
@@ -18,32 +20,35 @@ What are the necessary conditions for objects to be objects?
 There could be many ways to explain about object itself,
 but there are only three conditions that are truly indispensable.
 
-# The ability to differentiate itself from other objects (an identity)
-# The ability to respond to messages (methods)
-# The ability to store internal state (instance variables)
+* The ability to differentiate itself from other objects (an identity)
+* The ability to respond to messages (methods)
+* The ability to store internal state (instance variables)
 
 In this chapter, we are going to confirm these three features one by one.
 
 The target file is mainly `ruby.h`, but we will also
 briefly look at other files such as `object.c`, `class.c` or `variable.c`.
 
-h3. `VALUE` and object struct
+### `VALUE` and object struct
 
 In `ruby`, the body of an object is expressed by a struct and always
 handled via a pointer. A different struct type is used for each class, but
 the pointer type will always be `VALUE` (figure 1).
 
-!images/ch_object_value.png(`VALUE` and struct)!
+<figure>
+	<img src="images/ch_object_value.png" alt="figure 1: `VALUE` and struct">
+	<figcaption>figure 1: <code class="inline">VALUE</code> and struct</figcaption>
+</figure>
 
 Here is the definition of `VALUE`:
 
 ▼ `VALUE`
 
-<pre class="longlist">
+```c
   71  typedef unsigned long VALUE;
 
 (ruby.h)
-</pre>
+```
 
 In practice, when using a `VALUE`, we cast it to the pointer to each object struct.
 Therefore if an `unsigned long` and a pointer have a different size, `ruby`
@@ -55,30 +60,33 @@ but some time ago it seems there were quite a few of them.
 The structs, on the other hand, have several variations,
 a different struct is used based on the class of the object.
 
-| `struct RObject`		| all things for which none of the following
-						  applies |
-| `struct RClass`		| class object |
-| `struct RFloat`		| small numbers |
-| `struct RString`		| string |
-| `struct RArray`		| array |
-| `struct RRegexp`		| regular expression |
-| `struct RHash`		| hash table |
-| `struct RFile`		| `IO`, `File`, `Socket`, etc... |
-| `struct RData`		| all the classes defined at C level, except the
-						  ones mentioned above |
-| `struct RStruct`		| Ruby's `Struct` class |
-| `struct RBignum`		| big integers |
+| `struct`         | variation                                                           |
+| ---------------- | ------------------------------------------------------------------- |
+| `struct RObject` | all things for which none of the following applies                  |
+| `struct RClass`  | class object                                                        |
+| `struct RFloat`  | small numbers                                                       |
+| `struct RString` | string                                                              |
+| `struct RArray`  | array                                                               |
+| `struct RRegexp` | regular expression                                                  |
+| `struct RHash`   | hash table                                                          |
+| `struct RFile`   | `IO`, `File`, `Socket`, etc...                                      |
+| `struct RData`   | all the classes defined at C level, except the ones mentioned above |
+| `struct RStruct` | Ruby's `Struct` class                                               |
+| `struct RBignum` | big integers                                                        |
 
 For example, for an string object, `struct RString` is used, so we will have
 something like the following.
 
-!images/ch_object_string.png(String object)!
+<figure>
+	<img src="images/ch_object_string.png" alt="figure 2: String object">
+	<figcaption>figure 2: String object</figcaption>
+</figure>
 
 Let's look at the definition of a few object structs.
 
 ▼ Examples of object struct
 
-<pre class="longlist">
+```c
       /* struct for ordinary objects */
  295  struct RObject {
  296      struct RBasic basic;
@@ -108,7 +116,7 @@ Let's look at the definition of a few object structs.
  332  };
 
 (ruby.h)
-</pre>
+```
 
 Before looking at every one of them in detail, let's begin with something more
 general.
@@ -119,20 +127,23 @@ That's why `Rxxxx()` macros have been made for each object
 struct. For example, for `struct RString` there is `RSTRING()`, for
 `struct RArray` there is `RARRAY()`, etc... These macros are used like this:
 
-<pre class="emlist">
+```c
 
 VALUE str = ....;
 VALUE arr = ....;
 RSTRING(str)->len;   /* ((struct RString*)str)->len */
 RARRAY(arr)->len;    /* ((struct RArray*)arr)->len */
-</pre>
+```
 
 Another important point to mention is that all object structs start with a
 member `basic` of type `struct RBasic`. As a result, if you cast this `VALUE` to
 `struct RBasic*`, you will be able to access the content of `basic`, regardless
 of the type of struct pointed to by `VALUE`.
 
-!images/ch_object_rbasic.png(`struct RBasic`)!
+<figure>
+	<img src="images/ch_object_rbasic.png" alt="figure 3: `struct RBasic`">
+	<figcaption>figure 3: <code class="inline">struct RBasic</code></figcaption>
+</figure>
 
 Because it is purposefully designed this way,
 `struct RBasic` must contain very important information for Ruby objects.
@@ -141,24 +152,24 @@ for `struct RBasic`:
 
 ▼ `struct RBasic`
 
-<pre class="longlist">
+```c
  290  struct RBasic {
  291      unsigned long flags;
  292      VALUE klass;
  293  };
 
 (ruby.h)
-</pre>
+```
 
 `flags` are multipurpose flags, mostly used to register the struct type
 (for instance `struct RObject`). The type flags are named `T_xxxx`, and can be
 obtained from a `VALUE` using the macro `TYPE()`. Here is an example:
 
-<pre class="emlist">
+```c
 VALUE str;
 str = rb_str_new();    /* creates a Ruby string (its struct is RString) */
 TYPE(str);             /* the return value is T_STRING */
-</pre>
+```
 
 The all flags are named as `T_xxxx`,
 like `T_STRING` for `struct RString` and `T_ARRAY` for `struct RArray`.
@@ -168,7 +179,10 @@ The other member of `struct RBasic`, `klass`, contains the class this object
 belongs to. As the `klass` member is of type `VALUE`, what is stored is (a
 pointer to) a Ruby object. In short, it is a class object.
 
-!images/ch_object_class.png(object and class)!
+<figure>
+	<img src="images/ch_object_class.png" alt="figure 4: object and class">
+	<figcaption>figure 4: object and class</figcaption>
+</figure>
 
 The relation between an object and its class will be detailed in the "Methods"
 section of this chapter.
@@ -176,7 +190,7 @@ section of this chapter.
 By the way, this member is named `klass` so as not to conflict with the reserved
 word `class` when the file is processed by a C++ compiler.
 
-h4. About struct types
+#### About struct types
 
 I said that the type of struct is stored in the `flags` member of
 `struct Basic`. But why do we have to store the type of struct? It's to be
@@ -204,7 +218,7 @@ level use `struct RObject`, so finding a struct from a class would require
 to keep the correspondence between each class and struct. That's why it's
 easier and faster to put the information about the type in the struct.
 
-h4. The use of `basic.flags`
+#### The use of `basic.flags`
 
 Regarding the use of `basic.flags`,
 because I feel bad to say it is the struct type "and such",
@@ -212,30 +226,33 @@ I'll illustrate it entirely here. (Figure 5)
 There is no need to understand everything right away,
 because this is prepared for the time when you will be wondering about it later.
 
-!images/ch_object_flags.png(Use of `flags`)!
+<figure>
+	<img src="images/ch_object_flags.png" alt="figure 5: Use of `flags`">
+	<figcaption>figure 5: Use of <code class="inline">flags</code></figcaption>
+</figure>
 
 When looking at the diagram, it looks like that 21 bits are not used on 32 bit
 machines. On these additional bits, the flags `FL_USER0` to `FL_USER8` are
 defined, and are used for a different purpose for each struct. In the
 diagram I also put `FL_USER0` (`FL_SINGLETON`) as an example.
 
-h3. Objects embedded in `VALUE`
+### Objects embedded in `VALUE`
 
 As I said, `VALUE` is an `unsigned long`. As `VALUE` is a pointer, it may look
 like `void*` would also be all right, but there is a reason for not doing
 this. In fact, `VALUE` can also not be a pointer. The 6 cases for which
 `VALUE` is not a pointer are the following:
 
-# small integers
-# symbols
-# `true`
-# `false`
-# `nil`
-# `Qundef`
+* small integers
+* symbols
+* `true`
+* `false`
+* `nil`
+* `Qundef`
 
 I'll explain them one by one.
 
-h4. Small integers
+#### Small integers
 
 All data are objects in Ruby, thus integers are also objects.
 But since there are so many kind of integer objects,
@@ -256,12 +273,12 @@ to a `Fixnum`, and confirm that `Fixnum` are directly embedded in `VALUE`.
 
 ▼ `INT2FIX`
 
-<pre class="longlist">
+```c
  123  #define INT2FIX(i) ((VALUE)(((long)(i))<<1 | FIXNUM_FLAG))
  122  #define FIXNUM_FLAG 0x01
 
 (ruby.h)
-</pre>
+```
 
 In brief, shift 1 bit to the left, and bitwise or it with 1.
 
@@ -281,7 +298,7 @@ convert it to `Bignum`. `NUM2INT()` will convert both `Fixnum` and `Bignum` to
 `int`. If the number can't fit in an `int`, an exception will be raised, so
 there is no need to check the value range.
 
-h4. Symbols
+#### Symbols
 
 What are symbols?
 
@@ -291,11 +308,11 @@ In the first place, there's a type named `ID` used inside `ruby`. Here it is.
 
 ▼ `ID`
 
-<pre class="longlist">
+```c
   72  typedef unsigned long ID;
 
 (ruby.h)
-</pre>
+```
 
 This `ID` is a number having a one-to-one association with a string. However,
 it's not possible to have an association between all strings in this world and
@@ -325,12 +342,12 @@ why `Symbol`, like `Fixnum`, was made embedded in `VALUE`. Let's look at the
 
 ▼ `ID2SYM`
 
-<pre class="longlist">
+```c
  158  #define SYMBOL_FLAG 0x0e
  160  #define ID2SYM(x) ((VALUE)(((long)(x))<<8|SYMBOL_FLAG))
 
 (ruby.h)
-</pre>
+```
 
 When shifting 8 bits left, `x` becomes a multiple of 256, that means a
 multiple of 4. Then after with a bitwise or (in this case it's the same as
@@ -342,16 +359,16 @@ Finally, let's see the reverse conversion of `ID2SYM()`, `SYM2ID()`.
 
 ▼ `SYM2ID()`
 
-<pre class="longlist">
+```c
  161  #define SYM2ID(x) RSHIFT((long)x,8)
 
 (ruby.h)
-</pre>
+```
 
 `RSHIFT` is a bit shift to the right. As right shift may keep or not the sign
 depending of the platform, it became a macro.
 
-h4. `true false nil`
+#### `true false nil`
 
 These three are Ruby special objects. `true` and `false` represent the boolean
 values. `nil` is an object used to denote that there is no object. Their
@@ -359,13 +376,13 @@ values at the C level are defined like this:
 
 ▼ `true false nil`
 
-<pre class="longlist">
+```c
  164  #define Qfalse 0        /* Ruby's false */
  165  #define Qtrue  2        /* Ruby's true */
  166  #define Qnil   4        /* Ruby's nil */
 
 (ruby.h)
-</pre>
+```
 This time it's even numbers, but as 0 or 2 can't be used by pointers, they
 can't overlap with other `VALUE`. It's because usually the first block of
 virtual memory is not allocated, to make the programs dereferencing a `NULL`
@@ -380,11 +397,11 @@ For `Qnil`, there is a macro dedicated to check if a `VALUE` is `Qnil` or not,
 
 ▼ `NIL_P()`
 
-<pre>
+```c
  170  #define NIL_P(v) ((VALUE)(v) == Qnil)
 
 (ruby.h)
-</pre>
+```
 
 The name ending with `p` is a notation coming from Lisp denoting that it is a
 function returning a boolean value. In other words, `NIL_P` means "is the
@@ -398,44 +415,45 @@ That's why there's the `RTEST()` macro to do Ruby-style test in C.
 
 ▼ `RTEST()`
 
-<pre class="longlist">
+```c
  169  #define RTEST(v) (((VALUE)(v) & ~Qnil) != 0)
 
 (ruby.h)
-</pre>
+```
 
 As in `Qnil` only the third lower bit is 1, in `~Qnil` only the third lower
 bit is 0. Then only `Qfalse` and `Qnil` become 0 with a bitwise and.
 
 `!=0` has been added to be certain to only have 0 or 1, to satisfy the
 requirements of the glib library that only wants 0 or 1
-("[ruby-dev:11049]":http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-dev/11049).
+([[ruby-dev:11049]](http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-dev/11049).)
 
 By the way, what is the '`Q`' of `Qnil`? 'R' I would have understood but why
 '`Q`'? When I asked, the answer was "Because it's like that in Emacs." I did
 not have the fun answer I was expecting...
 
-h4. `Qundef`
+#### `Qundef`
 
 ▼ `Qundef`
 
-<pre class="longlist">
+```c
  167  #define Qundef 6                /* undefined value for placeholder */
 
 (ruby.h)
-</pre>
+```
 
 This value is used to express an undefined value in the interpreter. It can't
 (must not) be found at all at the Ruby level.
 
-h2. Methods
+Methods
+-------
 
 I already brought up the three important points of a Ruby object: having an
 identity, being able to call a method, and keeping data for each instance. In
 this section, I'll explain in a simple way the structure linking objects and
 methods.
 
-h3. `struct RClass`
+### `struct RClass`
 
 In Ruby, classes exist as objects during the execution. Of course. So there
 must be a struct for class objects. That struct is `struct RClass`. Its
@@ -447,7 +465,7 @@ differentiated by the `T_MODULE` struct flag.
 
 ▼ `struct RClass`
 
-<pre class="longlist">
+```c
  300  struct RClass {
  301      struct RBasic basic;
  302      struct st_table *iv_tbl;
@@ -456,7 +474,7 @@ differentiated by the `T_MODULE` struct flag.
  305  };
 
 (ruby.h)
-</pre>
+```
 
 First, let's focus on the `m_tbl` (Method TaBLe) member. `struct st_table` is
 an hashtable used everywhere in `ruby`. Its details will be explained in the
@@ -483,9 +501,12 @@ which is the entity of `Kernel` object and the `super` of Kernel is `NULL`.
 So to put it conversely, if `super` is `NULL`,
 its `RClass` is the entity of `Kernel` (figure 6).
 
-!images/ch_object_classtree.png(Class tree at the C level)!
+<figure>
+	<img src="images/ch_object_classtree.png" alt="figure 6: Class tree at the C level">
+	<figcaption>figure 6: Class tree at the C level</figcaption>
+</figure>
 
-h3. Methods search
+### Methods search
 
 With classes structured like this, you can easily imagine the method call
 process. The `m_tbl` of the object's class is searched, and if the method was
@@ -497,7 +518,7 @@ The sequential search process in `m_tbl` is done by `search_method()`.
 
 ▼ `search_method()`
 
-<pre class="longlist">
+```c
  256  static NODE*
  257  search_method(klass, id, origin)
  258      VALUE klass, *origin;
@@ -516,15 +537,15 @@ The sequential search process in `m_tbl` is done by `search_method()`.
  271  }
 
 (eval.c)
-</pre>
+```
 
 This function searches the method named `id` in the class object `klass`.
 
 `RCLASS(value)` is the macro doing:
 
-<pre class="emlist">
+```c
 ((struct RClass*)(value))
-</pre>
+```
 
 `st_lookup()` is a function that searches in `st_table` the value
 corresponding to a key. If the value is found, the function returns true and
@@ -535,12 +556,13 @@ too slow. That's why in reality, once called, a method is cached. So starting
 from the second time it will be found without following `super` one by one.
 This cache and its search will be seen in the 15th chapter "Methods."
 
-h2. Instance variables
+Instance variables
+------------------
 
 In this section, I will explain the implementation of the third essential
 condition, instance variables.
 
-h3. `rb_ivar_set()`
+### `rb_ivar_set()`
 
 Instance variable is the mechanism that allows each object to hold its specific data.
 Since it is specific to each object,
@@ -550,7 +572,7 @@ but is it really so? Let's look at the function
 
 ▼ `rb_ivar_set()`
 
-<pre class="longlist">
+```c
       /* assign val to the id instance variable of obj */
  984  VALUE
  985  rb_ivar_set(obj, id, val)
@@ -578,7 +600,7 @@ but is it really so? Let's look at the function
 1005  }
 
 (variable.c)
-</pre>
+```
 
 `rb_raise()` and `rb_error_frozen()` are both error checks.
 This can always be said hereafter:
@@ -588,13 +610,13 @@ Therefore, we should wholly ignore them at first read.
 
 After removing the error handling, only the `switch` remains, but
 
-<pre class="emlist">
+```c
 switch (TYPE(obj)) {
   case T_aaaa:
   case T_bbbb:
      ...
 }
-</pre>
+```
 
 this form is an idiom of `ruby`. `TYPE()` is the macro returning the type
 flag of the object struct (`T_OBJECT`, `T_STRING`, etc.). In other words as
@@ -609,7 +631,7 @@ the basis that their second member is `iv_tbl`. Let's confirm it in practice.
 
 ▼ Structs whose second member is `iv_tbl`
 
-<pre class="longlist">
+```c
       /* TYPE(val) == T_OBJECT */
  295  struct RObject {
  296      struct RBasic basic;
@@ -625,7 +647,7 @@ the basis that their second member is `iv_tbl`. Let's confirm it in practice.
  305  };
 
 (ruby.h)
-</pre>
+```
 
 `iv_tbl` is the Instance Variable TaBLe.
 It records the correspondences between the instance variable names and their values.
@@ -633,12 +655,12 @@ It records the correspondences between the instance variable names and their val
 In `rb_ivar_set()`, let's look again the code for the structs having
 `iv_tbl`.
 
-<pre class="emlist">
+```c
 if (!ROBJECT(obj)->iv_tbl)
     ROBJECT(obj)->iv_tbl = st_init_numtable();
 st_insert(ROBJECT(obj)->iv_tbl, id, val);
 break;
-</pre>
+```
 
 `ROBJECT()` is a macro that casts a `VALUE` into a `struct
 RObject*`. It's possible that what `obj` points to is actually a struct RClass,
@@ -656,26 +678,26 @@ its instance variable table is for the class object itself.
 In Ruby programs, it corresponds to
 something like the following:
 
-<pre class="emlist">
+```ruby
 class C
   @ivar = "content"
 end
-</pre>
+```
 
-h3. `generic_ivar_set()`
+### `generic_ivar_set()`
 
 What happens when assigning to an instance variable of
 an object whose struct is not one of `T_OBJECT T_MODULE T_CLASS`?
 
 ▼ `rb_ivar_set()` in the case there is no `iv_tbl`
 
-<pre class="longlist">
+```c
 1000  default:
 1001    generic_ivar_set(obj, id, val);
 1002    break;
 
 (variable.c)
-</pre>
+```
 
 This is delegated to `generic_ivar_set()`. Before looking at this
 function, let's first explain its general idea.
@@ -688,13 +710,16 @@ it would be able to have instance variables. In `ruby`, these associations are
 solved by using a global `st_table`, `generic_iv_table` (figure 7).
 
 
-!images/ch_object_givtable.png(`generic_iv_table`)!
+<figure>
+	<img src="images/ch_object_givtable.png" alt="figure 7: `generic_iv_table`">
+	<figcaption>figure 7: <code class="inline">generic_iv_table</code></figcaption>
+</figure>
 
 Let's see this in practice.
 
 ▼ `generic_ivar_set()`
 
-<pre class="longlist">
+```c
  801  static st_table *generic_iv_tbl;
 
  830  static void
@@ -726,7 +751,7 @@ Let's see this in practice.
  853  }
 
 (variable.c)
-</pre>
+```
 
 `rb_special_const_p()` is true when its parameter is not a pointer. However,
 as this `if` part requires knowledge of the garbage collector, we'll skip it
@@ -764,7 +789,7 @@ variables. If `FL_EXIVAR` is not set, even without searching in
 `generic_iv_tbl`, we can see the object does not have any instance variables. And
 of course a bit check is way faster than searching a `struct st_table`.
 
-h3. Gaps in structs
+### Gaps in structs
 
 Now you understood the way to store the instance variables, but why are
 there structs without `iv_tbl`? Why is there no `iv_tbl` in
@@ -808,14 +833,14 @@ such functionality looks stupid.
 If you take all this into consideration, you can conclude that increasing the
 size of object structs for `iv_tbl` does not do any good.
 
-h3. `rb_ivar_get()`
+### `rb_ivar_get()`
 
 We saw the `rb_ivar_set()` function that sets variables, so let's see quickly
 how to get them.
 
 ▼ `rb_ivar_get()`
 
-<pre class="longlist">
+```c
  960  VALUE
  961  rb_ivar_get(obj, id)
  962      VALUE obj;
@@ -845,7 +870,7 @@ how to get them.
  982  }
 
 (variable.c)
-</pre>
+```
 
 The structure is completely the same.
 
@@ -873,19 +898,20 @@ parameter `obj` does not point to a struct. As no struct means no
 Thus `FL_xxxx()` is designed to always return false for such object.
 Hence, objects that are `rb_special_const_p()` should be treated specially here.
 
-h2. Object Structs
+Object Structs
+--------------
 
 In this section, about the important ones among object structs,
 we'll briefly see their concrete appearances and how to deal with them.
 
-h3. `struct RString`
+### `struct RString`
 
 `struct RString` is the struct for the instances of the `String` class and
 its subclasses.
 
 ▼ `struct RString`
 
-<pre class="longlist">
+```c
  314  struct RString {
  315      struct RBasic basic;
  316      long len;
@@ -897,7 +923,7 @@ its subclasses.
  322  };
 
 (ruby.h)
-</pre>
+```
 
 `ptr` is a pointer to the string, and `len` the length of that string. Very
 straightforward.
@@ -912,10 +938,10 @@ you can access `ptr` and `len` by writing
 `RSTRING(str)->ptr` or `RSTRING(str)->len`, and it is allowed.
 But there are some points to pay attention to.
 
-# you have to check if `str` really points to a `struct RString`
+* you have to check if `str` really points to a `struct RString`
 by yourself beforehand
-# you can read the members, but you must not modify them
-# you can't store `RSTRING(str)->ptr` in something like a local variable and
+* you can read the members, but you must not modify them
+* you can't store `RSTRING(str)->ptr` in something like a local variable and
 use it later
 
 Why is that? First, there is an important software engineering principle:
@@ -930,11 +956,11 @@ characteristics.
 Ruby's strings can be modified (are mutable). By mutable I mean after the
 following code:
 
-<pre class="emlist">
+```ruby
 s = "str"        # create a string and assign it to s
 s.concat("ing")  # append "ing" to this string object
 p(s)             # show "string"
-</pre>
+```
 
 the content of the object pointed by `s` will become "`string`". It's
 different from Java or Python string objects. Java's `StringBuffer` is closer.
@@ -954,13 +980,13 @@ additional memory.
 So what is this other `aux.shared`? It's to speed up the creation of literal
 strings. Have a look at the following Ruby program.
 
-<pre class="emlist">
+```ruby
 while true do  # repeat indefinitely
   a = "str"        # create a string with "str" as content and assign it to a
   a.concat("ing")  # append "ing" to the object pointed by a
   p(a)             # show "string"
 end
-</pre>
+```
 
 Whatever the number of times you repeat the loop, the fourth line's `p` has to
 show `"string"`.
@@ -988,7 +1014,7 @@ modifying strings created as litterals, `aux.shared` has to be separated.
 Before ending this section, I'll write some examples of dealing with `RString`.
 I'd like you to regard `str` as a `VALUE` that points to `RString` when reading this.
 
-<pre class="emlist">
+```c
 RSTRING(str)->len;               /* length */
 RSTRING(str)->ptr[0];            /* first character */
 str = rb_str_new("content", 7);  /* create a string with "content" as its content
@@ -996,16 +1022,16 @@ str = rb_str_new("content", 7);  /* create a string with "content" as its conten
 str = rb_str_new2("content");    /* create a string with "content" as its content
                                     its length is calculated with strlen() */
 rb_str_cat2(str, "end");         /* Concatenate a C string to a Ruby string */
-</pre>
+```
 
-h3. `struct RArray`
+### `struct RArray`
 
 `struct RArray` is the struct for the instances of Ruby's array class
 `Array`.
 
 ▼ `struct RArray`
 
-<pre class="longlist">
+```c
  324  struct RArray {
  325      struct RBasic basic;
  326      long len;
@@ -1017,7 +1043,7 @@ h3. `struct RArray`
  332  };
 
 (ruby.h)
-</pre>
+```
 
 Except for the type of `ptr`, this structure is almost the same as
 `struct RString`. `ptr` points to the content of the array, and `len` is its
@@ -1037,7 +1063,7 @@ With `RARRAY(arr)->ptr` and `RARRAY(arr)->len`, you can refer to the members,
 and it is allowed, but you must not assign to them,
 etc. We'll only look at simple examples:
 
-<pre class="emlist">
+```c
 /* manage an array from C */
 VALUE ary;
 ary = rb_ary_new();             /* create an empty array */
@@ -1050,15 +1076,15 @@ ary = []      # create an empty array
 ary.push(9)   # push 9
 ary[0]        # look what's at index 0
 p(ary[0])     # do p on ary[0] (the result is 9)
-</pre>
+```
 
-h3. `struct RRegexp`
+### `struct RRegexp`
 
 It's the struct for the instances of the regular expression class `Regexp`.
 
 ▼ `struct RRegexp`
 
-<pre class="longlist">
+```c
  334  struct RRegexp {
  335      struct RBasic basic;
  336      struct re_pattern_buffer *ptr;
@@ -1067,7 +1093,7 @@ It's the struct for the instances of the regular expression class `Regexp`.
  339  };
 
 (ruby.h)
-</pre>
+```
 
 `ptr` is the compiled regular expression. `str` is the string before
 compilation (the source code of the regular expression), and `len` is this
@@ -1077,14 +1103,14 @@ As any code to handle `Regexp` objects doesn't appear in this book, we won't see
 how to use it. Even if you use it in extension libraries, as long as you do
 not want to use it a very particular way, the interface functions are enough.
 
-h3. `struct RHash`
+### `struct RHash`
 
 `struct RHash` is the struct for `Hash` object,
 which is Ruby's hash table.
 
 ▼ `struct RHash`
 
-<pre class="longlist">
+```c
  341  struct RHash {
  342      struct RBasic basic;
  343      struct st_table *tbl;
@@ -1093,7 +1119,7 @@ which is Ruby's hash table.
  346  };
 
 (ruby.h)
-</pre>
+```
 
 It's a wrapper for `struct st_table`. `st_table` will be detailed in the next
 chapter "Names and name tables."
@@ -1101,25 +1127,25 @@ chapter "Names and name tables."
 `ifnone` is the value when a key does not have an associated value, its default
 is `nil`. `iter_lev` is to make the hashtable reentrant (multithread safe).
 
-h3. `struct RFile`
+### `struct RFile`
 
 `struct RFile` is a struct for instances of the built-in IO class and
 its subclasses.
 
 ▼ `struct RFile`
 
-<pre class="longlist">
+```c
  348  struct RFile {
  349      struct RBasic basic;
  350      struct OpenFile *fptr;
  351  };
 
 (ruby.h)
-</pre>
+```
 
 ▼ `OpenFile`
 
-<pre class="longlist">
+```c
   19  typedef struct OpenFile {
   20      FILE *f;                    /* stdio ptr for read/write */
   21      FILE *f2;                   /* additional ptr for rw pipes */
@@ -1131,13 +1157,13 @@ its subclasses.
   27  } OpenFile;
 
 (rubyio.h)
-</pre>
+```
 
 All members have been transferred in `struct OpenFile`. As there aren't many
 instances of `IO` objects, it's OK to do it like this. The purpose of each member
 is written in the comments. Basically, it's a wrapper around C's `stdio`.
 
-h3. `struct RData`
+### `struct RData`
 
 `struct RData` has a different tenor from what we saw before. It is the
 struct for implementation of extension libraries.
@@ -1150,7 +1176,7 @@ for managing a pointer to a user defined struct" has been created on
 
 ▼ `struct RData`
 
-<pre class="longlist">
+```c
  353  struct RData {
  354      struct RBasic basic;
  355      void (*dmark) _((void*));
@@ -1159,7 +1185,7 @@ for managing a pointer to a user defined struct" has been created on
  358  };
 
 (ruby.h)
-</pre>
+```
 
 `data` is a pointer to the user defined struct,
 `dfree` is the function used to free that user defined struct, and
@@ -1170,4 +1196,7 @@ the time being let's just look at its representation (figure 8).
 The detailed explanation of its members will be introduced
 after we'll finish chapter 5 "Garbage collection."
 
-!images/ch_object_rdata.png(Representation of `struct RData`)!
+<figure>
+	<img src="images/ch_object_rdata.png" alt="figure 8: Representation of `struct RData`">
+	<figcaption>figure 8: Representation of <code class="inline">struct RData</code></figcaption>
+</figure>

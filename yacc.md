@@ -4,11 +4,13 @@ title: YACC crash course
 ---
 Translated by Vincent ISAMBART & ocha-
 
-h1. Chapter 9: `yacc` crash course
+Chapter 9: `yacc` crash course
+==============================
 
-h2. Outline
+Outline
+-------
 
-h3. Parser and scanner
+### Parser and scanner
 
 How to write parsers for programming languages has been an active area
 of research for a long time, and there is a quite firm established
@@ -36,7 +38,7 @@ By the way, it seems the reason white spaces had not meaning in
 Fortran 77 was that when writing programs on punch cards it was easy
 to make errors in the number of spaces.
 
-h3. List of symbols
+### List of symbols
 
 I said that the scanner spits out a list of words (tokens), but, to be
 exact, what the scanner creates is a list of "symbols", not words.
@@ -55,7 +57,7 @@ these symbols are. For example, `NUMBER` or `DIGIT` for numbers,
 `IDENTIFIER` for names like "`name`", `IF` for the reserved word
 `if`. These symbols are then given to the next phase.
 
-h3. Parser generator
+### Parser generator
 
 The list of words and symbols spitted out by the scanner are going to
 be used to form a tree. This tree is called a syntax tree.
@@ -106,9 +108,10 @@ satisfied, you can also read "Compilers" (also known as the "dragon
 book" because of the dragon on its cover) by Alfred V. Aho, Ravi Sethi
 and Jeffrey D. Ullman.
 
-h2. Grammar
+Grammar
+-------
 
-h3. Grammar file
+### Grammar file
 
 The input file for `yacc` is called "grammar file", as it's the file
 where the grammar is written. The convention is to name this grammar
@@ -116,7 +119,10 @@ file `*.y`. It will be given to `yacc` who will generate C source
 code. This file can then be compiled as usual (figure 1 shows the full
 process).
 
-!images/ch_yacc_build.jpg(Figure 1: File dependencies)!
+<figure>
+	<img src="images/ch_yacc_build.jpg" alt="figure 1: File dependencies">
+	<figcaption>figure 1: File dependencies</figcaption>
+</figure>
 
 The output file name is always `y.tab.c` and can't be changed. The
 recent versions of `yacc` usually allow to change it on the command
@@ -128,7 +134,7 @@ It's good to have a look at the file once.
 The grammar file's content has the following form:
 
 ▼ General form of the grammar file
-<pre class="longlist">
+```
 %{
 Header
 %}
@@ -140,7 +146,7 @@ Header
 Rules part
 %%
 User defined part
-</pre>
+```
 
 `yacc`'s input file is first divided in 3 parts by `%%`. The first
 part if called the definition part, has a lot of definitions and
@@ -158,7 +164,7 @@ by the user. `yacc` just copies this part verbatim in the output
 file. It's used for example to put auxiliary routines needed by the
 parser.
 
-h3. What does `yacc` do.
+### What does `yacc` do.
 
 What `yacc` takes care of is mainly this rules part in the
 middle. `yacc` takes the grammar written there and use it to make a
@@ -177,7 +183,7 @@ survived to this day even though we keep complaining about it.
 
 But what on earth is this core part? That's what we're going to see.
 
-h3. BNF
+### BNF
 
 When we want to write a parser in C, its code will be "cut the string
 this way, make this an `if` statement..." When using parser
@@ -190,9 +196,9 @@ But how can we tell the specification? With `yacc`, the method of
 description used is the BNF (Backus-Naur Form). Let's look at a very
 simple example.
 
-<pre class="emlist">
+```TODO-lang
 if_stmt: IF expr THEN stmt END
-</pre>
+```
 
 Let's see separately what's at the left and at the right of the
 "`:`". The part on the left side, `if_stmt`, is equal to the right
@@ -213,10 +219,10 @@ being able to use `else`. And `even` if we could write `else`, having
 to always write the `else` even when it's useless would be
 cumbersome. In this case we could do the following:
 
-<pre class="emlist">
+```TODO-lang
 if_stmt: IF expr THEN stmt END
        | IF expr THEN stmt ELSE stmt END
-</pre>
+```
 
 "`|`" means "or".
 
@@ -230,10 +236,10 @@ Here I would like you to pay attention to the split done with
 `|` is just a shorter way to repeat the left side. The previous
 example has exactly the same meaning as the following:
 
-<pre class="emlist">
+```TODO-lang
 if_stmt: IF expr THEN stmt END
 if_stmt: IF expr THEN stmt ELSE stmt END
-</pre>
+```
 
 This means two rules are defined in the example.
 
@@ -242,7 +248,7 @@ statement. That's because the symbols `expr` and `stmt` are not sent
 by the scanner, their rules must be defined. To be closer to Ruby, let's
 boldly add some rules.
 
-<pre class="emlist">
+```TODO-lang
 stmt   : if_stmt
        | IDENTIFIER '=' expr   /* assignment */
        | expr
@@ -257,7 +263,7 @@ expr   : IDENTIFIER       /* reading a variable */
 funcall: IDENTIFIER '(' args ')'
 
 args   : expr             /* only one parameter */
-</pre>
+```
 
 I used two new elements. First, comments of the same form as in C, and
 character expressed using `'='`. This `'='` is also of course a
@@ -282,7 +288,7 @@ equivalent. That's because `NUMBER` is `expr` and `expr` is `stmt`.
 
 We can also say that more complicated things are equivalent.
 
-<pre class="emlist">
+```TODO-lang
               stmt
                ↓
              if_stmt
@@ -292,7 +298,7 @@ We can also say that more complicated things are equivalent.
 IF IDENTIFIER THEN expr END
                     ↓
 IF IDENTIFIER THEN NUMBER END
-</pre>
+```
 
 When it has expanded until here,
 all elements become the symbols sent by the scanner.
@@ -300,7 +306,7 @@ It means such sequence of symbols is correct as a program.
 Or putting it the other way around, if this sequence of symbols is sent
 by the scanner, the parser can understand it in the opposite order of expanding.
 
-<pre class="emlist">
+```TODO-lang
 IF IDENTIFIER THEN NUMBER END
                     ↓
 IF IDENTIFIER THEN expr END
@@ -310,7 +316,7 @@ IF IDENTIFIER THEN expr END
              if_stmt
                ↓
               stmt
-</pre>
+```
 
 And `stmt` is a symbol expressing the whole program. That's why this
 sequence of symbols is a correct program for the parser. When it's the
@@ -324,7 +330,7 @@ ones for which the boxes where filled correctly. Parser and government
 office are strangely similar for instance in the fact that they care
 about details in specification and that they use complicated terms.
 
-h3. Terminal symbols and nonterminal symbols
+### Terminal symbols and nonterminal symbols
 
 Well, in the confusion of the moment I used without explaining it the
 expression "symbols coming from the scanner". So let's explain this. I
@@ -345,19 +351,19 @@ exist in the parser. Nonterminal symbols also always appear at one
 moment or the other as the left side of a rule. In this chapter,
 nonterminal symbols are always written in lower case letters.
 
-h3. How to test
+### How to test
 
 I'm now going to tell you the way to process the grammar file with
 `yacc`.
 
-<pre class="emlist">
+```TODO-lang
 %token A B C D E
 %%
 list: A B C
     | de
 
 de  : D E
-</pre>
+```
 
 First, put all terminal symbols used after `%token`. However, you do
 not have to type the symbols with quotes (like `'='`). Then, put `%%`
@@ -365,19 +371,19 @@ to mark a change of section and write the grammar. That's all.
 
 Let's now process this.
 
-<pre class="screen">
+```TODO-lang
 % yacc first.y
 % ls
 first.y  y.tab.c
 %
-</pre>
+```
 
 Like most Unix tools, "silence means success".
 
 There's also implementations of `yacc` that need semicolons at the end
 of (groups of) rules. When it's the case we need to do the following:
 
-<pre class="emlist">
+```TODO-lang
 %token A B C D E
 %%
 list: A B C
@@ -386,71 +392,71 @@ list: A B C
 
 de  : D E
     ;
-</pre>
+```
 
 I hate these semicolons so in this book I'll never use them.
 
-h3. Void rules
+### Void rules
 
 Let's now look a little more at some of the established ways of
 grammar description. I'll first introduce void rules.
 
-<pre class="emlist">
+```TODO-lang
 void:
-</pre>
+```
 
 There's nothing on the right side, this rule is "void". For example,
 the two following `target`s means exactly the same thing.
 
-<pre class="emlist">
+```TODO-lang
 target: A B C
 
 target: A void B void C
 void  :
-</pre>
+```
 
 What is the use of such a thing? It's very useful. For example in the
 following case.
 
-<pre class="emlist">
+```TODO-lang
 if_stmt : IF expr THEN stmts opt_else END
 
 opt_else:
         | ELSE stmts
-</pre>
+```
 
 Using void rules, we can express cleverly the fact that "the `else`
 section may be omitted". Compared to the rules made previously using
 two definitions, this way is shorter and we do not have to disperse
 the burden.
 
-h3. Recursive definitions
+### Recursive definitions
 
 The following example is still a little hard to understand.
 
-<pre class="emlist">
+```TODO-lang
 list: ITEM         /* rule 1 */
     | list ITEM    /* rule 2 */
-</pre>
+```
 
 This expresses a list of one or more items, in other words any of the
 following lists of symbols:
 
-<pre class="emlist">
+```TODO-lang
 ITEM
 ITEM ITEM
 ITEM ITEM ITEM
 ITEM ITEM ITEM ITEM
       :
-</pre>
+```
 
 Do you understand why? First, according to rule 1 `list` can be read
 `ITEM`. If you merge this with rule 2, `list` can be `ITEM ITEM`.
 
-<pre class="emlist">
+```TODO-lang
 list: list ITEM
     = ITEM ITEM
-</pre>
+```
 
 We now understand that the list of symbols `ITEM ITEM` is similar to
 `list`. By applying again rule 2 to `list`, we can say that 3 `ITEM`
@@ -461,21 +467,21 @@ This is something like mathematical induction.
 I'll now show you the next example. The following example expresses
 the lists with 0 or more `ITEM`.
 
-<pre class="emlist">
+```TODO-lang
 list:
     | list ITEM
-</pre>
+```
 
 First the first line means "`list` is equivalent to (void)". By void I
 mean the list with 0 `ITEM`. Then, by looking at rule 2 we can say
 that "`list ITEM`" is equivalent to 1 `ITEM`. That's because `list` is
 equivalent to void.
 
-<pre class="emlist">
+```TODO-lang
 list: list   ITEM
     = (void) ITEM
     =        ITEM
-</pre>
+```
 
 By applying the same operations of replacement multiple times, we can
 understand that `list` is the expression a list of 0 or more items.
@@ -484,17 +490,18 @@ With this knowledge, "lists of 2 or more `ITEM`" or "lists of 3 or
 more `ITEM`" are easy, and we can even create "lists of an even number
 of elements".
 
-<pre class="emlist">
+```TODO-lang
 list:
     | list ITEM ITEM
-</pre>
+```
 
-h2. Construction of values
+Construction of values
+----------------------
 
 This abstract talk lasted long enough so in this section I'd really
 like to go on with a more concrete talk.
 
-h3. Shift and reduce
+### Shift and reduce
 
 Up until now, various ways to write grammars have been explained,
 but what we want is being able to build a syntax tree.
@@ -506,30 +513,30 @@ something to the rules.
 We'll first see what the parser does during the execution. We'll use
 the following simple grammar as an example.
 
-<pre class="emlist">
+```TODO-lang
 %token A B C
 %%
 program: A B C
-</pre>
+```
 
 In the parser there is a stack called the semantic stack. The parser
 pushes on it all the symbols coming from the scanner. This move is
 called "shifting the symbols".
 
-<pre class="emlist">
+```TODO-lang
 [ A B ] ← C   shift
-</pre>
+```
 
 And when any of the right side of a rule is equal to the end of the
 stack, it is "interpreted". When this happens,
 the sequence of the right-hand side is replaced by the symbol of the left-hand
 side.
 
-<pre class="emlist">
+```TODO-lang
 [ A B C ]
     ↓         reduction
 [ program ]
-</pre>
+```
 
 This move is called "reduce `A B C`" to `program`". This term
 is a little presumptuous, but in short it is like,
@@ -546,7 +553,7 @@ found out. Therefore, if the input is just finished here, it is accepted.
 Let's try with a little more complicated grammar.
 
 
-<pre class="emlist">
+```TODO-lang
 %token IF E S THEN END
 %%
 program : if
@@ -557,15 +564,15 @@ expr    : E
 
 stmts   : S
         | stmts S
-</pre>
+```
 
 
 The input from the scanner is this.
 
 
-<pre class="emlist">
+```TODO-lang
 IF  E  THEN  S  S  S  END
-</pre>
+```
 
 
 The transitions of the semantic stack in this case are shown below.
@@ -596,7 +603,7 @@ If there's a void rule, it's possible that a symbol is generated out of "void".
 
 
 
-h3. Action
+### Action
 
 
 Now, I'll start to describe the important parts.
@@ -610,9 +617,9 @@ parser performing a reduction." The hooks are called actions of the parser.
 An action can be written at the last of the rule as follows.
 
 
-<pre class="emlist">
+```TODO-lang
 program: A B C { /* Here is an action */ }
-</pre>
+```
 
 
 The part between `{` and `}` is the action. If you write like this,
@@ -623,7 +630,7 @@ If it is a C code, almost all things can be written.
 
 
 
-h3. The value of a symbol
+### The value of a symbol
 
 This is further more important but,
 each symbol has "its value".
@@ -637,10 +644,10 @@ Each symbol and its value are pushed together on the semantic stack.
 The next figure shows the state just the moment `S` is shifted with its value.
 
 
-<pre class="emlist">
+```TODO-lang
 IF     expr    THEN    stmts   S
 value  value   value   value   value
-</pre>
+```
 
 
 According to the previous rule, `stmts S` can be reduced to `stmts`.
@@ -649,14 +656,14 @@ but at that moment, the values of the symbols corresponding to the right-hand
 side are passed to the action.
 
 
-<pre class="emlist">
+```TODO-lang
 IF    expr   THEN   stmts  S      /* Stack */
 v1    v2     v3     v4     v5
                     ↓     ↓
             stmts:  stmts  S      /* Rule */
                     ↓     ↓
                   { $1  +  $2; }  /* Action */
-</pre>
+```
 
 
 This way an action can take the value of each symbol corresponding to the
@@ -672,7 +679,7 @@ It is expressed as `$$` in actions, the value of `$$` when leaving an action
 will be the value of the left-hand side symbol.
 
 
-<pre class="emlist">
+```TODO-lang
 IF    expr   THEN   stmts  S      /* the stack just before reducing */
 v1    v2     v3     v4     v5
                     ↓     ↓
@@ -683,7 +690,7 @@ v1    v2     v3     v4     v5
 
 IF    expr   THEN   stmts         /* the stack after reducing */
 v1    v2     v3     (v4+v5)
-</pre>
+```
 
 
 As the end of this section, this is just an extra.
@@ -694,7 +701,7 @@ and it is called "semantic stack" for short.
 
 
 
-h3. `yacc` and types
+### `yacc` and types
 
 
 It's really cumbersome but without talking about types we cannot finish this
@@ -717,7 +724,7 @@ we want to use structs and pointers and the other various things.
 Therefore for instance, we use `%union` as follows.
 
 
-<pre class="emlist">
+```TODO-lang
 %union {
     struct node {
         int type;
@@ -727,7 +734,7 @@ Therefore for instance, we use `%union` as follows.
     int num;
     char *str;
 }
-</pre>
+```
 
 
 Because this is not for practical use,
@@ -739,7 +746,7 @@ end of the `%unicon` block.
 And, if this is written, it would look like the following in `y.tab.c`.
 
 
-<pre class="emlist">
+```TODO-lang
 typedef union {
     struct node {
         int type;
@@ -749,28 +756,28 @@ typedef union {
     int num;
     char *str;
 } YYSTYPE;
-</pre>
+```
 
 
 And, as for the semantic stack,
 
 
-<pre class="emlist">
+```TODO-lang
 YYSTYPE yyvs[256];       /* the substance of the stack（yyvs = YY Value Stack） */
 YYSTYPE *yyvsp = yyvs;   /* the pointer to the end of the stack */
-</pre>
+```
 
 
 we can expect something like this.
 Therefore, the values of the symbols appear in actions would be
 
-<pre class="emlist">
+```TODO-lang
 /* the action before processed by yacc */
 target: A B C { func($1, $2, $3); }
 
 /* after converted, its appearance in y.tab.c */
 { func(yyvsp[-2], yyvsp[-1], yyvsp[0]); ;
-</pre>
+```
 
 naturally like this.
 
@@ -788,21 +795,21 @@ using `%type` for nonterminal symbols,
 it is written as follows.
 
 
-<pre class="emlist">
+```TODO-lang
 %token<num> A B C    /* All of the values of A B C is of type int */
 %type<str> target    /* All of the values of target is of type char* */
-</pre>
+```
 
 
 On the other hand, if you'd like to specify everytime,
 you can write a member name into next to `$` as follows.
 
 
-<pre class="emlist">
+```TODO-lang
 %union { char *str; }
 %%
 target: { $<str>$ = "In short, this is like typecasting"; }
-</pre>
+```
 
 
 You'd better avoid using this method if possible.<br>
@@ -811,7 +818,7 @@ Defining a member for each symbol is basic.
 
 
 
-h3. Coupling the parser and the scanner together
+### Coupling the parser and the scanner together
 
 
 After all, I've finished to talk all about this and that of the values inside the parser.
@@ -832,14 +839,14 @@ its member name  has to be manually written.
 The very simple examples would look like the following.
 
 
-<pre class="emlist">
+```TODO-lang
 static int
 yylex()
 {
     yylval.str = next_token();
     return STRING;
 }
-</pre>
+```
 
 
 Figure 2 summarizes the relationships described by now.
@@ -848,38 +855,38 @@ I'd like you to check one by one.
 all of these variables that become the interfaces are of type `YYSTYPE`.
 
 
-<div class="image">
-<img src="images/ch_yacc_yaccvars.jpg" alt="(yaccvars)"><br>
-Figure 2: Relationships among `yacc` related variables & functions
-</div>
+<figure>
+    <img src="images/ch_yacc_yaccvars.jpg" alt="figure 2: Relationships among `yacc` related variables & functions">
+    <figcaption>figure 2: Relationships among <code class="inline">yacc</code> related variables & functions</figcaption>
+</figure>
 
 
 
 
-h3. Embedded Action
+### Embedded Action
 
 
 An action is written at the last of a rule, is how it was explained.
 However, actually it can be written in the middle of a rule.
 
 
-<pre class="emlist">
+```TODO-lang
 target: A B { puts("embedded action"); } C D
-</pre>
+```
 
 
 This is called "embedded action".<br>
 An embedded action is merely a syntactic sugar of the following definition:
 
 
-<pre class="emlist">
+```TODO-lang
 target: A B dummy C D
 
 dummy :     /* void rule */
         {
             puts("embedded action");
         }
-</pre>
+```
 
 
 From this example, you might be able to tell everything including
@@ -892,10 +899,11 @@ the value of the embedded action will come out as `$3`.
 
 
 
-h2. Practical Topics
+Practical Topics
+----------------
 
 
-h3. Conflicts
+### Conflicts
 
 
 I'm not afraid of `yacc` anymore.
@@ -911,10 +919,10 @@ matches the end of the stack",
 but what happens if there's a rule like this:
 
 
-<pre class="emlist">
+```TODO-lang
 target  : A B C
         | A B C
-</pre>
+```
 
 
 When the sequence of symbols `A B C` actually comes out,
@@ -926,10 +934,10 @@ it would complain that a reduce/reduce conflict occurs.
 It means multiple rules are possible to reduce at the same time.
 
 
-<pre class="screen">
+```TODO-lang
 % yacc rrconf.y
 conflicts:  1 reduce/reduce
-</pre>
+```
 
 
 But usually, I think you won't do such things except as an accident.<br>
@@ -937,14 +945,14 @@ But how about the next example?
 The described symbol sequence is completely the same.
 
 
-<pre class="emlist">
+```TODO-lang
 target  : abc
         | A bc
 
 abc     : A B C
 
 bc      :   B C
-</pre>
+```
 
 
 This is relatively possible. Especially when each part is complicatedly moved
@@ -955,14 +963,14 @@ without noticing.
 There's also a similar pattern, as follows:
 
 
-<pre class="emlist">
+```TODO-lang
 target  : abc
         | ab C
 
 abc     : A B C
 
 ab      : A B
-</pre>
+```
 
 
 When the symbol sequence `A B C` comes out,
@@ -973,10 +981,10 @@ This means there're both a shift-able rule and a reduce-able rule
 at the same time.
 
 
-<pre class="screen">
+```TODO-lang
 % yacc srconf.y
 conflicts:  1 shift/reduce
-</pre>
+```
 
 
 The famous example of shift/reduce conflicts is "the hanging `else` problem".
@@ -984,7 +992,7 @@ For example, the `if` statement of C language causes this problem.
 I'll describe it by simplifying the case:
 
 
-<pre class="emlist">
+```TODO-lang
 stmt     : expr ';'
          | if
 
@@ -992,7 +1000,7 @@ expr     : IDENTIFIER
 
 if       : IF '(' expr ')' stmt
          | IF '(' expr ')' stmt  ELSE stmt
-</pre>
+```
 
 
 In this rule,
@@ -1001,20 +1009,20 @@ the substance of `if` is only one statement.
 Now, what happens if the next program is parsed with this grammar?
 
 
-<pre class="emlist">
+```TODO-lang
 if (cond)
     if (cond)
         true_stmt;
     else
         false_stmt;
-</pre>
+```
 
 
 If it is written this way, we might feel like it's quite obvious.
 But actually, this can be interpreted as follows.
 
 
-<pre class="emlist">
+```TODO-lang
 if (cond) {
     if (cond)
         true_stmt;
@@ -1022,7 +1030,7 @@ if (cond) {
 else {
     false_stmt;
 }
-</pre>
+```
 
 
 The question is
@@ -1041,18 +1049,18 @@ it choses shift by default when a shift/reduce conflict occurs.
 
 
 
-h3. Look-ahead
+### Look-ahead
 
 
 As an experiment,
 I'd like you to process the next grammar with `yacc`.
 
-<pre class="emlist">
+```TODO-lang
 %token A B C
 %%
 target  : A B C   /* rule 1 */
         | A B     /* rule 2 */
-</pre>
+```
 
 
 We can't help expecting there should be a conflict.
@@ -1062,10 +1070,10 @@ the rule 2 would attempt to reduce.
 In other words, this should cause a shift/reduce conflict. However, ....
 
 
-<pre class="screen">
+```TODO-lang
 % yacc conf.y
 %
-</pre>
+```
 
 
 It's odd, there's no conflict. Why?
@@ -1110,7 +1118,7 @@ but the look-ahead during executions.
 
 
 
-h3. Operator Precedence
+### Operator Precedence
 
 
 Since abstract talks have lasted for long, I'll talk more concretely.
@@ -1119,7 +1127,7 @@ There are also established tactics for this, we'd better tamely follow it.
 Something like a calculator for arithmetic operations is defined below:
 
 
-<pre class="emlist">
+```TODO-lang
 expr    : expr '+' expr
         | expr '-' expr
         | expr '*' expr
@@ -1128,7 +1136,7 @@ expr    : expr '+' expr
 
 primary : NUMBER
         | '(' expr ')'
-</pre>
+```
 
 
 `primary` is the smallest grammar unit.
@@ -1139,28 +1147,28 @@ Then, if this grammar is written to an arbitrary file and compiled,
 the result would be this.
 
 
-<pre class="screen">
+```TODO-lang
 % yacc infix.y
 16 shift/reduce conflicts
-</pre>
+```
 
 
 They conflict aggressively. Thinking for 5 minutes is enough to see that
 this rule causes a problem in the following and similar cases:
 
 
-<pre class="emlist">
+```TODO-lang
 1 - 1 - 1
-</pre>
+```
 
 
 This can be interpreted in both of the next two ways.
 
 
-<pre class="emlist">
+```TODO-lang
 (1 - 1) - 1
 1 - (1 - 1)
-</pre>
+```
 
 
 The former is natural as an numerical expression.
@@ -1176,10 +1184,10 @@ Then, what we can do is
 writing this in the definition part.
 
 
-<pre class="emlist">
+```TODO-lang
 %left '+' '-'
 %left '*' '/'
-</pre>
+```
 
 
 These instructions specifies both the precedence and the associativity
@@ -1193,23 +1201,23 @@ Describing it logically is complicated, so if I put it instinctively,
 it is about to which operator parentheses are attached
 in the following and similar cases.
 
-<pre class="emlist">
+```TODO-lang
 1 + 2 * 3
-</pre>
+```
 
 
 If `*` has higher precedence, it would be this.
 
-<pre class="emlist">
+```TODO-lang
 1 + (2 * 3)
-</pre>
+```
 
 
 If `+` has higher precedence, it would be this.
 
-<pre class="emlist">
+```TODO-lang
 (1 + 2) * 3
-</pre>
+```
 
 
 As shown above, resolving shift/reduce conflicts
@@ -1220,9 +1228,9 @@ However, if the operators has the same precedence, how can it be resolved?
 Like this, for instance,
 
 
-<pre class="emlist">
+```TODO-lang
 1 - 2 - 3
-</pre>
+```
 
 because both operators are `-`, their precedences are the completely same.
 In this case, it is resolved by using the associativity.
@@ -1240,19 +1248,19 @@ Most of the operators for numerical expressions are left-associative.
 The right-associative is used mainly for `=` of assignment and `not` of denial.
 
 
-<pre class="emlist">
+```TODO-lang
 a = b = 1    # (a = (b = 1))
 not not a    # (not (not a))
-</pre>
+```
 
 
 The representatives of non-associative are probably the comparison operators.
 
 
-<pre class="emlist">
+```TODO-lang
 a == b == c   # parse error
 a <= b <= c   # parse error
-</pre>
+```
 
 
 However, this is not the only possibility.
@@ -1266,8 +1274,8 @@ The lower the operators written, the higher the precedences they have.
 If they are written in the same line, they have the same level of precedence.
 
 
-<pre class="emlist">
+```TODO-lang
 %left  '+' '-'    /* left-associative and third precedence  */
 %left  '*' '/'    /* left-associative and second precedence */
 %right '!'        /* right-associative and first precedence */
-</pre>
+```

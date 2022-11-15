@@ -3,15 +3,17 @@ layout: default
 title: "Chapter 15: Methods"
 ---
 
-h1. Chapter 15: Methods
+Chapter 15: Methods
+===================
 
 In this chapter, I'll talk about method searching and invoking.
 
 
-h2. Searching methods
+Searching methods
+-----------------
 
 
-h3. Terminology
+### Terminology
 
 
 In this chapter, both method calls and method definitions are discussed,
@@ -20,7 +22,7 @@ confusing, let's strictly define terms here:
 
 
 
-<pre class="emlist">
+```ruby
 m(a)          # a is a "normal argument"
 m(*list)      # list is an "array argument"
 m(&block)     # block is a "block argument"
@@ -29,7 +31,7 @@ def m(a)      # a is a "normal parameter"
 def m(a=nil)  # a is an "option parameter", nil is "it default value".
 def m(*rest)  # rest is a "rest parameter"
 def m(&block) # block is a "block parameter"
-</pre>
+```
 
 
 In short, they are all "arguments" when passing and "parameters" when receiving,
@@ -42,19 +44,19 @@ parameters" will be discussed in the next chapter.
 
 
 
-h3. Investigation
+### Investigation
 
 
 <p class="caption">▼The Source Program</p>
 
-<pre class="longlist">
+```ruby
 obj.method(7,8)
-</pre>
+```
 
 
 <p class="caption">▼Its Syntax Tree</p>
 
-<pre class="longlist">
+```
 NODE_CALL
 nd_mid = 9049 (method)
 nd_recv:
@@ -69,7 +71,7 @@ nd_args:
         NODE_LIT
         nd_lit = 8:Fixnum
     ]
-</pre>
+```
 
 
 The node for a method call is `NODE_CALL`.
@@ -90,7 +92,7 @@ Now, let's look at the handler of `NODE_CALL` in `rb_eval()`.
 
 <p class="caption">▼ `rb_eval()` − `NODE_CALL` </p>
 
-<pre class="longlist">
+```c
 2745  case NODE_CALL:
 2746    {
 2747        VALUE recv;
@@ -108,7 +110,7 @@ Now, let's look at the handler of `NODE_CALL` in `rb_eval()`.
 2759    break;
 
 (eval.c)
-</pre>
+```
 
 
 The problems are probably the three macros, `BEGIN_CALLARGS SETUP_ARGS() END_CALLARGS`.
@@ -122,7 +124,7 @@ Here, let's investigate only about `SETUP_ARGS()`.
 
 
 
-h3. `SETUP_ARGS()`
+### `SETUP_ARGS()`
 
 
 `SETUP_ARGS()` is the macro to evaluate the arguments of a method.
@@ -134,12 +136,12 @@ Therefore, something like the following is a boilerplate:
 
 
 
-<pre class="emlist">
+```c
 int argc; VALUE *argv;   /* used in SETUP_ARGS */
 TMP_PROTECT;
 
 SETUP_ARGS(args_node);
-</pre>
+```
 
 
 `args_node` is (the node represents) the arguments of the method,
@@ -150,7 +152,7 @@ Let's look at it:
 
 <p class="caption">▼ `SETUP_ARGS()` </p>
 
-<pre class="longlist">
+```c
 1780  #define SETUP_ARGS(anode) do {\
 1781      NODE *n = anode;\
 1782      if (!n) {\                             no arguments
@@ -184,7 +186,7 @@ Let's look at it:
 1810  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 This is a bit long, but since it clearly branches in three ways, not so terrible
@@ -205,7 +207,7 @@ If I write in the code (and tidy up a little), it becomes as follows.
 
 
 
-<pre class="emlist">
+```c
 /***** else if clause、argc!=0 *****/
 int i;
 n = anode;
@@ -222,7 +224,7 @@ if (TYPE(args) != T_ARRAY)
 argc = RARRAY(args)->len;
 argv = ALLOCA_N(VALUE, argc);                   /* 1 */
 MEMCPY(argv, RARRAY(args)->ptr, VALUE, argc);   /* 3 */
-</pre>
+```
 
 
 `TMP_ALLOC()` is used in the `else if` side,
@@ -236,7 +238,10 @@ The point is that "in the `else` side the values of arguments are also stored in
 `args`". If I illustrate, it would look like Figure 1.
 
 
-!images/ch_method_anchor.jpg(Being in the heap is all right.)!
+<figure>
+	<img src="images/ch_method_anchor.jpg" alt="figure 1: Being in the heap is all right.">
+	<figcaption>figure 1: Being in the heap is all right.</figcaption>
+</figure>
 
 
 If at least one `VALUE` is on the stack, others can be successively marked through
@@ -250,7 +255,7 @@ For your information, "anchor `VALUE`" is the word just coined now.
 
 
 
-h3. `rb_call()`
+### `rb_call()`
 
 
 `SETUP_ARGS()` is relatively off the track. Let's go back to the main line. The
@@ -261,7 +266,7 @@ of them.
 
 <p class="caption">▼ `rb_call()` (simplified)</p>
 
-<pre class="longlist">
+```c
 static VALUE
 rb_call(klass, recv, mid, argc, argv, scope)
     VALUE klass, recv;
@@ -294,7 +299,7 @@ rb_call(klass, recv, mid, argc, argv, scope)
     return rb_call0(klass, recv, mid, id,
                     argc, argv, body, noex & NOEX_UNDEF);
 }
-</pre>
+```
 
 
 The basic way of searching methods was discussed in chapter 2: "Object".
@@ -314,9 +319,9 @@ What is looking up the cache is the first half of `rb_call()`. Only with
 
 
 
-<pre class="emlist">
+```c
 ent = cache + EXPR1(klass, mid);
-</pre>
+```
 
 
 this line, the cache is searched.
@@ -328,12 +333,15 @@ tree step-by-step and caches the result at the same time.
 Figure 2 shows the entire flow of searching.
 
 
-!images/ch_method_msearch.jpg(Method Search)!
+<figure>
+	<img src="images/ch_method_msearch.jpg" alt="figure 2: Method Search">
+	<figcaption>figure 2: Method Search</figcaption>
+</figure>
 
 
 
 
-h3. Method Cache
+### Method Cache
 
 
 Next, let's examine the structure of the method cache in detail.
@@ -341,7 +349,7 @@ Next, let's examine the structure of the method cache in detail.
 
 <p class="caption">▼Method Cache</p>
 
-<pre class="longlist">
+```c
  180  #define CACHE_SIZE 0x800
  181  #define CACHE_MASK 0x7ff
  182  #define EXPR1(c,m) ((((c)>>3)^(m))&CACHE_MASK)
@@ -358,7 +366,7 @@ Next, let's examine the structure of the method cache in detail.
  193  static struct cache_entry cache[CACHE_SIZE];
 
 (eval.c)
-</pre>
+```
 
 
 If I describe the mechanism shortly, it is a hash table. I mentioned that the
@@ -375,7 +383,10 @@ It is `EXPR1()`. Among its arguments, `c` is the class object and `m` is the
 method name (`ID`). (Figure 3)
 
 
-!images/ch_method_mhash.jpg(Method Cache)!
+<figure>
+	<img src="images/ch_method_mhash.jpg" alt="figure 3: Method Cache">
+	<figcaption>figure 3: Method Cache</figcaption>
+</figure>
 
 
 However, `EXPR1()` is not a perfect hash function or anything, so a different
@@ -385,7 +396,7 @@ It just slows its performance down a little.
 
 
 
-h4. The effect of Method Cache
+#### The effect of Method Cache
 
 
 By the way, how much effective is the method cache in actuality?
@@ -406,9 +417,10 @@ This is awesome. Apparently, the effect of "it is know as ..." is outstanding.
 
 
 
-h2. Invocation
+Invocation
+----------
 
-h3. `rb_call0()`
+### `rb_call0()`
 
 
 There have been many things and finally we arrived at the method invoking.
@@ -419,7 +431,7 @@ look at it by dividing into small portions. Starting with the outline:
 
 <p class="caption">▼ `rb_call0()` (Outline)</p>
 
-<pre class="longlist">
+```c
 4482  static VALUE
 4483  rb_call0(klass, recv, id, oid, argc, argv, body, nosuper)
 4484      VALUE klass, recv;
@@ -473,7 +485,7 @@ look at it by dividing into small portions. Starting with the outline:
 4706  }
 
 (eval.c)
-</pre>
+```
 
 
 First, an `ITER` is pushed and whether or not the method is an iterator is
@@ -504,12 +516,12 @@ could be ignored.  The important things are only `NODE_CFUNC`, `NODE_SCOPE` and
 
 
 
-h3. `PUSH_FRAME()`
+### `PUSH_FRAME()`
 
 
 <p class="caption">▼ `PUSH_FRAME() POP_FRAME()` </p>
 
-<pre class="longlist">
+```c
  536  #define PUSH_FRAME() do {               \
  537      struct FRAME _frame;                \
  538      _frame.prev = ruby_frame;           \
@@ -528,7 +540,7 @@ h3. `PUSH_FRAME()`
  551  } while (0)
 
 (eval.c)
-</pre>
+```
 
 
 First, we'd like to make sure the entire `FRAME` is allocated on the stack.
@@ -542,7 +554,7 @@ method of the `FRAME`. `FRAME_ALLOCA` obviously indicates "it is on the stack".
 
 
 
-h3. `rb_call0()` - `NODE_CFUNC`
+### `rb_call0()` - `NODE_CFUNC`
 
 
 A lot of things are written in this part of the original code,
@@ -552,11 +564,11 @@ following line:
 
 <p class="caption">▼ `rb_call0()` − `NODE_CFUNC` (simplified)</p>
 
-<pre class="longlist">
+```c
 case NODE_CFUNC:
   result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
   break;
-</pre>
+```
 
 
 Then, as for `call_cfunc()` ...
@@ -564,7 +576,7 @@ Then, as for `call_cfunc()` ...
 
 <p class="caption">▼ `call_cfunc()` (simplified)</p>
 
-<pre class="longlist">
+```c
 4394  static VALUE
 4395  call_cfunc(func, recv, len, argc, argv)
 4396      VALUE (*func)();
@@ -603,7 +615,7 @@ Then, as for `call_cfunc()` ...
 4480  }
 
 (eval.c)
-</pre>
+```
 
 
 As shown above, it branches based on the argument count.
@@ -618,7 +630,7 @@ And in some places, say, `rb_svar` (`eval.c`), it is actually done.
 
 
 
-h3. `rb_call0()` - `NODE_SCOPE`
+### `rb_call0()` - `NODE_SCOPE`
 
 
 `NODE_SCOPE` is to invoke a method defined in Ruby.
@@ -627,7 +639,7 @@ This part forms the foundation of Ruby.
 
 <p class="caption">▼ `rb_call0()` − `NODE_SCOPE` (outline)</p>
 
-<pre class="longlist">
+```c
 4568  case NODE_SCOPE:
 4569    {
 4570        int state;
@@ -700,7 +712,7 @@ This part forms the foundation of Ruby.
 4697    break;
 
 (eval.c)
-</pre>
+```
 
 
 (A) `CREF` forwarding, which was described at the section of constants in the
@@ -727,7 +739,7 @@ the method is completely invoked.
 
 
 
-h3. Set Parameters
+### Set Parameters
 
 
 Then, we'll examine the totally skipped part, which sets parameters.
@@ -735,7 +747,7 @@ But before that, I'd like you to first check the syntax tree of the method again
 
 
 
-<pre class="screen">
+```
 % ruby -rnodedump -e 'def m(a) nil end'
 NODE_SCOPE
 nd_rval = (null)
@@ -756,7 +768,7 @@ nd_next:
             nd_next:
                 NODE_NIL
         nd_next = (null)
-</pre>
+```
 
 
 `NODE_ARGS` is the node to specify the parameters of a method.
@@ -781,21 +793,21 @@ For example, if you write a definition as below,
 
 
 
-<pre class="emlist">
+```ruby
 def m(a, b, c = nil, *rest)
   lvar1 = nil
 end
-</pre>
+```
 
 
 local variable IDs are assigned as follows.
 
 
 
-<pre class="emlist">
+```
 0   1   2   3   4   5      6
 $_  $~  a   b   c   rest   lvar1
-</pre>
+```
 
 
 Are you still with me?
@@ -804,7 +816,7 @@ Taking this into considerations, let's look at the code.
 
 <p class="caption">▼ `rb_call0()` − `NODE_SCOPE` −assignments of arguments</p>
 
-<pre class="longlist">
+```c
 4601  if (nd_type(body) == NODE_ARGS) { /* no body */
 4602      node = body;           /* NODE_ARGS */
 4603      body = 0;              /* the method body */
@@ -874,7 +886,7 @@ Taking this into considerations, let's look at the code.
 4664  }
 
 (eval.c)
-</pre>
+```
 
 
 Since comments are added more than before,
@@ -892,9 +904,9 @@ It means the following form:
 
 
 
-<pre class="emlist">
+```ruby
 super
-</pre>
+```
 
 
 This `super` has a behavior to directly pass the parameters of the currently executing method.
@@ -907,7 +919,7 @@ If there's not, the one after option parameters are assigned seems better.
 
 
 
-<pre class="emlist">
+```ruby
 def m(a, b, *rest)
   super     # probably 5, 6, 7, 8 should be passed
 end
@@ -917,7 +929,7 @@ def m(a, b = 6)
   super     # probably 5, 6 should be passed
 end
 m(5)
-</pre>
+```
 
 
 
@@ -934,7 +946,7 @@ The rest is, as the ending of this chapter, looking at the implementation of
 
 
 
-h3. `super`
+### `super`
 
 
 What corresponds to `super` are `NODE_SUPER` and `NODE_ZSUPER`.
@@ -944,7 +956,7 @@ and `NODE_ZSUPER` is `super` without arguments.
 
 <p class="caption">▼ `rb_eval()` − `NODE_SUPER` </p>
 
-<pre class="longlist">
+```c
 2780        case NODE_SUPER:
 2781        case NODE_ZSUPER:
 2782          {
@@ -985,7 +997,7 @@ and `NODE_ZSUPER` is `super` without arguments.
 2813          break;
 
 (eval.c)
-</pre>
+```
 
 
 For `super` without arguments, I said that `ruby_frame->argv` is directly used
@@ -1032,11 +1044,11 @@ What happens if `String.new` is replaced by new definition and `super` is called
 
 
 
-<pre class="emlist">
+```ruby
 def String.new
   super
 end
-</pre>
+```
 
 As a consequence, an object whose struct is of `T_OBJECT` but whose class is `String` is created.
 However, a method of `String` is written with expectation of a struct of `T_STRING`,
